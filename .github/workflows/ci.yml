@@ -31,6 +31,10 @@ jobs:
       - name: Ruff format
         run: uv run ruff format --check .
 
+      # Temporary: report the SQLite and Python build to debug the resolved_links failure.
+      - name: SQLite version (temporary)
+        run: uv run python -c "import sqlite3,sys; print(sqlite3.sqlite_version, sys.version)"
+
       - name: Pytest
         run: uv run pytest
 
