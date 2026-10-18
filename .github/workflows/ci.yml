@@ -42,6 +42,41 @@ jobs:
       - name: Pytest
         run: uv run pytest
 
+  sqlite-floor:
+    name: Python on SQLite 3.35.0 (minimum)
+    runs-on: ubuntu-latest
+    env:
+      SQLITE_ZIP: sqlite-amalgamation-3350000.zip
+      SQLITE_SHA256: d5c7f8d3df3d7b115ff13a7fb383a3d221b60fde03b55aebe6c06f42dcb76789
+      # The runner's Python loads SQLite as a shared library, so it can be swapped.
+      # uv's managed Python has SQLite built in and cannot.
+      UV_PYTHON_PREFERENCE: only-system
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v10.3.0
+
+      - name: Build SQLite 3.35.0
+        run: |
+          mkdir -p "$RUNNER_TEMP/sqlite"
+          cd "$RUNNER_TEMP/sqlite"
+          curl -fsSLO "https://www.sqlite.org/2021/$SQLITE_ZIP"
+          echo "$SQLITE_SHA256  $SQLITE_ZIP" | sha256sum --check
+          unzip -q "$SQLITE_ZIP"
+          # Python's _sqlite3 needs sqlite3_deserialize, which 3.35 leaves out by default.
+          gcc -O2 -shared -fPIC -DSQLITE_ENABLE_DESERIALIZE \
+            sqlite-amalgamation-3350000/sqlite3.c -lm -lpthread -ldl -o libsqlite3.so.0
+          echo "LD_LIBRARY_PATH=$RUNNER_TEMP/sqlite" >> "$GITHUB_ENV"
+
+      - name: Install locked environment
+        run: uv sync --locked --python /usr/bin/python3.12
+
+      - name: Check the SQLite version
+        run: uv run python -c "import sqlite3; v = sqlite3.sqlite_version; print(v); assert v == '3.35.0', v"
+
+      - name: Pytest, including slow tests
+        run: uv run pytest -m ""
+
   node:
     name: Node (Prettier, ESLint, svelte-check, build)
     runs-on: ubuntu-latest
