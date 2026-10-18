@@ -22,43 +22,68 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install locked environment
+        run: uv sync --locked
+
       - name: Ruff lint
-        run: uvx ruff check .
+        run: uv run ruff check .
 
       - name: Ruff format
-        run: uvx ruff format --check .
+        run: uv run ruff format --check .
 
-      # Placeholder: exit code 5 means no tests were collected, which is
-      # expected until the first Python code lands (D2).
       - name: Pytest
-        run: |
-          set +e
-          uvx pytest
-          code=$?
-          if [ "$code" -eq 5 ]; then
-            echo "No tests collected yet; treating as pass."
-            exit 0
-          fi
-          exit "$code"
+        run: uv run pytest
 
   node:
-    name: Node (Prettier, ESLint)
+    name: Node (Prettier, ESLint, svelte-check, build)
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
     steps:
       - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v7
         with:
           node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
 
-      # Placeholder: the UI package arrives in D1. Until then there is no
-      # package.json, Prettier config, or ESLint config to run against.
-      - name: Prettier and ESLint
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Prettier
+        run: npm run format:check
+
+      - name: ESLint
+        run: npm run lint
+
+      - name: svelte-check
+        run: npm run check
+
+      - name: Token checks
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+  rust:
+    name: Rust (fmt, clippy)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app/src-tauri
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Tauri system dependencies
         run: |
-          if [ ! -f package.json ]; then
-            echo "Skipped: no package.json yet."
-            exit 0
-          fi
-          npm ci
-          npx prettier --check .
-          npx eslint .
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: rustfmt
+        run: cargo fmt --check
+
+      - name: Clippy
+        run: cargo clippy --locked -- -D warnings
