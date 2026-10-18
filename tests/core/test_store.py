@@ -6,7 +6,14 @@ import pytest
 
 from core.vault.parser import parse_note
 from core.vault.scanner import NoteFile
-from core.vault.store import SCHEMA_VERSION, Store, content_hash, index_path_for
+from core.vault.store import (
+    _SCHEMA,
+    SCHEMA_VERSION,
+    Store,
+    check_sqlite_version,
+    content_hash,
+    index_path_for,
+)
 
 
 @pytest.fixture
@@ -120,3 +127,28 @@ def test_reopen_keeps_current_index(tmp_path: Path, store: Store) -> None:
     assert not again.rebuilt
     assert again.counts()["notes"] == 1
     again.close()
+
+
+def test_view_has_no_subquery_or_star() -> None:
+    # SQLite 3.45 rejects outer references in a subquery's ORDER BY, so the view uses none.
+    view = " ".join(_SCHEMA[_SCHEMA.index("CREATE VIEW") :].split()).upper()
+    assert "(SELECT" not in view
+    assert ".*" not in view
+
+
+@pytest.mark.parametrize("version", [(3, 34, 1), (3, 24, 0), (2, 99, 99)])
+def test_old_sqlite_is_rejected(version: tuple[int, int, int]) -> None:
+    with pytest.raises(RuntimeError, match=r"needs SQLite 3\.35\.0 or newer; found"):
+        check_sqlite_version(version)
+
+
+@pytest.mark.parametrize("version", [(3, 35, 0), (3, 45, 1), (4, 0, 0)])
+def test_supported_sqlite_is_accepted(version: tuple[int, int, int]) -> None:
+    check_sqlite_version(version)
+
+
+def test_store_refuses_old_sqlite(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sqlite3, "sqlite_version_info", (3, 31, 1))
+    with pytest.raises(RuntimeError, match="found 3.31.1"):
+        Store(tmp_path / "x.sqlite3", tmp_path)
+    assert not (tmp_path / "x.sqlite3").exists()

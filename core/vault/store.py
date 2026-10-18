@@ -19,7 +19,9 @@ from core.vault.scanner import NoteFile
 
 logger = logging.getLogger("hippocampus.core.vault")
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
+# RETURNING (used by upsert_note) arrived in 3.35.0; window functions in 3.25.0.
+MIN_SQLITE_VERSION = (3, 35, 0)
 
 _SCHEMA = """
 CREATE TABLE meta (
@@ -63,13 +65,26 @@ CREATE INDEX links_source     ON links(source_id);
 CREATE INDEX links_target_key ON links(target_key);
 CREATE INDEX tags_tag_key     ON tags(tag_key);
 
+-- Rank each link's candidate notes and keep the best: a path match first, then
+-- the shortest path, then path order. No subquery refers to the outer row, which
+-- SQLite 3.45 rejects inside an ORDER BY.
 CREATE VIEW resolved_links AS
-SELECT l.rowid AS link_id, l.*,
-       (SELECT n.id FROM notes n
-         WHERE n.path_key = l.target_key OR n.name_key = l.target_key
-         ORDER BY (n.path_key = l.target_key) DESC, length(n.path), n.path
-         LIMIT 1) AS target_id
-FROM links l;
+WITH candidates AS (
+    SELECT l.rowid AS link_id, n.id AS note_id, 1 AS by_path, length(n.path) AS len, n.path
+    FROM links l JOIN notes n ON n.path_key = l.target_key
+    UNION ALL
+    SELECT l.rowid, n.id, 0, length(n.path), n.path
+    FROM links l JOIN notes n ON n.name_key = l.target_key
+),
+ranked AS (
+    SELECT link_id, note_id,
+           row_number() OVER (PARTITION BY link_id ORDER BY by_path DESC, len, path) AS pick
+    FROM candidates
+)
+SELECT l.rowid AS link_id, l.source_id, l.target_raw, l.target_key, l.alias,
+       l.heading, l.is_embed, l.line, r.note_id AS target_id
+FROM links l
+LEFT JOIN ranked r ON r.link_id = l.rowid AND r.pick = 1;
 """
 
 
@@ -77,6 +92,13 @@ def index_path_for(vault: Path, storage: Path) -> Path:
     """storage/index/<first 16 hex chars of sha256(absolute vault path)>.sqlite3"""
     digest = hashlib.sha256(str(vault.resolve()).encode()).hexdigest()[:16]
     return storage / "index" / f"{digest}.sqlite3"
+
+
+def check_sqlite_version(version: tuple[int, int, int]) -> None:
+    if version < MIN_SQLITE_VERSION:
+        found = ".".join(map(str, version))
+        needed = ".".join(map(str, MIN_SQLITE_VERSION))
+        raise RuntimeError(f"The vault index needs SQLite {needed} or newer; found {found}")
 
 
 def content_hash(data: bytes) -> str:
@@ -94,6 +116,7 @@ class Store:
     """One connection, guarded by a lock so the watcher's writer thread and readers can share it."""
 
     def __init__(self, db_path: Path, vault_root: Path) -> None:
+        check_sqlite_version(sqlite3.sqlite_version_info)
         self.db_path = db_path
         self.vault_root = str(vault_root.resolve())
         self._lock = threading.RLock()

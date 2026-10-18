@@ -40,7 +40,7 @@ The first run compiles the Rust shell, which takes a few minutes.
 
 ### Index a vault
 
-The sidecar can index a folder of Markdown notes, including `[[links]]`, `#tags` and frontmatter `tags:`, into a SQLite file under `storage/index/`. The index is only a cache, so you can delete it at any time and it gets rebuilt.
+The sidecar can index a folder of Markdown notes, including `[[links]]`, `#tags` and frontmatter `tags:`, into a SQLite file under `storage/index/`. The index is only a cache, so you can delete it at any time and it gets rebuilt. It needs SQLite 3.35.0 or newer. The Python 3.12 that uv installs already includes a newer one, and CI also runs the tests against 3.35.0.
 
 Make a sample vault of 200 generated notes and index it:
 
