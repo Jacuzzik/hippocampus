@@ -15,15 +15,19 @@ jobs:
   python:
     name: Python (ruff, pytest)
     runs-on: ubuntu-latest
+    env:
+      # Use uv's own Python, never the runner's /usr/bin/python3.12 and its system SQLite.
+      UV_PYTHON_PREFERENCE: only-managed
     steps:
       - uses: actions/checkout@v7
 
       - uses: astral-sh/setup-uv@v10.3.0
-        with:
-          python-version: "3.12"
+
+      - name: Install Python 3.12
+        run: uv python install 3.12
 
       - name: Install locked environment
-        run: uv sync --locked
+        run: uv sync --locked --python 3.12
 
       - name: Ruff lint
         run: uv run ruff check .
