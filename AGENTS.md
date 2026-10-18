@@ -97,7 +97,7 @@ A phase is done only when:
 
 ## Phases
 
-- **D0:** repo, license, contribution rules, design tokens (done), and CI skeleton
+- **D0:** repo, license, contribution rules, design tokens (done), and CI skeleton (Python 3.12 via `uv`, Node 24 LTS)
 - **D1:** Tauri shell with four regions, static layout
 - **D2:** vault indexing (read `.md`, parse links and tags, SQLite, file watcher)
 - **D3:** brain graph (WebGL, pan and zoom, node drawer)
