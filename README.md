@@ -8,11 +8,45 @@ Linux comes first, then Windows, then macOS.
 
 ## Status
 
-Early development, phase D0 (repo setup and CI). See [AGENTS.md](AGENTS.md) for the architecture and roadmap.
+Early development, phase D1: a static desktop shell with four regions. See [AGENTS.md](AGENTS.md) for the architecture and roadmap.
 
 ## Run
 
-The app is not built yet, so there is nothing to run. A run command will be added here in phase D1.
+Tested on Arch Linux under Wayland. You need Rust, [uv](https://docs.astral.sh/uv/), and Node 24 or newer.
+
+Install the system packages Tauri needs:
+
+```bash
+sudo pacman -S --needed webkit2gtk-4.1 base-devel curl wget file openssl \
+  appmenu-gtk-module libappindicator-gtk3 librsvg
+```
+
+Set up the Python sidecar and run its tests:
+
+```bash
+uv sync --locked
+uv run pytest
+```
+
+Start the app:
+
+```bash
+cd app
+npm ci
+npm run tauri dev
+```
+
+The first run compiles the Rust shell, which takes a few minutes.
+
+### Troubleshooting: blank window on Wayland
+
+On some Intel GPUs, WebKitGTK's DMA-BUF renderer shows a blank or white window. If that happens, start the app with the renderer turned off:
+
+```bash
+WEBKIT_DISABLE_DMABUF_RENDERER=1 npm run tauri dev
+```
+
+The app does not set this for you.
 
 ## Contributing
 
