@@ -1,0 +1,19 @@
+# Python
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+
+# Node and Vite
+node_modules/
+dist/
+
+# Rust
+target/
+
+# Generated from design/tokens.json
+app/ui/styles/tokens.css
+
+# User data (dev)
+storage/
+brains/
