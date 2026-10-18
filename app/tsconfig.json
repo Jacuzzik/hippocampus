@@ -1,0 +1,16 @@
+{
+  "extends": "@tsconfig/svelte/tsconfig.json",
+  "compilerOptions": {
+    "target": "es2022",
+    "lib": ["es2022", "dom", "dom.iterable"],
+    "types": ["vite/client"],
+    "noEmit": true,
+    "allowJs": true,
+    "checkJs": true,
+    "isolatedModules": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
+  },
+  "include": ["ui/**/*.ts", "ui/**/*.svelte", "vite.config.ts"]
+}
