@@ -8,7 +8,7 @@ Linux comes first, then Windows, then macOS.
 
 ## Status
 
-Early development, phase D1: a static desktop shell with four regions. See [AGENTS.md](AGENTS.md) for the architecture and roadmap.
+Early development, phase D2: a static desktop shell with four regions, and a vault index that the UI doesn't use yet. See [AGENTS.md](AGENTS.md) for the architecture and roadmap.
 
 ## Run
 
@@ -37,6 +37,25 @@ npm run tauri dev
 ```
 
 The first run compiles the Rust shell, which takes a few minutes.
+
+### Index a vault
+
+The sidecar can index a folder of Markdown notes, including `[[links]]`, `#tags` and frontmatter `tags:`, into a SQLite file under `storage/index/`. The index is only a cache, so you can delete it at any time and it gets rebuilt.
+
+Make a sample vault of 200 generated notes and index it:
+
+```bash
+uv run python tests/fixtures/make_sample_vault.py brains/sample
+uv run python -m core index brains/sample
+```
+
+Keep the index current while you edit notes. Stop with Ctrl+C:
+
+```bash
+uv run python -m core watch brains/sample
+```
+
+Both commands take `--storage DIR` to keep the index somewhere other than `storage/`. To include the 2,000-note timing check, run `uv run pytest -m slow`.
 
 ### Troubleshooting: blank window on Wayland
 
