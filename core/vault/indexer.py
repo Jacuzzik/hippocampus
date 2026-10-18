@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
 from core.vault.parser import parse_note
-from core.vault.scanner import NoteFile, is_note_name, iter_notes, read_note, stat_note
+from core.vault.scanner import NoteFile, iter_notes, read_note, stat_note
 from core.vault.store import NoteState, Store, content_hash
 
 logger = logging.getLogger("hippocampus.core.vault")
@@ -69,11 +69,17 @@ class Indexer:
             elif rel.as_posix() in known:
                 self.store.delete_note(rel.as_posix())
                 stats.removed += 1
-            elif not is_note_name(rel.name) and not abs_path.exists():
+            elif not abs_path.exists() and self._has_notes_under(rel, known):
                 # A folder was deleted or moved out: drop everything under it.
                 stats.removed += self.store.delete_under(rel.as_posix())
-        logger.info("Applied %s", stats)
+        level = logging.INFO if stats != IndexStats() else logging.DEBUG
+        logger.log(level, "Applied %s", stats)
         return stats
+
+    @staticmethod
+    def _has_notes_under(rel: PurePosixPath, known: dict[str, NoteState]) -> bool:
+        prefix = rel.as_posix() + "/"
+        return any(path.startswith(prefix) for path in known)
 
     def _sync_folder(self, folder: Path, known: dict[str, NoteState]) -> IndexStats:
         """Index a folder that was created or moved into the vault."""
