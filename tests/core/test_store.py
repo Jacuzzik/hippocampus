@@ -1,4 +1,5 @@
 import sqlite3
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
@@ -9,7 +10,7 @@ from core.vault.store import SCHEMA_VERSION, Store, content_hash, index_path_for
 
 
 @pytest.fixture
-def store(tmp_path: Path) -> Store:
+def store(tmp_path: Path) -> Iterator[Store]:
     vault = tmp_path / "vault"
     vault.mkdir()
     s = Store(tmp_path / "storage" / "index" / "test.sqlite3", vault)

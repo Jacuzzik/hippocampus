@@ -32,6 +32,9 @@ line-length = 100
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "ANN"]
 
+[tool.ruff.lint.isort]
+known-first-party = ["core", "fixtures"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-m 'not slow'"

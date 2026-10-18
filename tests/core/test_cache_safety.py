@@ -101,3 +101,23 @@ def test_deleted_while_open_is_detected(tmp_path: Path) -> None:
     assert store.db_path.exists()
     assert store.counts()["notes"] == 0
     store.close()
+
+
+def test_deleting_the_index_rebuilds_an_identical_one(
+    sample_vault: tuple[Path, dict], storage: Path
+) -> None:
+    from core.vault import open_index
+
+    vault, _ = sample_vault
+    first = open_index(vault, storage)
+    first.full_sync()
+    before = first.store.snapshot()
+    first.store.close()
+
+    for path in sidecars(first.store.db_path):
+        path.unlink(missing_ok=True)
+    second = open_index(vault, storage)
+    assert second.store.rebuilt
+    assert second.full_sync().added == 200
+    assert second.store.snapshot() == before
+    second.store.close()

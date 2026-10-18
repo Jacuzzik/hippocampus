@@ -235,6 +235,14 @@ class Store:
         with self.transaction() as conn:
             return conn.execute("DELETE FROM notes WHERE path = ?", (path,)).rowcount > 0
 
+    def delete_under(self, folder: str) -> int:
+        """Delete every note under a vault-relative folder (for folders moved or removed)."""
+        prefix = folder.rstrip("/") + "/"
+        with self.transaction() as conn:
+            return conn.execute(
+                "DELETE FROM notes WHERE substr(path, 1, ?) = ?", (len(prefix), prefix)
+            ).rowcount
+
     # -- reads -------------------------------------------------------------
 
     def _all(self, sql: str, params: tuple[object, ...] = ()) -> list[tuple[object, ...]]:
