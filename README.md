@@ -8,7 +8,7 @@ Linux comes first, then Windows, then macOS.
 
 ## Status
 
-Early development, phase D2: a static desktop shell with four regions, and a vault index that the UI doesn't use yet. See [AGENTS.md](AGENTS.md) for the architecture and roadmap.
+Early development, phase D8: the desktop app has the brain graph, search, the assistant (chat, tool log, confirm cards, kill switch) and the orb, with Playwright tests for the critical paths. Packaged builds are not done: see the shortcuts in `app/src-tauri/src/sidecar.rs`. See [AGENTS.md](AGENTS.md) for the architecture and roadmap.
 
 ## Run
 
@@ -36,7 +36,34 @@ npm ci
 npm run tauri dev
 ```
 
-The first run compiles the Rust shell, which takes a few minutes.
+The first run compiles the Rust shell, which takes a few minutes. The app opens the vault named in `config/settings.toml` (`brains/sample` by default), so create it first with the sample commands below.
+
+### The assistant
+
+The assistant uses Claude when a key is saved, and Ollama on this machine otherwise or when Claude fails.
+
+- Save a Claude API key: `uv run python -m core key set` (it prompts; the key goes to the OS keychain, never to a file). `key status` and `key clear` do the rest.
+- Ollama: install it, then `ollama pull qwen2.5:1.5b` (the default in `config/settings.toml`).
+- Reads (search, read a note) run at once. Creating a note waits for your approval on a card that shows the exact change. Stop (or Escape) halts pending work within a second.
+
+### Browser tests
+
+The Playwright tests run the UI in Chromium with the Tauri bridge mocked, so they need no Rust build and no Python sidecar:
+
+```bash
+cd app
+npx playwright install chromium   # once
+npm run e2e
+```
+
+### Checks
+
+```bash
+uv run ruff check . && uv run ruff format --check . && uv run pytest
+cd app && npm run format:check && npm run lint && npm run check && npm test && npm run build
+```
+
+`npm test` uses Node's test runner on `.ts` files, so it needs Node 24 or newer (Node 24 strips the types on import).
 
 ### Index a vault
 
