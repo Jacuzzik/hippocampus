@@ -1,0 +1,133 @@
+// Tests for ui/assistant/model.ts. Node 24 strips the types when it imports the .ts file.
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import {
+  emptyChat,
+  failChat,
+  finishChat,
+  receiveEvent,
+  removeConfirm,
+  sendMessage,
+  settleSpeaking,
+  TOOL_LOG_LIMIT,
+} from "../ui/assistant/model.ts";
+
+const write = (chat, call = "c1") => ({
+  event: "confirm",
+  chat: chat.chatId,
+  call,
+  name: "create_note",
+  tier: "write",
+  preview: "+new",
+});
+
+test("sending a message shows it and sets the orb to thinking", () => {
+  const chat = sendMessage(emptyChat(), "hi", 1);
+  assert.deepEqual(chat.messages, [{ role: "user", text: "hi" }]);
+  assert.equal(chat.chatId, 1);
+  assert.equal(chat.orb, "thinking");
+});
+
+test("a write waits for approval: listening, with a card that the answer removes", () => {
+  let chat = sendMessage(emptyChat(), "make it", 1);
+  chat = receiveEvent(chat, write(chat));
+  assert.equal(chat.orb, "listening");
+  assert.equal(chat.confirms.length, 1);
+  chat = receiveEvent(chat, {
+    event: "tool",
+    chat: 1,
+    call: "c1",
+    name: "create_note",
+    tier: "write",
+    status: "running",
+  });
+  assert.equal(chat.confirms.length, 0);
+  assert.equal(chat.orb, "thinking");
+  assert.equal(chat.tools[0].status, "running");
+});
+
+test("a tool updates its own log entry rather than adding another", () => {
+  let chat = sendMessage(emptyChat(), "x", 2);
+  const tool = (status) => ({
+    event: "tool",
+    chat: 2,
+    call: "c9",
+    name: "read_note",
+    tier: "read",
+    status,
+  });
+  chat = receiveEvent(chat, tool("requested"));
+  chat = receiveEvent(chat, tool("done"));
+  assert.equal(chat.tools.length, 1);
+  assert.equal(chat.tools[0].status, "done");
+});
+
+test("events for another chat are ignored", () => {
+  const chat = sendMessage(emptyChat(), "x", 3);
+  assert.equal(
+    receiveEvent(chat, {
+      event: "tool",
+      chat: 99,
+      call: "a",
+      name: "n",
+      tier: "read",
+      status: "done",
+    }),
+    chat,
+  );
+});
+
+test("the tool log keeps only the newest entries", () => {
+  let chat = sendMessage(emptyChat(), "x", 4);
+  for (let i = 0; i < TOOL_LOG_LIMIT + 5; i += 1) {
+    chat = receiveEvent(chat, {
+      event: "tool",
+      chat: 4,
+      call: `c${i}`,
+      name: "read_note",
+      tier: "read",
+      status: "done",
+    });
+  }
+  assert.equal(chat.tools.length, TOOL_LOG_LIMIT);
+  assert.equal(chat.tools[0].call, "c5");
+});
+
+test("a finished reply is spoken briefly, then the orb settles to idle", () => {
+  let chat = finishChat(sendMessage(emptyChat(), "hi", 5), {
+    reply: "hello",
+    stopped: false,
+  });
+  assert.deepEqual(chat.messages.at(-1), { role: "assistant", text: "hello" });
+  assert.equal(chat.orb, "speaking");
+  chat = settleSpeaking(chat);
+  assert.equal(chat.orb, "idle");
+});
+
+test("a stopped chat says so and goes idle", () => {
+  const chat = finishChat(sendMessage(emptyChat(), "hi", 6), {
+    reply: "",
+    stopped: true,
+  });
+  assert.deepEqual(chat.messages.at(-1), { role: "error", text: "Stopped." });
+  assert.equal(chat.orb, "idle");
+  assert.equal(chat.chatId, null);
+});
+
+test("an error ends the chat and keeps the message visible", () => {
+  const chat = failChat(
+    sendMessage(emptyChat(), "hi", 7),
+    "could not reach localhost",
+  );
+  assert.deepEqual(chat.messages.at(-1), {
+    role: "error",
+    text: "could not reach localhost",
+  });
+  assert.equal(chat.orb, "idle");
+});
+
+test("declining removes the card", () => {
+  let chat = sendMessage(emptyChat(), "x", 8);
+  chat = receiveEvent(chat, { ...write(chat), chat: 8 });
+  assert.equal(removeConfirm(chat, "c1").confirms.length, 0);
+});
