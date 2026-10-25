@@ -313,6 +313,30 @@ class Store:
         )
         return [str(p) for (p,) in rows]
 
+    def graph(self) -> dict[str, list]:
+        """Notes (path, title, tags) and resolved links between them, for the brain graph.
+
+        Edges are unique (source, target) pairs; self-links and dangling links are left out.
+        """
+        nodes = {
+            str(p): {"id": str(p), "title": str(t), "tags": []}
+            for p, t in self._all("SELECT path, title FROM notes ORDER BY path")
+        }
+        for p, tag in self._all(
+            "SELECT DISTINCT n.path, g.tag_key FROM tags g JOIN notes n ON n.id = g.note_id"
+            " ORDER BY n.path, g.tag_key"
+        ):
+            nodes[str(p)]["tags"].append(str(tag))
+        edges = self._all(
+            """
+            SELECT DISTINCT s.path, t.path FROM resolved_links r
+            JOIN notes s ON s.id = r.source_id
+            JOIN notes t ON t.id = r.target_id
+            WHERE s.id <> t.id ORDER BY s.path, t.path
+            """
+        )
+        return {"nodes": list(nodes.values()), "edges": [[str(a), str(b)] for a, b in edges]}
+
     def counts(self) -> dict[str, int]:
         (row,) = self._all(
             """

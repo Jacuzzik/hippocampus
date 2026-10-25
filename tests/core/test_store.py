@@ -152,3 +152,14 @@ def test_store_refuses_old_sqlite(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     with pytest.raises(RuntimeError, match="found 3.31.1"):
         Store(tmp_path / "x.sqlite3", tmp_path)
     assert not (tmp_path / "x.sqlite3").exists()
+
+
+def test_graph_lists_notes_with_tags_and_unique_resolved_edges(store: Store) -> None:
+    put(store, "a.md", "# Alpha\n[[b]] [[b]] [[a]] [[missing]] #one")
+    put(store, "b.md", "[[a]] #two #one")
+    graph = store.graph()
+    assert graph["nodes"] == [
+        {"id": "a.md", "title": "Alpha", "tags": ["one"]},
+        {"id": "b.md", "title": "b", "tags": ["one", "two"]},
+    ]
+    assert graph["edges"] == [["a.md", "b.md"], ["b.md", "a.md"]]
