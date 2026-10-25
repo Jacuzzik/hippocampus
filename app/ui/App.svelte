@@ -1,5 +1,5 @@
 <script lang="ts">
-  import GraphPlaceholder from "./regions/GraphPlaceholder.svelte";
+  import GraphRegion from "./regions/GraphRegion.svelte";
   import LeftRail from "./regions/LeftRail.svelte";
   import RightPanel from "./regions/RightPanel.svelte";
   import TopBar from "./regions/TopBar.svelte";
@@ -8,7 +8,7 @@
 <div class="shell">
   <TopBar />
   <LeftRail />
-  <GraphPlaceholder />
+  <GraphRegion />
   <RightPanel />
 </div>
 
