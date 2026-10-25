@@ -17,3 +17,7 @@ app/ui/styles/tokens.css
 # User data (dev)
 storage/
 brains/
+
+# Playwright
+test-results/
+playwright-report/
