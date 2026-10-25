@@ -6,10 +6,11 @@ Requests: {"id": ..., "method": "graph"} and {"id": ..., "method": "open", "vaul
 Answers: {"id": ..., "result": ...} or {"id": ..., "error": "<message>"}. A bad line gets an
 error answer and the loop keeps going. It runs until stdin closes. No network listener.
 
-`serve` also answers {"method": "chat", "text": ...} with the assistant's reply. While a
-chat runs, the sidecar prints event lines (no "id"): {"event": "tool", ...} as tools run and
-{"event": "confirm", "call": ..., "preview": ...} when a write needs approval. Answer one with
-{"method": "confirm", "call": ..., "approve": true|false}. {"method": "stop"} is the kill switch.
+`serve` also answers {"method": "chat", "chat": <id>, "text": ...} with the assistant's
+reply. While a chat runs, the sidecar prints event lines (no "id"): {"event": "tool", ...}
+as tools run and {"event": "confirm", "call": ..., "preview": ...} when a write needs
+approval. Answer one with {"method": "confirm", "call": ..., "approve": true|false}.
+{"method": "stop"} is the kill switch.
 
 `index` and `watch` build and maintain a vault's SQLite index. Each prints one
 JSON status line on stdout and logs to stderr. `watch` runs until Ctrl+C,
@@ -86,7 +87,7 @@ class Session:
         text = request.get("text")
         if not isinstance(text, str) or not text.strip():
             raise ValueError('"chat" needs a non-empty "text"')
-        chat_id = request.get("id")
+        chat_id = request.get("chat")  # the UI names each chat so it can match its events
         self.kill.reset()  # a stop only ends the work that was running when it was sent
         tools = vault_tools(self.indexer, self.lock) if self.indexer is not None else {}
         router = build_router(self.settings, get_api_key())

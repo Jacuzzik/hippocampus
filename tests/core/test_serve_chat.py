@@ -76,7 +76,7 @@ def test_chat_answers_and_stays_out_of_the_way_of_graph(
     out = io.StringIO()
     thread = run_serve(storage, Scripted(Reply("hello from the test")), lines, out, monkeypatch)
     lines.put(json.dumps({"id": 1, "method": "open", "vault": str(vault)}))
-    lines.put(json.dumps({"id": 2, "method": "chat", "text": "hi"}))
+    lines.put(json.dumps({"id": 2, "method": "chat", "chat": 2, "text": "hi"}))
     lines.put(json.dumps({"id": 3, "method": "graph"}))
     chat = wait_for(out, lambda a: a.get("id") == 2)
     graph = wait_for(out, lambda a: a.get("id") == 3)
@@ -101,7 +101,7 @@ def test_write_needs_confirm_through_the_protocol(
     out = io.StringIO()
     thread = run_serve(storage, provider, lines, out, monkeypatch)
     lines.put(json.dumps({"id": 1, "method": "open", "vault": str(vault)}))
-    lines.put(json.dumps({"id": 2, "method": "chat", "text": "make a note"}))
+    lines.put(json.dumps({"id": 2, "method": "chat", "chat": 2, "text": "make a note"}))
     card = wait_for(out, lambda a: a.get("event") == "confirm")
     assert card["preview"].startswith("--- /dev/null") and card["call"] == "call-1"
     assert not (vault / "new" / "idea.md").exists()
