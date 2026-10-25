@@ -2,15 +2,20 @@
   import BrainGraph from "../graph/BrainGraph.svelte";
   import type { GraphData } from "../graph/model.ts";
 
-  // The app does not load a vault yet: the sidecar is not started from the shell (see the D3 handoff).
-  let { data = null }: { data?: GraphData | null } = $props();
+  // Loaded by App.svelte through the sidecar bridge; null while loading or after an error.
+  let {
+    data = null,
+    error = null,
+  }: { data?: GraphData | null; error?: string | null } = $props();
 </script>
 
 <main class="graph" aria-label="Brain graph">
   {#if data}
     <BrainGraph {data} />
+  {:else if error}
+    <p role="alert">Could not load the vault: {error}</p>
   {:else}
-    <p>No vault is open. Opening a vault arrives with the sidecar bridge.</p>
+    <p>Loading the vault…</p>
   {/if}
 </main>
 
