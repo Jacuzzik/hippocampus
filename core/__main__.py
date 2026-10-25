@@ -6,51 +6,106 @@ Requests: {"id": ..., "method": "graph"} and {"id": ..., "method": "open", "vaul
 Answers: {"id": ..., "result": ...} or {"id": ..., "error": "<message>"}. A bad line gets an
 error answer and the loop keeps going. It runs until stdin closes. No network listener.
 
+`serve` also answers {"method": "chat", "text": ...} with the assistant's reply. While a
+chat runs, the sidecar prints event lines (no "id"): {"event": "tool", ...} as tools run and
+{"event": "confirm", "call": ..., "preview": ...} when a write needs approval. Answer one with
+{"method": "confirm", "call": ..., "approve": true|false}. {"method": "stop"} is the kill switch.
+
 `index` and `watch` build and maintain a vault's SQLite index. Each prints one
 JSON status line on stdout and logs to stderr. `watch` runs until Ctrl+C,
 SIGTERM or stdin closes.
+
+`key set|status|clear` manages the Claude API key in the OS keychain. It never prints the key.
 """
 
 import argparse
 import asyncio
 import contextlib
+import getpass
 import json
 import logging
 import signal
 import sys
 import threading
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any, TextIO
 
+from ai.agent import Agent
+from ai.keys import clear_api_key, get_api_key, set_api_key
+from ai.router import build_router
 from core import __version__
+from core.settings import SETTINGS_PATH, Settings, load_settings
 from core.vault import Indexer, open_index
 from core.vault.watcher import VaultWatcher
+from tools.gate import ConfirmGate, KillSwitch, Stopped
+from tools.vault_tools import vault_tools
 
 logger = logging.getLogger("hippocampus.core")
 
 DEFAULT_STORAGE = Path(__file__).resolve().parent.parent / "storage"
 
 
-class Session:
-    """The vault the serve loop has open, and the requests it answers."""
+Emit = Callable[[dict[str, Any]], None]
 
-    def __init__(self, storage: Path) -> None:
+
+class Session:
+    """The vault the serve loop has open, the assistant, and the requests they answer.
+
+    `lock` guards the SQLite store, which the chat's tools share with the requests.
+    """
+
+    def __init__(
+        self, storage: Path, settings: Settings | None = None, emit: Emit | None = None
+    ) -> None:
         self.storage = storage
+        self.settings = settings if settings is not None else load_settings(SETTINGS_PATH)
+        self.emit: Emit = emit or (lambda _event: None)
         self.indexer: Indexer | None = None
+        self.lock = threading.RLock()
+        self.kill = KillSwitch()
+        self.gate = ConfirmGate()
 
     def open(self, vault: Path) -> dict[str, Any]:
         if not vault.is_dir():
             raise ValueError(f"vault folder not found: {vault}")
-        self.close()
-        self.indexer = open_index(vault, self.storage)
-        stats = self.indexer.full_sync()
-        status = {f"{k}_files": getattr(stats, k) for k in stats.__slots__}
-        return {"vault": str(vault.resolve()), **self.indexer.store.counts(), **status}
+        with self.lock:
+            self.close()
+            self.indexer = open_index(vault, self.storage)
+            stats = self.indexer.full_sync()
+            status = {f"{k}_files": getattr(stats, k) for k in stats.__slots__}
+            return {"vault": str(vault.resolve()), **self.indexer.store.counts(), **status}
 
     def graph(self) -> dict[str, Any]:
-        if self.indexer is None:
-            raise ValueError("no vault is open")
-        return self.indexer.store.graph()
+        with self.lock:
+            if self.indexer is None:
+                raise ValueError("no vault is open")
+            return self.indexer.store.graph()
+
+    def chat(self, request: dict[str, Any]) -> dict[str, Any]:
+        text = request.get("text")
+        if not isinstance(text, str) or not text.strip():
+            raise ValueError('"chat" needs a non-empty "text"')
+        chat_id = request.get("id")
+        self.kill.reset()  # a stop only ends the work that was running when it was sent
+        tools = vault_tools(self.indexer, self.lock) if self.indexer is not None else {}
+        router = build_router(self.settings, get_api_key())
+
+        def emit(event: dict[str, Any]) -> None:
+            self.emit({**event, "chat": chat_id})
+
+        agent = Agent(router, tools, self.kill, self.gate, emit)
+        try:
+            reply = asyncio.run(agent.run(text.strip()))
+        except Stopped:
+            return {"reply": "", "stopped": True}
+        return {"reply": reply, "stopped": False}
+
+    def confirm(self, request: dict[str, Any]) -> dict[str, Any]:
+        call = request.get("call")
+        if not isinstance(call, str) or not self.gate.decide(call, request.get("approve") is True):
+            raise ValueError("no confirmation is waiting with that call id")
+        return {"call": call}
 
     def dispatch(self, request: dict[str, Any]) -> dict[str, Any]:
         method = request.get("method")
@@ -61,12 +116,20 @@ class Session:
             if not isinstance(vault, str) or not vault:
                 raise ValueError('"open" needs a "vault" folder path')
             return self.open(Path(vault))
+        if method == "chat":
+            return self.chat(request)
+        if method == "confirm":
+            return self.confirm(request)
+        if method == "stop":
+            self.kill.trigger()
+            return {"stopped": True}
         raise ValueError(f"unknown method: {method!r}")
 
     def close(self) -> None:
-        if self.indexer is not None:
-            self.indexer.store.close()
-            self.indexer = None
+        with self.lock:
+            if self.indexer is not None:
+                self.indexer.store.close()
+                self.indexer = None
 
 
 def handle(session: Session, line: str) -> dict[str, Any]:
@@ -85,18 +148,64 @@ def handle(session: Session, line: str) -> dict[str, Any]:
         return {"id": request_id, "error": str(exc)}
 
 
-def serve(storage: Path, vault: Path | None = None, lines: TextIO = sys.stdin) -> int:
-    session = Session(storage)
+class Writer:
+    """Writes one JSON line at a time, from any thread."""
+
+    def __init__(self, out: TextIO) -> None:
+        self._out = out
+        self._lock = threading.Lock()
+
+    def __call__(self, message: dict[str, Any]) -> None:
+        with self._lock:
+            print(json.dumps(message), file=self._out, flush=True)
+
+
+def _method(line: str) -> object:
     try:
+        request = json.loads(line)
+    except ValueError:
+        return None
+    return request.get("method") if isinstance(request, dict) else None
+
+
+def _answer(session: Session, line: str, send: Writer) -> None:
+    send(handle(session, line))
+
+
+def serve(
+    storage: Path,
+    vault: Path | None = None,
+    lines: TextIO = sys.stdin,
+    out: TextIO = sys.stdout,
+    settings: Settings | None = None,
+) -> int:
+    send = Writer(out)
+    session = Session(storage, settings, emit=send)
+    chats: list[threading.Thread] = []
+    try:
+        send({"status": "ready", "version": __version__})
         if vault is not None:
-            session.open(vault)
-        print(json.dumps({"status": "ready", "version": __version__}), flush=True)
+            try:
+                session.open(vault)
+            except Exception:
+                logger.exception("Could not open vault %s", vault)
         for line in lines:
-            if line.strip():
-                print(json.dumps(handle(session, line)), flush=True)
+            if not line.strip():
+                continue
+            if _method(line) == "chat":
+                # A chat runs beside the other requests, so stop and confirm still get through.
+                chats = [t for t in chats if t.is_alive()]
+                worker = threading.Thread(target=_answer, args=(session, line, send), daemon=True)
+                chats.append(worker)
+                worker.start()
+            else:
+                send(handle(session, line))
     except KeyboardInterrupt:
         logger.info("Sidecar interrupted; shutting down")
     finally:
+        session.kill.trigger()
+        for worker in chats:
+            worker.join(timeout=5)
         session.close()
     return 0
 
@@ -149,6 +258,18 @@ def watch(vault: Path, storage: Path) -> int:
     return 0
 
 
+def manage_key(action: str) -> int:
+    if action == "set":
+        set_api_key(getpass.getpass("Claude API key: ").strip())
+        print("Saved the Claude API key in the OS keychain.")
+    elif action == "clear":
+        clear_api_key()
+        print("Removed the Claude API key from the OS keychain.")
+    else:
+        print("Claude API key: " + ("set" if get_api_key() else "not set"))
+    return 0
+
+
 def _vault_dir(value: str) -> Path:
     path = Path(value)
     if not path.is_dir():
@@ -161,7 +282,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--version", action="version", version=__version__)
     sub = parser.add_subparsers(dest="command", required=True)
     serve_cmd = sub.add_parser("serve", help="Answer JSON requests on stdin until it closes")
-    serve_cmd.add_argument("vault", nargs="?", type=_vault_dir, help="vault to open at start")
+    serve_cmd.add_argument(
+        "vault", nargs="?", type=_vault_dir, help="vault to open at start (default: config)"
+    )
     serve_cmd.add_argument(
         "--storage", type=Path, default=DEFAULT_STORAGE, help="folder for the index"
     )
@@ -177,11 +300,16 @@ def main(argv: list[str] | None = None) -> int:
             default=DEFAULT_STORAGE,
             help="folder for the index (default: storage/ in the project)",
         )
+    key_cmd = sub.add_parser("key", help="Manage the Claude API key in the OS keychain")
+    key_cmd.add_argument("action", choices=["set", "status", "clear"])
     args = parser.parse_args(argv)
 
     logging.basicConfig(level=logging.INFO, stream=sys.stderr)
     if args.command == "serve":
-        return serve(args.storage, args.vault)
+        settings = load_settings(SETTINGS_PATH)
+        return serve(args.storage, args.vault or settings.vault, settings=settings)
+    if args.command == "key":
+        return manage_key(args.action)
     if args.command == "index":
         return index(args.vault, args.storage)
     if args.command == "watch":

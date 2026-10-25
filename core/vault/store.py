@@ -337,6 +337,17 @@ class Store:
         )
         return {"nodes": list(nodes.values()), "edges": [[str(a), str(b)] for a, b in edges]}
 
+    def search(self, text: str, limit: int = 20) -> list[tuple[str, str]]:
+        """Notes whose title or path contains `text` (case-insensitive), as (path, title)."""
+        escaped = text.lower().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        like = f"%{escaped}%"
+        rows = self._all(
+            "SELECT path, title FROM notes WHERE lower(title) LIKE ? ESCAPE '\\'"
+            " OR lower(path) LIKE ? ESCAPE '\\' ORDER BY path LIMIT ?",
+            (like, like, limit),
+        )
+        return [(str(p), str(t)) for p, t in rows]
+
     def counts(self) -> dict[str, int]:
         (row,) = self._all(
             """

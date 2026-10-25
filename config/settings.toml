@@ -1,0 +1,11 @@
+# Hippocampus settings. Holds no secrets: the Claude API key lives in the OS keychain
+# (set it with `python -m core key set`).
+
+[vault]
+# Folder of Markdown notes. A relative path starts at the repo root.
+path = "brains/sample"
+
+[ai]
+claude_model = "claude-sonnet-5-5"
+ollama_host = "http://127.0.0.1:11434"
+ollama_model = "qwen2.5:1.5b"
