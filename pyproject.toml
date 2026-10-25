@@ -7,6 +7,7 @@ license = "MIT"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "anyio==4.15.1",
+    "keyring==25.7.0",
     "pyyaml==6.0.3",
     "watchfiles==1.3.0",
 ]
@@ -23,7 +24,7 @@ requires = ["hatchling==1.32.4"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["core"]
+packages = ["core", "ai", "tools"]
 
 [tool.ruff]
 target-version = "py312"
@@ -33,7 +34,7 @@ line-length = 100
 select = ["E", "F", "I", "UP", "B", "ANN"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["core", "fixtures"]
+known-first-party = ["ai", "core", "fixtures", "tools"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
