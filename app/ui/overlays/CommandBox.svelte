@@ -125,7 +125,7 @@
     justify-content: center;
     align-items: flex-start;
     padding-top: 12vh;
-    background: rgb(0 0 0 / 0.4);
+    background: transparent;
   }
 
   .box {
