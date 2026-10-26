@@ -18,3 +18,19 @@ body {
   font-size: var(--font-size-sm);
   overflow: hidden;
 }
+
+/* Thin scrollbars and selection colour, as in Obsidian. */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+::selection {
+  background: var(--color-accent);
+  color: var(--color-accent-on);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}

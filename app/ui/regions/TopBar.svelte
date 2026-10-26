@@ -14,7 +14,7 @@
     display: flex;
     align-items: center;
     padding: 0 var(--space-4);
-    background: var(--color-bg-0);
+    background: var(--color-bg-1);
     border-bottom: 1px solid var(--color-border);
   }
 
