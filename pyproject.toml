@@ -13,6 +13,9 @@ dependencies = [
 ]
 
 [dependency-groups]
+build = [
+    "pyinstaller==6.22.3",
+]
 dev = [
     "pytest==9.1.1",
     "pytest-timeout==2.4.0",
