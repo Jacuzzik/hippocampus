@@ -168,3 +168,24 @@ test("the graph labels its notes and the nodes drift between frames", async ({
     .poll(() => shown.first().evaluate((el) => el.style.transform))
     .not.toBe(before);
 });
+
+test("Fit graph brings every note back into the canvas after a zoom", async ({
+  page,
+}) => {
+  const canvas = page.locator("canvas");
+  await expect(canvas).toHaveAttribute("data-in-view", "3");
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error("the graph canvas has no box");
+  // Pan the graph far to the right, so no note is in view.
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2 + 2000, box.y + box.height / 2, {
+    steps: 10,
+  });
+  await page.mouse.up();
+  await expect
+    .poll(async () => canvas.getAttribute("data-in-view"))
+    .not.toBe("3");
+  await page.getByRole("button", { name: "Fit graph" }).click();
+  await expect(canvas).toHaveAttribute("data-in-view", "3");
+});

@@ -451,6 +451,8 @@
     </div>
   </div>
 
+  <button type="button" class="fit" onclick={fitAll}>Fit graph</button>
+
   {#if error}
     <p class="notice" role="alert">The graph cannot be drawn: {error}</p>
   {:else if data.nodes.length === 0}
@@ -600,6 +602,22 @@
     text-shadow:
       0 0 3px var(--color-bg-0),
       0 0 3px var(--color-bg-0);
+  }
+
+  /* Refits every node into view. Top left, clear of the drawer on the right. */
+  .fit {
+    position: absolute;
+    top: var(--space-2);
+    left: var(--space-2);
+    z-index: 1;
+    font: inherit;
+    font-size: var(--font-size-xs);
+    color: var(--color-text);
+    background: var(--color-bg-1);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: var(--space-1) var(--space-2);
+    cursor: pointer;
   }
 
   .notice {
