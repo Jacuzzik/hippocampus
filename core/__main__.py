@@ -353,6 +353,9 @@ def main(argv: list[str] | None = None) -> int:
     serve_cmd.add_argument(
         "--storage", type=Path, default=DEFAULT_STORAGE, help="folder for the index"
     )
+    serve_cmd.add_argument(
+        "--settings", type=Path, default=SETTINGS_PATH, help="settings file (default: config/)"
+    )
     for name, help_text in (
         ("index", "Build or refresh a vault's index, then exit"),
         ("watch", "Index a vault, then keep the index current until stopped"),
@@ -371,7 +374,7 @@ def main(argv: list[str] | None = None) -> int:
 
     logging.basicConfig(level=logging.INFO, stream=sys.stderr)
     if args.command == "serve":
-        settings = load_settings(SETTINGS_PATH)
+        settings = load_settings(args.settings)
         return serve(args.storage, args.vault or settings.vault, settings=settings)
     if args.command == "key":
         return manage_key(args.action)

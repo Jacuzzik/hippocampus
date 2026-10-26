@@ -93,3 +93,17 @@ def test_open_rejects_a_missing_folder(storage: Path, tmp_path: Path) -> None:
     stdin = json.dumps({"id": 1, "method": "open", "vault": str(missing)}) + "\n"
     lines = serve_with(stdin, storage=str(storage))
     assert lines[1] == {"id": 1, "error": f"vault folder not found: {missing}"}
+
+
+def test_serve_reads_the_settings_file_it_is_given(
+    tmp_path: Path, sample_vault: tuple[Path, Any], storage: Path
+) -> None:
+    # A packaged app keeps config/ and the vault in the user data folder, not the repo.
+    vault, _ = sample_vault
+    settings = tmp_path / "config" / "settings.toml"
+    settings.parent.mkdir()
+    settings.write_text(f'[vault]\npath = "{vault.relative_to(tmp_path)}"\n'.replace("\\", "/"))
+    lines = serve_with(
+        '{"id": 1, "method": "graph"}\n', "--settings", str(settings), storage=str(storage)
+    )
+    assert lines[1]["result"]["nodes"]
