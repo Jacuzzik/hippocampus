@@ -35,10 +35,10 @@ def test_sign_in_saves_the_key_and_status_never_returns_it(
     keychain: Keychain, tmp_path: Path
 ) -> None:
     s = session(tmp_path)
-    assert s.dispatch({"method": "account"}) == {"claude": False}
+    assert s.dispatch({"method": "account"}) == {"claude": False, "model": "qwen2.5:1.5b"}
     assert s.dispatch({"method": "sign_in", "key": " sk-test "}) == {"claude": True}
     assert keychain.key == "sk-test"
-    assert s.dispatch({"method": "account"}) == {"claude": True}
+    assert s.dispatch({"method": "account"}) == {"claude": True, "model": "claude-sonnet-5-5"}
     assert "sk-test" not in str(s.dispatch({"method": "account"}))
 
 

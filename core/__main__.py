@@ -39,7 +39,7 @@ from keyring.errors import KeyringError
 
 from ai.agent import Agent, AgentPaused
 from ai.keys import clear_api_key, get_api_key, set_api_key
-from ai.router import build_router
+from ai.router import build_router, model_name
 from core import __version__
 from core.settings import SETTINGS_PATH, Settings, load_settings
 from core.vault import Indexer, open_index
@@ -87,8 +87,9 @@ class Session:
             return {"vault": str(vault.resolve()), **self.indexer.store.counts(), **status}
 
     def account(self) -> dict[str, Any]:
-        # Only whether a key is saved; the key itself never leaves the keychain.
-        return {"claude": get_api_key() is not None}
+        # Only whether a key is saved and the model name; the key itself never leaves the keychain.
+        api_key = get_api_key()
+        return {"claude": api_key is not None, "model": model_name(self.settings, api_key)}
 
     def sign_in(self, request: dict[str, Any]) -> dict[str, Any]:
         key = request.get("key")
