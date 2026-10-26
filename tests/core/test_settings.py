@@ -1,6 +1,8 @@
 import tomllib
 from pathlib import Path
 
+import pytest
+
 from core.settings import Settings, load_settings
 
 
@@ -30,3 +32,11 @@ def test_repo_settings_file_has_no_secret_field() -> None:
     assert not [
         n for n in names if any(word in n for word in ("key", "secret", "token", "password"))
     ]
+
+
+def test_env_vault_overrides_the_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    config = tmp_path / "config"
+    config.mkdir()
+    (config / "settings.toml").write_text('[vault]\npath = "brains/mine"\n', encoding="utf-8")
+    monkeypatch.setenv("HIPPOCAMPUS_VAULT", str(tmp_path / "elsewhere"))
+    assert load_settings(config / "settings.toml").vault == tmp_path / "elsewhere"

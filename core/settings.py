@@ -1,5 +1,6 @@
 """Reads config/settings.toml. It holds no secrets: API keys live in the OS keychain."""
 
+import os
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
@@ -18,10 +19,9 @@ class Settings:
 
 def load_settings(path: Path = SETTINGS_PATH) -> Settings:
     """Read the settings file. A missing file gives the defaults; a bad one is an error."""
-    if not path.is_file():
-        return Settings()
-    data = tomllib.loads(path.read_text(encoding="utf-8"))
-    vault = data.get("vault", {}).get("path")
+    data = tomllib.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
+    # HIPPOCAMPUS_VAULT wins over the file, so a launcher can pick the vault without editing it.
+    vault = os.environ.get("HIPPOCAMPUS_VAULT") or data.get("vault", {}).get("path")
     ai = data.get("ai", {})
     defaults = Settings()
     return Settings(
