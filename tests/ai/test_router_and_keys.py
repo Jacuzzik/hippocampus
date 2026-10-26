@@ -7,7 +7,7 @@ from keyring.errors import KeyringError
 
 from ai import keys
 from ai.providers.base import ProviderError, Reply
-from ai.router import Router, build_router
+from ai.router import Router, build_router, model_name
 from core.settings import Settings
 
 
@@ -51,6 +51,12 @@ def test_build_router_picks_claude_only_with_a_key() -> None:
     settings = Settings()
     assert build_router(settings, None).primary is None
     assert build_router(settings, "k").primary is not None
+
+
+def test_model_name_is_the_one_replies_come_from() -> None:
+    settings = Settings()
+    assert model_name(settings, None) == settings.ollama_model
+    assert model_name(settings, "k") == settings.claude_model
 
 
 class MemoryKeyring:
