@@ -6,6 +6,7 @@
   import Ribbon from "./regions/Ribbon.svelte";
   import RightPanel from "./regions/RightPanel.svelte";
   import StatusBar from "./regions/StatusBar.svelte";
+  import CommandBox, { type Item } from "./overlays/CommandBox.svelte";
   import type { GraphData } from "./graph/model.ts";
 
   let data = $state<GraphData | null>(null);
@@ -15,6 +16,25 @@
   let selectedId = $state<string | null>(null);
   let sidebarOpen = $state(true);
   let panelOpen = $state(true);
+  // Which overlay box is open: the quick switcher (Ctrl+O) or the command palette (Ctrl+P).
+  let box = $state<"switcher" | "palette" | null>(null);
+
+  // Ctrl on Linux and Windows, Cmd on macOS. Both shortcuts take over the browser default.
+  function onKey(e: KeyboardEvent): void {
+    if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return;
+    if (e.key === "o") box = "switcher";
+    else return;
+    e.preventDefault();
+  }
+
+  const noteItems = $derived<Item[]>(
+    (data?.nodes ?? []).map((node) => ({
+      id: node.id,
+      label: node.title,
+      hint: node.id,
+      run: () => (selectedId = node.id),
+    })),
+  );
 
   onMount(async () => {
     try {
@@ -24,6 +44,17 @@
     }
   });
 </script>
+
+<svelte:window onkeydown={onKey} />
+
+{#if box === "switcher"}
+  <CommandBox
+    items={noteItems}
+    placeholder="Open a note by name"
+    label="Quick switcher"
+    onclose={() => (box = null)}
+  />
+{/if}
 
 <div class="shell" class:no-sidebar={!sidebarOpen} class:no-panel={!panelOpen}>
   <Ribbon bind:sidebarOpen bind:panelOpen />
