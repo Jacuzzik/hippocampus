@@ -159,7 +159,15 @@ def test_graph_lists_notes_with_tags_and_unique_resolved_edges(store: Store) -> 
     put(store, "b.md", "[[a]] #two #one")
     graph = store.graph()
     assert graph["nodes"] == [
-        {"id": "a.md", "title": "Alpha", "tags": ["one"]},
-        {"id": "b.md", "title": "b", "tags": ["one", "two"]},
+        {"id": "a.md", "title": "Alpha", "tags": ["one"], "memory": False},
+        {"id": "b.md", "title": "b", "tags": ["one", "two"], "memory": False},
     ]
     assert graph["edges"] == [["a.md", "b.md"], ["b.md", "a.md"]]
+
+
+def test_graph_marks_only_assistant_created_notes_as_memory(store: Store) -> None:
+    put(store, "mem.md", "---\ncreated_by: assistant\n---\n# Mem\n")
+    put(store, "other.md", "---\ncreated_by: human\n---\n# Other\n")
+    put(store, "plain.md", "# Plain\n")
+    memory = {n["id"]: n["memory"] for n in store.graph()["nodes"]}
+    assert memory == {"mem.md": True, "other.md": False, "plain.md": False}

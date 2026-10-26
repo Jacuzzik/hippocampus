@@ -84,6 +84,24 @@ test("hitTest returns the nearest node within the radius, or -1", () => {
   assert.equal(hitTest(pos, { x: 0, y: 0, zoom: 2 }, 200, 0, 8), 1);
 });
 
+test("the memory filter keeps only assistant-created notes", () => {
+  const nodes = [
+    { id: "a.md", title: "A", tags: [], memory: true },
+    { id: "b.md", title: "B", tags: [] },
+    { id: "c.md", title: "C", tags: [], memory: false },
+  ];
+  assert.deepEqual(matchFilter(nodes, { query: "", tag: null, memory: true }), [
+    true,
+    false,
+    false,
+  ]);
+  assert.deepEqual(matchFilter(nodes, { query: "", tag: null, memory: false }), [
+    true,
+    true,
+    true,
+  ]);
+});
+
 test("filters match title or path, and tag, and combine", () => {
   const nodes = [
     { id: "projects/alpha.md", title: "Alpha", tags: ["idea"] },

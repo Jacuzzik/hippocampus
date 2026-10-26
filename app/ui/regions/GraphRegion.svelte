@@ -8,28 +8,43 @@
     error = null,
     query = "",
     tag = null,
+    memory = false,
     selectedId = null,
     viewKey = 0,
     onselect,
+    onmemory,
   }: {
     data?: GraphData | null;
     error?: string | null;
     query?: string;
     tag?: string | null;
+    memory?: boolean;
     selectedId?: string | null;
     viewKey?: number;
     onselect: (id: string | null) => void;
+    onmemory: (on: boolean) => void;
   } = $props();
 </script>
 
 <main class="graph" aria-label="Brain graph">
   <header class="tab-header">
-    <span class="tab" aria-current="page">Brain graph</span>
+    <button
+      type="button"
+      class="tab"
+      aria-pressed={!memory}
+      onclick={() => onmemory(false)}>Brain graph</button
+    >
+    <button
+      type="button"
+      class="tab"
+      aria-pressed={memory}
+      onclick={() => onmemory(true)}>Memory</button
+    >
   </header>
   <div class="body">
     {#if data}
       {#key viewKey}
-        <BrainGraph {data} {query} {tag} {selectedId} {onselect} />
+        <BrainGraph {data} {query} {tag} {memory} {selectedId} {onselect} />
       {/key}
     {:else if error}
       <p role="alert">Could not load the vault: {error}</p>
@@ -63,7 +78,16 @@
     display: flex;
     align-items: center;
     padding: 0 var(--space-3);
+    font: inherit;
     font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
+    background: var(--color-bg-1);
+    border: 0;
+    border-right: 1px solid var(--color-border);
+    cursor: pointer;
+  }
+
+  .tab[aria-pressed="true"] {
     color: var(--color-text);
     background: var(--color-bg-0);
   }
