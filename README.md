@@ -8,7 +8,7 @@ Linux comes first, then Windows, then macOS.
 
 ## Status
 
-Early development, phase D8: the desktop app has the brain graph, search, the assistant (chat, tool log, confirm cards, kill switch) and the orb, with Playwright tests for the critical paths. Packaged builds are not done: see the shortcuts in `app/src-tauri/src/sidecar.rs`. See [AGENTS.md](AGENTS.md) for the architecture and roadmap.
+Early development, phase D8: the desktop app has the brain graph, search, the assistant (chat, tool log, confirm cards, kill switch) and the orb, with Playwright tests for the critical paths. A Linux AppImage runs with its own bundled Python sidecar (`scripts/build-sidecar.sh`, then `npx tauri build` in `app/`); Windows and macOS builds are not verified yet. See [AGENTS.md](AGENTS.md) for the architecture and roadmap.
 
 ## Run
 
