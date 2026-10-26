@@ -1,4 +1,5 @@
-import type { Page } from "@playwright/test";
+// Only the part of Playwright's Page this file uses, so the app can import it without Playwright.
+type Page = { addInitScript(fn: () => void): Promise<unknown> | unknown };
 
 // Stands in for the Tauri bridge and the Python sidecar. It answers the same requests with the
 // same shapes as core/__main__.py, so the UI runs unchanged. The Python side has its own tests.
@@ -86,7 +87,7 @@ export async function mockSidecar(page: Page): Promise<void> {
         case "graph":
           return graph;
         case "chat":
-          return chat(args as { params: { chat: number; text: string } });
+          return chat(args as unknown as { params: { chat: number; text: string } });
         case "confirm": {
           const params = args.params as { call: string; approve: boolean };
           // The fake sidecar keeps one pending chat per card: find it through the call id.
