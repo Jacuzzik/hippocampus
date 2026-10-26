@@ -15,6 +15,7 @@
   let error = $state<string | null>(null);
   let query = $state("");
   let tag = $state<string | null>(null);
+  let memory = $state(false);
   let selectedId = $state<string | null>(null);
   // Phones and portrait tablets start with the note list and assistant closed, so the graph gets the screen.
   const narrow = window.matchMedia("(max-width: 900px)").matches;
@@ -128,15 +129,17 @@
     onaccount={() => (setupOpen = true)}
   />
   {#if sidebarOpen && data}
-    <NoteSidebar {data} bind:query bind:tag bind:selectedId bind:searchEl />
+    <NoteSidebar {data} bind:query bind:tag bind:memory bind:selectedId bind:searchEl />
   {/if}
   <GraphRegion
     {data}
     {error}
     {query}
     {tag}
+    {memory}
     {selectedId}
     {viewKey}
+    onmemory={(on) => (memory = on)}
     onselect={(id) => (selectedId = id)}
   />
   <RightPanel open={panelOpen} />
