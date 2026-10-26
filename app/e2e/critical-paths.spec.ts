@@ -189,3 +189,16 @@ test("Fit graph brings every note back into the canvas after a zoom", async ({
   await page.getByRole("button", { name: "Fit graph" }).click();
   await expect(canvas).toHaveAttribute("data-in-view", "3");
 });
+
+test("a tag in the tags pane filters the note list", async ({ page }) => {
+  await page
+    .getByRole("list", { name: "Tags" })
+    .getByRole("button", { name: /#idea/ })
+    .click();
+  await expect(page.getByText("2 of 3")).toBeVisible();
+  await expect(
+    page
+      .getByRole("list", { name: "Note list" })
+      .getByRole("button", { name: "Beta" }),
+  ).toHaveCount(0);
+});

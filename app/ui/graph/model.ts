@@ -214,3 +214,11 @@ export function linkCounts(
   }
   return counts;
 }
+
+/** Each tag used by at least one node, with how many nodes carry it. Sorted by tag. */
+export function tagCounts(nodes: readonly GraphNode[]): [string, number][] {
+  const counts = new Map<string, number>();
+  for (const n of nodes)
+    for (const t of n.tags) counts.set(t, (counts.get(t) ?? 0) + 1);
+  return [...counts].sort(([a], [b]) => a.localeCompare(b));
+}

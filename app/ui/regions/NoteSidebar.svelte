@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { allTags, matchFilter, type GraphData } from "../graph/model";
+  import { matchFilter, tagCounts, type GraphData } from "../graph/model";
 
   // Search, tag filter and note list. The graph reads the same state through props.
   let {
@@ -16,7 +16,7 @@
     searchEl?: HTMLInputElement | null;
   } = $props();
 
-  const tags = $derived(allTags(data.nodes));
+  const tags = $derived(tagCounts(data.nodes));
   const matched = $derived(matchFilter(data.nodes, { query, tag }));
   const shown = $derived(data.nodes.filter((_, i) => matched[i]));
 
@@ -48,10 +48,29 @@
     aria-label="Filter by tag"
   >
     <option value="">All tags</option>
-    {#each tags as t (t)}
+    {#each tags as [t] (t)}
       <option value={t}>#{t}</option>
     {/each}
   </select>
+
+  <details class="tags-pane" open>
+    <summary>Tags</summary>
+    <ul aria-label="Tags">
+      {#each tags as [t, count] (t)}
+        <li>
+          <button
+            type="button"
+            class="tag"
+            aria-pressed={tag === t}
+            onclick={() => (tag = tag === t ? null : t)}
+            >#{t} <span class="count">{count}</span></button
+          >
+        </li>
+      {:else}
+        <li class="muted">No tags yet.</li>
+      {/each}
+    </ul>
+  </details>
 
   <ul class="notes" aria-label="Note list">
     {#each shown as node (node.id)}
@@ -110,6 +129,43 @@
     border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
     padding: var(--space-1) var(--space-2);
+  }
+
+  .tags-pane summary {
+    cursor: pointer;
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
+  }
+
+  .tags-pane ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+    margin: var(--space-1) 0 0;
+    padding: 0;
+    list-style: none;
+    max-height: 7rem;
+    overflow-y: auto;
+  }
+
+  .tag {
+    font: inherit;
+    font-size: var(--font-size-xs);
+    color: var(--color-text);
+    background: var(--color-bg-0);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: 0 var(--space-1);
+    cursor: pointer;
+  }
+
+  .tag[aria-pressed="true"] {
+    color: var(--color-link);
+    border-color: var(--color-link);
+  }
+
+  .tag .count {
+    color: var(--color-text-muted);
   }
 
   .notes {

@@ -12,6 +12,7 @@ import {
   MAX_ZOOM,
   MIN_ZOOM,
   screenToWorld,
+  tagCounts,
   zoomAt,
 } from "../ui/graph/model.ts";
 
@@ -129,4 +130,16 @@ test("linkCounts counts each node's links and ignores self and unknown links", (
     ["a.md", "gone.md"],
   ];
   assert.deepEqual(linkCounts(nodes, edges), [2, 2, 0]);
+});
+
+test("tagCounts gives each tag and its note count, sorted", () => {
+  const nodes = [
+    { id: "a.md", title: "A", tags: ["idea", "work"] },
+    { id: "b.md", title: "B", tags: ["work"] },
+    { id: "c.md", title: "C", tags: [] },
+  ];
+  assert.deepEqual(tagCounts(nodes), [
+    ["idea", 1],
+    ["work", 2],
+  ]);
 });
