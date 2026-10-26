@@ -1,3 +1,4 @@
+import io
 import json
 import subprocess
 import sys
@@ -5,6 +6,8 @@ from pathlib import Path
 from typing import Any
 
 from core import __version__
+from core.__main__ import serve
+from core.settings import Settings
 
 
 def run_core(*args: str, stdin: str = "") -> subprocess.CompletedProcess[str]:
@@ -72,7 +75,16 @@ def test_serve_opens_a_vault_on_request(sample_vault: tuple[Path, Any], storage:
 
 
 def test_serve_graph_without_a_vault_is_an_error_not_a_crash(storage: Path) -> None:
-    lines = serve_with('{"id": 7, "method": "graph"}\n', storage=str(storage))
+    # In-process with empty settings: a subprocess would open the configured vault when one exists.
+    out = io.StringIO()
+    serve(
+        storage,
+        None,
+        lines=io.StringIO('{"id": 7, "method": "graph"}\n'),
+        out=out,
+        settings=Settings(),
+    )
+    lines = [json.loads(line) for line in out.getvalue().splitlines()]
     assert lines[1] == {"id": 7, "error": "no vault is open"}
 
 
