@@ -88,3 +88,24 @@ def test_keychain_failure_means_no_key(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr(keys.keyring, "get_password", broken)
     assert keys.get_api_key() is None
+
+
+def test_build_router_uses_the_chosen_preset_with_its_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "ai.router.get_key", lambda provider: "gsk-k" if provider == "groq" else None
+    )
+    router = build_router(Settings(provider="groq", provider_model="llama-3.1-8b-instant"), None)
+    assert router.primary is not None
+    assert router.primary.name == "groq"
+    assert router.primary.model == "llama-3.1-8b-instant"
+
+
+def test_chosen_preset_without_a_key_falls_back_to_ollama(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("ai.router.get_key", lambda provider: None)
+    assert build_router(Settings(provider="openai"), None).primary is None
+
+
+def test_local_preset_needs_no_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("ai.router.get_key", lambda provider: None)
+    router = build_router(Settings(provider="lmstudio", provider_model="qwen2.5-3b"), None)
+    assert router.primary is not None and router.primary.model == "qwen2.5-3b"
