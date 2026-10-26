@@ -1,5 +1,6 @@
 <script lang="ts">
   import { untrack } from "svelte";
+  import { SvelteMap } from "svelte/reactivity";
   import { token } from "./colors";
   import type { Rgba } from "./renderer";
   import { BrainRenderer } from "./renderer";
@@ -9,10 +10,15 @@
     LOW_POWER,
     layout,
     matchFilter,
+    mulberry32,
     zoomAt,
     type Camera,
     type GraphData,
   } from "./model";
+
+  const LABEL_GAP = 4;
+  const LABEL_H = 14;
+  const MAX_LABELS = 300;
 
   // The note list in the sidebar owns the search, tag filter and selection; the graph draws them.
   let {
@@ -30,12 +36,27 @@
   } = $props();
 
   let canvas: HTMLCanvasElement | undefined = $state();
+  let labelLayer: HTMLDivElement | undefined = $state();
+  let labels = $state<{ text: string; x: number; y: number }[]>([]);
   let error = $state<string | null>(null);
   let cam = $state<Camera>({ x: 0, y: 0, zoom: 1 });
 
   // Plain variables: they are rebuilt from `data` and read by the draw loop, not by the template.
   let renderer: BrainRenderer | null = null;
-  let pos = new Float32Array(0);
+  // `home` is the laid-out position; `pos` is home plus the drift, and is what is drawn and hit-tested.
+  let home: Float32Array<ArrayBuffer> = new Float32Array(0);
+  let pos: Float32Array<ArrayBuffer> = new Float32Array(0);
+  // Per node: x and y drift amplitude, x and y angular speed, x and y phase. Six floats each.
+  let drift: Float32Array<ArrayBuffer> = new Float32Array(0);
+  let clock = 0;
+  let last = 0;
+  let dragging = false;
+  // Reduced motion: the nodes stay still.
+  const calm =
+    typeof matchMedia === "function" &&
+    matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const widths = new SvelteMap<string, number>();
+  const measurer = document.createElement("canvas").getContext("2d");
   let colours: { node: Rgba; hot: Rgba; edge: Rgba; bg: Rgba } | null = null;
   let frame = 0;
 
@@ -62,11 +83,85 @@
     if (!frame) frame = requestAnimationFrame(draw);
   }
 
+  // The nodes float only while nothing is selected and no drag is under way.
+  function drifting(): boolean {
+    return !calm && !dragging && selected < 0 && pos.length > 0;
+  }
+
+  function moveNodes(): void {
+    for (let i = 0; i < pos.length; i += 2) {
+      const d = i * 3;
+      pos[i] =
+        (home[i] ?? 0) +
+        (drift[d] ?? 0) *
+          Math.sin((drift[d + 2] ?? 0) * clock + (drift[d + 4] ?? 0));
+      pos[i + 1] =
+        (home[i + 1] ?? 0) +
+        (drift[d + 1] ?? 0) *
+          Math.sin((drift[d + 3] ?? 0) * clock + (drift[d + 5] ?? 0));
+    }
+    renderer?.setPositions(pos);
+  }
+
+  function labelWidth(text: string): number {
+    let w = widths.get(text);
+    if (w === undefined && labelLayer && measurer) {
+      const cs = getComputedStyle(labelLayer);
+      measurer.font = `${cs.fontSize} ${cs.fontFamily}`;
+      w = measurer.measureText(text).width;
+      widths.set(text, w);
+    }
+    return w ?? 0;
+  }
+
+  // Greedy: a label is drawn only if it clears every label already placed this frame.
+  // shortcut: label width is measured once per title and placement is a linear scan, so a few hundred labels at most; upgrade to a spatial grid if more.
+  function drawLabels(): void {
+    const [w, h] = size();
+    const placed: { text: string; x: number; y: number }[] = [];
+    const boxes: number[] = [];
+    const place = (i: number) => {
+      if (placed.length >= MAX_LABELS || (i !== selected && !matched[i]))
+        return;
+      const sx = (pos[2 * i] ?? 0) * cam.zoom + cam.x;
+      const sy = (pos[2 * i + 1] ?? 0) * cam.zoom + cam.y;
+      if (sx < 0 || sy < 0 || sx > w || sy > h) return;
+      const text = data.nodes[i]?.title ?? "";
+      const x = sx + (i === selected ? 7 : 4) + LABEL_GAP;
+      const y = sy - LABEL_H / 2;
+      const x1 = x + labelWidth(text);
+      for (let k = 0; k < boxes.length; k += 4) {
+        if (
+          x < (boxes[k + 2] ?? 0) &&
+          x1 > (boxes[k] ?? 0) &&
+          y < (boxes[k + 3] ?? 0) &&
+          y + LABEL_H > (boxes[k + 1] ?? 0)
+        )
+          return;
+      }
+      boxes.push(x, y, x1, y + LABEL_H);
+      placed.push({ text, x, y });
+    };
+    if (selected >= 0) place(selected);
+    for (let i = 0; i < data.nodes.length; i++) if (i !== selected) place(i);
+
+    labels = placed;
+  }
+
   function draw(): void {
     frame = 0;
+    const now = performance.now();
+    // Capped, so a frame after a long pause (or the first frame) does not jump the nodes.
+    if (drifting()) {
+      clock += Math.min(now - last, 100) / 1000;
+      moveNodes();
+    }
+    last = now;
     if (renderer && colours) renderer.draw(cam, colours.bg, colours.edge);
+    drawLabels();
     // Read by the e2e test: how many nodes the last frame placed inside the canvas.
     if (canvas) canvas.dataset.inView = String(countInView());
+    if (drifting()) schedule();
   }
 
   function size(): [number, number] {
@@ -85,16 +180,16 @@
   }
 
   function fitAll(): void {
-    if (!pos.length) return;
+    if (!home.length) return;
     let minX = Infinity;
     let minY = Infinity;
     let maxX = -Infinity;
     let maxY = -Infinity;
-    for (let i = 0; i < pos.length; i += 2) {
-      minX = Math.min(minX, pos[i] ?? 0);
-      maxX = Math.max(maxX, pos[i] ?? 0);
-      minY = Math.min(minY, pos[i + 1] ?? 0);
-      maxY = Math.max(maxY, pos[i + 1] ?? 0);
+    for (let i = 0; i < home.length; i += 2) {
+      minX = Math.min(minX, home[i] ?? 0);
+      maxX = Math.max(maxX, home[i] ?? 0);
+      minY = Math.min(minY, home[i + 1] ?? 0);
+      maxY = Math.max(maxY, home[i + 1] ?? 0);
     }
     const [w, h] = size();
     const zoom = Math.min(w / (maxX - minX + 40), h / (maxY - minY + 40));
@@ -184,6 +279,7 @@
       c.setPointerCapture(e.pointerId);
       const [x, y] = local(e);
       drag = { x, y, cam, moved: false };
+      dragging = true;
     };
     const onMove = (e: PointerEvent) => {
       if (!drag) return;
@@ -194,6 +290,11 @@
       cam = { ...drag.cam, x: drag.cam.x + dx, y: drag.cam.y + dy };
       schedule();
     };
+    const endDrag = () => {
+      drag = null;
+      dragging = false;
+      schedule();
+    };
     const onUp = (e: PointerEvent) => {
       if (!drag) return;
       const [x, y] = local(e);
@@ -201,7 +302,7 @@
         const hit = hitTest(pos, cam, x, y, 8);
         onselect(hit >= 0 ? (data.nodes[hit]?.id ?? null) : null);
       }
-      drag = null;
+      endDrag();
     };
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
@@ -212,7 +313,7 @@
     c.addEventListener("pointerdown", onDown);
     c.addEventListener("pointermove", onMove);
     c.addEventListener("pointerup", onUp);
-    c.addEventListener("pointercancel", () => (drag = null));
+    c.addEventListener("pointercancel", endDrag);
     c.addEventListener("wheel", onWheel, { passive: false });
 
     return () => {
@@ -244,7 +345,10 @@
       if (ia !== undefined && ib !== undefined && ia !== ib)
         pairs.push([ia, ib]);
     }
-    pos = layout(data.nodes.length, pairs);
+    home = layout(data.nodes.length, pairs);
+    pos = new Float32Array(home.length);
+    pos.set(home);
+    drift = driftParams(data.nodes.length);
     const flat = new Uint32Array(pairs.length * 2);
     pairs.forEach(([a, b], i) => {
       flat[2 * i] = a;
@@ -253,6 +357,23 @@
     r.setGraph(pos, flat);
     fitAll();
     pushStyle();
+    schedule();
+  }
+
+  // Random but fixed per node (seeded), so a relayout drifts the same way each time.
+  function driftParams(n: number): Float32Array<ArrayBuffer> {
+    const rand = mulberry32(7);
+    const out = new Float32Array(n * 6);
+    const amp = 2 + 0.6 * Math.sqrt(n);
+    for (let i = 0; i < n * 6; i += 6) {
+      out[i] = amp * (0.5 + rand());
+      out[i + 1] = amp * (0.5 + rand());
+      out[i + 2] = 0.04 + 0.08 * rand();
+      out[i + 3] = 0.04 + 0.08 * rand();
+      out[i + 4] = rand() * Math.PI * 2;
+      out[i + 5] = rand() * Math.PI * 2;
+    }
+    return out;
   }
 
   // Re-colour when the filter or the selection changes.
@@ -276,6 +397,18 @@
     aria-label="Brain graph of {data.nodes.length} notes"
   >
     <canvas bind:this={canvas} class="canvas"></canvas>
+    <div
+      class="labels"
+      aria-hidden="true"
+      bind:this={labelLayer}
+      data-labels={labels.length}
+    >
+      {#each labels as l, k (k)}
+        <span class="label" style:transform="translate({l.x}px, {l.y}px)"
+          >{l.text}</span
+        >
+      {/each}
+    </div>
   </div>
 
   {#if error}
@@ -358,6 +491,27 @@
 
   .canvas:active {
     cursor: grabbing;
+  }
+
+  /* Labels are DOM text over the canvas; they never take pointer events, so clicks reach the graph. */
+  .labels {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    font-size: var(--font-size-xs);
+  }
+
+  .label {
+    position: absolute;
+    left: 0;
+    top: 0;
+    white-space: nowrap;
+    line-height: 14px;
+    color: var(--color-text-muted);
+    text-shadow:
+      0 0 3px var(--color-bg-0),
+      0 0 3px var(--color-bg-0);
   }
 
   .notice {

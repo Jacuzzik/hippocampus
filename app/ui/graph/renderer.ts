@@ -106,6 +106,8 @@ export class BrainRenderer {
   private dpr = 1;
   private nodeCount = 0;
   private edgeVertexCount = 0;
+  private edges: Uint32Array = new Uint32Array(0);
+  private lines: Float32Array = new Float32Array(0);
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     const gl = canvas.getContext("webgl2", {
@@ -164,18 +166,30 @@ export class BrainRenderer {
   /** `pos` is interleaved x, y per node; `edges` is interleaved node index pairs. */
   setGraph(pos: Float32Array, edges: Uint32Array): void {
     const gl = this.gl;
-    const lines = new Float32Array(edges.length * 2);
-    for (let i = 0; i < edges.length; i++) {
-      const n = edges[i] ?? 0;
+    this.edges = edges;
+    this.lines = new Float32Array(edges.length * 2);
+    this.nodeCount = pos.length / 2;
+    this.edgeVertexCount = this.lines.length / 2;
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.centerBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, pos, gl.DYNAMIC_DRAW);
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.edgeBuf);
+    gl.bufferData(gl.ARRAY_BUFFER, this.lines, gl.DYNAMIC_DRAW);
+    this.setPositions(pos);
+  }
+
+  /** Move the nodes (and the edges between them) to new positions, same count as setGraph. */
+  setPositions(pos: Float32Array): void {
+    const gl = this.gl;
+    const lines = this.lines;
+    for (let i = 0; i < this.edges.length; i++) {
+      const n = this.edges[i] ?? 0;
       lines[2 * i] = pos[2 * n] ?? 0;
       lines[2 * i + 1] = pos[2 * n + 1] ?? 0;
     }
     gl.bindBuffer(gl.ARRAY_BUFFER, this.centerBuf);
-    gl.bufferData(gl.ARRAY_BUFFER, pos, gl.DYNAMIC_DRAW);
+    gl.bufferSubData(gl.ARRAY_BUFFER, 0, pos);
     gl.bindBuffer(gl.ARRAY_BUFFER, this.edgeBuf);
-    gl.bufferData(gl.ARRAY_BUFFER, lines, gl.DYNAMIC_DRAW);
-    this.nodeCount = pos.length / 2;
-    this.edgeVertexCount = lines.length / 2;
+    gl.bufferSubData(gl.ARRAY_BUFFER, 0, lines);
   }
 
   /** One radius (px) per node. */
