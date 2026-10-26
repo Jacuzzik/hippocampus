@@ -34,6 +34,7 @@ import signal
 import sys
 import threading
 from collections.abc import Callable
+from dataclasses import replace
 from pathlib import Path
 from typing import Any, TextIO
 
@@ -43,7 +44,7 @@ from ai.agent import Agent, AgentPaused
 from ai.keys import clear_api_key, get_api_key, set_api_key
 from ai.router import build_router, model_name
 from core import __version__
-from core.settings import SETTINGS_PATH, Settings, load_settings
+from core.settings import SETTINGS_PATH, Settings, load_settings, save_allowed_tools
 from core.vault import Indexer, open_index
 from core.vault.watcher import VaultWatcher
 from tools.gate import AskQueue, ConfirmGate, KillSwitch, Stopped
@@ -161,6 +162,7 @@ class Session:
             self.gate,
             emit,
             max_tool_calls=self.settings.max_tool_calls,
+            allowed=self.settings.allowed_tools,
             asks=self.asks,
         )
         try:
@@ -177,6 +179,31 @@ class Session:
         if not isinstance(call, str) or not self.gate.decide(call, request.get("approve") is True):
             raise ValueError("no confirmation is waiting with that call id")
         return {"call": call}
+
+    def tools(self) -> dict[str, Any]:
+        """Every tool the assistant has, and whether its allowlist lets it use each one."""
+        registry = vault_tools(self.indexer, self.lock) if self.indexer is not None else {}
+        allowed = self.settings.allowed_tools
+        listed = [
+            {"name": t.name, "tier": t.tier, "allowed": allowed is None or t.name in allowed}
+            for t in registry.values()
+        ]
+        return {"tools": listed, "every": allowed is None}
+
+    def set_tools(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Set the tool allowlist (names, or null for every tool) and save it."""
+        names = request.get("names")
+        if names is not None and (
+            not isinstance(names, list) or not all(isinstance(n, str) for n in names)
+        ):
+            raise ValueError('"names" must be a list of tool names, or null for every tool')
+        allowed = None if names is None else tuple(names)
+        save_allowed_tools(allowed, SETTINGS_PATH)  # raises ValueError on a bad name
+        self.settings = replace(self.settings, allowed_tools=allowed)
+        logger.info(
+            "assistant tool allowlist set to %s", "every tool" if allowed is None else allowed
+        )
+        return {"names": names}
 
     def answer(self, request: dict[str, Any]) -> dict[str, Any]:
         call, text = request.get("call"), request.get("text")
@@ -213,6 +240,10 @@ class Session:
             return self.confirm(request)
         if method == "answer":
             return self.answer(request)
+        if method == "tools":
+            return self.tools()
+        if method == "set_tools":
+            return self.set_tools(request)
         if method == "stop":
             self.kill.trigger()
             return {"stopped": True}

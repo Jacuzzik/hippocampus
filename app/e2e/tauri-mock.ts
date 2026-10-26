@@ -117,6 +117,9 @@ export async function mockSidecar(
         return { reply: "Found Alpha in projects/alpha.md.", stopped: false };
       }
 
+      // The assistant tool allowlist the fake sidecar holds: null means every tool.
+      let allowlist: string[] | null = null;
+
       async function sidecarCall(args: {
         method: string;
         params?: Record<string, unknown>;
@@ -169,6 +172,22 @@ export async function mockSidecar(
             }
             return { call: params.call };
           }
+          case "tools": {
+            const rows = [
+              { name: "read_note", tier: "read" },
+              { name: "create_note", tier: "write" },
+            ];
+            return {
+              tools: rows.map((t) => ({
+                ...t,
+                allowed: allowlist === null || allowlist.includes(t.name),
+              })),
+              every: allowlist === null,
+            };
+          }
+          case "set_tools":
+            allowlist = (args.params?.names ?? null) as string[] | null;
+            return { names: allowlist };
           case "stop":
             for (const [chat, resolve] of pending) {
               resolve(undefined);

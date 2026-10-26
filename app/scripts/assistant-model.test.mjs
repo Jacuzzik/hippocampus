@@ -7,6 +7,7 @@ import {
   finishChat,
   logActivity,
   receiveEvent,
+  removeAsk,
   removeConfirm,
   sendMessage,
   settleSpeaking,
@@ -159,4 +160,32 @@ test("logActivity keeps the newest entries, with their times", () => {
   assert.equal(chat.activity.length, TOOL_LOG_LIMIT);
   assert.equal(chat.activity.at(-1).text, `event ${TOOL_LOG_LIMIT + 4}`);
   assert.equal(chat.activity[0].at, "10:00:00");
+});
+
+test("an ask from the assistant waits for an answer and clears when answered", () => {
+  const chat = sendMessage(emptyChat(), "book a room", 1);
+  const asked = receiveEvent(chat, {
+    event: "ask",
+    chat: 1,
+    call: "a1",
+    question: "Which day?",
+  });
+  assert.deepEqual(asked.asks, [{ call: "a1", question: "Which day?" }]);
+  assert.equal(asked.orb, "listening");
+  assert.equal(removeAsk(asked, "a1").asks.length, 0);
+  assert.equal(
+    finishChat(asked, { reply: "done", stopped: false }).asks.length,
+    0,
+  );
+});
+
+test("an ask from another chat is ignored", () => {
+  const chat = sendMessage(emptyChat(), "hi", 1);
+  const other = receiveEvent(chat, {
+    event: "ask",
+    chat: 2,
+    call: "a1",
+    question: "?",
+  });
+  assert.equal(other.asks.length, 0);
 });
