@@ -85,3 +85,40 @@ test("reduced motion turns off the orb pulse", async ({ page }) => {
   await expect(orb).toHaveCSS("animation-name", "none");
   await page.getByRole("button", { name: "Stop" }).click();
 });
+
+test("a note in the list opens in the graph drawer", async ({ page }) => {
+  await page
+    .getByRole("list", { name: "Note list" })
+    .getByRole("button", { name: "Beta" })
+    .click();
+  await expect(
+    page.getByRole("complementary", { name: "Note details" }),
+  ).toContainText("beta.md");
+});
+
+test("the ribbon hides and shows the note list", async ({ page }) => {
+  const toggle = page.getByRole("button", { name: "Note list" });
+  await toggle.click();
+  await expect(page.getByRole("complementary", { name: "Notes" })).toHaveCount(
+    0,
+  );
+  await toggle.click();
+  await expect(
+    page.getByRole("complementary", { name: "Notes" }),
+  ).toBeVisible();
+});
+
+test("the layout fits a 960 by 600 window without scrolling", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 960, height: 600 });
+  await expect(page.getByRole("main", { name: "Brain graph" })).toBeVisible();
+  const fits = await page.evaluate(
+    () =>
+      document.documentElement.scrollWidth <=
+        document.documentElement.clientWidth &&
+      document.documentElement.scrollHeight <=
+        document.documentElement.clientHeight,
+  );
+  expect(fits).toBe(true);
+});

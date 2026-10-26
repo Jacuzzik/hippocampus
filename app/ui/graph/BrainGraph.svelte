@@ -4,7 +4,6 @@
   import type { Rgba } from "./renderer";
   import { BrainRenderer } from "./renderer";
   import {
-    allTags,
     centerOn,
     hitTest,
     LOW_POWER,
@@ -15,26 +14,34 @@
     type GraphData,
   } from "./model";
 
-  let { data }: { data: GraphData } = $props();
+  // The note list in the sidebar owns the search, tag filter and selection; the graph draws them.
+  let {
+    data,
+    query = "",
+    tag = null,
+    selectedId = null,
+    onselect,
+  }: {
+    data: GraphData;
+    query?: string;
+    tag?: string | null;
+    selectedId?: string | null;
+    onselect: (id: string | null) => void;
+  } = $props();
 
   let canvas: HTMLCanvasElement | undefined = $state();
   let error = $state<string | null>(null);
   let cam = $state<Camera>({ x: 0, y: 0, zoom: 1 });
-  let selected = $state(-1);
-  let query = $state("");
-  let tagChoice = $state("");
 
   // Plain variables: they are rebuilt from `data` and read by the draw loop, not by the template.
   let renderer: BrainRenderer | null = null;
   let pos = new Float32Array(0);
-  let index = new Map<string, number>();
   let colours: { node: Rgba; hot: Rgba; edge: Rgba; bg: Rgba } | null = null;
   let frame = 0;
 
-  const tags = $derived(allTags(data.nodes));
-  const tag = $derived(tagChoice || null);
+  const index = $derived(new Map(data.nodes.map((n, i) => [n.id, i])));
+  const selected = $derived(selectedId ? (index.get(selectedId) ?? -1) : -1);
   const matched = $derived(matchFilter(data.nodes, { query, tag }));
-  const matchCount = $derived(matched.reduce((n, ok) => n + (ok ? 1 : 0), 0));
   const node = $derived(selected >= 0 ? data.nodes[selected] : undefined);
   const outgoing = $derived(
     node
@@ -87,19 +94,28 @@
   }
 
   function open(id: string): void {
-    const i = index.get(id);
-    if (i === undefined) return;
-    selected = i;
-    const [w, h] = size();
-    cam = centerOn(
-      pos[2 * i] ?? 0,
-      pos[2 * i + 1] ?? 0,
-      Math.max(cam.zoom, 1),
-      w,
-      h,
-    );
-    schedule();
+    onselect(id);
   }
+
+  // Bring a selected node into view, unless it is already on screen (a click on the canvas).
+  $effect(() => {
+    const i = selected;
+    if (i < 0) return;
+    untrack(() => {
+      const sx = (pos[2 * i] ?? 0) * cam.zoom + cam.x;
+      const sy = (pos[2 * i + 1] ?? 0) * cam.zoom + cam.y;
+      const [w, h] = size();
+      if (sx >= 0 && sy >= 0 && sx <= w && sy <= h) return;
+      cam = centerOn(
+        pos[2 * i] ?? 0,
+        pos[2 * i + 1] ?? 0,
+        Math.max(cam.zoom, 1),
+        w,
+        h,
+      );
+      schedule();
+    });
+  });
 
   function pushStyle(): void {
     if (!renderer || !colours) return;
@@ -167,7 +183,10 @@
     const onUp = (e: PointerEvent) => {
       if (!drag) return;
       const [x, y] = local(e);
-      if (!drag.moved) selected = hitTest(pos, cam, x, y, 8);
+      if (!drag.moved) {
+        const hit = hitTest(pos, cam, x, y, 8);
+        onselect(hit >= 0 ? (data.nodes[hit]?.id ?? null) : null);
+      }
       drag = null;
     };
     const onWheel = (e: WheelEvent) => {
@@ -204,7 +223,6 @@
   function relayout(): void {
     const r = renderer;
     if (!r) return;
-    index = new Map(data.nodes.map((n, i) => [n.id, i]));
     const pairs: [number, number][] = [];
     for (const [a, b] of data.edges) {
       const ia = index.get(a);
@@ -219,7 +237,6 @@
       flat[2 * i + 1] = b;
     });
     r.setGraph(pos, flat);
-    selected = -1;
     fitAll();
     pushStyle();
   }
@@ -232,14 +249,7 @@
   });
 
   function onWindowKey(e: KeyboardEvent): void {
-    if (e.key === "Escape" && selected >= 0) selected = -1;
-  }
-
-  function onSearchKey(e: KeyboardEvent): void {
-    if (e.key !== "Enter") return;
-    const first = matched.indexOf(true);
-    const hit = data.nodes[first];
-    if (query.trim() && hit) open(hit.id);
+    if (e.key === "Escape" && selected >= 0) onselect(null);
   }
 </script>
 
@@ -260,25 +270,6 @@
     <p class="notice">This vault has no notes yet.</p>
   {/if}
 
-  <form class="filters" role="search" onsubmit={(e) => e.preventDefault()}>
-    <input
-      type="search"
-      bind:value={query}
-      onkeydown={onSearchKey}
-      placeholder="Search notes"
-      aria-label="Search notes"
-    />
-    <select bind:value={tagChoice} aria-label="Filter by tag">
-      <option value="">All tags</option>
-      {#each tags as t (t)}
-        <option value={t}>#{t}</option>
-      {/each}
-    </select>
-    <span class="count" aria-live="polite"
-      >{matchCount} of {data.nodes.length}</span
-    >
-  </form>
-
   {#if node}
     <aside class="drawer" aria-label="Note details">
       <header>
@@ -287,7 +278,7 @@
           type="button"
           class="close"
           aria-label="Close note details"
-          onclick={() => (selected = -1)}>×</button
+          onclick={() => onselect(null)}>×</button
         >
       </header>
       <p class="path">{node.id}</p>
@@ -355,35 +346,6 @@
     place-items: center;
     margin: 0;
     color: var(--color-text-muted);
-  }
-
-  .filters {
-    position: absolute;
-    top: var(--space-3);
-    left: var(--space-3);
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-2);
-    border-radius: var(--radius-md);
-    background: var(--color-bg-1);
-    border: 1px solid var(--color-border);
-  }
-
-  input,
-  select {
-    font: inherit;
-    color: var(--color-text);
-    background: var(--color-bg-0);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    padding: var(--space-1) var(--space-2);
-  }
-
-  .count {
-    color: var(--color-text-muted);
-    font-size: var(--font-size-xs);
-    white-space: nowrap;
   }
 
   .drawer {
