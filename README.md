@@ -12,6 +12,12 @@ Early development, phase D8: the desktop app has the brain graph, search, the as
 
 An assistant request pauses after 20 tool calls. Choose Continue to resume it. To change the limit, set `max_tool_calls` under `[ai]` in `config/settings.toml` (use a whole number of 1 or more).
 
+### Explore your notes
+
+- Search notes in the sidebar, or press Ctrl+F (Cmd+F on macOS) to open the note list and focus search. Use the Tags list or tag filter to narrow the notes.
+- Select a graph node to open its note details. Drag a node to move it and pull directly linked notes along; drag empty graph space to pan. Choose Fit graph to bring every note into view, or turn on Hide orphans to hide notes with no links.
+- Press Ctrl+O (Cmd+O on macOS) to find a note by name. Press Ctrl+P (Cmd+P on macOS) to open app commands, such as toggling the note list or assistant.
+
 ## Run
 
 Every platform needs Rust, [uv](https://docs.astral.sh/uv/) and Node 24 or newer. The app is developed on Arch Linux under Wayland. CI runs the Python tests and the app checks on Ubuntu, macOS and Windows; the per-OS steps below say what each one needs.
