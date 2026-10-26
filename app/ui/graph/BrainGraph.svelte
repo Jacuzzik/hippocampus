@@ -11,6 +11,7 @@
     hitTest,
     LOW_POWER,
     layout,
+    linkCounts,
     matchFilter,
     mulberry32,
     zoomAt,
@@ -53,6 +54,8 @@
   let clock = 0;
   let last = 0;
   let dragging = false;
+  // Hides notes with no links. Off by default, so every note shows.
+  let hideOrphans = $state(false);
   // Reduced motion: the nodes stay still.
   const calm =
     typeof matchMedia === "function" &&
@@ -65,6 +68,10 @@
   const index = $derived(new Map(data.nodes.map((n, i) => [n.id, i])));
   const selected = $derived(selectedId ? (index.get(selectedId) ?? -1) : -1);
   const matched = $derived(matchFilter(data.nodes, { query, tag }));
+  const degree = $derived(linkCounts(data.nodes, data.edges));
+  const visible = $derived(
+    matched.map((m, i) => m && !(hideOrphans && degree[i] === 0)),
+  );
   const node = $derived(selected >= 0 ? data.nodes[selected] : undefined);
   const outgoing = $derived(
     node
@@ -123,7 +130,7 @@
     const placed: { text: string; x: number; y: number }[] = [];
     const boxes: number[] = [];
     const place = (i: number) => {
-      if (placed.length >= MAX_LABELS || (i !== selected && !matched[i]))
+      if (placed.length >= MAX_LABELS || (i !== selected && !visible[i]))
         return;
       const sx = (pos[2 * i] ?? 0) * cam.zoom + cam.x;
       const sy = (pos[2 * i + 1] ?? 0) * cam.zoom + cam.y;
@@ -273,7 +280,7 @@
     for (let i = 0; i < n; i++) {
       const isSel = i === selected;
       const base = isSel ? colours.hot : colours.node;
-      const alpha = matched[i] ? base[3] : base[3] * 0.15;
+      const alpha = visible[i] ? base[3] : base[3] * 0.15;
       colors.set([base[0], base[1], base[2], alpha], i * 4);
       radii[i] = isSel ? 7 : 4;
     }
@@ -340,7 +347,8 @@
       const [x, y] = local(e);
       if (!drag.moved) {
         const hit = hitTest(pos, cam, x, y, 8);
-        onselect(hit >= 0 ? (data.nodes[hit]?.id ?? null) : null);
+        const id = hit >= 0 && visible[hit] ? data.nodes[hit]?.id : undefined;
+        onselect(id ?? null);
       }
       endDrag();
     };
@@ -418,7 +426,7 @@
 
   // Re-colour when the filter or the selection changes.
   $effect(() => {
-    void matched;
+    void visible;
     void selected;
     pushStyle();
   });
@@ -451,7 +459,12 @@
     </div>
   </div>
 
-  <button type="button" class="fit" onclick={fitAll}>Fit graph</button>
+  <div class="tools">
+    <button type="button" class="fit" onclick={fitAll}>Fit graph</button>
+    <label class="orphans">
+      <input type="checkbox" bind:checked={hideOrphans} /> Hide orphans
+    </label>
+  </div>
 
   {#if error}
     <p class="notice" role="alert">The graph cannot be drawn: {error}</p>
@@ -604,12 +617,20 @@
       0 0 3px var(--color-bg-0);
   }
 
-  /* Refits every node into view. Top left, clear of the drawer on the right. */
-  .fit {
+  /* Top left, clear of the drawer on the right. */
+  .tools {
     position: absolute;
     top: var(--space-2);
     left: var(--space-2);
     z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
+  }
+
+  .fit {
     font: inherit;
     font-size: var(--font-size-xs);
     color: var(--color-text);

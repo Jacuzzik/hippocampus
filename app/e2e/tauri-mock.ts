@@ -1,10 +1,16 @@
 // Only the part of Playwright's Page this file uses, so the app can import it without Playwright.
-type Page = { addInitScript(fn: () => void): Promise<unknown> | unknown };
+type Page = {
+  addInitScript<A>(fn: (arg: A) => void, arg: A): Promise<unknown> | unknown;
+};
 
 // Stands in for the Tauri bridge and the Python sidecar. It answers the same requests with the
 // same shapes as core/__main__.py, so the UI runs unchanged. The Python side has its own tests.
-export async function mockSidecar(page: Page): Promise<void> {
-  await page.addInitScript(() => {
+// `orphan` adds a fourth note with no links, for the orphans toggle.
+export async function mockSidecar(
+  page: Page,
+  options: { orphan?: boolean } = {},
+): Promise<void> {
+  await page.addInitScript((orphan: boolean) => {
     const callbacks = new Map<number, (payload: unknown) => void>();
     const listeners = new Map<string, number[]>();
     let nextId = 1;
@@ -21,6 +27,7 @@ export async function mockSidecar(page: Page): Promise<void> {
         ["beta.md", "gamma.md"],
       ],
     };
+    if (orphan) graph.nodes.push({ id: "delta.md", title: "Delta", tags: [] });
 
     // The note text the drawer reads through the "read" method.
     const texts: Record<string, string> = {
@@ -175,5 +182,5 @@ export async function mockSidecar(page: Page): Promise<void> {
         },
       },
     });
-  });
+  }, options.orphan === true);
 }

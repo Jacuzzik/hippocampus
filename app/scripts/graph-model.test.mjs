@@ -7,6 +7,7 @@ import {
   clampZoom,
   hitTest,
   layout,
+  linkCounts,
   matchFilter,
   MAX_ZOOM,
   MIN_ZOOM,
@@ -113,4 +114,19 @@ test("filters match title or path, and tag, and combine", () => {
     false,
   ]);
   assert.deepEqual(allTags(nodes), ["idea", "todo"]);
+});
+
+test("linkCounts counts each node's links and ignores self and unknown links", () => {
+  const nodes = [
+    { id: "a.md", title: "A", tags: [] },
+    { id: "b.md", title: "B", tags: [] },
+    { id: "c.md", title: "C", tags: [] },
+  ];
+  const edges = [
+    ["a.md", "b.md"],
+    ["b.md", "a.md"],
+    ["a.md", "a.md"],
+    ["a.md", "gone.md"],
+  ];
+  assert.deepEqual(linkCounts(nodes, edges), [2, 2, 0]);
 });

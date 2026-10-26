@@ -197,3 +197,20 @@ export function allTags(nodes: readonly GraphNode[]): string[] {
   for (const n of nodes) for (const t of n.tags) set.add(t);
   return [...set].sort((a, b) => a.localeCompare(b));
 }
+
+/** Per node: how many links touch it. Self-links and links to unknown ids are not counted. */
+export function linkCounts(
+  nodes: readonly GraphNode[],
+  edges: ReadonlyArray<readonly [string, string]>,
+): number[] {
+  const index = new Map(nodes.map((n, i) => [n.id, i]));
+  const counts = nodes.map(() => 0);
+  for (const [a, b] of edges) {
+    const ia = index.get(a);
+    const ib = index.get(b);
+    if (ia === undefined || ib === undefined || ia === ib) continue;
+    counts[ia] = (counts[ia] ?? 0) + 1;
+    counts[ib] = (counts[ib] ?? 0) + 1;
+  }
+  return counts;
+}
