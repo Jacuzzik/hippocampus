@@ -15,6 +15,14 @@ class Settings:
     claude_model: str = "claude-sonnet-5-5"
     ollama_host: str = "http://127.0.0.1:11434"
     ollama_model: str = "qwen2.5:1.5b"
+    # Tool calls the assistant may make in one request before it pauses for the user to continue.
+    max_tool_calls: int = 20
+
+
+def _tool_limit(value: object) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+        raise ValueError("ai.max_tool_calls must be a whole number of 1 or more")
+    return value
 
 
 def load_settings(path: Path = SETTINGS_PATH) -> Settings:
@@ -29,4 +37,5 @@ def load_settings(path: Path = SETTINGS_PATH) -> Settings:
         claude_model=str(ai.get("claude_model", defaults.claude_model)),
         ollama_host=str(ai.get("ollama_host", defaults.ollama_host)),
         ollama_model=str(ai.get("ollama_model", defaults.ollama_model)),
+        max_tool_calls=_tool_limit(ai.get("max_tool_calls", defaults.max_tool_calls)),
     )

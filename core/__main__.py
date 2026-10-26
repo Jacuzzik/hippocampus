@@ -35,7 +35,7 @@ from typing import Any, TextIO
 
 from keyring.errors import KeyringError
 
-from ai.agent import Agent
+from ai.agent import Agent, AgentPaused
 from ai.keys import clear_api_key, get_api_key, set_api_key
 from ai.router import build_router
 from core import __version__
@@ -69,6 +69,9 @@ class Session:
         self.lock = threading.RLock()
         self.kill = KillSwitch()
         self.gate = ConfirmGate()
+        self.paused: list[dict[str, Any]] | None = (
+            None  # messages of a request that hit its tool limit
+        )
 
     def open(self, vault: Path) -> dict[str, Any]:
         if not vault.is_dir():
@@ -100,6 +103,11 @@ class Session:
         if not isinstance(text, str) or not text.strip():
             raise ValueError('"chat" needs a non-empty "text"')
         chat_id = request.get("chat")  # the UI names each chat so it can match its events
+        messages, self.paused = self.paused, None
+        if request.get("continue") is True and messages is None:
+            raise ValueError("nothing is paused to continue")
+        if request.get("continue") is not True:
+            messages = None
         self.kill.reset()  # a stop only ends the work that was running when it was sent
         tools = vault_tools(self.indexer, self.lock) if self.indexer is not None else {}
         router = build_router(self.settings, get_api_key())
@@ -107,11 +115,16 @@ class Session:
         def emit(event: dict[str, Any]) -> None:
             self.emit({**event, "chat": chat_id})
 
-        agent = Agent(router, tools, self.kill, self.gate, emit)
+        agent = Agent(
+            router, tools, self.kill, self.gate, emit, max_tool_calls=self.settings.max_tool_calls
+        )
         try:
-            reply = asyncio.run(agent.run(text.strip()))
+            reply = asyncio.run(agent.run(text.strip(), messages))
         except Stopped:
             return {"reply": "", "stopped": True}
+        except AgentPaused as paused:
+            self.paused = paused.messages
+            return {"reply": "", "stopped": False, "limit": paused.limit}
         return {"reply": reply, "stopped": False}
 
     def confirm(self, request: dict[str, Any]) -> dict[str, Any]:

@@ -17,6 +17,8 @@ from tools.registry import Tool, needs_confirm
 logger = logging.getLogger("hippocampus.agent")
 
 MAX_STEPS = 8
+# The config default (config/settings.toml); the core always passes the configured value.
+DEFAULT_MAX_TOOL_CALLS = 20
 POLL_SECONDS = 0.05
 MAX_RESULT_CHARS = 4000
 T = TypeVar("T")
@@ -28,6 +30,15 @@ class AgentError(Exception):
     pass
 
 
+class AgentPaused(Exception):
+    """The request used its tool-call limit. `messages` lets the next request carry on from here."""
+
+    def __init__(self, limit: int, messages: list[dict[str, Any]]) -> None:
+        super().__init__(f"paused after {limit} tool calls")
+        self.limit = limit
+        self.messages = messages
+
+
 class Agent:
     def __init__(
         self,
@@ -36,16 +47,21 @@ class Agent:
         kill: KillSwitch,
         gate: ConfirmGate,
         emit: Emit,
+        max_tool_calls: int = DEFAULT_MAX_TOOL_CALLS,
     ) -> None:
         self.router = router
         self.tools = tools
         self.kill = kill
         self.gate = gate
         self.emit = emit
+        self.max_tool_calls = max_tool_calls
 
-    async def run(self, text: str) -> str:
+    async def run(self, text: str, messages: list[dict[str, Any]] | None = None) -> str:
+        """Answer `text`. Pass the messages of a paused request to carry on from them."""
         specs = [ToolSpec(t.name, t.description, t.parameters) for t in self.tools.values()]
-        messages: list[dict[str, Any]] = [{"role": "user", "content": text}]
+        messages = [] if messages is None else messages
+        messages.append({"role": "user", "content": text})
+        calls = 0
         for _ in range(MAX_STEPS):
             reply: Reply = await self._until_stopped(self.router.chat(messages, specs))
             messages.append(
@@ -54,10 +70,16 @@ class Agent:
             if not reply.tool_calls:
                 return reply.text
             for call in reply.tool_calls:
-                result = await self._run_tool(call)
+                if calls >= self.max_tool_calls:
+                    result = f"Not run: {self.max_tool_calls} tool calls were already used."
+                else:
+                    calls += 1
+                    result = await self._run_tool(call)
                 messages.append(
                     {"role": "tool", "tool_call_id": call.id, "name": call.name, "content": result}
                 )
+            if calls >= self.max_tool_calls:
+                raise AgentPaused(self.max_tool_calls, messages)
         raise AgentError(f"no answer within {MAX_STEPS} steps")
 
     async def _run_tool(self, call: ToolCall) -> str:
