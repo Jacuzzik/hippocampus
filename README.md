@@ -10,6 +10,8 @@ Linux comes first, then Windows, then macOS.
 
 Early development, phase D8: the desktop app has the brain graph, search, the assistant (chat, tool log, confirm cards, kill switch) and the orb, with Playwright tests for the critical paths. A Linux AppImage runs with its own bundled Python sidecar (`scripts/build-sidecar.sh`, then `npx tauri build` in `app/`); Windows and macOS builds are not verified yet. See [AGENTS.md](AGENTS.md) for the architecture and roadmap.
 
+An assistant request pauses after 20 tool calls. Choose Continue to resume it. To change the limit, set `max_tool_calls` under `[ai]` in `config/settings.toml` (use a whole number of 1 or more).
+
 ## Run
 
 Every platform needs Rust, [uv](https://docs.astral.sh/uv/) and Node 24 or newer. The app is developed on Arch Linux under Wayland. CI runs the Python tests and the app checks on Ubuntu, macOS and Windows; the per-OS steps below say what each one needs.
