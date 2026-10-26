@@ -28,6 +28,7 @@
     if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return;
     if (e.key === "o") box = "switcher";
     else if (e.key === "p") box = "palette";
+    else if (e.key === "f") void focusSearch();
     else return;
     e.preventDefault();
   }

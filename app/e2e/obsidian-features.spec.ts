@@ -58,3 +58,28 @@ test("the palette's Reset graph view remounts the graph and keeps the drawer", a
     drawer(page).getByRole("heading", { name: "Alpha" }),
   ).toBeVisible();
 });
+
+test("Ctrl+F focuses the note search, reopening the note list if hidden", async ({
+  page,
+}) => {
+  const search = page.getByRole("searchbox", { name: "Search notes" });
+  await page.getByRole("button", { name: "Note list" }).click();
+  await expect(search).toBeHidden();
+  await page.keyboard.press("Control+f");
+  await expect(search).toBeFocused();
+});
+
+test("Escape closes the drawer, and closes the palette without touching the drawer", async ({
+  page,
+}) => {
+  await page.getByRole("button", { name: "Beta" }).click();
+  await expect(drawer(page)).toBeVisible();
+  await page.keyboard.press("Control+p");
+  await page.keyboard.press("Escape");
+  await expect(
+    page.getByRole("dialog", { name: "Command palette" }),
+  ).toHaveCount(0);
+  await expect(drawer(page)).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(drawer(page)).toHaveCount(0);
+});
