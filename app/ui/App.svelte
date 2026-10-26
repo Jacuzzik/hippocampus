@@ -8,6 +8,7 @@
   import StatusBar from "./regions/StatusBar.svelte";
   import CommandBox, { type Item } from "./overlays/CommandBox.svelte";
   import type { GraphData } from "./graph/model.ts";
+  import { tick } from "svelte";
 
   let data = $state<GraphData | null>(null);
   let error = $state<string | null>(null);
@@ -18,14 +19,45 @@
   let panelOpen = $state(true);
   // Which overlay box is open: the quick switcher (Ctrl+O) or the command palette (Ctrl+P).
   let box = $state<"switcher" | "palette" | null>(null);
+  let searchEl = $state<HTMLInputElement | null>(null);
+  // Bumping this remounts the graph, which refits it to the canvas.
+  let viewKey = $state(0);
 
   // Ctrl on Linux and Windows, Cmd on macOS. Both shortcuts take over the browser default.
   function onKey(e: KeyboardEvent): void {
     if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return;
     if (e.key === "o") box = "switcher";
+    else if (e.key === "p") box = "palette";
     else return;
     e.preventDefault();
   }
+
+  async function focusSearch(): Promise<void> {
+    box = null;
+    sidebarOpen = true;
+    await tick();
+    searchEl?.focus();
+    searchEl?.select();
+  }
+
+  const commands: Item[] = [
+    {
+      id: "toggle-sidebar",
+      label: "Toggle note list",
+      run: () => (sidebarOpen = !sidebarOpen),
+    },
+    {
+      id: "toggle-assistant",
+      label: "Toggle assistant",
+      run: () => (panelOpen = !panelOpen),
+    },
+    { id: "search", label: "Search notes", run: focusSearch },
+    {
+      id: "reset-graph",
+      label: "Reset graph view",
+      run: () => viewKey++,
+    },
+  ];
 
   const noteItems = $derived<Item[]>(
     (data?.nodes ?? []).map((node) => ({
@@ -47,7 +79,14 @@
 
 <svelte:window onkeydown={onKey} />
 
-{#if box === "switcher"}
+{#if box === "palette"}
+  <CommandBox
+    items={commands}
+    placeholder="Type a command"
+    label="Command palette"
+    onclose={() => (box = null)}
+  />
+{:else if box === "switcher"}
   <CommandBox
     items={noteItems}
     placeholder="Open a note by name"
@@ -59,7 +98,7 @@
 <div class="shell" class:no-sidebar={!sidebarOpen} class:no-panel={!panelOpen}>
   <Ribbon bind:sidebarOpen bind:panelOpen />
   {#if sidebarOpen && data}
-    <NoteSidebar {data} bind:query bind:tag bind:selectedId />
+    <NoteSidebar {data} bind:query bind:tag bind:selectedId bind:searchEl />
   {/if}
   <GraphRegion
     {data}
@@ -67,6 +106,7 @@
     {query}
     {tag}
     {selectedId}
+    {viewKey}
     onselect={(id) => (selectedId = id)}
   />
   <RightPanel open={panelOpen} />

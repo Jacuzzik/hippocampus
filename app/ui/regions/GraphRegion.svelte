@@ -9,6 +9,7 @@
     query = "",
     tag = null,
     selectedId = null,
+    viewKey = 0,
     onselect,
   }: {
     data?: GraphData | null;
@@ -16,6 +17,7 @@
     query?: string;
     tag?: string | null;
     selectedId?: string | null;
+    viewKey?: number;
     onselect: (id: string | null) => void;
   } = $props();
 </script>
@@ -26,7 +28,9 @@
   </header>
   <div class="body">
     {#if data}
-      <BrainGraph {data} {query} {tag} {selectedId} {onselect} />
+      {#key viewKey}
+        <BrainGraph {data} {query} {tag} {selectedId} {onselect} />
+      {/key}
     {:else if error}
       <p role="alert">Could not load the vault: {error}</p>
     {:else}

@@ -7,11 +7,13 @@
     query = $bindable(""),
     tag = $bindable<string | null>(null),
     selectedId = $bindable<string | null>(null),
+    searchEl = $bindable<HTMLInputElement | null>(null),
   }: {
     data: GraphData;
     query?: string;
     tag?: string | null;
     selectedId?: string | null;
+    searchEl?: HTMLInputElement | null;
   } = $props();
 
   const tags = $derived(allTags(data.nodes));
@@ -34,6 +36,7 @@
 
   <input
     type="search"
+    bind:this={searchEl}
     bind:value={query}
     onkeydown={onSearchKey}
     placeholder="Search notes"
