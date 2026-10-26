@@ -96,6 +96,38 @@ test("a note in the list opens in the graph drawer", async ({ page }) => {
   ).toContainText("beta.md");
 });
 
+for (const [width, height] of [
+  [960, 600],
+  [1280, 800],
+] as const) {
+  test(`with the note drawer open, all 3 notes stay in the canvas at ${width} by ${height}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height });
+    const canvas = page.locator("canvas");
+    const before = (await canvas.boundingBox())?.width ?? 0;
+    await page
+      .getByRole("list", { name: "Note list" })
+      .getByRole("button", { name: "Beta" })
+      .click();
+    const drawer = page.getByRole("complementary", { name: "Note details" });
+    await expect(drawer).toBeVisible();
+    // The drawer narrows the canvas; wait for that resize and the frame that refits the graph.
+    await expect
+      .poll(async () => (await canvas.boundingBox())?.width ?? 0)
+      .toBeLessThan(before);
+    await page.evaluate(
+      () =>
+        new Promise((done) =>
+          requestAnimationFrame(() => requestAnimationFrame(done)),
+        ),
+    );
+    await expect(canvas).toHaveAttribute("data-in-view", "3");
+    const [c, d] = [await canvas.boundingBox(), await drawer.boundingBox()];
+    expect(c && d && c.x + c.width <= d.x).toBe(true);
+  });
+}
+
 test("the ribbon hides and shows the note list", async ({ page }) => {
   const toggle = page.getByRole("button", { name: "Note list" });
   await toggle.click();

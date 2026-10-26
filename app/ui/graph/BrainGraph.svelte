@@ -65,10 +65,23 @@
   function draw(): void {
     frame = 0;
     if (renderer && colours) renderer.draw(cam, colours.bg, colours.edge);
+    // Read by the e2e test: how many nodes the last frame placed inside the canvas.
+    if (canvas) canvas.dataset.inView = String(countInView());
   }
 
   function size(): [number, number] {
     return [canvas?.clientWidth ?? 0, canvas?.clientHeight ?? 0];
+  }
+
+  function countInView(): number {
+    const [w, h] = size();
+    let n = 0;
+    for (let i = 0; i < pos.length; i += 2) {
+      const sx = (pos[i] ?? 0) * cam.zoom + cam.x;
+      const sy = (pos[i + 1] ?? 0) * cam.zoom + cam.y;
+      if (sx >= 0 && sy >= 0 && sx <= w && sy <= h) n++;
+    }
+    return n;
   }
 
   function fitAll(): void {
@@ -152,9 +165,10 @@
       edge: [...token("link").slice(0, 3), 0.3] as Rgba,
       bg: token("bg-0"),
     };
+    // Refit on every size change, so opening the note drawer (which narrows the canvas) keeps the graph in view.
     const fit = () => {
       r.resize(c.clientWidth, c.clientHeight, LOW_POWER.dprCap);
-      schedule();
+      fitAll();
     };
     const observer = new ResizeObserver(fit);
     observer.observe(c);
@@ -318,12 +332,19 @@
 <style>
   .brain {
     position: relative;
+    display: flex;
     width: 100%;
     height: 100%;
     overflow: hidden;
   }
 
-  .canvas-box,
+  .canvas-box {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+  }
+
   .canvas {
     width: 100%;
     height: 100%;
@@ -348,17 +369,14 @@
     color: var(--color-text-muted);
   }
 
+  /* Beside the canvas, as Obsidian's side panels are, so it never covers the graph. */
   .drawer {
-    position: absolute;
-    top: var(--space-3);
-    right: var(--space-3);
-    bottom: var(--space-3);
-    width: min(320px, calc(100% - 2 * var(--space-3)));
+    flex: none;
+    width: min(320px, 45%);
     overflow-y: auto;
     padding: var(--space-4);
-    border-radius: var(--radius-md);
     background: var(--color-bg-1);
-    border: 1px solid var(--color-border);
+    border-left: 1px solid var(--color-border);
   }
 
   .drawer header {
