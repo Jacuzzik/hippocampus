@@ -30,7 +30,10 @@
     e.preventDefault();
     error = null;
     try {
-      await invoke("sidecar_call", { method: "open", vault: vault.trim() });
+      await invoke("sidecar_call", {
+        method: "open",
+        params: { vault: vault.trim() },
+      });
       onopened();
       onclose();
     } catch (cause) {
@@ -44,7 +47,7 @@
     try {
       const result = await invoke<{ claude: boolean }>("sidecar_call", {
         method: "sign_in",
-        key: key.trim(),
+        params: { key: key.trim() },
       });
       signedIn = result.claude;
       key = "";
