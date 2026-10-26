@@ -1,0 +1,3 @@
+# Keep LF line endings in the repo and in checkouts. Git for Windows can turn them into CRLF,
+# which makes Prettier and ruff format checks fail.
+* text=auto eol=lf

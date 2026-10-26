@@ -32,6 +32,8 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any, TextIO
 
+from keyring.errors import KeyringError
+
 from ai.agent import Agent
 from ai.keys import clear_api_key, get_api_key, set_api_key
 from ai.router import build_router
@@ -228,7 +230,9 @@ async def _watch(vault: Path, storage: Path) -> None:
     loop = asyncio.get_running_loop()
     stop = asyncio.Event()
     for sig in (signal.SIGINT, signal.SIGTERM):
-        loop.add_signal_handler(sig, stop.set)
+        # Windows event loops cannot catch these; stdin EOF and Ctrl+C still stop the watch there.
+        with contextlib.suppress(NotImplementedError):
+            loop.add_signal_handler(sig, stop.set)
 
     def wait_for_stdin_eof() -> None:
         for _ in sys.stdin:
@@ -255,19 +259,25 @@ async def _watch(vault: Path, storage: Path) -> None:
 
 
 def watch(vault: Path, storage: Path) -> int:
-    asyncio.run(_watch(vault, storage))
+    with contextlib.suppress(KeyboardInterrupt):
+        asyncio.run(_watch(vault, storage))
     return 0
 
 
 def manage_key(action: str) -> int:
-    if action == "set":
-        set_api_key(getpass.getpass("Claude API key: ").strip())
-        print("Saved the Claude API key in the OS keychain.")
-    elif action == "clear":
-        clear_api_key()
-        print("Removed the Claude API key from the OS keychain.")
-    else:
-        print("Claude API key: " + ("set" if get_api_key() else "not set"))
+    try:
+        if action == "set":
+            set_api_key(getpass.getpass("Claude API key: ").strip())
+            print("Saved the Claude API key in the OS keychain.")
+        elif action == "clear":
+            clear_api_key()
+            print("Removed the Claude API key from the OS keychain.")
+        else:
+            print("Claude API key: " + ("set" if get_api_key() else "not set"))
+    except KeyringError as error:
+        # Linux needs a running Secret Service (gnome-keyring or KWallet).
+        print(f"The OS keychain is not available: {error}", file=sys.stderr)
+        return 1
     return 0
 
 

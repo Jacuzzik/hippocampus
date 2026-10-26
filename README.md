@@ -12,16 +12,51 @@ Early development, phase D8: the desktop app has the brain graph, search, the as
 
 ## Run
 
-Tested on Arch Linux under Wayland. You need Rust, [uv](https://docs.astral.sh/uv/), and Node 24 or newer.
+Every platform needs Rust, [uv](https://docs.astral.sh/uv/) and Node 24 or newer. The app is developed on Arch Linux under Wayland. CI runs the Python tests and the app checks on Ubuntu, macOS and Windows; the per-OS steps below say what each one needs.
 
-Install the system packages Tauri needs:
+### Linux
+
+Arch Linux:
 
 ```bash
 sudo pacman -S --needed webkit2gtk-4.1 base-devel curl wget file openssl \
   appmenu-gtk-module libappindicator-gtk3 librsvg
 ```
 
-Set up the Python sidecar and run its tests:
+Debian or Ubuntu (the same packages CI installs, plus the build tools Tauri needs):
+
+```bash
+sudo apt update
+sudo apt install build-essential curl wget file libxdo-dev libssl-dev \
+  libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev
+```
+
+For other distributions, follow the [Tauri prerequisites for Linux](https://v2.tauri.app/start/prerequisites/#linux).
+
+The assistant's key is stored in the Secret Service (GNOME Keyring or KWallet). Start one before you run `key set`. Without it the key cannot be saved and the assistant uses Ollama.
+
+### macOS
+
+Install the Xcode Command Line Tools. The full Xcode app is not needed for the desktop build:
+
+```bash
+xcode-select --install
+```
+
+Your key goes to the macOS Keychain, which needs no setup.
+
+### Windows
+
+- Install the [Microsoft C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) with the "Desktop development with C++" workload.
+- Install Microsoft Edge WebView2. Windows 10 (version 1803 or later) and Windows 11 usually have it. If not, get the Evergreen Bootstrapper from Microsoft.
+- Install Rust with [rustup](https://rustup.rs/), using the default MSVC toolchain.
+- If you build an MSI installer, turn on the VBSCRIPT optional feature.
+
+Your key goes to the Windows Credential Manager, which needs no setup. The commands below work in PowerShell too.
+
+### Set up the Python sidecar
+
+This creates the `.venv` that the app starts, and runs its tests:
 
 ```bash
 uv sync --locked
@@ -40,7 +75,7 @@ The first run compiles the Rust shell, which takes a few minutes. The app opens 
 
 ### The assistant
 
-The assistant uses Claude when a key is saved, and Ollama on this machine otherwise or when Claude fails.
+The assistant uses Claude when a key is saved, and Ollama otherwise or when Claude fails.
 
 - Save a Claude API key: `uv run python -m core key set` (it prompts; the key goes to the OS keychain, never to a file). `key status` and `key clear` do the rest.
 - Ollama: install it, then `ollama pull qwen2.5:1.5b` (the default in `config/settings.toml`).
@@ -84,7 +119,7 @@ uv run python -m core watch brains/sample
 
 Both commands take `--storage DIR` to keep the index somewhere other than `storage/`. To include the 2,000-note timing check, run `uv run pytest -m slow`.
 
-### Troubleshooting: blank window on Wayland
+### Troubleshooting: blank window on Linux under Wayland
 
 On some Intel GPUs, WebKitGTK's DMA-BUF renderer shows a blank or white window. If that happens, start the app with the renderer turned off:
 
@@ -92,7 +127,7 @@ On some Intel GPUs, WebKitGTK's DMA-BUF renderer shows a blank or white window. 
 WEBKIT_DISABLE_DMABUF_RENDERER=1 npm run tauri dev
 ```
 
-The app does not set this for you.
+In PowerShell on Windows, this is not needed, and `$env:WEBKIT_DISABLE_DMABUF_RENDERER` has no effect there. The app does not set this for you.
 
 ## Contributing
 
