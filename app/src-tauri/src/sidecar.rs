@@ -6,6 +6,7 @@
 //! to the call that asked, so a slow call never blocks a stop.
 
 use std::collections::HashMap;
+use std::fs;
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
@@ -14,7 +15,12 @@ use std::sync::{Arc, Condvar, Mutex, MutexGuard};
 use std::thread;
 
 use serde_json::{json, Map, Value};
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State};
+
+/// The settings a packaged app starts from; the repo's file, copied in on first run.
+const DEFAULT_SETTINGS: &str = include_str!("../../../config/settings.toml");
+/// The bundled sidecar's name next to the app executable (Tauri drops the target triple).
+const SIDECAR_NAME: &str = "hippocampus-sidecar";
 
 type Waiting = Arc<Mutex<HashMap<u64, Sender<Value>>>>;
 
@@ -171,15 +177,12 @@ fn lock<T>(mutex: &Mutex<T>) -> Result<MutexGuard<'_, T>, String> {
 }
 
 fn spawn(app: &AppHandle) -> Result<Link, String> {
-    let root = project_root();
-    let python = python_for(&root);
-    let mut child = Command::new(&python)
-        .args(["-m", "core", "serve"])
-        .current_dir(&root)
+    let mut command = sidecar_command(app)?;
+    let mut child = command
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()
-        .map_err(|e| format!("could not start {}: {e}", python.display()))?;
+        .map_err(|e| format!("could not start {:?}: {e}", command.get_program()))?;
     let stdin = child.stdin.take().ok_or("sidecar has no stdin")?;
     let mut stdout = BufReader::new(child.stdout.take().ok_or("sidecar has no stdout")?);
     let mut ready = String::new();
@@ -188,7 +191,9 @@ fn spawn(app: &AppHandle) -> Result<Link, String> {
     if read == 0 || status.as_ref().and_then(|s| s["status"].as_str()) != Some("ready") {
         let _ = child.kill();
         let _ = child.wait();
-        return Err("the sidecar did not start; check config/settings.toml and the .venv".into());
+        return Err(
+            "the sidecar did not start; check config/settings.toml and the vault folder".into(),
+        );
     }
     let waiting: Waiting = Arc::default();
     let reader_app = app.clone();
@@ -234,12 +239,49 @@ fn read_answers(stdout: BufReader<ChildStdout>, app: AppHandle, waiting: Waiting
     }
 }
 
-/// Repo root, found at build time. shortcut: dev builds only; a packaged app needs a bundled Python.
-pub fn project_root() -> PathBuf {
+/// Dev runs the repo's Python. A packaged app runs the bundled sidecar, and its settings and
+/// vault live in the user data folder, so the app works with no repo or .venv present.
+fn sidecar_command(app: &AppHandle) -> Result<Command, String> {
+    if tauri::is_dev() {
+        let root = project_root();
+        let mut command = Command::new(python_for(&root));
+        command.args(["-m", "core", "serve"]).current_dir(&root);
+        return Ok(command);
+    }
+    let data = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    prepare_data(&data)?;
+    let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+    let sidecar = exe
+        .parent()
+        .ok_or("the app has no folder")?
+        .join(SIDECAR_NAME);
+    let mut command = Command::new(sidecar);
+    command
+        .arg("serve")
+        .arg("--settings")
+        .arg(data.join("config/settings.toml"))
+        .arg("--storage")
+        .arg(data.join("storage"))
+        .current_dir(&data);
+    Ok(command)
+}
+
+/// First run: write the default settings and make the default vault folder. Keeps existing files.
+fn prepare_data(data: &Path) -> Result<(), String> {
+    let settings = data.join("config/settings.toml");
+    if !settings.exists() {
+        fs::create_dir_all(data.join("config")).map_err(|e| e.to_string())?;
+        fs::write(&settings, DEFAULT_SETTINGS).map_err(|e| e.to_string())?;
+    }
+    fs::create_dir_all(data.join("brains/sample")).map_err(|e| e.to_string())
+}
+
+/// Repo root, found at build time. Dev only: a packaged app never reads it.
+fn project_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
 
-/// The repo's .venv Python. shortcut: no bundled runtime yet, so the app needs `uv sync` first.
+/// The repo's .venv Python. Dev only: a packaged app runs the bundled sidecar.
 fn python_for(root: &Path) -> PathBuf {
     if cfg!(windows) {
         root.join(".venv/Scripts/python.exe")
