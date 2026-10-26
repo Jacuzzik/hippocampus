@@ -193,7 +193,7 @@
       z-index: 5;
       grid-area: auto;
       max-width: calc(100vw - var(--layout-ribbon-width));
-      box-shadow: 0 0 24px rgb(0 0 0 / 0.4);
+      box-shadow: var(--layout-drawer-shadow);
     }
 
     .shell > :global(.sidebar) {
