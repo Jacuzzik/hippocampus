@@ -6,6 +6,7 @@
   import Ribbon from "./regions/Ribbon.svelte";
   import RightPanel from "./regions/RightPanel.svelte";
   import StatusBar from "./regions/StatusBar.svelte";
+  import AccountDialog from "./overlays/AccountDialog.svelte";
   import CommandBox, { type Item } from "./overlays/CommandBox.svelte";
   import type { GraphData } from "./graph/model.ts";
   import { tick } from "svelte";
@@ -22,6 +23,8 @@
   let searchEl = $state<HTMLInputElement | null>(null);
   // Bumping this remounts the graph, which refits it to the canvas.
   let viewKey = $state(0);
+  // Setup and account: opens on first run (no brain yet) and from the ribbon or the palette.
+  let setupOpen = $state(false);
 
   // Ctrl on Linux and Windows, Cmd on macOS. Both shortcuts take over the browser default.
   function onKey(e: KeyboardEvent): void {
@@ -58,6 +61,11 @@
       label: "Reset graph view",
       run: () => viewKey++,
     },
+    {
+      id: "account",
+      label: "Setup and account",
+      run: () => (setupOpen = true),
+    },
   ];
 
   const noteItems = $derived<Item[]>(
@@ -69,13 +77,18 @@
     })),
   );
 
-  onMount(async () => {
+  async function load(): Promise<void> {
     try {
       data = await invoke<GraphData>("sidecar_call", { method: "graph" });
+      error = null;
     } catch (cause) {
+      // Without a brain the graph cannot load, so the setup opens to choose one.
       error = String(cause);
+      setupOpen = true;
     }
-  });
+  }
+
+  onMount(load);
 </script>
 
 <svelte:window onkeydown={onKey} />
@@ -96,8 +109,22 @@
   />
 {/if}
 
+{#if setupOpen}
+  <AccountDialog
+    onclose={() => (setupOpen = false)}
+    onopened={() => {
+      error = null;
+      void load();
+    }}
+  />
+{/if}
+
 <div class="shell" class:no-sidebar={!sidebarOpen} class:no-panel={!panelOpen}>
-  <Ribbon bind:sidebarOpen bind:panelOpen />
+  <Ribbon
+    bind:sidebarOpen
+    bind:panelOpen
+    onaccount={() => (setupOpen = true)}
+  />
   {#if sidebarOpen && data}
     <NoteSidebar {data} bind:query bind:tag bind:selectedId bind:searchEl />
   {/if}

@@ -4,6 +4,8 @@
 then reads one JSON request per line on stdin and answers each with one line on stdout.
 Requests: {"id": ..., "method": "graph"}, {"id": ..., "method": "open", "vault": "<folder>"} and
 {"id": ..., "method": "read", "path": "<note id>"} (answers {"id": <note id>, "text": ...}).
+{"method": "account"} answers {"claude": true|false}; {"method": "sign_in", "key": "<key>"} saves
+the Claude key in the keychain and {"method": "sign_out"} removes it. Neither ever returns the key.
 Answers: {"id": ..., "result": ...} or {"id": ..., "error": "<message>"}. A bad line gets an
 error answer and the loop keeps going. It runs until stdin closes. No network listener.
 
@@ -83,6 +85,27 @@ class Session:
             status = {f"{k}_files": getattr(stats, k) for k in stats.__slots__}
             return {"vault": str(vault.resolve()), **self.indexer.store.counts(), **status}
 
+    def account(self) -> dict[str, Any]:
+        # Only whether a key is saved; the key itself never leaves the keychain.
+        return {"claude": get_api_key() is not None}
+
+    def sign_in(self, request: dict[str, Any]) -> dict[str, Any]:
+        key = request.get("key")
+        if not isinstance(key, str) or not key.strip():
+            raise ValueError('"sign_in" needs a non-empty "key"')
+        try:
+            set_api_key(key.strip())
+        except KeyringError as error:
+            raise ValueError("the OS keychain is not available") from error
+        return {"claude": True}
+
+    def sign_out(self) -> dict[str, Any]:
+        try:
+            clear_api_key()
+        except KeyringError as error:
+            raise ValueError("the OS keychain is not available") from error
+        return {"claude": False}
+
     def graph(self) -> dict[str, Any]:
         with self.lock:
             if self.indexer is None:
@@ -144,6 +167,12 @@ class Session:
             return self.open(Path(vault))
         if method == "read":
             return self.read(request)
+        if method == "account":
+            return self.account()
+        if method == "sign_in":
+            return self.sign_in(request)
+        if method == "sign_out":
+            return self.sign_out()
         if method == "chat":
             return self.chat(request)
         if method == "confirm":

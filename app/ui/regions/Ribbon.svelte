@@ -3,7 +3,12 @@
   let {
     sidebarOpen = $bindable(true),
     panelOpen = $bindable(true),
-  }: { sidebarOpen?: boolean; panelOpen?: boolean } = $props();
+    onaccount,
+  }: {
+    sidebarOpen?: boolean;
+    panelOpen?: boolean;
+    onaccount: () => void;
+  } = $props();
 </script>
 
 <nav class="ribbon" aria-label="Panes">
@@ -29,6 +34,17 @@
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <rect x="3" y="4" width="18" height="16" rx="2" />
       <line x1="15" y1="4" x2="15" y2="20" />
+    </svg>
+  </button>
+  <button
+    type="button"
+    aria-label="Setup and account"
+    title="Setup and account"
+    onclick={onaccount}
+  >
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" />
     </svg>
   </button>
 </nav>
