@@ -23,6 +23,13 @@ export interface ConfirmCard {
   preview: string;
 }
 
+/** A line in the tool log that is not a tool call: app start, a pause at the tool limit. */
+export interface ActivityEntry {
+  /** Local clock time, HH:MM:SS. */
+  at: string;
+  text: string;
+}
+
 export interface Chat {
   /** The chat whose events are shown; null when no chat is running. */
   chatId: number | null;
@@ -30,6 +37,9 @@ export interface Chat {
   tools: ToolEntry[];
   confirms: ConfirmCard[];
   orb: OrbState;
+  activity: ActivityEntry[];
+  /** The tool-call limit a request paused at, or null. Continue resumes it. */
+  paused: number | null;
 }
 
 /** Events the sidecar prints while a chat runs (see core/__main__.py). */
@@ -55,7 +65,29 @@ export type SidecarEvent =
 export const TOOL_LOG_LIMIT = 50;
 
 export function emptyChat(): Chat {
-  return { chatId: null, messages: [], tools: [], confirms: [], orb: "idle" };
+  return {
+    chatId: null,
+    messages: [],
+    tools: [],
+    confirms: [],
+    orb: "idle",
+    activity: [],
+    paused: null,
+  };
+}
+
+/** Local clock time as HH:MM:SS. */
+export function clockTime(date: Date = new Date()): string {
+  return date.toTimeString().slice(0, 8);
+}
+
+export function logActivity(
+  chat: Chat,
+  text: string,
+  at: string = clockTime(),
+): Chat {
+  const activity = [...chat.activity, { at, text }].slice(-TOOL_LOG_LIMIT);
+  return { ...chat, activity };
 }
 
 export function sendMessage(chat: Chat, text: string, chatId: number): Chat {
@@ -65,6 +97,7 @@ export function sendMessage(chat: Chat, text: string, chatId: number): Chat {
     messages: [...chat.messages, { role: "user", text }],
     confirms: [],
     orb: "thinking",
+    paused: null,
   };
 }
 
@@ -104,9 +137,23 @@ export function receiveEvent(chat: Chat, event: SidecarEvent): Chat {
   };
 }
 
-export type ChatResult = { reply: string; stopped: boolean };
+export type ChatResult = { reply: string; stopped: boolean; limit?: number };
 
-export function finishChat(chat: Chat, result: ChatResult): Chat {
+export function finishChat(
+  chat: Chat,
+  result: ChatResult,
+  at: string = clockTime(),
+): Chat {
+  if (result.limit !== undefined) {
+    const text = `Stopped after ${result.limit} tool calls in one request. Continue to let it go on.`;
+    return {
+      ...logActivity(chat, text, at),
+      chatId: null,
+      confirms: [],
+      orb: "idle",
+      paused: result.limit,
+    };
+  }
   const message: Message | null = result.stopped
     ? { role: "error", text: "Stopped." }
     : result.reply

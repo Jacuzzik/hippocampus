@@ -202,3 +202,26 @@ test("a tag in the tags pane filters the note list", async ({ page }) => {
       .getByRole("button", { name: "Beta" }),
   ).toHaveCount(0);
 });
+
+test("the tool log says why the assistant paused, and Continue resumes it", async ({
+  page,
+}) => {
+  await page.getByLabel("Message the assistant").fill("do many things");
+  await page.getByRole("button", { name: "Send" }).click();
+  const log = page.getByRole("region", { name: "Tool log" });
+  await expect(
+    log.getByText(
+      "Stopped after 20 tool calls in one request. Continue to let it go on.",
+    ),
+  ).toBeVisible();
+  await log.getByRole("button", { name: "Continue" }).click();
+  await expect(page.getByText("Carried on to the end.")).toBeVisible();
+});
+
+test("the tool log starts with the app start and its time", async ({
+  page,
+}) => {
+  const log = page.getByRole("region", { name: "Tool log" });
+  await expect(log.getByText("App started")).toBeVisible();
+  await expect(log.locator("time").first()).toHaveText(/^\d{2}:\d{2}:\d{2}$/);
+});

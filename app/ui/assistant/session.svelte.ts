@@ -5,11 +5,13 @@ import {
   emptyChat,
   failChat,
   finishChat,
+  logActivity,
   receiveEvent,
   removeConfirm,
   sendMessage,
   settleSpeaking,
   type Chat,
+  type ChatResult,
   type SidecarEvent,
 } from "./model";
 
@@ -39,21 +41,20 @@ export const assistant = {
     await listen<SidecarEvent>("sidecar-event", (event) => {
       chat = receiveEvent(chat, event.payload);
     });
+    chat = logActivity(chat, "App started");
   },
 
-  async send(text: string): Promise<void> {
+  /** Send a message. `resume` carries on a request that paused at the tool-call limit. */
+  async send(text: string, resume = false): Promise<void> {
     const trimmed = text.trim();
     if (!trimmed || this.busy) return;
     const id = nextChatId++;
     chat = sendMessage(chat, trimmed, id);
     try {
-      const result = await invoke<{ reply: string; stopped: boolean }>(
-        "sidecar_call",
-        {
-          method: "chat",
-          params: { chat: id, text: trimmed },
-        },
-      );
+      const result = await invoke<ChatResult>("sidecar_call", {
+        method: "chat",
+        params: { chat: id, text: trimmed, continue: resume },
+      });
       chat = finishChat(chat, result);
     } catch (cause) {
       chat = failChat(chat, errorText(cause));
@@ -61,6 +62,11 @@ export const assistant = {
     if (chat.orb === "speaking") {
       setTimeout(() => (chat = settleSpeaking(chat)), SPEAKING_MS);
     }
+  },
+
+  /** Carry on after a pause at the tool-call limit. */
+  async resume(): Promise<void> {
+    await this.send("Continue.", true);
   },
 
   /** The kill switch: the sidecar halts pending tool calls and the model call. */

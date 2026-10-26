@@ -89,18 +89,33 @@
 
   <section class="tools" aria-label="Tool log">
     <h3>Tool log</h3>
-    {#if chat.tools.length === 0}
+    {#if chat.tools.length === 0 && chat.activity.length === 0}
       <p class="muted">No tools used yet.</p>
-    {:else}
-      <ul>
-        {#each chat.tools as tool (tool.call + tool.name)}
-          <li>
-            <span class="tier {tool.tier}">{tool.tier}</span>
-            <span class="tool-name">{tool.name}</span>
-            <span class="status">{STATUS_TEXT[tool.status]}</span>
-          </li>
-        {/each}
-      </ul>
+    {/if}
+    <ul class="activity">
+      {#each chat.activity as entry, index (index)}
+        <li>
+          <time>{entry.at}</time>
+          <span>{entry.text}</span>
+        </li>
+      {/each}
+    </ul>
+    <ul>
+      {#each chat.tools as tool (tool.call + tool.name)}
+        <li>
+          <span class="tier {tool.tier}">{tool.tier}</span>
+          <span class="tool-name">{tool.name}</span>
+          <span class="status">{STATUS_TEXT[tool.status]}</span>
+        </li>
+      {/each}
+    </ul>
+    {#if chat.paused !== null}
+      <button
+        type="button"
+        class="continue"
+        disabled={assistant.busy}
+        onclick={() => assistant.resume()}>Continue</button
+      >
     {/if}
   </section>
 
@@ -234,6 +249,22 @@
     display: flex;
     gap: var(--space-2);
     align-items: baseline;
+  }
+
+  .tools time {
+    color: var(--color-text-muted);
+  }
+
+  .continue {
+    align-self: flex-start;
+    font: inherit;
+    font-size: var(--font-size-xs);
+    color: var(--color-text);
+    background: var(--color-bg-0);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: var(--space-1) var(--space-2);
+    cursor: pointer;
   }
 
   .tier {

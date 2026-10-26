@@ -59,9 +59,13 @@ export async function mockSidecar(
       "--- /dev/null\n+++ b/ideas/new.md\n@@ -0,0 +1 @@\n+# New idea\n";
 
     async function chat(args: {
-      params: { chat: number; text: string };
+      params: { chat: number; text: string; continue?: boolean };
     }): Promise<unknown> {
       const { chat, text } = args.params;
+      if (args.params.continue)
+        return { reply: "Carried on to the end.", stopped: false };
+      if (text.includes("many"))
+        return { reply: "", stopped: false, limit: 20 };
       if (text.includes("long")) {
         // Runs until the user presses Stop.
         return new Promise((resolve) =>

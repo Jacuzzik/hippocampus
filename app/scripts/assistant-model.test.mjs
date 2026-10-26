@@ -5,6 +5,7 @@ import {
   emptyChat,
   failChat,
   finishChat,
+  logActivity,
   receiveEvent,
   removeConfirm,
   sendMessage,
@@ -130,4 +131,32 @@ test("declining removes the card", () => {
   let chat = sendMessage(emptyChat(), "x", 8);
   chat = receiveEvent(chat, { ...write(chat), chat: 8 });
   assert.equal(removeConfirm(chat, "c1").confirms.length, 0);
+});
+
+test("finishChat at the tool limit logs why it stopped and waits to continue", () => {
+  const chat = finishChat(
+    sendMessage(emptyChat(), "go", 6),
+    { reply: "", stopped: false, limit: 20 },
+    "09:30:00",
+  );
+  assert.equal(chat.chatId, null);
+  assert.equal(chat.paused, 20);
+  assert.equal(chat.orb, "idle");
+  assert.deepEqual(chat.activity, [
+    {
+      at: "09:30:00",
+      text: "Stopped after 20 tool calls in one request. Continue to let it go on.",
+    },
+  ]);
+  assert.equal(chat.messages.at(-1).role, "user");
+  assert.equal(sendMessage(chat, "Continue.", 7).paused, null);
+});
+
+test("logActivity keeps the newest entries, with their times", () => {
+  let chat = emptyChat();
+  for (let i = 0; i < TOOL_LOG_LIMIT + 5; i++)
+    chat = logActivity(chat, `event ${i}`, "10:00:00");
+  assert.equal(chat.activity.length, TOOL_LOG_LIMIT);
+  assert.equal(chat.activity.at(-1).text, `event ${TOOL_LOG_LIMIT + 4}`);
+  assert.equal(chat.activity[0].at, "10:00:00");
 });
