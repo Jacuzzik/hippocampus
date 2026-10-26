@@ -1,4 +1,3 @@
-import "@fontsource-variable/outfit";
 import "@fontsource-variable/jetbrains-mono";
 import "./styles/tokens.css";
 import "./styles/global.css";

@@ -18,8 +18,9 @@
     border-bottom: 1px solid var(--color-border);
   }
 
+  /* Obsidian's tab-header title: small and semibold, not a logotype. */
   .brand {
-    font-size: var(--font-size-md);
+    font-size: var(--font-size-sm);
     font-weight: 600;
   }
 

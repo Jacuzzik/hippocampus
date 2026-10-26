@@ -16,7 +16,24 @@ body {
   color: var(--color-text);
   font-family: var(--font-ui);
   font-size: var(--font-size-sm);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
   overflow: hidden;
+}
+
+/* Headings are a single weight; sizes come from the component. */
+h1,
+h2,
+h3 {
+  line-height: 1.3;
+  font-weight: 600;
+}
+
+/* Code and paths use the monospace face, as Obsidian does. */
+code,
+kbd,
+pre {
+  font-family: var(--font-mono);
 }
 
 /* Thin scrollbars and selection colour, as in Obsidian. */
