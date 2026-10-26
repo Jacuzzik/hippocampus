@@ -13,6 +13,8 @@ SETTINGS_PATH = ROOT / "config" / "settings.toml"
 
 @dataclass(frozen=True)
 class Settings:
+    # Version of this file's layout. Only 1 exists; a later release migrates older files.
+    settings_version: int = 1
     vault: Path | None = None
     # "claude" or a preset from ai/providers/openai_compat.py. Ollama is the fallback.
     provider: str = "claude"
@@ -40,6 +42,8 @@ def _provider(value: object) -> str:
 def load_settings(path: Path = SETTINGS_PATH) -> Settings:
     """Read the settings file. A missing file gives the defaults; a bad one is an error."""
     data = tomllib.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
+    if data.get("settings_version", Settings.settings_version) != Settings.settings_version:
+        raise ValueError(f"settings_version must be {Settings.settings_version}")
     # HIPPOCAMPUS_VAULT wins over the file, so a launcher can pick the vault without editing it.
     vault = os.environ.get("HIPPOCAMPUS_VAULT") or data.get("vault", {}).get("path")
     ai = data.get("ai", {})

@@ -24,11 +24,17 @@ def test_vault_path_is_relative_to_the_repo_root(tmp_path: Path) -> None:
     assert settings.claude_model == Settings().claude_model
 
 
+def test_unknown_settings_version_is_an_error(tmp_path: Path) -> None:
+    (tmp_path / "settings.toml").write_text("settings_version = 2\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="settings_version must be 1"):
+        load_settings(tmp_path / "settings.toml")
+
+
 def test_repo_settings_file_has_no_secret_field() -> None:
     data = tomllib.loads(
         (Path(__file__).parents[2] / "config" / "settings.toml").read_text("utf-8")
     )
-    names = [name for section in data.values() for name in section]
+    names = [name for section in data.values() if isinstance(section, dict) for name in section]
     assert not [
         n for n in names if any(word in n for word in ("key", "secret", "token", "password"))
     ]
