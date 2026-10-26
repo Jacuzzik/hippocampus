@@ -14,6 +14,7 @@
     linkCounts,
     matchFilter,
     mulberry32,
+    nodeRadius,
     zoomAt,
     type Camera,
     type GraphData,
@@ -282,7 +283,7 @@
       const base = isSel ? colours.hot : colours.node;
       const alpha = visible[i] ? base[3] : base[3] * 0.15;
       colors.set([base[0], base[1], base[2], alpha], i * 4);
-      radii[i] = isSel ? 7 : 4;
+      radii[i] = nodeRadius(degree[i] ?? 0, isSel);
     }
     renderer.setColors(colors);
     renderer.setRadii(radii);

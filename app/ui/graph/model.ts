@@ -222,3 +222,9 @@ export function tagCounts(nodes: readonly GraphNode[]): [string, number][] {
     for (const t of n.tags) counts.set(t, (counts.get(t) ?? 0) + 1);
   return [...counts].sort(([a], [b]) => a.localeCompare(b));
 }
+
+/** Node radius in px: 4 for a note with no links, growing with its link count up to 10. */
+export function nodeRadius(links: number, selected: boolean): number {
+  const size = 4 + Math.min(6, Math.sqrt(links) * 1.5);
+  return selected ? Math.max(7, size) : size;
+}

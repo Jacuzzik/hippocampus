@@ -10,6 +10,7 @@ import {
   linkCounts,
   matchFilter,
   MAX_ZOOM,
+  nodeRadius,
   MIN_ZOOM,
   screenToWorld,
   tagCounts,
@@ -142,4 +143,12 @@ test("tagCounts gives each tag and its note count, sorted", () => {
     ["idea", 1],
     ["work", 2],
   ]);
+});
+
+test("nodeRadius grows with the link count, capped, and a selected node is at least 7", () => {
+  assert.equal(nodeRadius(0, false), 4);
+  assert.ok(nodeRadius(4, false) > nodeRadius(1, false));
+  assert.equal(nodeRadius(10000, false), 10);
+  assert.equal(nodeRadius(0, true), 7);
+  assert.ok(nodeRadius(16, true) >= nodeRadius(16, false));
 });
