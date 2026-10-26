@@ -85,6 +85,30 @@ for (const vp of VIEWPORTS) {
       expect(await smallTargets(page)).toEqual([]);
     });
 
+    // Opens a drawer from the command palette, then checks it sits inside the window.
+    for (const [label, selector] of [
+      ["Toggle note list", "aside.sidebar"],
+      ["Toggle assistant", ".right-panel"],
+    ] as const) {
+      test(`the "${label}" drawer fits the width`, async ({ page }) => {
+        // Wide screens start with both drawers open, so the toggle would close them.
+        test.skip(
+          vp.width > 900,
+          "drawers are open by default on wide screens",
+        );
+        await page.keyboard.press("Control+p");
+        await page.getByText(label, { exact: true }).click();
+        const drawer = page.locator(selector).first();
+        await expect(drawer).toBeVisible();
+        const right = await drawer.evaluate(
+          (el) => el.getBoundingClientRect().right,
+        );
+        expect(right).toBeLessThanOrEqual(vp.width);
+        expect(await sidewaysScroll(page)).toBe(0);
+        expect(await smallTargets(page)).toEqual([]);
+      });
+    }
+
     test("the setup and account dialog fits the width", async ({ page }) => {
       await page
         .getByRole("button", { name: /setup and account/i })
