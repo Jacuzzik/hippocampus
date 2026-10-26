@@ -8,9 +8,10 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from keyring.errors import KeyringError
 
 import core
-from core.__main__ import DEFAULT_STORAGE
+from core.__main__ import DEFAULT_STORAGE, manage_key
 from core.vault import index_path_for
 
 PROJECT_ROOT = Path(core.__file__).resolve().parent.parent
@@ -29,7 +30,7 @@ def run_core(*args: str) -> subprocess.CompletedProcess[str]:
 def has_note(db: Path, path: str) -> bool:
     if not db.exists():
         return False
-    with sqlite3.connect(f"file:{db}?mode=ro", uri=True) as conn:
+    with sqlite3.connect(f"{db.resolve().as_uri()}?mode=ro", uri=True) as conn:
         found = conn.execute("SELECT 1 FROM notes WHERE path = ?", (path,)).fetchone()
     conn.close()
     return found is not None
@@ -61,7 +62,13 @@ def test_index_missing_vault(tmp_path: Path) -> None:
     assert not (tmp_path / "s").exists()
 
 
-@pytest.mark.parametrize("stop", ["stdin", "sigint", "sigterm"])
+no_signals = pytest.mark.skipif(sys.platform == "win32", reason="Windows cannot signal a child")
+
+
+@pytest.mark.parametrize(
+    "stop",
+    ["stdin", pytest.param("sigint", marks=no_signals), pytest.param("sigterm", marks=no_signals)],
+)
 def test_watch(sample_vault: tuple[Path, dict[str, Any]], storage: Path, stop: str) -> None:
     vault, manifest = sample_vault
     proc = subprocess.Popen(
@@ -95,3 +102,15 @@ def test_watch(sample_vault: tuple[Path, dict[str, Any]], storage: Path, stop: s
             proc.wait()
     assert proc.stderr is not None
     assert "Stopped watching" in proc.stderr.read()
+
+
+def test_keychain_error_is_reported_not_raised(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    def unavailable(key: str) -> None:
+        raise KeyringError("no Secret Service")
+
+    monkeypatch.setattr("core.__main__.set_api_key", unavailable)
+    monkeypatch.setattr("getpass.getpass", lambda _prompt: "sk-test")
+    assert manage_key("set") == 1
+    assert "keychain is not available" in capsys.readouterr().err
