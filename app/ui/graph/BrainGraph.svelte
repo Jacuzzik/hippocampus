@@ -642,6 +642,15 @@
     cursor: pointer;
   }
 
+  /* Tablets and touch screens: the Hide orphans label is the touch target, so it takes the minimum height. */
+  @media (max-width: 1100px), (pointer: coarse) {
+    .orphans {
+      display: inline-flex;
+      align-items: center;
+      min-height: var(--layout-touch-target);
+    }
+  }
+
   .notice {
     position: absolute;
     inset: 0;

@@ -51,3 +51,15 @@ html {
   outline: 2px solid var(--color-focus-ring);
   outline-offset: 2px;
 }
+
+/* Tablets and touch screens: controls grow to the 44px touch minimum. Wide desktop keeps its sizes. */
+@media (max-width: 1100px), (pointer: coarse) {
+  button,
+  select,
+  textarea,
+  input:not([type="checkbox"]):not([type="radio"]),
+  [role="button"],
+  [role="option"] {
+    min-height: var(--layout-touch-target);
+  }
+}

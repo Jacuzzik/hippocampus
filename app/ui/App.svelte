@@ -16,8 +16,10 @@
   let query = $state("");
   let tag = $state<string | null>(null);
   let selectedId = $state<string | null>(null);
-  let sidebarOpen = $state(true);
-  let panelOpen = $state(true);
+  // Phones and portrait tablets start with the note list and assistant closed, so the graph gets the screen.
+  const narrow = window.matchMedia("(max-width: 900px)").matches;
+  let sidebarOpen = $state(!narrow);
+  let panelOpen = $state(!narrow);
   // Which overlay box is open: the quick switcher (Ctrl+O) or the command palette (Ctrl+P).
   let box = $state<"switcher" | "palette" | null>(null);
   let searchEl = $state<HTMLInputElement | null>(null);
@@ -162,6 +164,48 @@
     .shell {
       --sidebar-col: 200px;
       --panel-col: min(var(--layout-right-panel-width), 34vw);
+    }
+  }
+
+  /* Tablets and phones: the rail grows to a 44px touch target. */
+  @media (max-width: 1100px) {
+    .shell {
+      --layout-ribbon-width: 60px;
+    }
+  }
+
+  /* Phones and portrait tablets: the graph takes the screen, and the note list and assistant
+     open over it as drawers. */
+  @media (max-width: 900px) {
+    .shell {
+      grid-template-columns: var(--layout-ribbon-width) minmax(0, 1fr);
+      grid-template-areas:
+        "rail graph"
+        "status status";
+    }
+
+    .shell > :global(.sidebar),
+    .shell > :global(.right-panel) {
+      position: fixed;
+      top: 0;
+      bottom: var(--layout-status-bar-height);
+      left: var(--layout-ribbon-width);
+      z-index: 5;
+      grid-area: auto;
+      max-width: calc(100vw - var(--layout-ribbon-width));
+      box-shadow: 0 0 24px rgb(0 0 0 / 0.4);
+    }
+
+    .shell > :global(.sidebar) {
+      width: min(
+        var(--layout-sidebar-width),
+        100vw - var(--layout-ribbon-width)
+      );
+    }
+
+    .shell > :global(.right-panel) {
+      right: 0;
+      width: auto;
     }
   }
 
