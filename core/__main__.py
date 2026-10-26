@@ -2,7 +2,8 @@
 
 `serve` runs the JSON-lines bridge the Tauri shell talks to. It prints a ready line,
 then reads one JSON request per line on stdin and answers each with one line on stdout.
-Requests: {"id": ..., "method": "graph"} and {"id": ..., "method": "open", "vault": "<folder>"}.
+Requests: {"id": ..., "method": "graph"}, {"id": ..., "method": "open", "vault": "<folder>"} and
+{"id": ..., "method": "read", "path": "<note id>"} (answers {"id": <note id>, "text": ...}).
 Answers: {"id": ..., "result": ...} or {"id": ..., "error": "<message>"}. A bad line gets an
 error answer and the loop keeps going. It runs until stdin closes. No network listener.
 
@@ -85,6 +86,15 @@ class Session:
                 raise ValueError("no vault is open")
             return self.indexer.store.graph()
 
+    def read(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Return a note's text. The path checks are the ones `read_note` uses."""
+        path = request.get("path")
+        with self.lock:
+            if self.indexer is None:
+                raise ValueError("no vault is open")
+            text = vault_tools(self.indexer, self.lock)["read_note"].run({"path": path})
+        return {"id": path, "text": text}
+
     def chat(self, request: dict[str, Any]) -> dict[str, Any]:
         text = request.get("text")
         if not isinstance(text, str) or not text.strip():
@@ -119,6 +129,8 @@ class Session:
             if not isinstance(vault, str) or not vault:
                 raise ValueError('"open" needs a "vault" folder path')
             return self.open(Path(vault))
+        if method == "read":
+            return self.read(request)
         if method == "chat":
             return self.chat(request)
         if method == "confirm":

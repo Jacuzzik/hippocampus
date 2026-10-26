@@ -22,6 +22,27 @@ export async function mockSidecar(page: Page): Promise<void> {
       ],
     };
 
+    // The note text the drawer reads through the "read" method.
+    const texts: Record<string, string> = {
+      "alpha.md": [
+        "# Alpha",
+        "",
+        "A first idea, see [[Beta]] and [[gamma|the last note]].",
+        "",
+        "## Steps",
+        "",
+        "- read the [docs](https://example.com)",
+        "- check `config/settings.toml`",
+        "",
+        "```",
+        "let x = 1;",
+        "```",
+        "",
+      ].join("\n"),
+      "beta.md": "# Beta\n",
+      "gamma.md": "# Gamma\n\nNo links here.\n",
+    };
+
     const emit = (name: string, payload: unknown) => {
       for (const id of listeners.get(name) ?? [])
         callbacks.get(id)?.({ event: name, payload, id });
@@ -86,8 +107,15 @@ export async function mockSidecar(page: Page): Promise<void> {
       switch (args.method) {
         case "graph":
           return graph;
+        case "read": {
+          const path = String(args.params?.path);
+          if (!(path in texts)) throw new Error(`mock: no note ${path}`);
+          return { id: path, text: texts[path] };
+        }
         case "chat":
-          return chat(args as unknown as { params: { chat: number; text: string } });
+          return chat(
+            args as unknown as { params: { chat: number; text: string } },
+          );
         case "confirm": {
           const params = args.params as { call: string; approve: boolean };
           // The fake sidecar keeps one pending chat per card: find it through the call id.

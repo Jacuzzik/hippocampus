@@ -1,7 +1,9 @@
 <script lang="ts">
   import { untrack } from "svelte";
   import { SvelteMap } from "svelte/reactivity";
+  import { invoke } from "@tauri-apps/api/core";
   import { token } from "./colors";
+  import { parseNote, type Block, type Inline } from "./markdown";
   import type { Rgba } from "./renderer";
   import { BrainRenderer } from "./renderer";
   import {
@@ -204,6 +206,44 @@
   function open(id: string): void {
     onselect(id);
   }
+
+  // [[Name]] links match a note's title or its file name, as the vault's own link rules do.
+  function resolve(target: string): string | null {
+    const key = target.replace(/\.md$/i, "").toLowerCase();
+    const hit = data.nodes.find((n) => {
+      const stem = n.id.replace(/\.md$/i, "").toLowerCase();
+      return (
+        n.title.toLowerCase() === key ||
+        stem === key ||
+        stem.endsWith(`/${key}`)
+      );
+    });
+    return hit?.id ?? null;
+  }
+
+  // The body is read from the sidecar when the drawer opens on a note. A reply for an earlier note is dropped.
+  let body = $state<
+    { id: string; blocks: Block[] } | { id: string; error: string } | null
+  >(null);
+  $effect(() => {
+    const id = node?.id;
+    if (!id) return;
+    let stale = false;
+    invoke<{ text: string }>("sidecar_call", {
+      method: "read",
+      params: { path: id },
+    })
+      .then((answer) => {
+        if (!stale) body = { id, blocks: parseNote(answer.text) };
+      })
+      .catch((cause: unknown) => {
+        if (!stale) body = { id, error: String(cause) };
+      });
+    return () => {
+      stale = true;
+    };
+  });
+  const shown = $derived(body && node && body.id === node.id ? body : null);
 
   // Bring a selected node into view, unless it is already on screen (a click on the canvas).
   $effect(() => {
@@ -432,6 +472,36 @@
       {#if node.tags.length}
         <p class="tags">{node.tags.map((t) => `#${t}`).join(" ")}</p>
       {/if}
+      <section class="body" aria-label="Note text">
+        {#if shown && "error" in shown}
+          <p class="muted" role="alert">
+            Could not read this note: {shown.error}
+          </p>
+        {:else if shown}
+          <!-- A leading title heading repeats the drawer's own title, so it is not shown twice. -->
+          {#each shown.blocks.filter((b, k) => !(k === 0 && b.kind === "heading" && b.level === 1 && b.children
+                  .map((c) => c.text)
+                  .join("") === node?.title)) as block, k (k)}
+            {#if block.kind === "heading"}
+              <svelte:element this={`h${block.level}`}>
+                {@render inlines(block.children)}
+              </svelte:element>
+            {:else if block.kind === "paragraph"}
+              <p>{@render inlines(block.children)}</p>
+            {:else if block.kind === "list"}
+              <svelte:element this={block.ordered ? "ol" : "ul"} class="items">
+                {#each block.items as item, j (j)}
+                  <li>{@render inlines(item)}</li>
+                {/each}
+              </svelte:element>
+            {:else}
+              <pre><code>{block.text}</code></pre>
+            {/if}
+          {/each}
+        {:else}
+          <p class="muted">Loading the note…</p>
+        {/if}
+      </section>
       <h3>Links to</h3>
       {#if outgoing.length}
         <ul>
@@ -461,6 +531,24 @@
     </aside>
   {/if}
 </div>
+
+{#snippet inlines(parts: Inline[])}
+  {#each parts as part, k (k)}
+    {#if part.kind === "code"}<code>{part.text}</code>
+    {:else if part.kind === "strong"}<strong>{part.text}</strong>
+    {:else if part.kind === "em"}<em>{part.text}</em>
+    {:else if part.kind === "link"}<a href={part.href} rel="noopener noreferrer"
+        >{part.text}</a
+      >
+    {:else if part.kind === "wiki"}
+      {@const id = resolve(part.target)}
+      {#if id}<button type="button" class="wiki" onclick={() => open(id)}
+          >{part.text}</button
+        >
+      {:else}<span class="wiki-missing">{part.text}</span>{/if}
+    {:else}{part.text}{/if}
+  {/each}
+{/snippet}
 
 <style>
   .brain {
@@ -587,5 +675,61 @@
     color: var(--color-text-muted);
     font-size: var(--font-size-lg);
     line-height: 1;
+  }
+
+  .body {
+    margin-top: var(--space-3);
+    font-size: var(--font-size-sm);
+    line-height: 1.6;
+  }
+
+  .body p {
+    margin: var(--space-2) 0 0;
+  }
+
+  .body h1,
+  .body h2,
+  .body h3,
+  .body h4,
+  .body h5,
+  .body h6 {
+    margin: var(--space-3) 0 0;
+    font-size: var(--font-size-sm);
+  }
+
+  .body .items {
+    margin-left: var(--space-4);
+    list-style: revert;
+  }
+
+  .body .items li + li {
+    margin-top: 0;
+  }
+
+  .body pre {
+    margin: var(--space-2) 0 0;
+    padding: var(--space-2);
+    overflow-x: auto;
+    background: var(--color-surface);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-xs);
+  }
+
+  .body code {
+    font-family: var(--font-mono);
+  }
+
+  .body a {
+    color: var(--color-link);
+  }
+
+  .wiki {
+    display: inline;
+    color: var(--color-link);
+    text-decoration: underline;
+  }
+
+  .wiki-missing {
+    color: var(--color-text-muted);
   }
 </style>
