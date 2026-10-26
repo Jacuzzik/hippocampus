@@ -6,6 +6,7 @@
   import { parseNote, type Block, type Inline } from "./markdown";
   import type { Rgba } from "./renderer";
   import { BrainRenderer } from "./renderer";
+  import { Canvas2DRenderer } from "./renderer-canvas";
   import {
     centerOn,
     hitTest,
@@ -46,7 +47,7 @@
   let cam = $state<Camera>({ x: 0, y: 0, zoom: 1 });
 
   // Plain variables: they are rebuilt from `data` and read by the draw loop, not by the template.
-  let renderer: BrainRenderer | null = null;
+  let renderer: BrainRenderer | Canvas2DRenderer | null = null;
   // `home` is the laid-out position; `pos` is home plus the drift, and is what is drawn and hit-tested.
   let home: Float32Array<ArrayBuffer> = new Float32Array(0);
   let pos: Float32Array<ArrayBuffer> = new Float32Array(0);
@@ -290,13 +291,28 @@
     schedule();
   }
 
-  // Create the WebGL context once per canvas and keep the canvas size in step with its box.
+  // Phones and some browsers have no WebGL 2; the 2D canvas draws the same graph instead.
+  function createRenderer(
+    c: HTMLCanvasElement,
+  ): BrainRenderer | Canvas2DRenderer {
+    try {
+      return new BrainRenderer(c);
+    } catch (cause) {
+      console.warn(
+        "WebGL 2 unavailable; drawing the graph on a 2D canvas",
+        cause,
+      );
+      return new Canvas2DRenderer(c);
+    }
+  }
+
+  // Create the renderer once per canvas and keep the canvas size in step with its box.
   $effect(() => {
     const c = canvas;
     if (!c) return;
-    let r: BrainRenderer;
+    let r: BrainRenderer | Canvas2DRenderer;
     try {
-      r = new BrainRenderer(c);
+      r = createRenderer(c);
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
       return;
