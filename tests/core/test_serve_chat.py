@@ -140,3 +140,10 @@ def test_chat_needs_text_and_confirm_needs_a_waiting_call(storage: Path) -> None
     with pytest.raises(ValueError, match="no confirmation"):
         session.dispatch({"method": "confirm", "call": "nope", "approve": True})
     session.close()
+
+
+def test_answer_needs_a_waiting_question(storage: Path) -> None:
+    session = sidecar.Session(storage, Settings())
+    with pytest.raises(ValueError, match="no question"):
+        session.dispatch({"method": "answer", "call": "nope", "text": "x"})
+    session.close()

@@ -44,7 +44,7 @@ from core import __version__
 from core.settings import SETTINGS_PATH, Settings, load_settings
 from core.vault import Indexer, open_index
 from core.vault.watcher import VaultWatcher
-from tools.gate import ConfirmGate, KillSwitch, Stopped
+from tools.gate import AskQueue, ConfirmGate, KillSwitch, Stopped
 from tools.vault_tools import vault_tools
 
 logger = logging.getLogger("hippocampus.core")
@@ -71,6 +71,7 @@ class Session:
         self.lock = threading.RLock()
         self.kill = KillSwitch()
         self.gate = ConfirmGate()
+        self.asks = AskQueue()
         self.paused: list[dict[str, Any]] | None = (
             None  # messages of a request that hit its tool limit
         )
@@ -139,7 +140,13 @@ class Session:
             self.emit({**event, "chat": chat_id})
 
         agent = Agent(
-            router, tools, self.kill, self.gate, emit, max_tool_calls=self.settings.max_tool_calls
+            router,
+            tools,
+            self.kill,
+            self.gate,
+            emit,
+            max_tool_calls=self.settings.max_tool_calls,
+            asks=self.asks,
         )
         try:
             reply = asyncio.run(agent.run(text.strip(), messages))
@@ -154,6 +161,16 @@ class Session:
         call = request.get("call")
         if not isinstance(call, str) or not self.gate.decide(call, request.get("approve") is True):
             raise ValueError("no confirmation is waiting with that call id")
+        return {"call": call}
+
+    def answer(self, request: dict[str, Any]) -> dict[str, Any]:
+        call, text = request.get("call"), request.get("text")
+        if (
+            not isinstance(call, str)
+            or not isinstance(text, str)
+            or not self.asks.answer(call, text)
+        ):
+            raise ValueError("no question is waiting with that call id")
         return {"call": call}
 
     def dispatch(self, request: dict[str, Any]) -> dict[str, Any]:
@@ -177,6 +194,8 @@ class Session:
             return self.chat(request)
         if method == "confirm":
             return self.confirm(request)
+        if method == "answer":
+            return self.answer(request)
         if method == "stop":
             self.kill.trigger()
             return {"stopped": True}

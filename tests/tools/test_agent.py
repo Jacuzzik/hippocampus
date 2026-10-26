@@ -9,7 +9,7 @@ import pytest
 from ai.agent import Agent, AgentError
 from ai.providers.base import ProviderError, Reply, ToolCall
 from ai.router import Router
-from tools.gate import ConfirmGate, KillSwitch, Stopped
+from tools.gate import AskQueue, ConfirmGate, KillSwitch, Stopped
 from tools.registry import Tool
 
 
@@ -193,3 +193,75 @@ def test_gate_decide_only_answers_open_calls() -> None:
     assert gate.decision("c") is True
     gate.close("c")
     assert gate.decision("c") is None
+
+
+def test_tool_not_on_the_allowed_list_is_refused() -> None:
+    seen: list[dict] = []
+    provider = Scripted(
+        Reply("", [ToolCall("c1", "read_note", {"path": "a.md"})]),
+        Reply("could not read it"),
+    )
+    tools = {"read_note": read_tool(seen)}
+    events: list[dict] = []
+    agent = Agent(
+        Router(None, provider), tools, KillSwitch(), ConfirmGate(), events.append, allowed={"other"}
+    )
+    messages: list[dict] = []
+    assert asyncio.run(agent.run("read it", messages)) == "could not read it"
+    assert seen == []
+    assert messages[-2]["content"] == "error: this assistant may not use read_note."
+
+
+def test_assistant_asks_the_user_and_waits_for_the_answer() -> None:
+    asks = AskQueue()
+    provider = Scripted(
+        Reply("", [ToolCall("q1", "ask_user", {"question": "Which folder?"})]),
+        Reply("I will use notes"),
+    )
+    events: list[dict] = []
+    kill = KillSwitch()
+    agent = Agent(Router(None, provider), {}, kill, ConfirmGate(), events.append, asks=asks)
+    messages: list[dict] = []
+
+    def answer_when_asked() -> None:
+        while not any(e["event"] == "ask" for e in events):
+            time.sleep(0.01)
+        assert [e for e in events if e["event"] == "ask"][0]["question"] == "Which folder?"
+        assert asks.waiting() == ["q1"]
+        assert asks.answer("q1", "notes")
+
+    threading.Thread(target=answer_when_asked).start()
+    assert asyncio.run(agent.run("write a note", messages)) == "I will use notes"
+    assert messages[-2] == {
+        "role": "tool",
+        "tool_call_id": "q1",
+        "name": "ask_user",
+        "content": "notes",
+    }
+    assert asks.waiting() == []
+
+
+def test_stop_ends_a_question_that_is_waiting() -> None:
+    asks = AskQueue()
+    provider = Scripted(Reply("", [ToolCall("q1", "ask_user", {"question": "Which?"})]))
+    kill = KillSwitch()
+    events: list[dict] = []
+
+    def stop_when_asked(event: dict) -> None:
+        events.append(event)
+        if event["event"] == "ask":
+            kill.trigger()
+
+    agent = Agent(Router(None, provider), {}, kill, ConfirmGate(), stop_when_asked, asks=asks)
+    with pytest.raises(Stopped):
+        asyncio.run(agent.run("go"))
+    assert asks.waiting() == []
+
+
+def test_answer_only_fills_a_question_that_is_waiting() -> None:
+    asks = AskQueue()
+    asks.open("q1")
+    assert asks.answer("q1", "first")
+    assert not asks.answer("q1", "second")
+    assert not asks.answer("missing", "x")
+    assert asks.answer_of("q1") == "first"
