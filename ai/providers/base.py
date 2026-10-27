@@ -14,6 +14,8 @@ import urllib.request
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
+from ai import network
+
 logger = logging.getLogger("hippocampus.ai")
 
 
@@ -39,6 +41,12 @@ class ToolSpec:
 class Reply:
     text: str
     tool_calls: list[ToolCall] = field(default_factory=list)
+    # Tokens the provider billed for this reply (input plus output); 0 when it did not say.
+    tokens: int = 0
+
+
+class NetworkBlocked(ProviderError):
+    """A model call the network switch does not allow. Nothing leaves the machine."""
 
 
 class Provider(Protocol):
@@ -58,6 +66,8 @@ def _post(
     url: str, headers: dict[str, str], body: dict[str, Any], timeout: float
 ) -> dict[str, Any]:
     host = urllib.request.urlsplit(url).netloc
+    if not network.allows_model_calls():
+        raise NetworkBlocked(f"network is {network.mode().capitalize()}: no call to {host}")
     request = urllib.request.Request(
         url, data=json.dumps(body).encode(), headers=headers, method="POST"
     )

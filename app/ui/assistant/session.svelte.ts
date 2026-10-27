@@ -65,6 +65,16 @@ export const assistant = {
     }
   },
 
+  /** Let the next request past a token cap, then send the last message again. */
+  async allowOne(): Promise<void> {
+    try {
+      await invoke("sidecar_call", { method: "budget_allow" });
+      chat = { ...chat, budgetPause: null };
+    } catch (cause) {
+      chat = failChat(chat, errorText(cause));
+    }
+  },
+
   /** Carry on after a pause at the tool-call limit. */
   async resume(): Promise<void> {
     await this.send("Continue.", true);

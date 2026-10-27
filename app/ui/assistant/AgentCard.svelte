@@ -42,7 +42,7 @@
     align-items: center;
     gap: var(--space-3);
     padding: var(--space-3);
-    background: #fff;
+    background: var(--color-face-disc);
     color: var(--card-accent);
     border-radius: var(--radius-md);
   }
@@ -53,7 +53,7 @@
     height: 80px;
     display: grid;
     place-items: center;
-    background: #fff;
+    background: var(--color-face-disc);
     border-radius: var(--radius-md);
   }
 

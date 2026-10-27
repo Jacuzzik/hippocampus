@@ -6,10 +6,20 @@ import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
+from ai.network import MODES as NETWORK_MODES
 from ai.providers.openai_compat import PRESETS
 
 ROOT = Path(__file__).resolve().parent.parent
 SETTINGS_PATH = ROOT / "config" / "settings.toml"
+
+
+@dataclass(frozen=True)
+class Caps:
+    """Token caps for one scope. 0 means no cap for that window."""
+
+    daily: int = 0
+    weekly: int = 0
+    monthly: int = 0
 
 
 @dataclass(frozen=True)
@@ -28,6 +38,13 @@ class Settings:
     max_tool_calls: int = 20
     # Tools the assistant may use, by name. None means every tool.
     allowed_tools: tuple[str, ...] | None = None
+    # Outbound switch: off, listen, converse or open. Off is the default.
+    network_mode: str = "off"
+    # Token caps for the whole app, and for the assistant.
+    budget: Caps = Caps()
+    assistant_budget: Caps = Caps()
+    # A memory note longer than this (bytes) has its oldest sections moved to an archive note.
+    memory_max_bytes: int = 32_000
 
 
 _TOOL_NAME = re.compile(r"[a-z][a-z0-9_]*")
@@ -55,6 +72,20 @@ def _provider(value: object) -> str:
     return str(value)
 
 
+def _caps(value: object, name: str) -> Caps:
+    if value is None:
+        return Caps()
+    if not isinstance(value, dict):
+        raise ValueError(f"{name} must be a table")
+    out = {}
+    for window in ("daily", "weekly", "monthly"):
+        number = value.get(window, 0)
+        if isinstance(number, bool) or not isinstance(number, int) or number < 0:
+            raise ValueError(f"{name}.{window} must be a whole number, 0 or more")
+        out[window] = number
+    return Caps(**out)
+
+
 def load_settings(path: Path = SETTINGS_PATH) -> Settings:
     """Read the settings file. A missing file gives the defaults; a bad one is an error."""
     data = tomllib.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
@@ -64,6 +95,13 @@ def load_settings(path: Path = SETTINGS_PATH) -> Settings:
     vault = os.environ.get("HIPPOCAMPUS_VAULT") or data.get("vault", {}).get("path")
     ai = data.get("ai", {})
     defaults = Settings()
+    network = data.get("network", {}).get("mode", defaults.network_mode)
+    if network not in NETWORK_MODES:
+        raise ValueError(f"network.mode must be one of: {', '.join(NETWORK_MODES)}")
+    budget = data.get("budget", {})
+    memory_limit = data.get("memory", {}).get("max_bytes", defaults.memory_max_bytes)
+    if isinstance(memory_limit, bool) or not isinstance(memory_limit, int) or memory_limit < 1000:
+        raise ValueError("memory.max_bytes must be a whole number of 1000 or more")
     return Settings(
         vault=(path.parent.parent / vault).resolve() if vault else None,
         provider=_provider(ai.get("provider", defaults.provider)),
@@ -73,14 +111,43 @@ def load_settings(path: Path = SETTINGS_PATH) -> Settings:
         ollama_model=str(ai.get("ollama_model", defaults.ollama_model)),
         max_tool_calls=_tool_limit(ai.get("max_tool_calls", defaults.max_tool_calls)),
         allowed_tools=_allowed_tools(ai.get("allowed_tools")),
+        network_mode=network,
+        budget=_caps(budget, "budget"),
+        assistant_budget=_caps(budget.get("assistant"), "budget.assistant"),
+        memory_max_bytes=memory_limit,
     )
+
+
+def _replace_sections(text: str, headers: tuple[str, ...], blocks: list[str]) -> str:
+    """Drop the named tables from `text` and append `blocks` (each a full table, as text)."""
+    kept: list[str] = []
+    skipping = False
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("["):
+            skipping = stripped in headers
+        if not skipping:
+            kept.append(line)
+    body = "\n".join(kept).rstrip()
+    return (body + "\n\n" if body else "") + "\n\n".join(blocks) + "\n"
+
+
+def _write(path: Path, new: str) -> None:
+    tomllib.loads(new)  # refuse to write a file that no longer parses
+    tmp = path.with_suffix(".toml.tmp")
+    tmp.write_text(new, encoding="utf-8")
+    tmp.replace(path)
+
+
+def _read(path: Path) -> str:
+    return path.read_text(encoding="utf-8") if path.is_file() else ""
 
 
 def save_allowed_tools(names: tuple[str, ...] | None, path: Path = SETTINGS_PATH) -> None:
     """Write `ai.allowed_tools` to the settings file, keeping the rest. None removes the key."""
     if names is not None and not all(_TOOL_NAME.fullmatch(name) for name in names):
         raise ValueError("tool names are lowercase words with underscores")
-    text = path.read_text(encoding="utf-8") if path.is_file() else ""
+    text = _read(path)
     lines = [line for line in text.splitlines() if not re.match(r"\s*allowed_tools\s*=", line)]
     if names is not None:
         entry = "allowed_tools = [" + ", ".join(f'"{name}"' for name in names) + "]"
@@ -89,8 +156,22 @@ def save_allowed_tools(names: tuple[str, ...] | None, path: Path = SETTINGS_PATH
             lines.insert(headers.index("[ai]") + 1, entry)
         else:
             lines += ["", "[ai]", entry]
-    new = "\n".join(lines) + "\n"
-    tomllib.loads(new)  # refuse to write a file that no longer parses
-    tmp = path.with_suffix(".toml.tmp")
-    tmp.write_text(new, encoding="utf-8")
-    tmp.replace(path)
+    _write(path, "\n".join(lines) + "\n")
+
+
+def save_network_mode(mode: str, path: Path = SETTINGS_PATH) -> None:
+    if mode not in NETWORK_MODES:
+        raise ValueError(f"network mode must be one of: {', '.join(NETWORK_MODES)}")
+    _write(path, _replace_sections(_read(path), ("[network]",), [f'[network]\nmode = "{mode}"']))
+
+
+def save_budget(app: Caps, assistant: Caps, path: Path = SETTINGS_PATH) -> None:
+    """Write both budgets as [budget] and [budget.assistant], keeping the rest of the file."""
+
+    def block(name: str, caps: Caps) -> str:
+        values = f"daily = {caps.daily}\nweekly = {caps.weekly}\nmonthly = {caps.monthly}"
+        return f"[{name}]\n{values}"
+
+    blocks = [block("budget", app), block("budget.assistant", assistant)]
+    headers = ("[budget]", "[budget.assistant]")
+    _write(path, _replace_sections(_read(path), headers, blocks))
