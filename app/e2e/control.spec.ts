@@ -106,6 +106,14 @@ test("triggers show the network, the job count and that compaction is Not set up
   await expect(dialog.getByText("None. Webhooks are not set up")).toBeVisible();
 });
 
+test("scheduled jobs show how many are on", async ({ page }) => {
+  await mockSidecar(page);
+  await page.goto("/");
+  await openControl(page);
+  const dialog = page.getByRole("dialog", { name: "Control panel" });
+  await expect(dialog.getByText("1 of 1 on.")).toBeVisible();
+});
+
 test("add an agent stops at each step until it is answered", async ({
   page,
 }) => {
