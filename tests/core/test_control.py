@@ -221,6 +221,17 @@ def test_short_or_non_memory_notes_are_left_alone(tmp_path: Path) -> None:
     assert not memory.is_memory("---\ncreated_by: you\n---\nhi")
 
 
+def test_opening_a_vault_trims_long_memory_notes(tmp_path: Path) -> None:
+    vault = tmp_path / "brain"
+    vault.mkdir()
+    note = vault / "log.md"
+    note.write_text(MEMORY.format(a="x" * 300, b="y" * 300, c="z" * 10), encoding="utf-8")
+    session = sidecar.Session(tmp_path, Settings(memory_max_bytes=400), emit=lambda e: None)
+    session.open(vault)
+    assert (vault / "log-archive.md").is_file()
+    assert "[[log-archive]]" in note.read_text(encoding="utf-8")
+
+
 def test_text_search_works_and_meaning_search_says_not_set_up() -> None:
     notes = {"a.md": "Bought tea", "b.md": "Walked the dog"}
     assert memory.search_text(notes, "TEA") == ["a.md"]
