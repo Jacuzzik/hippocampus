@@ -42,15 +42,15 @@
     align-items: center;
     gap: var(--space-3);
     padding: var(--space-3);
-    background: var(--card-accent);
-    color: var(--card-on);
+    background: #fff;
+    color: var(--card-accent);
     border-radius: var(--radius-md);
   }
 
   .face {
     flex: none;
-    width: 56px;
-    height: 56px;
+    width: 80px;
+    height: 80px;
     display: grid;
     place-items: center;
     background: #fff;
