@@ -31,6 +31,7 @@ import json
 import logging
 import shutil
 import signal
+import subprocess
 import sys
 import threading
 from collections.abc import Callable
@@ -462,6 +463,11 @@ class Session:
         self.note("approval", tool="remove_skill", tier="act", approved=True, by="card")
         return self.skills_state()
 
+    def open_skill_folder(self, request: dict[str, Any]) -> dict[str, Any]:
+        skills.open_folder(SKILLS_DIR, request.get("name"), subprocess.Popen)
+        self.note("tool", tool="open_skill_folder", tier="open", status="done")
+        return self.skills_state()
+
     def share_note(self, request: dict[str, Any]) -> dict[str, Any]:
         password = request.get("password")
         if not isinstance(password, str):
@@ -560,6 +566,7 @@ class Session:
             "set_job": self.set_job,
             "start_helper": self.start_helper,
             "remove_skill": self.remove_skill,
+            "open_skill_folder": self.open_skill_folder,
             "share": self.share_note,
             "save_key": self.save_key,
             "clear_key": self.clear_key,

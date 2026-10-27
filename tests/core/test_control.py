@@ -361,6 +361,18 @@ def test_skills_are_listed_and_only_installed_ones_can_be_removed(tmp_path: Path
     assert not (tmp_path / "tidy").exists()
 
 
+def test_a_skill_folder_opens_only_when_installed(tmp_path: Path) -> None:
+    (tmp_path / "tidy").mkdir()
+    (tmp_path / "tidy" / "SKILL.md").write_text("---\nname: tidy\n---\n")
+    launched: list[list[str]] = []
+    skills.open_folder(tmp_path, "tidy", launched.append)
+    assert launched == [[skills.FILE_MANAGER, str((tmp_path / "tidy").resolve())]]
+    for bad in ["../tidy", "Tidy", "", None]:
+        with pytest.raises(ValueError):
+            skills.open_folder(tmp_path, bad, launched.append)
+    assert len(launched) == 1
+
+
 def test_removing_a_skill_needs_approval(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(sidecar, "SKILLS_DIR", tmp_path)
     session = sidecar.Session(tmp_path / "storage", Settings(), emit=lambda e: None)

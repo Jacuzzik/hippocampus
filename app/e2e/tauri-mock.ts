@@ -353,6 +353,8 @@ export async function mockSidecar(
             return { helpers: helperRows, limit: 4 };
           case "skills":
             return { skills: skillRows };
+          case "open_skill_folder":
+            return { skills: skillRows };
           case "remove_skill":
             skillRows = skillRows.filter((k) => k.name !== args.params?.name);
             return { skills: skillRows };
