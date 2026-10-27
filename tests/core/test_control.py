@@ -5,6 +5,7 @@ import threading
 import urllib.request
 from datetime import datetime, timedelta
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -401,3 +402,28 @@ def test_keys_show_a_hint_never_the_whole_key(
     assert "sk-ant-secret" not in json.dumps(rows)
     with pytest.raises(ValueError):
         session.dispatch({"method": "save_key", "provider": "nope", "key": "x"})
+
+
+def test_a_saved_key_is_used_by_the_next_request_without_a_restart(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store: dict[tuple[str, str], str] = {}
+    keychain = SimpleNamespace(
+        get_password=lambda service, account: store.get((service, account)),
+        set_password=lambda service, account, key: store.__setitem__((service, account), key),
+        delete_password=lambda service, account: store.pop((service, account)),
+    )
+    monkeypatch.setattr("ai.keys.keyring", keychain)
+    keys_used: list[str | None] = []
+
+    def router_for(settings: Settings, key: str | None) -> Router:
+        keys_used.append(key)
+        return Router(None, Scripted(Reply("one", tokens=1), Reply("two", tokens=1)))
+
+    monkeypatch.setattr(sidecar, "build_router", router_for)
+    session = sidecar.Session(tmp_path, Settings(), emit=lambda e: None)
+    chat(session, "before")
+    saved = session.dispatch({"method": "save_key", "provider": "claude", "key": "sk-ant-new-w9x8"})
+    chat(session, "after")
+    assert keys_used == [None, "sk-ant-new-w9x8"]
+    assert "sk-ant-new-w9x8" not in json.dumps(saved)
