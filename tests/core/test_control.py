@@ -407,6 +407,16 @@ def test_password_links_are_checked_and_then_refused_until_a_host_exists() -> No
         share.request_link("long enough password")
 
 
+def test_share_request_reaches_the_share_check_from_the_sidecar(tmp_path: Path) -> None:
+    session = sidecar.Session(tmp_path, Settings(), emit=lambda e: None)
+    with pytest.raises(ValueError, match="at least 8"):
+        session.dispatch({"method": "share", "password": "short"})
+    with pytest.raises(ValueError, match="text"):
+        session.dispatch({"method": "share", "password": None})
+    with pytest.raises(NotSetUp, match="share host"):
+        session.dispatch({"method": "share", "password": "long enough password"})
+
+
 # --- keys --------------------------------------------------------------------------------
 
 
