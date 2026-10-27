@@ -2,6 +2,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  ACTIVITY_FILTERS,
   WINDOWS,
   WINDOW_LABELS,
   activityText,
@@ -72,6 +73,13 @@ test("activity filters keep one kind, and approvals say who decided", () => {
     "create_note (write) approved by you on the approval card",
   );
   assert.equal(activityText(rows[2]), "network is Off");
+});
+
+test("every activity kind the sidecar writes has a filter button", () => {
+  // The kinds from KINDS in core/activity.py. A new kind needs a button here too.
+  const kinds = ["handoff", "tool", "approval", "error", "budget", "setting"];
+  const buttons = ACTIVITY_FILTERS.map((f) => f.id).filter((id) => id !== "all");
+  assert.deepEqual([...buttons].sort(), [...kinds].sort());
 });
 
 test("skill names and key hints are safe to show", () => {
