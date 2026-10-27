@@ -51,16 +51,15 @@
     flex: none;
     width: 56px;
     height: 56px;
-    border-radius: 50%;
-    background: var(--color-face-disc);
     display: grid;
     place-items: center;
-    overflow: hidden;
   }
 
+  /* Faces are black on transparent; make them white and sit them straight on the card. */
   .face img {
     width: 100%;
     height: 100%;
+    filter: brightness(0) invert(1);
   }
 
   .text {
