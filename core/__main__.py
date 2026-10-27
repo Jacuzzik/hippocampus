@@ -269,10 +269,13 @@ class Session:
         if event.get("event") != "tool":
             return
         name, tier, status = event.get("name"), event.get("tier"), event.get("status")
+        call = event.get("call")  # the card's id: ties each approval to the change it approved
         if tier in CONFIRM_TIERS and status in ("running", "declined"):
-            self.note("approval", tool=name, tier=tier, approved=status == "running", by="card")
+            self.note(
+                "approval", tool=name, tier=tier, approved=status == "running", by="card", call=call
+            )
         elif status in ("done", "failed", "refused"):
-            self.note("tool", tool=name, tier=tier, status=status)
+            self.note("tool", tool=name, tier=tier, status=status, call=call)
 
     def budget_overrun(self) -> budgets.Overrun | None:
         return self.ledger.first_overrun(
