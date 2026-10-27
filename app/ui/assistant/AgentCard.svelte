@@ -53,13 +53,13 @@
     height: 56px;
     display: grid;
     place-items: center;
+    background: #fff;
+    border-radius: var(--radius-md);
   }
 
-  /* Faces are black on transparent; make them white and sit them straight on the card. */
   .face img {
     width: 100%;
     height: 100%;
-    filter: brightness(0) invert(1);
   }
 
   .text {
