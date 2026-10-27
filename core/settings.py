@@ -13,10 +13,15 @@ ROOT = Path(__file__).resolve().parent.parent
 SETTINGS_PATH = ROOT / "config" / "settings.toml"
 
 
+# Token cap windows, shortest first. five_hour is a rolling 5 hours back from now.
+CAP_WINDOWS = ("five_hour", "daily", "weekly", "monthly")
+
+
 @dataclass(frozen=True)
 class Caps:
     """Token caps for one scope. 0 means no cap for that window."""
 
+    five_hour: int = 0
     daily: int = 0
     weekly: int = 0
     monthly: int = 0
@@ -78,7 +83,7 @@ def _caps(value: object, name: str) -> Caps:
     if not isinstance(value, dict):
         raise ValueError(f"{name} must be a table")
     out = {}
-    for window in ("daily", "weekly", "monthly"):
+    for window in CAP_WINDOWS:
         number = value.get(window, 0)
         if isinstance(number, bool) or not isinstance(number, int) or number < 0:
             raise ValueError(f"{name}.{window} must be a whole number, 0 or more")
@@ -169,7 +174,7 @@ def save_budget(app: Caps, assistant: Caps, path: Path = SETTINGS_PATH) -> None:
     """Write both budgets as [budget] and [budget.assistant], keeping the rest of the file."""
 
     def block(name: str, caps: Caps) -> str:
-        values = f"daily = {caps.daily}\nweekly = {caps.weekly}\nmonthly = {caps.monthly}"
+        values = "\n".join(f"{w} = {getattr(caps, w)}" for w in CAP_WINDOWS)
         return f"[{name}]\n{values}"
 
     blocks = [block("budget", app), block("budget.assistant", assistant)]

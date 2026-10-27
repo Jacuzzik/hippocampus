@@ -1,7 +1,14 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
   import { onMount } from "svelte";
-  import { WINDOWS, overrunOf, parseCap, usageLine, type Caps } from "./model";
+  import {
+    WINDOWS,
+    WINDOW_LABELS,
+    overrunOf,
+    parseCap,
+    usageLine,
+    type Caps,
+  } from "./model";
 
   // Token caps per day, week and month. 0 means no cap. Over a cap, the assistant pauses.
   type Scope = { caps: Caps; used: Caps };
@@ -87,13 +94,16 @@
 <section class="control-section" aria-labelledby="control-budget">
   <h3 id="control-budget">Token budget</h3>
   <p class="hint">
-    A cap on model tokens per day, week and month. Over a cap the assistant
-    pauses and waits for you. 0 or empty means no cap.
+    A cap on model tokens per 5 hours, day, week and month. Over a cap the
+    assistant pauses and waits for you. 0 or empty means no cap.
   </p>
   {#if reached}
     <p class="error" role="status">
       Paused: the {LABELS[reached.scope as "app" | "assistant"].toLowerCase()}
-      {reached.window} cap is used ({usageLine(reached.used, reached.cap)}).
+      {WINDOW_LABELS[reached.window]} cap is used ({usageLine(
+        reached.used,
+        reached.cap,
+      )}).
     </p>
   {/if}
   {#if budget}
@@ -108,12 +118,12 @@
         <div class="row">
           {#each WINDOWS as w (w)}
             <label>
-              {w}
+              {WINDOW_LABELS[w]}
               <input
                 type="text"
                 inputmode="numeric"
                 size="8"
-                aria-label={`${LABELS[key]} ${w} cap`}
+                aria-label={`${LABELS[key]} ${WINDOW_LABELS[w]} cap`}
                 bind:value={draft[`${key}.${w}`]}
               />
             </label>
