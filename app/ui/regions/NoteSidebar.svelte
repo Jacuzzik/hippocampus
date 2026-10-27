@@ -171,7 +171,7 @@
     max-height: 7rem;
     overflow-y: auto;
     /* fades the bottom edge so a clipped list reads as scrollable */
-    mask-image: linear-gradient(to bottom, #000 75%, transparent);
+    mask-image: linear-gradient(to bottom, black 75%, transparent);
   }
 
   .tag {
