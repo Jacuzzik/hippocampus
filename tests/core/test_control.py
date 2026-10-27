@@ -138,13 +138,31 @@ def test_budget_caps_are_saved_and_read_back(tmp_path: Path) -> None:
 def test_approvals_and_outcomes_are_logged_without_note_text(tmp_path: Path) -> None:
     session = sidecar.Session(tmp_path, Settings(), emit=lambda e: None)
     session.journal_event(
-        {"event": "tool", "name": "create_note", "tier": "write", "status": "running"}
+        {
+            "event": "tool",
+            "call": "card-1",
+            "name": "create_note",
+            "tier": "write",
+            "status": "running",
+        }
     )
     session.journal_event(
-        {"event": "tool", "name": "create_note", "tier": "write", "status": "done"}
+        {
+            "event": "tool",
+            "call": "card-1",
+            "name": "create_note",
+            "tier": "write",
+            "status": "done",
+        }
     )
     session.journal_event(
-        {"event": "tool", "name": "create_note", "tier": "write", "status": "declined"}
+        {
+            "event": "tool",
+            "call": "card-2",
+            "name": "create_note",
+            "tier": "write",
+            "status": "declined",
+        }
     )
     session.journal_event(
         {"event": "tool", "name": "read_note", "tier": "read", "status": "running"}
@@ -152,6 +170,7 @@ def test_approvals_and_outcomes_are_logged_without_note_text(tmp_path: Path) -> 
     rows = session.dispatch({"method": "activity", "limit": 50})["rows"]
     assert [r["kind"] for r in rows] == ["approval", "tool", "approval"]
     assert [r["approved"] for r in rows if r["kind"] == "approval"] == [False, True]
+    assert [r["call"] for r in rows if r["kind"] == "approval"] == ["card-2", "card-1"]
     assert all("preview" not in r and "diff" not in json.dumps(r) for r in rows)
     only = session.dispatch({"method": "activity", "kind": "approval"})["rows"]
     assert len(only) == 2
