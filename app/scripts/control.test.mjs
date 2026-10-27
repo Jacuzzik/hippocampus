@@ -2,7 +2,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  WINDOWS,
+  WINDOW_LABELS,
   activityText,
+  agentStepError,
+  dispatchError,
+  engineStatus,
   filterActivity,
   isSkillName,
   keyStatus,
@@ -12,13 +17,18 @@ import {
 } from "../ui/control/model.ts";
 
 test("a cap is reached only when it is set and the usage meets it", () => {
-  const caps = { daily: 100, weekly: 0, monthly: 0 };
+  const caps = { five_hour: 0, daily: 100, weekly: 0, monthly: 0 };
   assert.equal(
-    overrunOf("app", caps, { daily: 99, weekly: 500, monthly: 900 }),
+    overrunOf("app", caps, {
+      five_hour: 0,
+      daily: 99,
+      weekly: 500,
+      monthly: 900,
+    }),
     null,
   );
   assert.deepEqual(
-    overrunOf("app", caps, { daily: 100, weekly: 0, monthly: 0 }),
+    overrunOf("app", caps, { five_hour: 0, daily: 100, weekly: 0, monthly: 0 }),
     {
       scope: "app",
       window: "daily",
@@ -70,4 +80,63 @@ test("skill names and key hints are safe to show", () => {
   assert.equal(isSkillName("Tidy"), false);
   assert.equal(keyStatus(true, "a1b2"), "Saved, ends in …a1b2");
   assert.equal(keyStatus(false, null), "Not set");
+});
+
+test("the budget has a five-hour window before the day", () => {
+  assert.deepEqual(WINDOWS, ["five_hour", "daily", "weekly", "monthly"]);
+  assert.equal(WINDOW_LABELS.five_hour, "5 hours");
+  const caps = { five_hour: 40, daily: 0, weekly: 0, monthly: 0 };
+  assert.deepEqual(
+    overrunOf("assistant", caps, {
+      five_hour: 40,
+      daily: 0,
+      weekly: 0,
+      monthly: 0,
+    }),
+    {
+      scope: "assistant",
+      window: "five_hour",
+      used: 40,
+      cap: 40,
+    },
+  );
+});
+
+test("an agent step cannot be left until its answer is given", () => {
+  const draft = {
+    name: "",
+    character: "",
+    colour: "accent",
+    folder: "",
+    isolation: "shared",
+    resume: false,
+    provider: "claude",
+    model: "",
+    command: "",
+    description: "",
+    goal: "",
+  };
+  assert.equal(agentStepError(0, draft), "Give the agent a name.");
+  assert.equal(agentStepError(0, { ...draft, name: "Ada" }), null);
+  assert.equal(agentStepError(1, { ...draft, folder: "/vault" }), null);
+  assert.equal(
+    agentStepError(2, { ...draft, model: "claude-sonnet-5-5" }),
+    null,
+  );
+  assert.equal(agentStepError(3, { ...draft, goal: "Tidy notes" }), null);
+});
+
+test("an engine is Not set up until its key is saved, and Ollama needs none", () => {
+  assert.deepEqual(engineStatus("claude", []), {
+    ready: false,
+    text: "Not set up: no Claude (Anthropic) key saved.",
+  });
+  assert.equal(engineStatus("claude", ["claude"]).ready, true);
+  assert.equal(engineStatus("ollama", []).ready, true);
+});
+
+test("a dispatch needs an agent and a task", () => {
+  assert.equal(dispatchError("", "Tidy"), "Pick an agent.");
+  assert.equal(dispatchError("helper", "  "), "Write the task.");
+  assert.equal(dispatchError("helper", "Tidy"), null);
 });

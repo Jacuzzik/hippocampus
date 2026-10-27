@@ -112,12 +112,22 @@ def test_budget_windows_and_scopes(tmp_path: Path) -> None:
     )
 
 
+def test_five_hour_window_is_rolling(tmp_path: Path) -> None:
+    ledger = budget.Ledger(tmp_path / "usage.jsonl")
+    ledger.add("app", 30, now=NOW - timedelta(hours=3))  # inside the last 5 hours
+    ledger.add("app", 70, now=NOW - timedelta(hours=6))  # outside it
+    assert ledger.used("five_hour", NOW) == 30
+    assert ledger.first_overrun({"app": (Caps(five_hour=30), None)}, NOW) == budget.Overrun(
+        "app", "five_hour", 30, 30
+    )
+
+
 def test_budget_caps_are_saved_and_read_back(tmp_path: Path) -> None:
     path = tmp_path / "settings.toml"
     path.write_text('settings_version = 1\n\n[budget]\ndaily = 5\n\n[ai]\nprovider = "claude"\n')
-    save_budget(Caps(daily=100, weekly=500), Caps(daily=20), path)
+    save_budget(Caps(five_hour=40, daily=100, weekly=500), Caps(daily=20), path)
     loaded = load_settings(path)
-    assert loaded.budget == Caps(daily=100, weekly=500, monthly=0)
+    assert loaded.budget == Caps(five_hour=40, daily=100, weekly=500, monthly=0)
     assert loaded.assistant_budget == Caps(daily=20)
     assert path.read_text(encoding="utf-8").count("[budget]") == 1
 

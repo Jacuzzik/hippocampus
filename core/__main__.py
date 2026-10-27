@@ -53,6 +53,7 @@ from core import jobs as job_store
 from core import memory as memory_notes
 from core.helpers import HelperLimit, Helpers
 from core.settings import (
+    CAP_WINDOWS,
     SETTINGS_PATH,
     Caps,
     Settings,
@@ -289,7 +290,7 @@ class Session:
             "assistant": (self.settings.assistant_budget, "assistant"),
         }
         used = {
-            scope: {w: self.ledger.used(w, now, agent) for w in ("daily", "weekly", "monthly")}
+            scope: {w: self.ledger.used(w, now, agent) for w in CAP_WINDOWS}
             for scope, (_caps, agent) in scopes.items()
         }
         caps = {scope: asdict(caps) for scope, (caps, _agent) in scopes.items()}
@@ -300,8 +301,8 @@ class Session:
         for scope in ("app", "assistant"):
             row = request.get(scope)
             if not isinstance(row, dict):
-                raise ValueError(f'"{scope}" needs daily, weekly and monthly caps')
-            caps[scope] = Caps(**{w: _whole(row.get(w), w) for w in ("daily", "weekly", "monthly")})
+                raise ValueError(f'"{scope}" needs five_hour, daily, weekly and monthly caps')
+            caps[scope] = Caps(**{w: _whole(row.get(w), w) for w in CAP_WINDOWS})
         save_budget(caps["app"], caps["assistant"], SETTINGS_PATH)
         self.settings = replace(
             self.settings, budget=caps["app"], assistant_budget=caps["assistant"]

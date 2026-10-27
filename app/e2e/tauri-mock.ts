@@ -123,12 +123,17 @@ export async function mockSidecar(
       // Control panel state the fake sidecar holds.
       let networkMode = "off";
       let budgetCaps = {
-        app: { daily: 200000, weekly: 0, monthly: 0 },
-        assistant: { daily: 50000, weekly: 0, monthly: 0 },
+        app: { five_hour: 0, daily: 200000, weekly: 0, monthly: 0 },
+        assistant: { five_hour: 20000, daily: 50000, weekly: 0, monthly: 0 },
       };
       const budgetUsed = {
-        app: { daily: 12400, weekly: 30100, monthly: 41000 },
-        assistant: { daily: 9800, weekly: 25000, monthly: 33000 },
+        app: { five_hour: 4100, daily: 12400, weekly: 30100, monthly: 41000 },
+        assistant: {
+          five_hour: 3900,
+          daily: 9800,
+          weekly: 25000,
+          monthly: 33000,
+        },
       };
       let allowance = false;
       const activityRows = [

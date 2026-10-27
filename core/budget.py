@@ -1,7 +1,7 @@
 """Token budgets: caps per day, week and month, for the whole app and for the assistant.
 
-Usage is one JSON line per model reply in storage/usage.jsonl. Windows start at local
-midnight, Monday, or the 1st of the month.
+Usage is one JSON line per model reply in storage/usage.jsonl. Windows start 5 hours ago (a
+rolling window), at local midnight, Monday, or the 1st of the month.
 """
 
 import json
@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from core.settings import Caps
+from core.settings import CAP_WINDOWS, Caps
 
 logger = logging.getLogger("hippocampus.budget")
 
@@ -28,6 +28,8 @@ class Overrun:
 
 
 def window_start(window: str, now: datetime) -> datetime:
+    if window == "five_hour":
+        return now - timedelta(hours=5)
     midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
     if window == "daily":
         return midnight
@@ -76,7 +78,7 @@ class Ledger:
         """The first cap already reached, checked scope by scope. None when every cap has room."""
         when = now or datetime.now().astimezone()
         for scope, (caps, agent) in scopes.items():
-            for window in ("daily", "weekly", "monthly"):
+            for window in CAP_WINDOWS:
                 cap = getattr(caps, window)
                 if cap <= 0:
                     continue
