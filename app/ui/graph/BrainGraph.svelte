@@ -8,7 +8,12 @@
   import { BrainRenderer } from "./renderer";
   import { Canvas2DRenderer } from "./renderer-canvas";
   import {
+    arcLayout,
+    arcLines,
+    arcReach,
+    arcRows,
     centerOn,
+    groupsOf,
     hitTest,
     LOW_POWER,
     layout,
@@ -16,9 +21,11 @@
     matchFilter,
     mulberry32,
     nodeRadius,
+    straightLines,
     zoomAt,
     type Camera,
     type GraphData,
+    type GraphLayout,
   } from "./model";
 
   const LABEL_GAP = 4;
@@ -54,6 +61,11 @@
   // `home` is the laid-out position; `pos` is home plus the drift, and is what is drawn and hit-tested.
   let home: Float32Array<ArrayBuffer> = new Float32Array(0);
   let pos: Float32Array<ArrayBuffer> = new Float32Array(0);
+  // Arc is the default; force is the older spring layout, kept behind the Layout menu.
+  let mode = $state<GraphLayout>("arc");
+  // Node index pairs for the links, and the world-space segments drawn from them.
+  let edgeIdx: Uint32Array = new Uint32Array(0);
+  let lines: Float32Array = new Float32Array(0);
   // Per node: x and y drift amplitude, x and y angular speed, x and y phase. Six floats each.
   let drift: Float32Array<ArrayBuffer> = new Float32Array(0);
   let clock = 0;
@@ -73,13 +85,20 @@
     matchMedia("(prefers-reduced-motion: reduce)").matches;
   const widths = new SvelteMap<string, number>();
   const measurer = document.createElement("canvas").getContext("2d");
-  let colours: { node: Rgba; hot: Rgba; edge: Rgba; bg: Rgba } | null = null;
+  let colours: {
+    node: Rgba;
+    hot: Rgba;
+    edge: Rgba;
+    bg: Rgba;
+    groups: Rgba[];
+  } | null = null;
   let frame = 0;
 
   const index = $derived(new Map(data.nodes.map((n, i) => [n.id, i])));
   const selected = $derived(selectedId ? (index.get(selectedId) ?? -1) : -1);
   const matched = $derived(matchFilter(data.nodes, { query, tag, memory }));
   const degree = $derived(linkCounts(data.nodes, data.edges));
+  const groups = $derived(groupsOf(data.nodes));
   const visible = $derived(
     matched.map((m, i) => m && !(hideOrphans && degree[i] === 0)),
   );
@@ -104,8 +123,11 @@
   }
 
   // The nodes float only while nothing is selected and no drag is under way.
+  // The arc layout stays still: its links are read as a fixed column.
   function drifting(): boolean {
-    return !calm && !dragging && selected < 0 && pos.length > 0;
+    return (
+      mode === "force" && !calm && !dragging && selected < 0 && pos.length > 0
+    );
   }
 
   // Where node i rests: its laid-out place plus its drift (no drift under reduced motion).
@@ -157,7 +179,7 @@
         vel[k + 1] = 0;
       }
     }
-    renderer?.setPositions(pos);
+    refreshLines();
   }
 
   // Put the node under the pointer in the spring set, with every node linked to it.
@@ -185,7 +207,21 @@
         (drift[d + 1] ?? 0) *
           Math.sin((drift[d + 3] ?? 0) * clock + (drift[d + 5] ?? 0));
     }
+    refreshLines();
+  }
+
+  // Links are rebuilt from the node positions whenever those move: the arc curves follow their ends.
+  // shortcut: every link is rebuilt each time the nodes move, which is fine to a few thousand links; upgrade to a dirty flag if more.
+  function refreshLines(): void {
     renderer?.setPositions(pos);
+    lines = buildLines();
+    renderer?.setLines(lines);
+  }
+
+  function buildLines(): Float32Array {
+    return mode === "arc"
+      ? arcLines(pos, edgeIdx)
+      : straightLines(pos, edgeIdx);
   }
 
   function labelWidth(text: string): number {
@@ -206,7 +242,8 @@
     const placed: { text: string; x: number; y: number }[] = [];
     const boxes: number[] = [];
     const place = (i: number) => {
-      if (placed.length >= MAX_LABELS || i !== hovered || !visible[i]) return;
+      if (placed.length >= MAX_LABELS || !visible[i]) return;
+      if (i !== hovered && mode !== "arc") return;
       const sx = (pos[2 * i] ?? 0) * cam.zoom + cam.x;
       const sy = (pos[2 * i + 1] ?? 0) * cam.zoom + cam.y;
       if (sx < 0 || sy < 0 || sx > w || sy > h) return;
@@ -227,6 +264,8 @@
       placed.push({ text, x, y });
     };
     if (hovered >= 0) place(hovered);
+    // The arc layout labels every note in view, greedily: a label stays only if it clears the others.
+    if (mode === "arc") for (let i = 0; i < data.nodes.length; i++) place(i);
 
     labels = placed;
   }
@@ -265,16 +304,25 @@
 
   function fitAll(): void {
     if (!home.length) return;
-    let minX = Infinity;
-    let minY = Infinity;
-    let maxX = -Infinity;
-    let maxY = -Infinity;
-    for (let i = 0; i < home.length; i += 2) {
-      minX = Math.min(minX, home[i] ?? 0);
-      maxX = Math.max(maxX, home[i] ?? 0);
-      minY = Math.min(minY, home[i + 1] ?? 0);
-      maxY = Math.max(maxY, home[i + 1] ?? 0);
-    }
+    // Fit the middle 90% of nodes, so a few far-flung outliers don't zoom the whole graph out.
+    const xs = Array.from(
+      { length: home.length / 2 },
+      (_, i) => home[2 * i] ?? 0,
+    ).sort((a, b) => a - b);
+    const ys = Array.from(
+      { length: home.length / 2 },
+      (_, i) => home[2 * i + 1] ?? 0,
+    ).sort((a, b) => a - b);
+    const lo = Math.floor(xs.length * 0.05);
+    const hi = Math.max(lo, Math.ceil(xs.length * 0.95) - 1);
+    // The arc links bow left of the column, so the fit also takes in how far they reach.
+    const minX =
+      mode === "arc"
+        ? Math.min(xs[lo] ?? 0, arcReach(xs.length))
+        : (xs[lo] ?? 0);
+    const maxX = xs[hi] ?? 0;
+    const minY = ys[lo] ?? 0;
+    const maxY = ys[hi] ?? 0;
     const [w, h] = size();
     const zoom = Math.min(w / (maxX - minX + 40), h / (maxY - minY + 40));
     cam = centerOn((minX + maxX) / 2, (minY + maxY) / 2, zoom, w, h);
@@ -354,7 +402,12 @@
     const radii = new Float32Array(n);
     for (let i = 0; i < n; i++) {
       const isSel = i === selected;
-      const base = isSel ? colours.hot : colours.node;
+      const group = colours.groups[(groups.of[i] ?? 0) % colours.groups.length];
+      const base = isSel
+        ? colours.hot
+        : mode === "arc" && group
+          ? group
+          : colours.node;
       const alpha = visible[i] ? base[3] : base[3] * 0.15;
       colors.set([base[0], base[1], base[2], alpha], i * 4);
       radii[i] = nodeRadius(degree[i] ?? 0, isSel);
@@ -396,6 +449,7 @@
       hot: token("confirm"),
       edge: [...token("link").slice(0, 3), 0.3] as Rgba,
       bg: token("bg-0"),
+      groups: [1, 2, 3, 4, 5, 6, 7, 8].map((n) => token(`graph-${n}`)),
     };
     // Refit on every size change, so opening the note drawer (which narrows the canvas) keeps the graph in view.
     const fit = () => {
@@ -501,6 +555,7 @@
   // Lay out the graph again whenever the notes change.
   $effect(() => {
     void data;
+    void mode;
     untrack(relayout);
   });
 
@@ -514,10 +569,17 @@
       if (ia !== undefined && ib !== undefined && ia !== ib)
         pairs.push([ia, ib]);
     }
-    home = layout(data.nodes.length, pairs);
+    home =
+      mode === "arc"
+        ? arcLayout(arcRows(data.nodes))
+        : layout(data.nodes.length, pairs);
     pos = new Float32Array(home.length);
     pos.set(home);
-    drift = driftParams(data.nodes.length);
+    // The arc column has no drift: its rows are a few px apart, so any drift would show as a jitter.
+    drift =
+      mode === "arc"
+        ? new Float32Array(data.nodes.length * 6)
+        : driftParams(data.nodes.length);
     pulled = new SvelteSet();
     grabbed = -1;
     vel = new Float32Array(home.length);
@@ -526,7 +588,9 @@
       flat[2 * i] = a;
       flat[2 * i + 1] = b;
     });
-    r.setGraph(pos, flat);
+    edgeIdx = flat;
+    lines = buildLines();
+    r.setGraph(pos, lines);
     fitAll();
     pushStyle();
     schedule();
@@ -552,6 +616,7 @@
   $effect(() => {
     void visible;
     void selected;
+    void mode;
     pushStyle();
   });
 
@@ -588,7 +653,28 @@
     <label class="orphans">
       <input type="checkbox" bind:checked={hideOrphans} /> Hide orphans
     </label>
+    <label class="layout-pick">
+      Layout
+      <select bind:value={mode}>
+        <option value="arc">Arc</option>
+        <option value="force">Force</option>
+      </select>
+    </label>
   </div>
+
+  {#if mode === "arc" && groups.names.length}
+    <ul class="key" aria-label="Key: group colours">
+      <li class="key-title">Key</li>
+      {#each groups.names as name, g (name)}
+        <li>
+          <span
+            class="swatch"
+            style:background="var(--color-graph-{(g % 8) + 1})"
+          ></span>{name}
+        </li>
+      {/each}
+    </ul>
+  {/if}
 
   {#if error}
     <p class="notice" role="alert">The graph cannot be drawn: {error}</p>
@@ -752,6 +838,47 @@
     gap: var(--space-2);
     font-size: var(--font-size-xs);
     color: var(--color-text-muted);
+  }
+
+  /* The arc layout's group key, under the tools, top left. */
+  .key {
+    position: absolute;
+    top: calc(var(--space-2) + 40px);
+    left: var(--space-2);
+    z-index: 1;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    max-height: 60%;
+    overflow-y: auto;
+    font-size: var(--font-size-xs);
+    line-height: 16px;
+    color: var(--color-text-muted);
+    pointer-events: none;
+  }
+
+  .key-title {
+    color: var(--color-text);
+    margin-bottom: var(--space-1);
+  }
+
+  .swatch {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    margin-right: var(--space-2);
+    border-radius: 50%;
+    vertical-align: middle;
+  }
+
+  .layout-pick select {
+    font: inherit;
+    font-size: var(--font-size-xs);
+    color: var(--color-text);
+    background: var(--color-bg-1);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: var(--space-1);
   }
 
   .fit {

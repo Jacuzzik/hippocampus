@@ -4,13 +4,17 @@ import type { Camera } from "./model";
 import type { Rgba } from "./renderer";
 
 // Colours come from design tokens (see colors.ts); this only turns them into a canvas hex string.
-const hex = (v: number): string => Math.round(v * 255).toString(16).padStart(2, "0");
-const css = (c: Rgba): string => `#${hex(c[0])}${hex(c[1])}${hex(c[2])}${hex(c[3])}`;
+const hex = (v: number): string =>
+  Math.round(v * 255)
+    .toString(16)
+    .padStart(2, "0");
+const css = (c: Rgba): string =>
+  `#${hex(c[0])}${hex(c[1])}${hex(c[2])}${hex(c[3])}`;
 
 export class Canvas2DRenderer {
   private readonly ctx: CanvasRenderingContext2D;
   private pos: Float32Array = new Float32Array(0);
-  private edges: Uint32Array = new Uint32Array(0);
+  private lines: Float32Array = new Float32Array(0);
   private colors: Float32Array = new Float32Array(0);
   private radii: Float32Array = new Float32Array(0);
   private dpr = 1;
@@ -21,14 +25,18 @@ export class Canvas2DRenderer {
     this.ctx = ctx;
   }
 
-  /** `pos` is interleaved x, y per node; `edges` is interleaved node index pairs. */
-  setGraph(pos: Float32Array, edges: Uint32Array): void {
-    this.edges = edges;
+  /** `pos` is interleaved x, y per node; `lines` is world-space segments, four floats each (x1, y1, x2, y2). */
+  setGraph(pos: Float32Array, lines: Float32Array): void {
     this.setPositions(pos);
+    this.setLines(lines);
   }
 
   setPositions(pos: Float32Array): void {
     this.pos = pos;
+  }
+
+  setLines(lines: Float32Array): void {
+    this.lines = lines;
   }
 
   /** One radius (CSS px) per node. */
@@ -48,7 +56,7 @@ export class Canvas2DRenderer {
   }
 
   draw(cam: Camera, background: Rgba, edgeColor: Rgba): void {
-    const { ctx, pos, edges, colors, radii } = this;
+    const { ctx, pos, lines, colors, radii } = this;
     const width = this.canvas.width / this.dpr;
     const height = this.canvas.height / this.dpr;
     // Work in CSS pixels; the transform maps them to the backing store.
@@ -58,16 +66,14 @@ export class Canvas2DRenderer {
 
     ctx.strokeStyle = css(edgeColor);
     ctx.beginPath();
-    for (let i = 0; i < edges.length; i += 2) {
-      const a = (edges[i] ?? 0) * 2;
-      const b = (edges[i + 1] ?? 0) * 2;
+    for (let i = 0; i < lines.length; i += 4) {
       ctx.moveTo(
-        (pos[a] ?? 0) * cam.zoom + cam.x,
-        (pos[a + 1] ?? 0) * cam.zoom + cam.y,
+        (lines[i] ?? 0) * cam.zoom + cam.x,
+        (lines[i + 1] ?? 0) * cam.zoom + cam.y,
       );
       ctx.lineTo(
-        (pos[b] ?? 0) * cam.zoom + cam.x,
-        (pos[b + 1] ?? 0) * cam.zoom + cam.y,
+        (lines[i + 2] ?? 0) * cam.zoom + cam.x,
+        (lines[i + 3] ?? 0) * cam.zoom + cam.y,
       );
     }
     ctx.stroke();

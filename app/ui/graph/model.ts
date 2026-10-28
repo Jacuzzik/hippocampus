@@ -233,3 +233,133 @@ export function nodeRadius(links: number, selected: boolean): number {
   const size = 4 + Math.min(6, Math.sqrt(links) * 1.5);
   return selected ? Math.max(7, size) : size;
 }
+
+export type GraphLayout = "arc" | "force";
+
+/** Arc layout: world px between two rows of the note column. */
+export const ARC_ROW = 10;
+/** Arc layout: straight pieces each link curve is drawn with. */
+export const ARC_SEGMENTS = 16;
+
+/** Arc layout: the note column sits on x = 0, node i on row rows[i]. */
+export function arcLayout(rows: ArrayLike<number>): Float32Array<ArrayBuffer> {
+  const pos = new Float32Array(rows.length * 2);
+  for (let i = 0; i < rows.length; i++)
+    pos[2 * i + 1] = (rows[i] ?? 0) * ARC_ROW;
+  return pos;
+}
+
+/** Leftmost x any arc can reach for `count` rows, so the fit can frame the curves. */
+export function arcReach(count: number): number {
+  return -0.375 * Math.max(0, count - 1) * ARC_ROW;
+}
+
+/** Row per node: sorted by group, then title, so each group is one run of rows. */
+export function arcRows(nodes: readonly GraphNode[]): number[] {
+  const order = nodes
+    .map((_, i) => i)
+    .sort((a, b) => {
+      const na = nodes[a];
+      const nb = nodes[b];
+      if (!na || !nb) return 0;
+      return (
+        groupOf(na).localeCompare(groupOf(nb)) ||
+        na.title.localeCompare(nb.title)
+      );
+    });
+  const rows = nodes.map(() => 0);
+  order.forEach((node, row) => (rows[node] = row));
+  return rows;
+}
+
+/** The group a note is coloured by: its first tag, else its top folder, else "Unclassified". */
+export function groupOf(n: GraphNode): string {
+  const tag = n.tags[0];
+  if (tag) return tag;
+  const slash = n.id.indexOf("/");
+  return slash > 0 ? n.id.slice(0, slash) : "Unclassified";
+}
+
+/** Group names sorted, and per node the index of its group in that list. */
+export function groupsOf(nodes: readonly GraphNode[]): {
+  names: string[];
+  of: number[];
+} {
+  const names = [...new Set(nodes.map(groupOf))].sort((a, b) =>
+    a.localeCompare(b),
+  );
+  const index = new Map(names.map((g, i) => [g, i]));
+  return { names, of: nodes.map((n) => index.get(groupOf(n)) ?? 0) };
+}
+
+/**
+ * Writes one link as ARC_SEGMENTS segments into `out` from offset `at`, and returns the next offset.
+ * The curve is a cubic that bows left of both ends, so a link between far rows bows further.
+ */
+export function arcSegments(
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+  out: Float32Array,
+  at: number,
+): number {
+  const cx = Math.min(ax, bx) - 0.5 * Math.abs(ay - by);
+  let px = ax;
+  let py = ay;
+  for (let s = 1; s <= ARC_SEGMENTS; s++) {
+    const t = s / ARC_SEGMENTS;
+    const u = 1 - t;
+    const x =
+      u * u * u * ax + 3 * u * u * t * cx + 3 * u * t * t * cx + t * t * t * bx;
+    const y =
+      u * u * u * ay + 3 * u * u * t * ay + 3 * u * t * t * by + t * t * t * by;
+    out[at++] = px;
+    out[at++] = py;
+    out[at++] = x;
+    out[at++] = y;
+    px = x;
+    py = y;
+  }
+  return at;
+}
+
+/** World-space segments (four floats each) for every link drawn as an arc. `edges` is node index pairs. */
+export function arcLines(
+  pos: ArrayLike<number>,
+  edges: Uint32Array,
+): Float32Array<ArrayBuffer> {
+  const out = new Float32Array((edges.length / 2) * ARC_SEGMENTS * 4);
+  let at = 0;
+  for (let e = 0; e < edges.length; e += 2) {
+    const a = (edges[e] ?? 0) * 2;
+    const b = (edges[e + 1] ?? 0) * 2;
+    at = arcSegments(
+      pos[a] ?? 0,
+      pos[a + 1] ?? 0,
+      pos[b] ?? 0,
+      pos[b + 1] ?? 0,
+      out,
+      at,
+    );
+  }
+  return out;
+}
+
+/** World-space straight segments for every link: the force layout's edges. */
+export function straightLines(
+  pos: ArrayLike<number>,
+  edges: Uint32Array,
+): Float32Array<ArrayBuffer> {
+  const out = new Float32Array(edges.length * 2);
+  for (let e = 0; e < edges.length; e += 2) {
+    const a = (edges[e] ?? 0) * 2;
+    const b = (edges[e + 1] ?? 0) * 2;
+    const at = e * 2;
+    out[at] = pos[a] ?? 0;
+    out[at + 1] = pos[a + 1] ?? 0;
+    out[at + 2] = pos[b] ?? 0;
+    out[at + 3] = pos[b + 1] ?? 0;
+  }
+  return out;
+}

@@ -3,7 +3,13 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   allTags,
+  ARC_ROW,
+  ARC_SEGMENTS,
+  arcLayout,
+  arcRows,
+  arcSegments,
   centerOn,
+  groupsOf,
   clampZoom,
   hitTest,
   layout,
@@ -95,11 +101,10 @@ test("the memory filter keeps only assistant-created notes", () => {
     false,
     false,
   ]);
-  assert.deepEqual(matchFilter(nodes, { query: "", tag: null, memory: false }), [
-    true,
-    true,
-    true,
-  ]);
+  assert.deepEqual(
+    matchFilter(nodes, { query: "", tag: null, memory: false }),
+    [true, true, true],
+  );
 });
 
 test("filters match title or path, and tag, and combine", () => {
@@ -169,4 +174,40 @@ test("nodeRadius grows with the link count, capped, and a selected node is at le
   assert.equal(nodeRadius(10000, false), 10);
   assert.equal(nodeRadius(0, true), 7);
   assert.ok(nodeRadius(16, true) >= nodeRadius(16, false));
+});
+
+test("arc rows run by group, then title, one row per note", () => {
+  const nodes = [
+    { id: "b.md", title: "Beta", tags: ["zeta"] },
+    { id: "a.md", title: "Alpha", tags: ["zeta"] },
+    { id: "Ideas/c.md", title: "Gamma", tags: [] },
+  ];
+  // Groups sort as "Ideas" (folder), then "zeta" (tag): Gamma, Alpha, Beta.
+  assert.deepEqual(arcRows(nodes), [2, 1, 0]);
+  const pos = arcLayout(arcRows(nodes));
+  assert.deepEqual([...pos], [0, 2 * ARC_ROW, 0, ARC_ROW, 0, 0]);
+});
+
+test("groups use the first tag, else the top folder, else Unclassified", () => {
+  const nodes = [
+    { id: "x.md", title: "X", tags: ["t"] },
+    { id: "f/y.md", title: "Y", tags: [] },
+    { id: "z.md", title: "Z", tags: [] },
+  ];
+  const { names, of } = groupsOf(nodes);
+  assert.deepEqual(names, ["f", "t", "Unclassified"]);
+  assert.deepEqual(of, [1, 0, 2]);
+});
+
+test("an arc link starts and ends on its nodes and bows left of both", () => {
+  const out = new Float32Array(ARC_SEGMENTS * 4);
+  const end = arcSegments(0, 0, 0, 100, out, 0);
+  assert.equal(end, ARC_SEGMENTS * 4);
+  assert.deepEqual([out[0], out[1]], [0, 0]);
+  const last = end - 2;
+  assert.deepEqual([out[last], out[last + 1]], [0, 100]);
+  // The midpoint of a cubic with both controls at -h sits at -0.75h; h is half the span.
+  const mid = (ARC_SEGMENTS / 2) * 4 - 2;
+  assert.ok(Math.abs(out[mid] - -37.5) < 1e-3, `midpoint x ${out[mid]}`);
+  for (let i = 0; i < end; i += 2) assert.ok(out[i] <= 1e-6);
 });
