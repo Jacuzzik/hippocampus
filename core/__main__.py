@@ -271,6 +271,20 @@ class Session:
         by = "owner" if request.get("by", "owner") == "owner" else "agent"
         return {"card": self.cards.update(request.get("id"), changes, by)}
 
+    def card_list(self) -> dict[str, Any]:
+        return {"cards": self.cards.list()}
+
+    def card_create(self, request: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "card": self.cards.create(request.get("title"), request.get("body"), request.get("by"))
+        }
+
+    def card_update(self, request: dict[str, Any]) -> dict[str, Any]:
+        # Only the owner's screen sends "by": "owner"; agents will send their own id.
+        changes = {k: request[k] for k in ("title", "body", "locked") if k in request}
+        by = "owner" if request.get("by", "owner") == "owner" else "agent"
+        return {"card": self.cards.update(request.get("id"), changes, by)}
+
     # --- Journal, budgets and the network switch -------------------------------------------
 
     def note(self, kind: str, **fields: str | int | bool | None) -> None:
