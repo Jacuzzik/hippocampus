@@ -1,11 +1,12 @@
 <script lang="ts">
   import { untrack } from "svelte";
-  import { SvelteMap } from "svelte/reactivity";
+  import { SvelteMap, SvelteSet } from "svelte/reactivity";
   import { invoke } from "@tauri-apps/api/core";
   import { token } from "./colors";
   import { parseNote, type Block, type Inline } from "./markdown";
   import type { Rgba } from "./renderer";
   import { BrainRenderer } from "./renderer";
+  import { Canvas2DRenderer } from "./renderer-canvas";
   import {
     centerOn,
     hitTest,
@@ -46,7 +47,7 @@
   let cam = $state<Camera>({ x: 0, y: 0, zoom: 1 });
 
   // Plain variables: they are rebuilt from `data` and read by the draw loop, not by the template.
-  let renderer: BrainRenderer | null = null;
+  let renderer: BrainRenderer | Canvas2DRenderer | null = null;
   // `home` is the laid-out position; `pos` is home plus the drift, and is what is drawn and hit-tested.
   let home: Float32Array<ArrayBuffer> = new Float32Array(0);
   let pos: Float32Array<ArrayBuffer> = new Float32Array(0);
@@ -55,6 +56,12 @@
   let clock = 0;
   let last = 0;
   let dragging = false;
+  // Dragging a node pulls its linked nodes along on springs. `pulled` holds the nodes the springs drive; `grabbed` is the node under the pointer, or -1.
+  const PULL_K = 0.12;
+  const PULL_DAMP = 0.75;
+  let pulled = new SvelteSet<number>();
+  let grabbed = -1;
+  let vel: Float32Array<ArrayBuffer> = new Float32Array(0);
   // Hides notes with no links. Off by default, so every note shows.
   let hideOrphans = $state(false);
   // Reduced motion: the nodes stay still.
@@ -98,8 +105,73 @@
     return !calm && !dragging && selected < 0 && pos.length > 0;
   }
 
+  // Where node i rests: its laid-out place plus its drift (no drift under reduced motion).
+  function restAt(i: number): [number, number] {
+    const x = home[2 * i] ?? 0;
+    const y = home[2 * i + 1] ?? 0;
+    if (calm) return [x, y];
+    const d = i * 6;
+    return [
+      x +
+        (drift[d] ?? 0) *
+          Math.sin((drift[d + 2] ?? 0) * clock + (drift[d + 4] ?? 0)),
+      y +
+        (drift[d + 1] ?? 0) *
+          Math.sin((drift[d + 3] ?? 0) * clock + (drift[d + 5] ?? 0)),
+    ];
+  }
+
+  // One spring step for each pulled node. While a node is grabbed, its linked nodes keep their laid-out offset from it; after release they spring back to rest.
+  function stepPulled(): void {
+    for (const i of pulled) {
+      if (i === grabbed) continue;
+      const k = 2 * i;
+      const [tx, ty] =
+        grabbed >= 0
+          ? [
+              (pos[2 * grabbed] ?? 0) +
+                (home[k] ?? 0) -
+                (home[2 * grabbed] ?? 0),
+              (pos[2 * grabbed + 1] ?? 0) +
+                (home[k + 1] ?? 0) -
+                (home[2 * grabbed + 1] ?? 0),
+            ]
+          : restAt(i);
+      const vx = ((vel[k] ?? 0) + (tx - (pos[k] ?? 0)) * PULL_K) * PULL_DAMP;
+      const vy =
+        ((vel[k + 1] ?? 0) + (ty - (pos[k + 1] ?? 0)) * PULL_K) * PULL_DAMP;
+      vel[k] = vx;
+      vel[k + 1] = vy;
+      pos[k] = (pos[k] ?? 0) + vx;
+      pos[k + 1] = (pos[k + 1] ?? 0) + vy;
+      if (
+        grabbed < 0 &&
+        Math.abs(tx - (pos[k] ?? 0)) + Math.abs(ty - (pos[k + 1] ?? 0)) < 0.5 &&
+        Math.abs(vx) + Math.abs(vy) < 0.05
+      ) {
+        pulled.delete(i);
+        vel[k] = 0;
+        vel[k + 1] = 0;
+      }
+    }
+    renderer?.setPositions(pos);
+  }
+
+  // Put the node under the pointer in the spring set, with every node linked to it.
+  function grab(i: number): void {
+    grabbed = i;
+    pulled.add(i);
+    for (const [a, b] of data.edges) {
+      const ia = index.get(a);
+      const ib = index.get(b);
+      if (ia === i && ib !== undefined) pulled.add(ib);
+      if (ib === i && ia !== undefined) pulled.add(ia);
+    }
+  }
+
   function moveNodes(): void {
     for (let i = 0; i < pos.length; i += 2) {
+      if (pulled.has(i / 2)) continue;
       const d = i * 3;
       pos[i] =
         (home[i] ?? 0) +
@@ -166,12 +238,13 @@
       clock += Math.min(now - last, 100) / 1000;
       moveNodes();
     }
+    if (pulled.size) stepPulled();
     last = now;
     if (renderer && colours) renderer.draw(cam, colours.bg, colours.edge);
     drawLabels();
     // Read by the e2e test: how many nodes the last frame placed inside the canvas.
     if (canvas) canvas.dataset.inView = String(countInView());
-    if (drifting()) schedule();
+    if (drifting() || pulled.size) schedule();
   }
 
   function size(): [number, number] {
@@ -290,13 +363,28 @@
     schedule();
   }
 
-  // Create the WebGL context once per canvas and keep the canvas size in step with its box.
+  // Phones and some browsers have no WebGL 2; the 2D canvas draws the same graph instead.
+  function createRenderer(
+    c: HTMLCanvasElement,
+  ): BrainRenderer | Canvas2DRenderer {
+    try {
+      return new BrainRenderer(c);
+    } catch (cause) {
+      console.warn(
+        "WebGL 2 unavailable; drawing the graph on a 2D canvas",
+        cause,
+      );
+      return new Canvas2DRenderer(c);
+    }
+  }
+
+  // Create the renderer once per canvas and keep the canvas size in step with its box.
   $effect(() => {
     const c = canvas;
     if (!c) return;
-    let r: BrainRenderer;
+    let r: BrainRenderer | Canvas2DRenderer;
     try {
-      r = new BrainRenderer(c);
+      r = createRenderer(c);
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
       return;
@@ -317,8 +405,14 @@
     observer.observe(c);
     fit();
 
-    let drag: { x: number; y: number; cam: Camera; moved: boolean } | null =
-      null;
+    // `node` is the note grabbed at pointer-down, or -1 for a pan of the whole graph.
+    let drag: {
+      x: number;
+      y: number;
+      cam: Camera;
+      moved: boolean;
+      node: number;
+    } | null = null;
     const local = (e: PointerEvent | WheelEvent) => {
       const rect = c.getBoundingClientRect();
       return [e.clientX - rect.left, e.clientY - rect.top] as const;
@@ -326,7 +420,10 @@
     const onDown = (e: PointerEvent) => {
       c.setPointerCapture(e.pointerId);
       const [x, y] = local(e);
-      drag = { x, y, cam, moved: false };
+      const hit = hitTest(pos, cam, x, y, 8);
+      const node = hit >= 0 && visible[hit] ? hit : -1;
+      if (node >= 0) grab(node);
+      drag = { x, y, cam, moved: false, node };
       dragging = true;
     };
     const onMove = (e: PointerEvent) => {
@@ -335,10 +432,22 @@
       const dx = x - drag.x;
       const dy = y - drag.y;
       if (Math.abs(dx) + Math.abs(dy) > 4) drag.moved = true;
-      cam = { ...drag.cam, x: drag.cam.x + dx, y: drag.cam.y + dy };
+      if (drag.node >= 0) {
+        pos[2 * drag.node] = (x - cam.x) / cam.zoom;
+        pos[2 * drag.node + 1] = (y - cam.y) / cam.zoom;
+      } else {
+        cam = { ...drag.cam, x: drag.cam.x + dx, y: drag.cam.y + dy };
+      }
       schedule();
     };
     const endDrag = () => {
+      // The dropped node stays where it was let go: it becomes the new home. Its neighbours spring back.
+      if (grabbed >= 0) {
+        home[2 * grabbed] = pos[2 * grabbed] ?? 0;
+        home[2 * grabbed + 1] = pos[2 * grabbed + 1] ?? 0;
+        pulled.delete(grabbed);
+      }
+      grabbed = -1;
       drag = null;
       dragging = false;
       schedule();
@@ -398,6 +507,9 @@
     pos = new Float32Array(home.length);
     pos.set(home);
     drift = driftParams(data.nodes.length);
+    pulled = new SvelteSet();
+    grabbed = -1;
+    vel = new Float32Array(home.length);
     const flat = new Uint32Array(pairs.length * 2);
     pairs.forEach(([a, b], i) => {
       flat[2 * i] = a;
