@@ -77,6 +77,7 @@ export interface ActivityRow {
   tier?: string;
   status?: string;
   approved?: boolean;
+  call?: string;
   method?: string;
 }
 
