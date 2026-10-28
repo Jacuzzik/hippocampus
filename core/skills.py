@@ -2,9 +2,12 @@
 
 import re
 import shutil
+import sys
+from collections.abc import Callable
 from pathlib import Path
 
 NAME = re.compile(r"[a-z0-9][a-z0-9-]*")
+FILE_MANAGER = {"darwin": "open", "win32": "explorer"}.get(sys.platform, "xdg-open")
 
 
 def list_skills(root: Path) -> list[dict[str, str]]:
@@ -44,3 +47,8 @@ def skill_folder(root: Path, name: object) -> Path:
 
 def remove_skill(root: Path, name: object) -> None:
     shutil.rmtree(skill_folder(root, name))
+
+
+def open_folder(root: Path, name: object, launch: Callable[[list[str]], object]) -> None:
+    # shortcut: one fixed file-manager command per OS, no shell; upgrade if a platform needs more.
+    launch([FILE_MANAGER, str(skill_folder(root, name))])
