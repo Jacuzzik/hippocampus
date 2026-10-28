@@ -11,6 +11,14 @@ from tools.registry import Tool
 MAX_READ_CHARS = 20_000
 
 
+def memory_content(content: str) -> str:
+    """Add created_by: assistant to the frontmatter, making the note assistant memory."""
+    # shortcut: a note opening with a --- rule and no frontmatter is misread, upgrade: check fence
+    if content.startswith("---\n"):
+        return "---\ncreated_by: assistant\n" + content[4:]
+    return f"---\ncreated_by: assistant\n---\n{content}"
+
+
 def vault_tools(indexer: Indexer, lock: threading.RLock) -> dict[str, Tool]:
     root = indexer.vault
 
@@ -38,14 +46,14 @@ def vault_tools(indexer: Indexer, lock: threading.RLock) -> dict[str, Tool]:
 
     def create_preview(args: dict[str, Any]) -> str:
         target = note_path(args.get("path"))
-        content = str(args.get("content", ""))
+        content = memory_content(str(args.get("content", "")))
         rel = target.relative_to(root).as_posix()
         diff = difflib.unified_diff([], content.splitlines(keepends=True), "/dev/null", f"b/{rel}")
         return "".join(diff) or f"create {rel} (empty)"
 
     def create_note(args: dict[str, Any]) -> str:
         target = note_path(args.get("path"))
-        content = str(args.get("content", ""))
+        content = memory_content(str(args.get("content", "")))
         with lock:
             if target.exists():
                 raise FileExistsError("the note already exists; this tool never overwrites")
