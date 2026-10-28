@@ -3,9 +3,11 @@
 import logging
 from typing import Any
 
+from ai.keys import get_key
 from ai.providers.base import Provider, ProviderError, Reply, ToolSpec
 from ai.providers.claude import ClaudeProvider
 from ai.providers.ollama import OllamaProvider
+from ai.providers.openai_compat import PRESETS, OpenAICompatProvider
 from core.settings import Settings
 
 logger = logging.getLogger("hippocampus.ai")
@@ -31,5 +33,19 @@ class Router:
 
 
 def build_router(settings: Settings, api_key: str | None) -> Router:
-    primary = ClaudeProvider(api_key, settings.claude_model) if api_key else None
-    return Router(primary, OllamaProvider(settings.ollama_model, settings.ollama_host))
+    return Router(
+        _primary(settings, api_key), OllamaProvider(settings.ollama_model, settings.ollama_host)
+    )
+
+
+def _primary(settings: Settings, api_key: str | None) -> Provider | None:
+    if settings.provider == "claude":
+        return ClaudeProvider(api_key, settings.claude_model) if api_key else None
+    preset = PRESETS[settings.provider]
+    key = get_key(settings.provider)
+    if preset.needs_key and not key:
+        # Logged: a chosen provider that is not ready must not look like a silent switch.
+        logger.warning("no key for %s; the assistant will use Ollama", settings.provider)
+        return None
+    model = settings.provider_model or (preset.models[0] if preset.models else "")
+    return OpenAICompatProvider(settings.provider, preset.base_url, model, key)

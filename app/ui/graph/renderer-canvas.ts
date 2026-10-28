@@ -3,8 +3,9 @@
 import type { Camera } from "./model";
 import type { Rgba } from "./renderer";
 
-const css = (c: Rgba): string =>
-  `rgba(${c[0] * 255},${c[1] * 255},${c[2] * 255},${c[3]})`;
+// Colours come from design tokens (see colors.ts); this only turns them into a canvas hex string.
+const hex = (v: number): string => Math.round(v * 255).toString(16).padStart(2, "0");
+const css = (c: Rgba): string => `#${hex(c[0])}${hex(c[1])}${hex(c[2])}${hex(c[3])}`;
 
 export class Canvas2DRenderer {
   private readonly ctx: CanvasRenderingContext2D;

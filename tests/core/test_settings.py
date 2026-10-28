@@ -40,3 +40,14 @@ def test_env_vault_overrides_the_file(tmp_path: Path, monkeypatch: pytest.Monkey
     (config / "settings.toml").write_text('[vault]\npath = "brains/mine"\n', encoding="utf-8")
     monkeypatch.setenv("HIPPOCAMPUS_VAULT", str(tmp_path / "elsewhere"))
     assert load_settings(config / "settings.toml").vault == tmp_path / "elsewhere"
+
+
+def test_provider_defaults_to_claude_and_rejects_unknown_names(tmp_path: Path) -> None:
+    config = tmp_path / "settings.toml"
+    assert load_settings(config).provider == "claude"
+    config.write_text('[ai]\nprovider = "groq"\nprovider_model = "llama-3.1-8b-instant"\n', "utf-8")
+    settings = load_settings(config)
+    assert (settings.provider, settings.provider_model) == ("groq", "llama-3.1-8b-instant")
+    config.write_text('[ai]\nprovider = "nope"\n', "utf-8")
+    with pytest.raises(ValueError, match="ai.provider"):
+        load_settings(config)
