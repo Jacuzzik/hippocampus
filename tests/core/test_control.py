@@ -404,6 +404,25 @@ def test_a_skill_folder_opens_only_when_installed(tmp_path: Path) -> None:
     assert len(launched) == 1
 
 
+def test_opening_a_skill_folder_launches_the_file_manager_and_logs_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(sidecar, "SKILLS_DIR", tmp_path)
+    (tmp_path / "tidy").mkdir()
+    (tmp_path / "tidy" / "SKILL.md").write_text("---\nname: tidy\n---\n")
+    launched: list[list[str]] = []
+    monkeypatch.setattr(sidecar.subprocess, "Popen", lambda cmd: launched.append(cmd))
+    session = sidecar.Session(tmp_path / "storage", Settings(), emit=lambda e: None)
+    noted: list[str] = []
+    monkeypatch.setattr(
+        session, "note", lambda kind, **fields: noted.append(str(fields.get("tool")))
+    )
+    state = session.dispatch({"method": "open_skill_folder", "name": "tidy"})
+    assert launched == [[skills.FILE_MANAGER, str((tmp_path / "tidy").resolve())]]
+    assert [s["name"] for s in state["skills"]] == ["tidy"]
+    assert noted == ["open_skill_folder"]
+
+
 def test_removing_a_skill_needs_approval(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(sidecar, "SKILLS_DIR", tmp_path)
     session = sidecar.Session(tmp_path / "storage", Settings(), emit=lambda e: None)
