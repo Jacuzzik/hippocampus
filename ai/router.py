@@ -32,6 +32,16 @@ class Router:
             raise ProviderError(f"{failure}{self.fallback.name} failed: {exc}") from exc
 
 
+def model_name(settings: Settings, api_key: str | None) -> str:
+    """The model that answers now: the primary's, or Ollama's when no primary is ready."""
+    if settings.provider == "claude":
+        return settings.claude_model if api_key else settings.ollama_model
+    preset = PRESETS[settings.provider]
+    if preset.needs_key and not get_key(settings.provider):
+        return settings.ollama_model
+    return settings.provider_model or (preset.models[0] if preset.models else "")
+
+
 def build_router(settings: Settings, api_key: str | None) -> Router:
     return Router(
         _primary(settings, api_key), OllamaProvider(settings.ollama_model, settings.ollama_host)

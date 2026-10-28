@@ -1,5 +1,7 @@
 <script lang="ts">
+  import { invoke } from "@tauri-apps/api/core";
   import { onMount } from "svelte";
+  import AgentCard from "./AgentCard.svelte";
   import Orb from "./Orb.svelte";
   import { ORB_LABELS, type ToolStatus } from "./model";
   import { assistant } from "./session.svelte";
@@ -21,11 +23,26 @@
   };
 
   let draft = $state("");
+  let account = $state<{ claude: boolean; model: string } | null>(null);
   const chat = $derived(assistant.chat);
 
   onMount(() => {
     void assistant.start();
+    void loadAccount();
   });
+
+  async function loadAccount(): Promise<void> {
+    try {
+      account = await invoke<{ claude: boolean; model: string }>(
+        "sidecar_call",
+        {
+          method: "account",
+        },
+      );
+    } catch (cause) {
+      console.error("Could not read the model in use", cause);
+    }
+  }
 
   function submit(event: SubmitEvent): void {
     event.preventDefault();
@@ -44,8 +61,20 @@
 <svelte:window onkeydown={onKeydown} />
 
 <aside class="assistant" aria-label="Assistant">
+  <AgentCard
+    name="Assistant"
+    accent="accent"
+    model={account?.model ?? "Loading model"}
+    details={account
+      ? [
+          account.claude
+            ? "Replies with your Claude key"
+            : "No Claude key: local Ollama",
+        ]
+      : []}
+  />
+
   <header class="head">
-    <h2>Assistant</h2>
     <Orb state={chat.orb} />
     <span class="state">{ORB_LABELS[chat.orb]}</span>
   </header>
@@ -166,12 +195,6 @@
     gap: var(--space-2);
   }
 
-  h2 {
-    margin: 0;
-    font-size: var(--font-size-md);
-    flex: 1;
-  }
-
   h3 {
     margin: 0 0 var(--space-1);
     font-size: var(--font-size-sm);
@@ -183,6 +206,10 @@
   .muted {
     font-size: var(--font-size-xs);
     color: var(--color-text-muted);
+  }
+
+  .state {
+    margin-left: auto;
   }
 
   .messages {

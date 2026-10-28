@@ -131,7 +131,10 @@ export async function mockSidecar(
             vaultOpen = true;
             return { vault: args.params?.vault };
           case "account":
-            return { claude: claudeKey !== null };
+            return {
+              claude: claudeKey !== null,
+              model: claudeKey !== null ? "claude-sonnet-5-5" : "qwen2.5:1.5b",
+            };
           case "sign_in":
             if (!String(args.params?.key ?? "").trim())
               throw new Error('"sign_in" needs a non-empty "key"');
