@@ -39,6 +39,14 @@
     }
   }
 
+  async function openFolder(name: string): Promise<void> {
+    try {
+      await invoke("sidecar_call", { method: "open_skill_folder", params: { name } });
+    } catch (cause) {
+      error = String(cause);
+    }
+  }
+
   async function copy(skill: Skill): Promise<void> {
     try {
       await navigator.clipboard.writeText(skill.path);
@@ -66,6 +74,9 @@
             >{/if}
           <p class="mono muted">{skill.path}</p>
           <div class="row">
+            <button type="button" onclick={() => openFolder(skill.name)}>
+              Open folder
+            </button>
             <button type="button" onclick={() => copy(skill)}>
               {copied === skill.name ? "Path copied" : "Copy folder path"}
             </button>
