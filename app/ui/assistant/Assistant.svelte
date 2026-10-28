@@ -69,7 +69,7 @@
 
 <svelte:window onkeydown={onKeydown} />
 
-<aside class="assistant" aria-label="Assistant">
+<aside class="assistant md-theme" aria-label="Assistant">
   <AgentCard
     name="Assistant"
     accent="accent"

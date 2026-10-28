@@ -1,6 +1,7 @@
 import "@fontsource-variable/jetbrains-mono";
 import "./styles/tokens.css";
 import "./styles/global.css";
+import "./styles/munder-difflin.css";
 import { mount } from "svelte";
 import App from "./App.svelte";
 import { mockSidecar } from "../e2e/tauri-mock";

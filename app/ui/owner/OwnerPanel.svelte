@@ -1,5 +1,5 @@
 <!-- The owner's view: cards the main agent fills (numbers, analytics, anything for the owner). -->
-<section class="owner-panel" aria-label="Owner panel">
+<section class="owner-panel md-theme" aria-label="Owner panel">
   <p class="empty">No cards yet.</p>
 </section>
 
