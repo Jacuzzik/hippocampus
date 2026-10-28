@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 from core.vault import Indexer
-from tools.vault_tools import vault_tools
+from tools.vault_tools import memory_content, vault_tools
 
 
 @pytest.fixture
@@ -43,7 +43,9 @@ def test_create_note_writes_and_indexes(tools: dict, vault: Path, indexer: Index
     assert tools["create_note"].run({"path": "notes/fresh.md", "content": "# Fresh\n"}) == (
         "created notes/fresh.md"
     )
-    assert (vault / "notes" / "fresh.md").read_text(encoding="utf-8") == "# Fresh\n"
+    assert (vault / "notes" / "fresh.md").read_text(encoding="utf-8") == (
+        "---\ncreated_by: assistant\n---\n# Fresh\n"
+    )
     assert indexer.store.search("fresh") == [("notes/fresh.md", "Fresh")]
 
 
@@ -51,3 +53,9 @@ def test_create_note_never_overwrites(tools: dict, vault: Path) -> None:
     with pytest.raises(FileExistsError):
         tools["create_note"].run({"path": "beta.md", "content": "replaced"})
     assert (vault / "beta.md").read_text(encoding="utf-8") == "# Beta\n"
+
+
+def test_memory_content_merges_into_existing_frontmatter() -> None:
+    assert memory_content("---\ntitle: T\n---\nBody\n") == (
+        "---\ncreated_by: assistant\ntitle: T\n---\nBody\n"
+    )

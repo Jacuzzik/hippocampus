@@ -25,17 +25,19 @@
   const LABEL_H = 14;
   const MAX_LABELS = 300;
 
-  // The note list in the sidebar owns the search, tag filter and selection; the graph draws them.
+  // The note list in the sidebar owns the search, tag and memory filters and selection; the graph draws them.
   let {
     data,
     query = "",
     tag = null,
+    memory = false,
     selectedId = null,
     onselect,
   }: {
     data: GraphData;
     query?: string;
     tag?: string | null;
+    memory?: boolean;
     selectedId?: string | null;
     onselect: (id: string | null) => void;
   } = $props();
@@ -75,7 +77,7 @@
 
   const index = $derived(new Map(data.nodes.map((n, i) => [n.id, i])));
   const selected = $derived(selectedId ? (index.get(selectedId) ?? -1) : -1);
-  const matched = $derived(matchFilter(data.nodes, { query, tag }));
+  const matched = $derived(matchFilter(data.nodes, { query, tag, memory }));
   const degree = $derived(linkCounts(data.nodes, data.edges));
   const visible = $derived(
     matched.map((m, i) => m && !(hideOrphans && degree[i] === 0)),
