@@ -2,7 +2,7 @@
   import { untrack } from "svelte";
   import { SvelteMap, SvelteSet } from "svelte/reactivity";
   import { invoke } from "@tauri-apps/api/core";
-  import { token } from "./colors";
+  import { hexOf, parse, token } from "./colors";
   import { parseNote, type Block, type Inline } from "./markdown";
   import type { Rgba } from "./renderer";
   import { BrainRenderer } from "./renderer";
@@ -90,9 +90,28 @@
     hot: Rgba;
     edge: Rgba;
     bg: Rgba;
-    groups: Rgba[];
   } | null = null;
   let frame = 0;
+  // Group colours the viewer picked in the key; unset groups use the accent. Kept per viewer.
+  const PICKS_KEY = "graph-group-colours";
+  function loadPicks(): Record<string, string> {
+    try {
+      return JSON.parse(localStorage.getItem(PICKS_KEY) ?? "{}");
+    } catch {
+      return {};
+    }
+  }
+  let picks = $state<Record<string, string>>(loadPicks());
+  function setPick(name: string, value: string | null): void {
+    if (value) picks[name] = value;
+    else delete picks[name];
+    try {
+      localStorage.setItem(PICKS_KEY, JSON.stringify(picks));
+    } catch {
+      // Storage can be blocked; the pick still applies for this session.
+    }
+    pushStyle();
+  }
 
   const index = $derived(new Map(data.nodes.map((n, i) => [n.id, i])));
   const selected = $derived(selectedId ? (index.get(selectedId) ?? -1) : -1);
@@ -400,9 +419,10 @@
     const n = data.nodes.length;
     const colors = new Float32Array(n * 4);
     const radii = new Float32Array(n);
+    const picked = groups.names.map((name) => (picks[name] ? parse(picks[name]) : null));
     for (let i = 0; i < n; i++) {
       const isSel = i === selected;
-      const group = colours.groups[(groups.of[i] ?? 0) % colours.groups.length];
+      const group = picked[groups.of[i] ?? 0];
       const base = isSel
         ? colours.hot
         : mode === "arc" && group
@@ -449,7 +469,6 @@
       hot: token("confirm"),
       edge: [...token("link").slice(0, 3), 0.3] as Rgba,
       bg: token("bg-0"),
-      groups: [1, 2, 3, 4, 5, 6, 7, 8].map((n) => token(`graph-${n}`)),
     };
     // Refit on every size change, so opening the note drawer (which narrows the canvas) keeps the graph in view.
     const fit = () => {
@@ -665,12 +684,18 @@
   {#if mode === "arc" && groups.names.length}
     <ul class="key" aria-label="Key: group colours">
       <li class="key-title">Key</li>
-      {#each groups.names as name, g (name)}
+      {#each groups.names as name (name)}
         <li>
-          <span
-            class="swatch"
-            style:background="var(--color-graph-{(g % 8) + 1})"
-          ></span>{name}
+          <input
+            type="color"
+            class="pick"
+            aria-label="Colour for {name}"
+            value={picks[name] ?? hexOf(colours?.node ?? [0, 0, 0, 1])}
+            onchange={(e) => setPick(name, e.currentTarget.value)}
+          />{name}
+          {#if picks[name]}
+            <button class="reset" type="button" onclick={() => setPick(name, null)}>reset</button>
+          {/if}
         </li>
       {/each}
     </ul>
@@ -862,13 +887,27 @@
     margin-bottom: var(--space-1);
   }
 
-  .swatch {
-    display: inline-block;
-    width: 8px;
-    height: 8px;
+  .pick {
+    width: 12px;
+    height: 12px;
+    padding: 0;
     margin-right: var(--space-2);
-    border-radius: 50%;
+    border: none;
+    background: none;
     vertical-align: middle;
+    pointer-events: auto;
+    cursor: pointer;
+  }
+
+  .reset {
+    margin-left: var(--space-2);
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--color-link);
+    font: inherit;
+    pointer-events: auto;
+    cursor: pointer;
   }
 
   .layout-pick select {
