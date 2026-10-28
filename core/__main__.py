@@ -44,6 +44,7 @@ from ai.agent import Agent, AgentPaused
 from ai.keys import clear_api_key, get_api_key, set_api_key
 from ai.router import build_router, model_name
 from core import __version__
+from core.cards import CardStore
 from core.settings import SETTINGS_PATH, Settings, load_settings, save_allowed_tools
 from core.vault import Indexer, open_index
 from core.vault.watcher import VaultWatcher
@@ -75,6 +76,7 @@ class Session:
         self.settings = settings if settings is not None else load_settings(SETTINGS_PATH)
         self.emit: Emit = emit or (lambda _event: None)
         self.indexer: Indexer | None = None
+        self.cards = CardStore(storage / "cards")
         self.lock = threading.RLock()
         self.kill = KillSwitch()
         self.gate = ConfirmGate()
@@ -215,6 +217,20 @@ class Session:
             raise ValueError("no question is waiting with that call id")
         return {"call": call}
 
+    def card_list(self) -> dict[str, Any]:
+        return {"cards": self.cards.list()}
+
+    def card_create(self, request: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "card": self.cards.create(request.get("title"), request.get("body"), request.get("by"))
+        }
+
+    def card_update(self, request: dict[str, Any]) -> dict[str, Any]:
+        # Only the owner's screen sends "by": "owner"; agents will send their own id.
+        changes = {k: request[k] for k in ("title", "body", "locked") if k in request}
+        by = "owner" if request.get("by", "owner") == "owner" else "agent"
+        return {"card": self.cards.update(request.get("id"), changes, by)}
+
     def dispatch(self, request: dict[str, Any]) -> dict[str, Any]:
         method = request.get("method")
         if method == "graph":
@@ -244,6 +260,12 @@ class Session:
             return self.tools()
         if method == "set_tools":
             return self.set_tools(request)
+        if method == "cards":
+            return self.card_list()
+        if method == "card_create":
+            return self.card_create(request)
+        if method == "card_update":
+            return self.card_update(request)
         if method == "stop":
             self.kill.trigger()
             return {"stopped": True}
