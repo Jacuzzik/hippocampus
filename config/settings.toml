@@ -1,6 +1,8 @@
 # Hippocampus settings. Holds no secrets: the Claude API key lives in the OS keychain
 # (set it with `python -m core key set`).
 
+settings_version = 1
+
 [vault]
 # Folder of Markdown notes. A relative path starts at the repo root.
 path = "brains/sample"

@@ -6,6 +6,7 @@ Requests: {"id": ..., "method": "graph"}, {"id": ..., "method": "open", "vault":
 {"id": ..., "method": "read", "path": "<note id>"} (answers {"id": <note id>, "text": ...}).
 {"method": "account"} answers {"claude": true|false}; {"method": "sign_in", "key": "<key>"} saves
 the Claude key in the keychain and {"method": "sign_out"} removes it. Neither ever returns the key.
+{"method": "remove_data"} deletes the index cache and the key; the vault is never touched.
 Answers: {"id": ..., "result": ...} or {"id": ..., "error": "<message>"}. A bad line gets an
 error answer and the loop keeps going. It runs until stdin closes. No network listener.
 
@@ -28,6 +29,7 @@ import contextlib
 import getpass
 import json
 import logging
+import shutil
 import signal
 import sys
 import threading
@@ -50,6 +52,10 @@ from tools.vault_tools import vault_tools
 logger = logging.getLogger("hippocampus.core")
 
 DEFAULT_STORAGE = Path(__file__).resolve().parent.parent / "storage"
+KEYCHAIN_MISSING = (
+    "the OS keychain is not available. Install a Secret Service keyring "
+    "(for example GNOME Keyring or KWallet), then try again."
+)
 
 
 Emit = Callable[[dict[str, Any]], None]
@@ -97,15 +103,23 @@ class Session:
         try:
             set_api_key(key.strip())
         except KeyringError as error:
-            raise ValueError("the OS keychain is not available") from error
+            raise ValueError(KEYCHAIN_MISSING) from error
         return {"claude": True}
 
     def sign_out(self) -> dict[str, Any]:
         try:
             clear_api_key()
         except KeyringError as error:
-            raise ValueError("the OS keychain is not available") from error
+            raise ValueError(KEYCHAIN_MISSING) from error
         return {"claude": False}
+
+    def remove_data(self) -> dict[str, Any]:
+        """Delete the index cache and the Claude key. The vault is never touched."""
+        self.close()
+        index = self.storage / "index"
+        if index.exists():
+            shutil.rmtree(index)
+        return self.sign_out()
 
     def graph(self) -> dict[str, Any]:
         with self.lock:
@@ -190,6 +204,8 @@ class Session:
             return self.sign_in(request)
         if method == "sign_out":
             return self.sign_out()
+        if method == "remove_data":
+            return self.remove_data()
         if method == "chat":
             return self.chat(request)
         if method == "confirm":
