@@ -6,7 +6,7 @@
   const agents = $derived([
     {
       id: "assistant",
-      name: "Assistant",
+      name: "HIPPO",
       state: ORB_LABELS[assistant.chat.orb],
     },
   ]);

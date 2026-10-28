@@ -2,9 +2,13 @@
   import { invoke } from "@tauri-apps/api/core";
   import { onMount } from "svelte";
   import AgentCard from "./AgentCard.svelte";
+  import AgentStatus from "../owner/AgentStatus.svelte";
+  import logo from "../assets/brand/hippocampus-logo.png";
   import Orb from "./Orb.svelte";
   import { ORB_LABELS, type ToolStatus } from "./model";
   import { assistant } from "./session.svelte";
+
+  let showAgents = $state(false);
 
   const STATUS_TEXT: Record<ToolStatus, string> = {
     requested: "asked",
@@ -70,18 +74,30 @@
 <svelte:window onkeydown={onKeydown} />
 
 <aside class="assistant md-theme" aria-label="Assistant">
-  <AgentCard
-    name="Assistant"
-    accent="accent"
-    model={account?.model ?? "Loading model"}
-    details={account
-      ? [
-          account.claude
-            ? "Replies with your Claude key"
-            : "No Claude key: local Ollama",
-        ]
-      : []}
-  />
+  <div class="card-row">
+    <AgentCard
+      name="HIPPO"
+      accent="accent"
+      logo={logo}
+      model={account?.model ?? "Loading model"}
+      details={account
+        ? [
+            account.claude
+              ? "Replies with your Claude key"
+              : "No Claude key: local Ollama",
+          ]
+        : []}
+    />
+    <button
+      class="agents-btn"
+      type="button"
+      aria-expanded={showAgents}
+      onclick={() => (showAgents = !showAgents)}>Agents</button
+    >
+  </div>
+  {#if showAgents}
+    <AgentStatus />
+  {/if}
 
   <header class="head">
     <Orb state={chat.orb} />

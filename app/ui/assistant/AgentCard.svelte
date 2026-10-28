@@ -6,16 +6,17 @@
     accent: Accent;
     model: string;
     details?: string[];
+    logo?: string;
   }
 
-  let { name, accent, model, details = [] }: Props = $props();
+  let { name, accent, model, details = [], logo }: Props = $props();
 
   const faces = import.meta.glob("../assets/faces/*.png", {
     eager: true,
     query: "?url",
     import: "default",
   }) as Record<string, string>;
-  const face = $derived(faces[`../assets/faces/${faceFor(name)}`]);
+  const face = $derived(logo ?? faces[`../assets/faces/${faceFor(name)}`]);
 </script>
 
 <section

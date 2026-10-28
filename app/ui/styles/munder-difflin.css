@@ -22,7 +22,31 @@
   --color-accent-on: var(--color-md-accent-on);
   --color-confirm: var(--color-md-confirm);
   --color-danger: var(--color-md-danger);
-  --color-face-disc: var(--color-md-surface);
+  --color-face-disc: var(--color-md-card);
+}
+
+/* The main agent card is a light card, like Munder Difflin's agent cards. */
+.md-theme .agent-card {
+  --color-text-muted: var(--color-md-card-muted);
+  --color-text: var(--color-md-card-text);
+}
+
+.md-theme .card-row {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-2);
+}
+
+.md-theme .card-row .agent-card {
+  flex: 1;
+  min-width: 0;
+}
+
+.md-theme .agents-btn {
+  align-self: center;
+  font-family: "Press Start 2P", monospace;
+  font-size: 8px;
+  text-transform: uppercase;
 }
 
 .md-theme h3 {
