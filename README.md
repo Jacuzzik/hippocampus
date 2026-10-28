@@ -8,7 +8,15 @@ Linux comes first, then Windows, then macOS.
 
 ## Status
 
-Early development, phase D8: the desktop app has the brain graph, search, the assistant (chat, tool log, confirm cards, kill switch) and the orb, with Playwright tests for the critical paths. A Linux AppImage runs with its own bundled Python sidecar (`scripts/build-sidecar.sh`, then `npx tauri build` in `app/`); Windows and macOS builds are not verified yet. See [AGENTS.md](AGENTS.md) for the architecture and roadmap.
+Early development, phase D8: the desktop app has the brain graph, search, the assistant (chat, tool log, confirm cards, kill switch) and the orb, with Playwright tests for the critical paths. A Linux AppImage runs with its own bundled Python sidecar (`scripts/build-sidecar.sh`, then `npx tauri build` in `app/`); Windows and macOS builds are not verified yet. The graph falls back to a 2D canvas if WebGL 2 is unavailable. Nodes with more links appear larger; drag a node to pull its directly linked notes along, while dragging empty space pans the graph. See [AGENTS.md](AGENTS.md) for the architecture and roadmap.
+
+An assistant request pauses after 20 tool calls. Choose Continue to resume it. To change the limit, set `max_tool_calls` under `[ai]` in `config/settings.toml` (use a whole number of 1 or more).
+
+### Explore your notes
+
+- Search notes in the sidebar, or press Ctrl+F (Cmd+F on macOS) to open the note list and focus search. Use the Tags list or tag filter to narrow the notes.
+- Select a graph node to open its note details. Drag a node to move it and pull directly linked notes along; drag empty graph space to pan. Choose Fit graph to bring every note into view, or turn on Hide orphans to hide notes with no links.
+- Press Ctrl+O (Cmd+O on macOS) to find a note by name. Press Ctrl+P (Cmd+P on macOS) to open app commands, such as toggling the note list or assistant.
 
 ## Run
 
