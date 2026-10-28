@@ -139,4 +139,5 @@ def parse_openai(data: dict[str, Any]) -> Reply:
         text = message.get("content") or ""
     except (KeyError, IndexError, TypeError, ValueError) as exc:
         raise ProviderError("the model provider sent a reply in an unexpected shape") from exc
-    return Reply(text=text, tool_calls=calls)
+    tokens = int((data.get("usage") or {}).get("total_tokens") or 0)
+    return Reply(text=text, tool_calls=calls, tokens=tokens)

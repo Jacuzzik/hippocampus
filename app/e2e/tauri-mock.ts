@@ -120,6 +120,94 @@ export async function mockSidecar(
       // The assistant tool allowlist the fake sidecar holds: null means every tool.
       let allowlist: string[] | null = null;
 
+      // Control panel state the fake sidecar holds.
+      let networkMode = "off";
+      let budgetCaps = {
+        app: { five_hour: 0, daily: 200000, weekly: 0, monthly: 0 },
+        assistant: { five_hour: 20000, daily: 50000, weekly: 0, monthly: 0 },
+      };
+      const budgetUsed = {
+        app: { five_hour: 4100, daily: 12400, weekly: 30100, monthly: 41000 },
+        assistant: {
+          five_hour: 3900,
+          daily: 9800,
+          weekly: 25000,
+          monthly: 33000,
+        },
+      };
+      let allowance = false;
+      const activityRows = [
+        {
+          ts: "2026-10-27T09:12:04+00:00",
+          kind: "approval",
+          tool: "create_note",
+          tier: "write",
+          approved: true,
+        },
+        {
+          ts: "2026-10-27T09:12:01+00:00",
+          kind: "tool",
+          tool: "search_notes",
+          tier: "read",
+          status: "done",
+        },
+        {
+          ts: "2026-10-27T09:10:48+00:00",
+          kind: "budget",
+          text: "paused: assistant daily cap reached",
+        },
+        {
+          ts: "2026-10-27T08:55:10+00:00",
+          kind: "error",
+          method: "chat",
+          text: "network is Off: no call to api.anthropic.com",
+        },
+        {
+          ts: "2026-10-27T08:50:00+00:00",
+          kind: "setting",
+          text: "network set to converse",
+        },
+      ];
+      const jobRows = [
+        {
+          id: "link-check",
+          name: "Weekly link check",
+          kind: "link_check",
+          every_days: 7,
+          enabled: true,
+          last_run: "2026-10-26T07:00:00+00:00",
+        },
+      ];
+      let helperRows: {
+        id: number;
+        prompt: string;
+        status: string;
+        result: string;
+      }[] = [
+        {
+          id: 1,
+          prompt: "Summarise the project notes",
+          status: "done",
+          result: "Three notes cover the roadmap.",
+        },
+      ];
+      let skillRows = [
+        {
+          name: "tidy-notes",
+          description: "Keeps the note list tidy",
+          path: "/home/thalha/hippocampus/skills/tidy-notes",
+        },
+      ];
+      const keyRows = () => [
+        {
+          provider: "claude",
+          label: "Claude (Anthropic)",
+          saved: claudeKey !== null,
+          hint: claudeKey ? claudeKey.slice(-4) : null,
+        },
+        { provider: "openai", label: "OpenAI", saved: false, hint: null },
+      ];
+
       async function sidecarCall(args: {
         method: string;
         params?: Record<string, unknown>;
@@ -194,6 +282,91 @@ export async function mockSidecar(
               pending.delete(chat);
             }
             return { stopped: true };
+          // The control panel: the same shapes as core/__main__.py answers.
+          case "network":
+            return {
+              mode: networkMode,
+              modes: ["off", "listen", "converse", "open"],
+            };
+          case "set_network":
+            networkMode = String(args.params?.mode);
+            return {
+              mode: networkMode,
+              modes: ["off", "listen", "converse", "open"],
+            };
+          case "budget":
+            return { caps: budgetCaps, used: budgetUsed, allowance };
+          case "set_budget":
+            budgetCaps = args.params as typeof budgetCaps;
+            return { caps: budgetCaps, used: budgetUsed, allowance };
+          case "budget_allow":
+            allowance = true;
+            return { allowance: true };
+          case "activity":
+            return { rows: activityRows };
+          case "asks":
+            return {
+              asks: [
+                {
+                  call: "ask-1",
+                  question: "Which folder should the new note go in?",
+                },
+              ],
+            };
+          case "answer":
+            return { call: args.params?.call };
+          case "memory_status":
+            return {
+              ready: false,
+              reason:
+                "No embedding model is installed, so search by meaning is not set up. Text search still works.",
+              max_bytes: 32000,
+            };
+          case "memory_search":
+            if (args.params?.mode === "meaning")
+              throw new Error("Not set up: no embedding model is installed.");
+            return { mode: "text", hits: ["ideas/memory.md"] };
+          case "jobs":
+            return { jobs: jobRows };
+          case "set_job": {
+            const [job] = jobRows;
+            if (!job) throw new Error("mock: no job");
+            job.enabled = Boolean(args.params?.enabled);
+            if (args.params?.every_days)
+              job.every_days = Number(args.params.every_days);
+            return { jobs: jobRows };
+          }
+          case "helpers":
+            return { helpers: helperRows, limit: 4 };
+          case "start_helper":
+            if (!String(args.params?.prompt ?? "").trim())
+              throw new Error('"prompt" is empty');
+            helperRows = [
+              ...helperRows,
+              {
+                id: helperRows.length + 1,
+                prompt: String(args.params?.prompt),
+                status: "running",
+                result: "",
+              },
+            ];
+            return { helpers: helperRows, limit: 4 };
+          case "skills":
+            return { skills: skillRows };
+          case "remove_skill":
+            skillRows = skillRows.filter((k) => k.name !== args.params?.name);
+            return { skills: skillRows };
+          case "share":
+            throw new Error("Not set up: no share host is configured.");
+          case "keys":
+            return { keys: keyRows() };
+          case "save_key":
+            if (String(args.params?.provider) === "claude")
+              claudeKey = String(args.params?.key);
+            return { keys: keyRows() };
+          case "clear_key":
+            if (String(args.params?.provider) === "claude") claudeKey = null;
+            return { keys: keyRows() };
           default:
             throw new Error(`mock: unknown method ${args.method}`);
         }

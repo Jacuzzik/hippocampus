@@ -8,6 +8,8 @@
   import StatusBar from "./regions/StatusBar.svelte";
   import AccountDialog from "./overlays/AccountDialog.svelte";
   import ToolsDialog from "./overlays/ToolsDialog.svelte";
+  import ControlDialog from "./control/ControlDialog.svelte";
+  import SettingsDialog from "./control/SettingsDialog.svelte";
   import CommandBox, { type Item } from "./overlays/CommandBox.svelte";
   import type { GraphData } from "./graph/model.ts";
   import { tick } from "svelte";
@@ -31,6 +33,10 @@
   let setupOpen = $state(false);
   // The assistant tool allowlist: from the command palette.
   let toolsOpen = $state(false);
+  // The control panel: network, budgets, activity, questions, memory, jobs, helpers, sharing, skills, keys.
+  let controlOpen = $state(false);
+  // The settings: six tabs, from the command palette or the control panel.
+  let settingsOpen = $state(false);
 
   // Ctrl on Linux and Windows, Cmd on macOS. Both shortcuts take over the browser default.
   function onKey(e: KeyboardEvent): void {
@@ -76,6 +82,16 @@
       id: "tools",
       label: "Assistant tools",
       run: () => (toolsOpen = true),
+    },
+    {
+      id: "control",
+      label: "Control panel",
+      run: () => (controlOpen = true),
+    },
+    {
+      id: "settings",
+      label: "Settings",
+      run: () => (settingsOpen = true),
     },
   ];
 
@@ -124,6 +140,20 @@
   <ToolsDialog onclose={() => (toolsOpen = false)} />
 {/if}
 
+{#if controlOpen}
+  <ControlDialog
+    onclose={() => (controlOpen = false)}
+    onsettings={() => {
+      controlOpen = false;
+      settingsOpen = true;
+    }}
+  />
+{/if}
+
+{#if settingsOpen}
+  <SettingsDialog onclose={() => (settingsOpen = false)} />
+{/if}
+
 {#if setupOpen}
   <AccountDialog
     onclose={() => (setupOpen = false)}
@@ -139,9 +169,17 @@
     bind:sidebarOpen
     bind:panelOpen
     onaccount={() => (setupOpen = true)}
+    oncontrol={() => (controlOpen = true)}
   />
   {#if sidebarOpen && data}
-    <NoteSidebar {data} bind:query bind:tag bind:memory bind:selectedId bind:searchEl />
+    <NoteSidebar
+      {data}
+      bind:query
+      bind:tag
+      bind:memory
+      bind:selectedId
+      bind:searchEl
+    />
   {/if}
   <GraphRegion
     {data}

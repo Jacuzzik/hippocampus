@@ -72,4 +72,5 @@ def parse_ollama(data: dict[str, Any]) -> Reply:
         text = message.get("content") or ""
     except (KeyError, TypeError, ValueError) as exc:
         raise ProviderError("Ollama sent a reply in an unexpected shape") from exc
-    return Reply(text=text, tool_calls=calls)
+    tokens = int(data.get("prompt_eval_count") or 0) + int(data.get("eval_count") or 0)
+    return Reply(text=text, tool_calls=calls, tokens=tokens)

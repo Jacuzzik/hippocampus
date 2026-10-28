@@ -227,7 +227,7 @@ def test_assistant_asks_the_user_and_waits_for_the_answer() -> None:
         while not any(e["event"] == "ask" for e in events):
             time.sleep(0.01)
         assert [e for e in events if e["event"] == "ask"][0]["question"] == "Which folder?"
-        assert asks.waiting() == ["q1"]
+        assert asks.waiting() == [("q1", "Which folder?")]
         assert asks.answer("q1", "notes")
 
     threading.Thread(target=answer_when_asked).start()
