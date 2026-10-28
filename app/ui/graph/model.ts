@@ -4,6 +4,8 @@ export interface GraphNode {
   id: string;
   title: string;
   tags: string[];
+  /** True for notes the assistant created (frontmatter created_by: assistant). */
+  memory?: boolean;
 }
 
 export interface GraphData {
@@ -173,6 +175,8 @@ export function hitTest(
 export interface Filter {
   query: string;
   tag: string | null;
+  /** Only assistant memory notes pass. */
+  memory?: boolean;
 }
 
 /** Per node: true if it passes the search text and tag filter. An empty filter passes everything. */
@@ -183,6 +187,7 @@ export function matchFilter(
   const q = filter.query.trim().toLocaleLowerCase();
   return nodes.map((n) => {
     if (filter.tag && !n.tags.includes(filter.tag)) return false;
+    if (filter.memory && !n.memory) return false;
     if (!q) return true;
     return (
       n.title.toLocaleLowerCase().includes(q) ||

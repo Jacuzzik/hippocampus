@@ -7,6 +7,9 @@
   import RightPanel from "./regions/RightPanel.svelte";
   import StatusBar from "./regions/StatusBar.svelte";
   import AccountDialog from "./overlays/AccountDialog.svelte";
+  import ToolsDialog from "./overlays/ToolsDialog.svelte";
+  import ControlDialog from "./control/ControlDialog.svelte";
+  import SettingsDialog from "./control/SettingsDialog.svelte";
   import CommandBox, { type Item } from "./overlays/CommandBox.svelte";
   import type { GraphData } from "./graph/model.ts";
   import { tick } from "svelte";
@@ -15,6 +18,7 @@
   let error = $state<string | null>(null);
   let query = $state("");
   let tag = $state<string | null>(null);
+  let memory = $state(false);
   let selectedId = $state<string | null>(null);
   // Phones and portrait tablets start with the note list and assistant closed, so the graph gets the screen.
   const narrow = window.matchMedia("(max-width: 900px)").matches;
@@ -27,6 +31,12 @@
   let viewKey = $state(0);
   // Setup and account: opens on first run (no brain yet) and from the ribbon or the palette.
   let setupOpen = $state(false);
+  // The assistant tool allowlist: from the command palette.
+  let toolsOpen = $state(false);
+  // The control panel: network, budgets, activity, questions, memory, jobs, helpers, sharing, skills, keys.
+  let controlOpen = $state(false);
+  // The settings: six tabs, from the command palette or the control panel.
+  let settingsOpen = $state(false);
 
   // Ctrl on Linux and Windows, Cmd on macOS. Both shortcuts take over the browser default.
   function onKey(e: KeyboardEvent): void {
@@ -67,6 +77,21 @@
       id: "account",
       label: "Setup and account",
       run: () => (setupOpen = true),
+    },
+    {
+      id: "tools",
+      label: "Assistant tools",
+      run: () => (toolsOpen = true),
+    },
+    {
+      id: "control",
+      label: "Control panel",
+      run: () => (controlOpen = true),
+    },
+    {
+      id: "settings",
+      label: "Settings",
+      run: () => (settingsOpen = true),
     },
   ];
 
@@ -111,6 +136,24 @@
   />
 {/if}
 
+{#if toolsOpen}
+  <ToolsDialog onclose={() => (toolsOpen = false)} />
+{/if}
+
+{#if controlOpen}
+  <ControlDialog
+    onclose={() => (controlOpen = false)}
+    onsettings={() => {
+      controlOpen = false;
+      settingsOpen = true;
+    }}
+  />
+{/if}
+
+{#if settingsOpen}
+  <SettingsDialog onclose={() => (settingsOpen = false)} />
+{/if}
+
 {#if setupOpen}
   <AccountDialog
     onclose={() => (setupOpen = false)}
@@ -126,17 +169,27 @@
     bind:sidebarOpen
     bind:panelOpen
     onaccount={() => (setupOpen = true)}
+    oncontrol={() => (controlOpen = true)}
   />
   {#if sidebarOpen && data}
-    <NoteSidebar {data} bind:query bind:tag bind:selectedId bind:searchEl />
+    <NoteSidebar
+      {data}
+      bind:query
+      bind:tag
+      bind:memory
+      bind:selectedId
+      bind:searchEl
+    />
   {/if}
   <GraphRegion
     {data}
     {error}
     {query}
     {tag}
+    {memory}
     {selectedId}
     {viewKey}
+    onmemory={(on) => (memory = on)}
     onselect={(id) => (selectedId = id)}
   />
   <RightPanel open={panelOpen} />

@@ -56,10 +56,12 @@ class AskQueue:
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._pending: dict[str, str | None] = {}
+        self._questions: dict[str, str] = {}
 
-    def open(self, ask_id: str) -> None:
+    def open(self, ask_id: str, question: str = "") -> None:
         with self._lock:
             self._pending[ask_id] = None
+            self._questions[ask_id] = question
 
     def answer(self, ask_id: str, text: str) -> bool:
         """Record the user's answer. False when no question with that id is waiting."""
@@ -73,10 +75,16 @@ class AskQueue:
         with self._lock:
             return self._pending.get(ask_id)
 
-    def waiting(self) -> list[str]:
+    def waiting(self) -> list[tuple[str, str]]:
+        """(ask id, question) for every question still waiting, oldest first."""
         with self._lock:
-            return [ask_id for ask_id, text in self._pending.items() if text is None]
+            return [
+                (ask_id, self._questions.get(ask_id, ""))
+                for ask_id, text in self._pending.items()
+                if text is None
+            ]
 
     def close(self, ask_id: str) -> None:
         with self._lock:
             self._pending.pop(ask_id, None)
+            self._questions.pop(ask_id, None)

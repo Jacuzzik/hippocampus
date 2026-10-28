@@ -227,7 +227,7 @@ def test_assistant_asks_the_user_and_waits_for_the_answer() -> None:
         while not any(e["event"] == "ask" for e in events):
             time.sleep(0.01)
         assert [e for e in events if e["event"] == "ask"][0]["question"] == "Which folder?"
-        assert asks.waiting() == ["q1"]
+        assert asks.waiting() == [("q1", "Which folder?")]
         assert asks.answer("q1", "notes")
 
     threading.Thread(target=answer_when_asked).start()
@@ -265,3 +265,31 @@ def test_answer_only_fills_a_question_that_is_waiting() -> None:
     assert not asks.answer("q1", "second")
     assert not asks.answer("missing", "x")
     assert asks.answer_of("q1") == "first"
+
+
+def test_running_tool_call_is_reported_while_it_still_runs() -> None:
+    # The live tool log needs the "running" event before the tool returns, within a second.
+    release = threading.Event()
+
+    def slow(args: dict) -> str:
+        release.wait(5)
+        return "text"
+
+    provider = Scripted(
+        Reply("", [ToolCall("c1", "read_note", {"path": "a.md"})]),
+        Reply("done"),
+    )
+    tool = Tool("read_note", "read", "", {}, slow)
+    agent, events, _, _ = make_agent(provider, {"read_note": tool})
+    worker = threading.Thread(target=ask, args=(agent,))
+    worker.start()
+    try:
+        started = time.monotonic()
+        while not any(e.get("status") == "running" for e in events):
+            assert time.monotonic() - started < 1.0, "no running event within a second"
+            time.sleep(0.01)
+        assert worker.is_alive()  # the tool is still blocked when the event arrives
+    finally:
+        release.set()
+        worker.join(5)
+    assert [e["status"] for e in events if e["event"] == "tool"] == ["requested", "running", "done"]

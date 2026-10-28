@@ -25,17 +25,19 @@
   const LABEL_H = 14;
   const MAX_LABELS = 300;
 
-  // The note list in the sidebar owns the search, tag filter and selection; the graph draws them.
+  // The note list in the sidebar owns the search, tag and memory filters and selection; the graph draws them.
   let {
     data,
     query = "",
     tag = null,
+    memory = false,
     selectedId = null,
     onselect,
   }: {
     data: GraphData;
     query?: string;
     tag?: string | null;
+    memory?: boolean;
     selectedId?: string | null;
     onselect: (id: string | null) => void;
   } = $props();
@@ -43,6 +45,7 @@
   let canvas: HTMLCanvasElement | undefined = $state();
   let labelLayer: HTMLDivElement | undefined = $state();
   let labels = $state<{ text: string; x: number; y: number }[]>([]);
+  let hovered = -1;
   let error = $state<string | null>(null);
   let cam = $state<Camera>({ x: 0, y: 0, zoom: 1 });
 
@@ -75,7 +78,7 @@
 
   const index = $derived(new Map(data.nodes.map((n, i) => [n.id, i])));
   const selected = $derived(selectedId ? (index.get(selectedId) ?? -1) : -1);
-  const matched = $derived(matchFilter(data.nodes, { query, tag }));
+  const matched = $derived(matchFilter(data.nodes, { query, tag, memory }));
   const degree = $derived(linkCounts(data.nodes, data.edges));
   const visible = $derived(
     matched.map((m, i) => m && !(hideOrphans && degree[i] === 0)),
@@ -203,8 +206,7 @@
     const placed: { text: string; x: number; y: number }[] = [];
     const boxes: number[] = [];
     const place = (i: number) => {
-      if (placed.length >= MAX_LABELS || (i !== selected && !visible[i]))
-        return;
+      if (placed.length >= MAX_LABELS || i !== hovered || !visible[i]) return;
       const sx = (pos[2 * i] ?? 0) * cam.zoom + cam.x;
       const sy = (pos[2 * i + 1] ?? 0) * cam.zoom + cam.y;
       if (sx < 0 || sy < 0 || sx > w || sy > h) return;
@@ -224,8 +226,7 @@
       boxes.push(x, y, x1, y + LABEL_H);
       placed.push({ text, x, y });
     };
-    if (selected >= 0) place(selected);
-    for (let i = 0; i < data.nodes.length; i++) if (i !== selected) place(i);
+    if (hovered >= 0) place(hovered);
 
     labels = placed;
   }
@@ -427,7 +428,17 @@
       dragging = true;
     };
     const onMove = (e: PointerEvent) => {
-      if (!drag) return;
+      if (!drag) {
+        // Labels show only for the node under the pointer.
+        const [hx, hy] = local(e);
+        const hit = hitTest(pos, cam, hx, hy, 8);
+        const next = hit >= 0 && visible[hit] ? hit : -1;
+        if (next !== hovered) {
+          hovered = next;
+          schedule();
+        }
+        return;
+      }
       const [x, y] = local(e);
       const dx = x - drag.x;
       const dy = y - drag.y;

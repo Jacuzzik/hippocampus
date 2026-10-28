@@ -12,9 +12,9 @@ Pro features, sync, and licensing live in a separate private repo (`hippocampus-
 
 1. **Local first.** User notes stay on the user's machine. No network calls except to the model provider the user configured.
 2. **No shell access by default.** The assistant's tools are allowlisted. Any tool that writes, sends, deletes, or runs a shell command needs an explicit user confirmation step.
-3. **Secrets never in files or logs.** API keys go in the OS keychain. Never write keys to `config/`, logs, or the repo. The local API can set a key but never return one.
+3. **Secrets never in files or logs.** API keys go in the OS keychain. Never write keys to `config/`, logs, or the repo.
 4. **Kill switch.** Every tool execution path must check the kill-switch state before running. Stopping must halt all pending tool calls within one second.
-5. **Local API is localhost-only.** Bind to `127.0.0.1`, require a bearer token generated on first launch and stored in the keychain.
+5. **No network listener.** There is no local API. The app talks to the Python sidecar over stdin and stdout, so nothing listens on a port.
 6. **Don't add a license-incompatible dependency.** The core is MIT. Do not add GPL code to the core. Check each dependency's license in its PR. Fish Audio's research license is not allowed in the core.
 7. **Design tokens only.** Colors and spacing come from `design/tokens.json`. Don't hardcode new hex values in components.
 8. **Ask before big changes.** For anything that changes architecture, the folder layout, or a public API, stop and propose a plan first.
@@ -28,7 +28,6 @@ core/         notes engine: vault index, links, tags, search
 ai/           model router: Claude (primary), Ollama (local fallback)
 voice/        STT (faster-whisper), TTS (Kokoro default), wake word later
 tools/        jarvis-tools MCP server, confirm gate, kill switch, logs
-api/          localhost settings API (FastAPI), token-protected
 design/       tokens.json, reference notes
 config/       settings.toml (no secrets)
 brains/       default vault location (user-owned, git-ignored in dev)
@@ -36,7 +35,7 @@ storage/      SQLite index, logs, audio cache (git-ignored)
 tests/        unit and Playwright end-to-end tests
 ```
 
-Backend is Python for core, AI, voice, tools, and API. The UI is Svelte inside Tauri, and talks to the Python sidecar over localhost.
+Backend is Python for core, AI, voice, and tools. The UI is Svelte inside Tauri, and talks to the Python sidecar over stdin and stdout.
 
 ## Hardware profile (dev machine)
 
@@ -58,14 +57,13 @@ Implications:
 - **Ollama (fallback):** local, free, offline. Used when no key is set or the network is down.
 - **Adding providers:** each provider implements the same interface in `ai/providers/`. Don't add a provider without a test that mocks its responses.
 
-## Settings and the local API
+## Settings
 
-Settings are changeable three ways, all reading and writing one source of truth:
+Settings are changeable two ways, both reading and writing one source of truth:
 1. The settings screen in the app
 2. `config/settings.toml`, edited by hand
-3. The localhost API, `http://127.0.0.1:7421/api/v1/...`, with a bearer token
 
-Changes apply immediately and are logged. The API cannot run tools or send messages.
+Changes apply immediately and are logged. `settings_version` (currently 1) lets a later release migrate the file.
 
 ## Confirmation gate (tool safety)
 

@@ -12,6 +12,8 @@
   let key = $state("");
   let error = $state<string | null>(null);
   let confirmSignOut = $state(false);
+  let confirmRemove = $state(false);
+  let notice = $state<string | null>(null);
   let vaultInput: HTMLInputElement | null = $state(null);
 
   onMount(async () => {
@@ -69,6 +71,27 @@
           method: "sign_out",
         })
       ).claude;
+    } catch (cause) {
+      error = String(cause);
+    }
+  }
+
+  async function removeData(): Promise<void> {
+    if (!confirmRemove) {
+      confirmRemove = true;
+      return;
+    }
+    confirmRemove = false;
+    error = null;
+    notice = null;
+    try {
+      signedIn = (
+        await invoke<{ claude: boolean }>("sidecar_call", {
+          method: "remove_data",
+        })
+      ).claude;
+      notice =
+        "Removed the index cache and the Claude key. Your notes are untouched.";
     } catch (cause) {
       error = String(cause);
     }
@@ -135,6 +158,24 @@
           />
           <button type="submit" class="primary">Sign in</button>
         </form>
+      {/if}
+    </div>
+
+    <div class="section">
+      <h3>Your data</h3>
+      <p class="muted">
+        Removes the index cache and the Claude key. Your notes are never
+        deleted.
+      </p>
+      <div>
+        <button type="button" onclick={removeData}>
+          {confirmRemove
+            ? "Press again to remove Hippocampus data"
+            : "Remove Hippocampus data"}
+        </button>
+      </div>
+      {#if notice}
+        <p class="muted">{notice}</p>
       {/if}
     </div>
 

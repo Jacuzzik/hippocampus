@@ -1,23 +1,25 @@
 <script lang="ts">
   import { matchFilter, tagCounts, type GraphData } from "../graph/model";
 
-  // Search, tag filter and note list. The graph reads the same state through props.
+  // Search, tag and memory filters and note list. The graph reads the same state through props.
   let {
     data,
     query = $bindable(""),
     tag = $bindable<string | null>(null),
+    memory = $bindable(false),
     selectedId = $bindable<string | null>(null),
     searchEl = $bindable<HTMLInputElement | null>(null),
   }: {
     data: GraphData;
     query?: string;
     tag?: string | null;
+    memory?: boolean;
     selectedId?: string | null;
     searchEl?: HTMLInputElement | null;
   } = $props();
 
   const tags = $derived(tagCounts(data.nodes));
-  const matched = $derived(matchFilter(data.nodes, { query, tag }));
+  const matched = $derived(matchFilter(data.nodes, { query, tag, memory }));
   const shown = $derived(data.nodes.filter((_, i) => matched[i]));
 
   function onSearchKey(e: KeyboardEvent): void {
@@ -42,6 +44,12 @@
     placeholder="Search notes"
     aria-label="Search notes"
   />
+  <button
+    type="button"
+    class="memory"
+    aria-pressed={memory}
+    onclick={() => (memory = !memory)}>Memory only</button
+  >
   <select
     value={tag ?? ""}
     onchange={(e) => (tag = e.currentTarget.value || null)}
@@ -131,6 +139,22 @@
     padding: var(--space-1) var(--space-2);
   }
 
+  .memory {
+    font: inherit;
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
+    background: var(--color-bg-0);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: var(--space-1) var(--space-2);
+    cursor: pointer;
+  }
+
+  .memory[aria-pressed="true"] {
+    color: var(--color-text);
+    border-color: var(--color-text-muted);
+  }
+
   .tags-pane summary {
     cursor: pointer;
     font-size: var(--font-size-xs);
@@ -146,6 +170,8 @@
     list-style: none;
     max-height: 7rem;
     overflow-y: auto;
+    /* fades the bottom edge so a clipped list reads as scrollable */
+    mask-image: linear-gradient(to bottom, black 75%, transparent);
   }
 
   .tag {

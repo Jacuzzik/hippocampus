@@ -65,6 +65,7 @@ class Agent:
         self.max_tool_calls = max_tool_calls
         self.allowed = None if allowed is None else frozenset(allowed)  # None: every tool
         self.asks = asks  # None: the assistant cannot ask the user
+        self.tokens_used = 0  # provider tokens over every model reply in this request
 
     async def run(self, text: str, messages: list[dict[str, Any]] | None = None) -> str:
         """Answer `text`. Pass the messages of a paused request to carry on from them."""
@@ -80,6 +81,7 @@ class Agent:
         calls = 0
         for _ in range(MAX_STEPS):
             reply: Reply = await self._until_stopped(self.router.chat(messages, specs))
+            self.tokens_used += reply.tokens
             messages.append(
                 {"role": "assistant", "content": reply.text, "tool_calls": reply.tool_calls}
             )
@@ -132,7 +134,7 @@ class Agent:
         question = call.args.get("question")
         if not isinstance(question, str) or not question.strip():
             return "error: ask_user needs a non-empty question"
-        asks.open(call.id)
+        asks.open(call.id, question.strip())
         self.emit({"event": "ask", "call": call.id, "question": question.strip()})
         try:
             while (answer := asks.answer_of(call.id)) is None:

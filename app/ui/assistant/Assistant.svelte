@@ -1,5 +1,7 @@
 <script lang="ts">
+  import { invoke } from "@tauri-apps/api/core";
   import { onMount } from "svelte";
+  import AgentCard from "./AgentCard.svelte";
   import Orb from "./Orb.svelte";
   import { ORB_LABELS, type ToolStatus } from "./model";
   import { assistant } from "./session.svelte";
@@ -21,17 +23,41 @@
   };
 
   let draft = $state("");
+  let account = $state<{ claude: boolean; model: string } | null>(null);
+  let answers = $state<Record<string, string>>({});
   const chat = $derived(assistant.chat);
 
   onMount(() => {
     void assistant.start();
+    void loadAccount();
   });
+
+  async function loadAccount(): Promise<void> {
+    try {
+      account = await invoke<{ claude: boolean; model: string }>(
+        "sidecar_call",
+        {
+          method: "account",
+        },
+      );
+    } catch (cause) {
+      console.error("Could not read the model in use", cause);
+    }
+  }
 
   function submit(event: SubmitEvent): void {
     event.preventDefault();
     const text = draft;
     draft = "";
     void assistant.send(text);
+  }
+
+  function answer(event: SubmitEvent, call: string): void {
+    event.preventDefault();
+    const text = (answers[call] ?? "").trim();
+    if (!text) return;
+    answers[call] = "";
+    void assistant.answer(call, text);
   }
 
   function onKeydown(event: KeyboardEvent): void {
@@ -44,8 +70,20 @@
 <svelte:window onkeydown={onKeydown} />
 
 <aside class="assistant" aria-label="Assistant">
+  <AgentCard
+    name="Assistant"
+    accent="accent"
+    model={account?.model ?? "Loading model"}
+    details={account
+      ? [
+          account.claude
+            ? "Replies with your Claude key"
+            : "No Claude key: local Ollama",
+        ]
+      : []}
+  />
+
   <header class="head">
-    <h2>Assistant</h2>
     <Orb state={chat.orb} />
     <span class="state">{ORB_LABELS[chat.orb]}</span>
   </header>
@@ -87,6 +125,24 @@
     </section>
   {/each}
 
+  {#each chat.asks as ask (ask.call)}
+    <form
+      class="ask"
+      aria-label="Question from the assistant"
+      onsubmit={(event) => answer(event, ask.call)}
+    >
+      <p class="confirm-title">{ask.question}</p>
+      <label class="visually-hidden" for="ask-{ask.call}">Your answer</label>
+      <textarea id="ask-{ask.call}" rows="2" bind:value={answers[ask.call]}
+      ></textarea>
+      <div class="actions">
+        <button type="submit" disabled={!(answers[ask.call] ?? "").trim()}
+          >Answer</button
+        >
+      </div>
+    </form>
+  {/each}
+
   <section class="tools" aria-label="Tool log">
     <h3>Tool log</h3>
     {#if chat.tools.length === 0 && chat.activity.length === 0}
@@ -109,6 +165,21 @@
         </li>
       {/each}
     </ul>
+    {#if chat.budgetPause !== null}
+      <div class="budget-card" role="alert">
+        <p>
+          The {chat.budgetPause.scope}
+          {chat.budgetPause.window} token cap is used. Allow one more request, then
+          send your message again.
+        </p>
+        <button
+          type="button"
+          class="continue"
+          disabled={assistant.busy}
+          onclick={() => assistant.allowOne()}>Allow one more request</button
+        >
+      </div>
+    {/if}
     {#if chat.paused !== null}
       <button
         type="button"
@@ -166,12 +237,6 @@
     gap: var(--space-2);
   }
 
-  h2 {
-    margin: 0;
-    font-size: var(--font-size-md);
-    flex: 1;
-  }
-
   h3 {
     margin: 0 0 var(--space-1);
     font-size: var(--font-size-sm);
@@ -183,6 +248,10 @@
   .muted {
     font-size: var(--font-size-xs);
     color: var(--color-text-muted);
+  }
+
+  .state {
+    margin-left: auto;
   }
 
   .messages {
@@ -208,7 +277,8 @@
     color: var(--color-danger);
   }
 
-  .confirm {
+  .confirm,
+  .ask {
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
@@ -334,7 +404,7 @@
     color: var(--color-accent-on);
   }
 
-  .stop {
+  .stop:not(:disabled) {
     border-color: var(--color-danger);
     color: var(--color-danger);
   }

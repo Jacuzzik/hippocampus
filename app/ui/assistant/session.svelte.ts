@@ -7,6 +7,7 @@ import {
   finishChat,
   logActivity,
   receiveEvent,
+  removeAsk,
   removeConfirm,
   sendMessage,
   settleSpeaking,
@@ -64,6 +65,16 @@ export const assistant = {
     }
   },
 
+  /** Let the next request past a token cap, then send the last message again. */
+  async allowOne(): Promise<void> {
+    try {
+      await invoke("sidecar_call", { method: "budget_allow" });
+      chat = { ...chat, budgetPause: null };
+    } catch (cause) {
+      chat = failChat(chat, errorText(cause));
+    }
+  },
+
   /** Carry on after a pause at the tool-call limit. */
   async resume(): Promise<void> {
     await this.send("Continue.", true);
@@ -73,6 +84,19 @@ export const assistant = {
   async stop(): Promise<void> {
     try {
       await invoke("sidecar_call", { method: "stop" });
+    } catch (cause) {
+      chat = failChat(chat, errorText(cause));
+    }
+  },
+
+  /** Send the user's answer to a question the assistant asked. */
+  async answer(call: string, text: string): Promise<void> {
+    chat = removeAsk(chat, call);
+    try {
+      await invoke("sidecar_call", {
+        method: "answer",
+        params: { call, text },
+      });
     } catch (cause) {
       chat = failChat(chat, errorText(cause));
     }

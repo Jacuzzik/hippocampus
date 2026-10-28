@@ -35,10 +35,10 @@ def test_sign_in_saves_the_key_and_status_never_returns_it(
     keychain: Keychain, tmp_path: Path
 ) -> None:
     s = session(tmp_path)
-    assert s.dispatch({"method": "account"}) == {"claude": False}
+    assert s.dispatch({"method": "account"}) == {"claude": False, "model": "qwen2.5:1.5b"}
     assert s.dispatch({"method": "sign_in", "key": " sk-test "}) == {"claude": True}
     assert keychain.key == "sk-test"
-    assert s.dispatch({"method": "account"}) == {"claude": True}
+    assert s.dispatch({"method": "account"}) == {"claude": True, "model": "claude-sonnet-5-5"}
     assert "sk-test" not in str(s.dispatch({"method": "account"}))
 
 
@@ -66,3 +66,21 @@ def test_keychain_failure_is_a_plain_error(monkeypatch: pytest.MonkeyPatch, tmp_
         s.dispatch({"method": "sign_in", "key": "sk-test"})
     with pytest.raises(ValueError, match="keychain is not available"):
         s.dispatch({"method": "sign_out"})
+
+
+def test_remove_data_deletes_the_index_and_the_key_but_not_the_vault(
+    keychain: Keychain, tmp_path: Path
+) -> None:
+    storage = tmp_path / "storage"
+    (storage / "index").mkdir(parents=True)
+    (storage / "index" / "abc.sqlite3").write_text("cache", encoding="utf-8")
+    vault = tmp_path / "vault"
+    vault.mkdir()
+    (vault / "note.md").write_text("keep me", encoding="utf-8")
+    keychain.set("sk-test")
+    s = sidecar.Session(storage, Settings(), emit=lambda event: None)
+
+    assert s.dispatch({"method": "remove_data"}) == {"claude": False}
+    assert not (storage / "index").exists()
+    assert keychain.key is None
+    assert (vault / "note.md").read_text(encoding="utf-8") == "keep me"
