@@ -7,6 +7,7 @@
   import RightPanel from "./regions/RightPanel.svelte";
   import StatusBar from "./regions/StatusBar.svelte";
   import AccountDialog from "./overlays/AccountDialog.svelte";
+  import ToolsDialog from "./overlays/ToolsDialog.svelte";
   import CommandBox, { type Item } from "./overlays/CommandBox.svelte";
   import type { GraphData } from "./graph/model.ts";
   import { tick } from "svelte";
@@ -27,6 +28,8 @@
   let viewKey = $state(0);
   // Setup and account: opens on first run (no brain yet) and from the ribbon or the palette.
   let setupOpen = $state(false);
+  // The assistant tool allowlist: from the command palette.
+  let toolsOpen = $state(false);
 
   // Ctrl on Linux and Windows, Cmd on macOS. Both shortcuts take over the browser default.
   function onKey(e: KeyboardEvent): void {
@@ -67,6 +70,11 @@
       id: "account",
       label: "Setup and account",
       run: () => (setupOpen = true),
+    },
+    {
+      id: "tools",
+      label: "Assistant tools",
+      run: () => (toolsOpen = true),
     },
   ];
 
@@ -109,6 +117,10 @@
     label="Quick switcher"
     onclose={() => (box = null)}
   />
+{/if}
+
+{#if toolsOpen}
+  <ToolsDialog onclose={() => (toolsOpen = false)} />
 {/if}
 
 {#if setupOpen}

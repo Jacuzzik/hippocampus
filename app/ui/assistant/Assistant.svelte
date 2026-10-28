@@ -24,6 +24,7 @@
 
   let draft = $state("");
   let account = $state<{ claude: boolean; model: string } | null>(null);
+  let answers = $state<Record<string, string>>({});
   const chat = $derived(assistant.chat);
 
   onMount(() => {
@@ -49,6 +50,14 @@
     const text = draft;
     draft = "";
     void assistant.send(text);
+  }
+
+  function answer(event: SubmitEvent, call: string): void {
+    event.preventDefault();
+    const text = (answers[call] ?? "").trim();
+    if (!text) return;
+    answers[call] = "";
+    void assistant.answer(call, text);
   }
 
   function onKeydown(event: KeyboardEvent): void {
@@ -114,6 +123,24 @@
         >
       </div>
     </section>
+  {/each}
+
+  {#each chat.asks as ask (ask.call)}
+    <form
+      class="ask"
+      aria-label="Question from the assistant"
+      onsubmit={(event) => answer(event, ask.call)}
+    >
+      <p class="confirm-title">{ask.question}</p>
+      <label class="visually-hidden" for="ask-{ask.call}">Your answer</label>
+      <textarea id="ask-{ask.call}" rows="2" bind:value={answers[ask.call]}
+      ></textarea>
+      <div class="actions">
+        <button type="submit" disabled={!(answers[ask.call] ?? "").trim()}
+          >Answer</button
+        >
+      </div>
+    </form>
   {/each}
 
   <section class="tools" aria-label="Tool log">
@@ -235,7 +262,8 @@
     color: var(--color-danger);
   }
 
-  .confirm {
+  .confirm,
+  .ask {
     display: flex;
     flex-direction: column;
     gap: var(--space-2);

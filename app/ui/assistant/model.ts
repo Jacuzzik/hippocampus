@@ -23,6 +23,12 @@ export interface ConfirmCard {
   preview: string;
 }
 
+/** A question the assistant put to the user, waiting for an answer. */
+export interface AskCard {
+  call: string;
+  question: string;
+}
+
 /** A line in the tool log that is not a tool call: app start, a pause at the tool limit. */
 export interface ActivityEntry {
   /** Local clock time, HH:MM:SS. */
@@ -36,6 +42,7 @@ export interface Chat {
   messages: Message[];
   tools: ToolEntry[];
   confirms: ConfirmCard[];
+  asks: AskCard[];
   orb: OrbState;
   activity: ActivityEntry[];
   /** The tool-call limit a request paused at, or null. Continue resumes it. */
@@ -59,6 +66,12 @@ export type SidecarEvent =
       name: string;
       tier: string;
       preview: string;
+    }
+  | {
+      event: "ask";
+      chat: number;
+      call: string;
+      question: string;
     };
 
 /** The tool log keeps this many entries; older ones drop off. */
@@ -70,6 +83,7 @@ export function emptyChat(): Chat {
     messages: [],
     tools: [],
     confirms: [],
+    asks: [],
     orb: "idle",
     activity: [],
     paused: null,
@@ -96,6 +110,7 @@ export function sendMessage(chat: Chat, text: string, chatId: number): Chat {
     chatId,
     messages: [...chat.messages, { role: "user", text }],
     confirms: [],
+    asks: [],
     orb: "thinking",
     paused: null,
   };
@@ -103,6 +118,10 @@ export function sendMessage(chat: Chat, text: string, chatId: number): Chat {
 
 export function receiveEvent(chat: Chat, event: SidecarEvent): Chat {
   if (event.chat !== chat.chatId) return chat;
+  if (event.event === "ask") {
+    const card: AskCard = { call: event.call, question: event.question };
+    return { ...chat, asks: [...chat.asks, card], orb: "listening" };
+  }
   if (event.event === "confirm") {
     const card: ConfirmCard = {
       call: event.call,
@@ -133,7 +152,7 @@ export function receiveEvent(chat: Chat, event: SidecarEvent): Chat {
     ...chat,
     tools,
     confirms,
-    orb: confirms.length > 0 ? "listening" : "thinking",
+    orb: confirms.length > 0 || chat.asks.length > 0 ? "listening" : "thinking",
   };
 }
 
@@ -150,6 +169,7 @@ export function finishChat(
       ...logActivity(chat, text, at),
       chatId: null,
       confirms: [],
+      asks: [],
       orb: "idle",
       paused: result.limit,
     };
@@ -164,6 +184,7 @@ export function finishChat(
     chatId: null,
     messages: message ? [...chat.messages, message] : chat.messages,
     confirms: [],
+    asks: [],
     orb: message && !result.stopped ? "speaking" : "idle",
   };
 }
@@ -174,8 +195,13 @@ export function failChat(chat: Chat, error: string): Chat {
     chatId: null,
     messages: [...chat.messages, { role: "error", text: error }],
     confirms: [],
+    asks: [],
     orb: "idle",
   };
+}
+
+export function removeAsk(chat: Chat, call: string): Chat {
+  return { ...chat, asks: chat.asks.filter((a) => a.call !== call) };
 }
 
 export function removeConfirm(chat: Chat, call: string): Chat {

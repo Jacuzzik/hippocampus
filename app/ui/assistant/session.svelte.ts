@@ -7,6 +7,7 @@ import {
   finishChat,
   logActivity,
   receiveEvent,
+  removeAsk,
   removeConfirm,
   sendMessage,
   settleSpeaking,
@@ -73,6 +74,19 @@ export const assistant = {
   async stop(): Promise<void> {
     try {
       await invoke("sidecar_call", { method: "stop" });
+    } catch (cause) {
+      chat = failChat(chat, errorText(cause));
+    }
+  },
+
+  /** Send the user's answer to a question the assistant asked. */
+  async answer(call: string, text: string): Promise<void> {
+    chat = removeAsk(chat, call);
+    try {
+      await invoke("sidecar_call", {
+        method: "answer",
+        params: { call, text },
+      });
     } catch (cause) {
       chat = failChat(chat, errorText(cause));
     }
