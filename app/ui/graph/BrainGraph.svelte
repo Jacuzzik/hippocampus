@@ -45,6 +45,7 @@
   let canvas: HTMLCanvasElement | undefined = $state();
   let labelLayer: HTMLDivElement | undefined = $state();
   let labels = $state<{ text: string; x: number; y: number }[]>([]);
+  let hovered = -1;
   let error = $state<string | null>(null);
   let cam = $state<Camera>({ x: 0, y: 0, zoom: 1 });
 
@@ -205,8 +206,7 @@
     const placed: { text: string; x: number; y: number }[] = [];
     const boxes: number[] = [];
     const place = (i: number) => {
-      if (placed.length >= MAX_LABELS || (i !== selected && !visible[i]))
-        return;
+      if (placed.length >= MAX_LABELS || i !== hovered || !visible[i]) return;
       const sx = (pos[2 * i] ?? 0) * cam.zoom + cam.x;
       const sy = (pos[2 * i + 1] ?? 0) * cam.zoom + cam.y;
       if (sx < 0 || sy < 0 || sx > w || sy > h) return;
@@ -226,8 +226,7 @@
       boxes.push(x, y, x1, y + LABEL_H);
       placed.push({ text, x, y });
     };
-    if (selected >= 0) place(selected);
-    for (let i = 0; i < data.nodes.length; i++) if (i !== selected) place(i);
+    if (hovered >= 0) place(hovered);
 
     labels = placed;
   }
@@ -429,7 +428,17 @@
       dragging = true;
     };
     const onMove = (e: PointerEvent) => {
-      if (!drag) return;
+      if (!drag) {
+        // Labels show only for the node under the pointer.
+        const [hx, hy] = local(e);
+        const hit = hitTest(pos, cam, hx, hy, 8);
+        const next = hit >= 0 && visible[hit] ? hit : -1;
+        if (next !== hovered) {
+          hovered = next;
+          schedule();
+        }
+        return;
+      }
       const [x, y] = local(e);
       const dx = x - drag.x;
       const dy = y - drag.y;

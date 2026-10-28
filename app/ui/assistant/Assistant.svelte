@@ -404,7 +404,7 @@
     color: var(--color-accent-on);
   }
 
-  .stop {
+  .stop:not(:disabled) {
     border-color: var(--color-danger);
     color: var(--color-danger);
   }
