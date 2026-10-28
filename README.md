@@ -8,15 +8,7 @@ Linux comes first, then Windows, then macOS.
 
 ## Status
 
-Early development, phase D8: the desktop app has the brain graph, search, the assistant (chat, tool log, confirm cards, kill switch) and the orb, with Playwright tests for the critical paths. A Linux AppImage runs with its own bundled Python sidecar (`scripts/build-sidecar.sh`, then `npx tauri build` in `app/`); Windows and macOS builds are not verified yet. The graph falls back to a 2D canvas if WebGL 2 is unavailable. Nodes with more links appear larger; drag a node to pull its directly linked notes along, while dragging empty space pans the graph. See [AGENTS.md](AGENTS.md) for the architecture and roadmap.
-
-An assistant request pauses after 20 tool calls. Choose Continue to resume it. To change the limit, set `max_tool_calls` under `[ai]` in `config/settings.toml` (use a whole number of 1 or more).
-
-### Explore your notes
-
-- Search notes in the sidebar, or press Ctrl+F (Cmd+F on macOS) to open the note list and focus search. Use the Tags list or tag filter to narrow the notes.
-- Select a graph node to open its note details. Drag a node to move it and pull directly linked notes along; drag empty graph space to pan. Choose Fit graph to bring every note into view, or turn on Hide orphans to hide notes with no links.
-- Press Ctrl+O (Cmd+O on macOS) to find a note by name. Press Ctrl+P (Cmd+P on macOS) to open app commands, such as toggling the note list or assistant.
+Early development: the desktop app has a brain graph, search, an assistant with chat, tool log, approval cards and a stop control, plus an activity orb. You can choose which tools the assistant may use, answer its questions, and browse assistant memory notes. A Linux AppImage runs with its own bundled Python sidecar (`scripts/build-sidecar.sh`, then `npx tauri build` in `app/`); Windows and macOS builds are not verified yet. The graph falls back to a 2D canvas if WebGL 2 is unavailable. Nodes with more links appear larger; drag a node to pull its directly linked notes along, while dragging empty space pans the graph. See [AGENTS.md](AGENTS.md) for the architecture and roadmap.
 
 ## Run
 
@@ -81,6 +73,13 @@ npm run tauri dev
 
 The first run compiles the Rust shell, which takes a few minutes. The app opens the vault named in `config/settings.toml` (`brains/sample` by default), so create it first with the sample commands below.
 
+## Explore your notes
+
+- Search notes in the sidebar, or press `Ctrl+F` (`Cmd+F` on macOS) to open the note list and focus search. Use the Tags list or tag filter to narrow the notes.
+- Select a graph node to open its note details. Drag a node to move it and pull directly linked notes along; drag empty graph space to pan. Choose **Fit graph** to bring every note into view, or turn on **Hide orphans** to hide notes with no links.
+- Press `Ctrl+O` (`Cmd+O` on macOS) to find a note by name. Press `Ctrl+P` (`Cmd+P` on macOS) to open app commands, such as toggling the note list or assistant.
+- Choose **Memory** above the graph or turn on **Memory only** in the note list to find assistant memory notes.
+
 ### The assistant
 
 The assistant uses Claude when a key is saved, and Ollama otherwise or when Claude fails.
@@ -88,6 +87,9 @@ The assistant uses Claude when a key is saved, and Ollama otherwise or when Clau
 - Save a Claude API key: `uv run python -m core key set` (it prompts; the key goes to the OS keychain, never to a file). `key status` and `key clear` do the rest.
 - Ollama: install it, then `ollama pull qwen2.5:1.5b` (the default in `config/settings.toml`).
 - Reads (search, read a note) run at once. Creating a note waits for your approval on a card that shows the exact change. Stop (or Escape) halts pending work within a second.
+- The assistant card shows the model in use and whether replies use your Claude key or local Ollama. When the assistant asks a question, type your answer in the card and choose **Answer**.
+- Open the command palette with `Ctrl+P` (`Cmd+P` on macOS), then choose **Assistant tools** to allow every tool or select tools individually. Unticked tools are refused, even when requested; changes save as you make them.
+- An assistant request pauses after 20 tool calls. Choose **Continue** to resume it. To change the limit, set `max_tool_calls` under `[ai]` in `config/settings.toml` (use a whole number of 1 or more).
 
 ### Browser tests
 

@@ -76,4 +76,6 @@ def parse_claude(data: dict[str, Any]) -> Reply:
         ]
     except (KeyError, TypeError, ValueError) as exc:
         raise ProviderError("Claude sent a reply in an unexpected shape") from exc
-    return Reply(text=text, tool_calls=calls)
+    usage = data.get("usage") or {}
+    tokens = int(usage.get("input_tokens") or 0) + int(usage.get("output_tokens") or 0)
+    return Reply(text=text, tool_calls=calls, tokens=tokens)

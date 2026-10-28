@@ -47,6 +47,15 @@ export interface Chat {
   activity: ActivityEntry[];
   /** The tool-call limit a request paused at, or null. Continue resumes it. */
   paused: number | null;
+  /** The token cap a request ran into, or null. Allowing one more request clears it. */
+  budgetPause: BudgetPause | null;
+}
+
+export interface BudgetPause {
+  scope: string;
+  window: string;
+  used: number;
+  cap: number;
 }
 
 /** Events the sidecar prints while a chat runs (see core/__main__.py). */
@@ -87,6 +96,7 @@ export function emptyChat(): Chat {
     orb: "idle",
     activity: [],
     paused: null,
+    budgetPause: null,
   };
 }
 
@@ -113,6 +123,7 @@ export function sendMessage(chat: Chat, text: string, chatId: number): Chat {
     asks: [],
     orb: "thinking",
     paused: null,
+    budgetPause: null,
   };
 }
 
@@ -156,13 +167,30 @@ export function receiveEvent(chat: Chat, event: SidecarEvent): Chat {
   };
 }
 
-export type ChatResult = { reply: string; stopped: boolean; limit?: number };
+export type ChatResult = {
+  reply: string;
+  stopped: boolean;
+  limit?: number;
+  budget?: BudgetPause;
+};
 
 export function finishChat(
   chat: Chat,
   result: ChatResult,
   at: string = clockTime(),
 ): Chat {
+  if (result.budget !== undefined) {
+    const { scope, window, used, cap } = result.budget;
+    const text = `Paused: the ${scope} ${window} token cap is used (${used} of ${cap}). Allow one more request to go on.`;
+    return {
+      ...logActivity(chat, text, at),
+      chatId: null,
+      confirms: [],
+      asks: [],
+      orb: "idle",
+      budgetPause: result.budget,
+    };
+  }
   if (result.limit !== undefined) {
     const text = `Stopped after ${result.limit} tool calls in one request. Continue to let it go on.`;
     return {

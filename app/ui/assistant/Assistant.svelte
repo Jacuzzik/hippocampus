@@ -165,6 +165,21 @@
         </li>
       {/each}
     </ul>
+    {#if chat.budgetPause !== null}
+      <div class="budget-card" role="alert">
+        <p>
+          The {chat.budgetPause.scope}
+          {chat.budgetPause.window} token cap is used. Allow one more request, then
+          send your message again.
+        </p>
+        <button
+          type="button"
+          class="continue"
+          disabled={assistant.busy}
+          onclick={() => assistant.allowOne()}>Allow one more request</button
+        >
+      </div>
+    {/if}
     {#if chat.paused !== null}
       <button
         type="button"

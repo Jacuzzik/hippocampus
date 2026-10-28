@@ -34,26 +34,47 @@ import signal
 import sys
 import threading
 from collections.abc import Callable
-from dataclasses import replace
+from dataclasses import asdict, replace
+from datetime import datetime
 from pathlib import Path
 from typing import Any, TextIO
 
 from keyring.errors import KeyringError
 
+from ai import network
 from ai.agent import Agent, AgentPaused
-from ai.keys import clear_api_key, get_api_key, set_api_key
+from ai.keys import clear_api_key, clear_key, get_api_key, get_key, key_hint, set_api_key, set_key
+from ai.providers.openai_compat import PRESETS
 from ai.router import build_router, model_name
-from core import __version__
+from core import __version__, share, skills
+from core import activity as journal
+from core import budget as budgets
+from core import jobs as job_store
+from core import memory as memory_notes
 from core.cards import CardStore
-from core.settings import SETTINGS_PATH, Settings, load_settings, save_allowed_tools
+from core.helpers import HelperLimit, Helpers
+from core.settings import (
+    CAP_WINDOWS,
+    SETTINGS_PATH,
+    Caps,
+    Settings,
+    load_settings,
+    save_allowed_tools,
+    save_budget,
+    save_network_mode,
+)
 from core.vault import Indexer, open_index
+from core.vault.scanner import iter_notes
 from core.vault.watcher import VaultWatcher
 from tools.gate import AskQueue, ConfirmGate, KillSwitch, Stopped
+from tools.registry import CONFIRM_TIERS
 from tools.vault_tools import vault_tools
 
 logger = logging.getLogger("hippocampus.core")
 
 DEFAULT_STORAGE = Path(__file__).resolve().parent.parent / "storage"
+SKILLS_DIR = Path(__file__).resolve().parent.parent / "skills"
+SCHEDULE_SECONDS = 60
 KEYCHAIN_MISSING = (
     "the OS keychain is not available. Install a Secret Service keyring "
     "(for example GNOME Keyring or KWallet), then try again."
@@ -84,6 +105,13 @@ class Session:
         self.paused: list[dict[str, Any]] | None = (
             None  # messages of a request that hit its tool limit
         )
+        self.allowance = False  # the user allowed one request past a budget cap
+        self.embedder: memory_notes.Embedder | None = (
+            None  # none installed: search by meaning is off
+        )
+        self.ledger = budgets.Ledger(storage / "usage.jsonl")
+        self.helpers = Helpers(self._helper_run, lambda e: self.note("handoff", text=e["text"]))
+        network.set_mode(self.settings.network_mode)
 
     def open(self, vault: Path) -> dict[str, Any]:
         if not vault.is_dir():
@@ -92,6 +120,7 @@ class Session:
             self.close()
             self.indexer = open_index(vault, self.storage)
             stats = self.indexer.full_sync()
+            self.trim_memory()
             status = {f"{k}_files": getattr(stats, k) for k in stats.__slots__}
             return {"vault": str(vault.resolve()), **self.indexer.store.counts(), **status}
 
@@ -145,16 +174,24 @@ class Session:
         if not isinstance(text, str) or not text.strip():
             raise ValueError('"chat" needs a non-empty "text"')
         chat_id = request.get("chat")  # the UI names each chat so it can match its events
+        over = None if self.allowance else self.budget_overrun()
+        if over is not None:
+            self.note("budget", text=f"paused: {over.scope} {over.window} cap reached")
+            return {"reply": "", "stopped": False, "budget": over.as_dict()}
+        self.allowance = False
         messages, self.paused = self.paused, None
         if request.get("continue") is True and messages is None:
             raise ValueError("nothing is paused to continue")
         if request.get("continue") is not True:
             messages = None
+        else:
+            self.note("handoff", text="continued a request paused at the tool-call limit")
         self.kill.reset()  # a stop only ends the work that was running when it was sent
         tools = vault_tools(self.indexer, self.lock) if self.indexer is not None else {}
         router = build_router(self.settings, get_api_key())
 
         def emit(event: dict[str, Any]) -> None:
+            self.journal_event(event)
             self.emit({**event, "chat": chat_id})
 
         agent = Agent(
@@ -173,7 +210,10 @@ class Session:
             return {"reply": "", "stopped": True}
         except AgentPaused as paused:
             self.paused = paused.messages
+            self.note("handoff", text=f"paused at {paused.limit} tool calls; Continue resumes it")
             return {"reply": "", "stopped": False, "limit": paused.limit}
+        finally:
+            self.ledger.add("assistant", agent.tokens_used)
         return {"reply": reply, "stopped": False}
 
     def confirm(self, request: dict[str, Any]) -> dict[str, Any]:
@@ -231,6 +271,258 @@ class Session:
         by = "owner" if request.get("by", "owner") == "owner" else "agent"
         return {"card": self.cards.update(request.get("id"), changes, by)}
 
+    # --- Journal, budgets and the network switch -------------------------------------------
+
+    def note(self, kind: str, **fields: str | int | bool | None) -> None:
+        """Write one line to the activity log. The log is best effort: it never fails a request."""
+        try:
+            journal.record(self.storage, kind, **fields)
+        except OSError:
+            logger.exception("Could not write the activity log")
+
+    def journal_event(self, event: dict[str, Any]) -> None:
+        """Turn the assistant's tool events into activity lines: outcomes and approvals."""
+        if event.get("event") != "tool":
+            return
+        name, tier, status = event.get("name"), event.get("tier"), event.get("status")
+        if tier in CONFIRM_TIERS and status in ("running", "declined"):
+            self.note("approval", tool=name, tier=tier, approved=status == "running", by="card")
+        elif status in ("done", "failed", "refused"):
+            self.note("tool", tool=name, tier=tier, status=status)
+
+    def budget_overrun(self) -> budgets.Overrun | None:
+        return self.ledger.first_overrun(
+            {
+                "app": (self.settings.budget, None),
+                "assistant": (self.settings.assistant_budget, "assistant"),
+            }
+        )
+
+    def budget(self) -> dict[str, Any]:
+        """Each cap, and the tokens used so far in each window, for the app and the assistant."""
+        now = datetime.now().astimezone()
+        scopes = {
+            "app": (self.settings.budget, None),
+            "assistant": (self.settings.assistant_budget, "assistant"),
+        }
+        used = {
+            scope: {w: self.ledger.used(w, now, agent) for w in CAP_WINDOWS}
+            for scope, (_caps, agent) in scopes.items()
+        }
+        caps = {scope: asdict(caps) for scope, (caps, _agent) in scopes.items()}
+        return {"caps": caps, "used": used, "allowance": self.allowance}
+
+    def set_budget(self, request: dict[str, Any]) -> dict[str, Any]:
+        caps = {}
+        for scope in ("app", "assistant"):
+            row = request.get(scope)
+            if not isinstance(row, dict):
+                raise ValueError(f'"{scope}" needs five_hour, daily, weekly and monthly caps')
+            caps[scope] = Caps(**{w: _whole(row.get(w), w) for w in CAP_WINDOWS})
+        save_budget(caps["app"], caps["assistant"], SETTINGS_PATH)
+        self.settings = replace(
+            self.settings, budget=caps["app"], assistant_budget=caps["assistant"]
+        )
+        self.note("setting", text="token budget caps changed")
+        return self.budget()
+
+    def budget_allow(self) -> dict[str, Any]:
+        """Let the next request past a cap through, once."""
+        self.allowance = True
+        self.note("setting", text="one request allowed past a budget cap")
+        return {"allowance": True}
+
+    def network_state(self) -> dict[str, Any]:
+        return {"mode": self.settings.network_mode, "modes": list(network.MODES)}
+
+    def set_network(self, request: dict[str, Any]) -> dict[str, Any]:
+        mode = request.get("mode")
+        if not isinstance(mode, str):
+            raise ValueError('"set_network" needs a "mode"')
+        save_network_mode(mode, SETTINGS_PATH)  # raises ValueError on a bad mode
+        network.set_mode(mode)
+        self.settings = replace(self.settings, network_mode=mode)
+        self.note("setting", text=f"network set to {mode}")
+        return self.network_state()
+
+    def activity(self, request: dict[str, Any]) -> dict[str, Any]:
+        kind = request.get("kind")
+        if kind is not None and kind not in journal.KINDS:
+            raise ValueError(f"kind must be one of: {', '.join(journal.KINDS)}")
+        limit = _whole(request.get("limit", 200), "limit")
+        return {"rows": journal.read(self.storage, kind, min(limit, 500))}
+
+    # --- Asks, memory, jobs, helpers, skills, share, keys ----------------------------------
+
+    def asks_waiting(self) -> dict[str, Any]:
+        return {"asks": [{"call": call, "question": q} for call, q in self.asks.waiting()]}
+
+    def _memory_texts(self) -> dict[str, str]:
+        """Every assistant memory note's text, keyed by vault path."""
+        if self.indexer is None:
+            raise ValueError("no vault is open")
+        notes = {}
+        for note in iter_notes(self.indexer.vault):
+            text = (self.indexer.vault / note.path).read_text(encoding="utf-8", errors="replace")
+            if memory_notes.is_memory(text):
+                notes[note.path] = text
+        return notes
+
+    def memory_search(self, request: dict[str, Any]) -> dict[str, Any]:
+        mode = request.get("mode", "text")
+        query = request.get("query")
+        if not isinstance(query, str):
+            raise ValueError('"query" must be text')
+        with self.lock:
+            notes = self._memory_texts()
+        if mode == "text":
+            return {"mode": mode, "hits": memory_notes.search_text(notes, query)}
+        if mode != "meaning":
+            raise ValueError('"mode" is "text" or "meaning"')
+        ranked = memory_notes.search_meaning(notes, query, self.embedder)
+        return {"mode": mode, "hits": [{"path": p, "score": round(s, 3)} for p, s in ranked]}
+
+    def memory_status(self) -> dict[str, Any]:
+        return {**memory_notes.status(self.embedder), "max_bytes": self.settings.memory_max_bytes}
+
+    def trim_memory(self) -> list[str]:
+        """Move the oldest sections of long memory notes to archive notes. Runs on each open."""
+        if self.indexer is None:
+            return []
+        changed: list[Path] = []
+        for note in iter_notes(self.indexer.vault):
+            path = self.indexer.vault / note.path
+            archive = memory_notes.trim_memory_file(
+                self.indexer.vault, path, self.settings.memory_max_bytes
+            )
+            if archive is not None:
+                changed += [path, archive]
+                self.note("setting", text=f"trimmed {note.path} into {archive.name}")
+        if changed:
+            with self.lock:
+                self.indexer.apply_changes(changed)
+        return [p.name for p in changed]
+
+    def jobs(self) -> dict[str, Any]:
+        return {"jobs": [asdict(j) for j in job_store.load(self.jobs_path)]}
+
+    def set_job(self, request: dict[str, Any]) -> dict[str, Any]:
+        job_id = request.get("id")
+        if not isinstance(job_id, str) or not isinstance(request.get("enabled"), bool):
+            raise ValueError('"set_job" needs an "id" and "enabled"')
+        every = request.get("every_days")
+        jobs = job_store.set_job(job_store.load(self.jobs_path), job_id, request["enabled"], every)
+        job_store.save(self.jobs_path, jobs)
+        return self.jobs()
+
+    @property
+    def jobs_path(self) -> Path:
+        return self.storage / "jobs.json"
+
+    def run_jobs(self, now: datetime | None = None) -> list[str]:
+        """Run each enabled job that is due. Called on a timer by `serve`."""
+        if self.indexer is None:
+            return []
+        runners = {"link_check": self._link_check}
+        jobs, results = job_store.run_due(
+            job_store.load(self.jobs_path), now or datetime.now().astimezone(), runners
+        )
+        job_store.save(self.jobs_path, jobs)
+        for line in results:
+            self.note("handoff", text=line)
+        return results
+
+    def _link_check(self) -> str:
+        with self.lock:
+            if self.indexer is None:
+                raise ValueError("no vault is open")
+            store = self.indexer.store
+            broken = sum(
+                1
+                for path in store.note_states()
+                for _raw, target in store.outgoing(path)
+                if target is None
+            )
+        return f"{broken} broken link(s)"
+
+    def helpers_state(self) -> dict[str, Any]:
+        return {"helpers": self.helpers.list(), "limit": 4}
+
+    def start_helper(self, request: dict[str, Any]) -> dict[str, Any]:
+        prompt = request.get("prompt")
+        if not isinstance(prompt, str):
+            raise ValueError('"prompt" must be text')
+        over = self.ledger.first_overrun({"app": (self.settings.budget, None)})
+        if over is not None and not self.allowance:
+            raise ValueError(f"the app {over.window} token cap is used; allow a request first")
+        try:
+            self.helpers.start(prompt)
+        except HelperLimit as exc:
+            raise ValueError(str(exc)) from exc
+        return self.helpers_state()
+
+    def _helper_run(self, prompt: str) -> str:
+        router = build_router(self.settings, get_api_key())
+        reply = asyncio.run(router.chat([{"role": "user", "content": prompt}], []))
+        self.ledger.add("helper", reply.tokens)
+        return reply.text
+
+    def skills_state(self) -> dict[str, Any]:
+        return {"skills": skills.list_skills(SKILLS_DIR)}
+
+    def remove_skill(self, request: dict[str, Any]) -> dict[str, Any]:
+        if request.get("approve") is not True:
+            raise ValueError("removing a skill needs the user's approval")
+        name = request.get("name")
+        skills.remove_skill(SKILLS_DIR, name)
+        self.note("approval", tool="remove_skill", tier="act", approved=True, by="card")
+        return self.skills_state()
+
+    def share_note(self, request: dict[str, Any]) -> dict[str, Any]:
+        password = request.get("password")
+        if not isinstance(password, str):
+            raise ValueError('"password" must be text')
+        minutes = _whole(request.get("minutes", share.DEFAULT_MINUTES), "minutes")
+        share.request_link(password, minutes)  # always raises until a share host is set up
+        return {}
+
+    def keys(self) -> dict[str, Any]:
+        rows = [{"provider": "claude", "label": "Claude (Anthropic)"}]
+        rows += [
+            {"provider": name, "label": preset.label}
+            for name, preset in PRESETS.items()
+            if preset.needs_key
+        ]
+        for row in rows:
+            row["saved"] = get_key(row["provider"]) is not None
+            row["hint"] = key_hint(row["provider"])
+        return {"keys": rows}
+
+    def _key_provider(self, request: dict[str, Any]) -> str:
+        provider = request.get("provider")
+        if provider != "claude" and not (provider in PRESETS and PRESETS[provider].needs_key):
+            raise ValueError("no key is used by that provider")
+        return str(provider)
+
+    def save_key(self, request: dict[str, Any]) -> dict[str, Any]:
+        provider = self._key_provider(request)
+        key = request.get("key")
+        if not isinstance(key, str) or not key.strip():
+            raise ValueError('"save_key" needs a non-empty "key"')
+        try:
+            set_key(provider, key.strip())  # takes effect on the next request; no restart
+        except KeyringError as error:
+            raise ValueError(KEYCHAIN_MISSING) from error
+        return self.keys()
+
+    def clear_key(self, request: dict[str, Any]) -> dict[str, Any]:
+        provider = self._key_provider(request)
+        try:
+            clear_key(provider)
+        except KeyringError as error:
+            raise ValueError(KEYCHAIN_MISSING) from error
+        return self.keys()
+
     def dispatch(self, request: dict[str, Any]) -> dict[str, Any]:
         method = request.get("method")
         if method == "graph":
@@ -269,6 +561,33 @@ class Session:
         if method == "stop":
             self.kill.trigger()
             return {"stopped": True}
+        simple = {
+            "network": self.network_state,
+            "budget": self.budget,
+            "budget_allow": self.budget_allow,
+            "asks": self.asks_waiting,
+            "memory_status": self.memory_status,
+            "jobs": self.jobs,
+            "helpers": self.helpers_state,
+            "skills": self.skills_state,
+            "keys": self.keys,
+        }
+        if method in simple:
+            return simple[method]()
+        extra = {
+            "set_network": self.set_network,
+            "set_budget": self.set_budget,
+            "activity": self.activity,
+            "memory_search": self.memory_search,
+            "set_job": self.set_job,
+            "start_helper": self.start_helper,
+            "remove_skill": self.remove_skill,
+            "share": self.share_note,
+            "save_key": self.save_key,
+            "clear_key": self.clear_key,
+        }
+        if method in extra:
+            return extra[method](request)
         raise ValueError(f"unknown method: {method!r}")
 
     def close(self) -> None:
@@ -276,6 +595,12 @@ class Session:
             if self.indexer is not None:
                 self.indexer.store.close()
                 self.indexer = None
+
+
+def _whole(value: object, name: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise ValueError(f'"{name}" must be a whole number, 0 or more')
+    return value
 
 
 def handle(session: Session, line: str) -> dict[str, Any]:
@@ -291,6 +616,7 @@ def handle(session: Session, line: str) -> dict[str, Any]:
         return {"id": request_id, "result": session.dispatch(request)}
     except Exception as exc:
         logger.exception("Request %r failed", request_id)
+        session.note("error", method=str(request.get("method")), text=str(exc)[:300])
         return {"id": request_id, "error": str(exc)}
 
 
@@ -318,6 +644,15 @@ def _answer(session: Session, line: str, send: Writer) -> None:
     send(handle(session, line))
 
 
+def _schedule(session: Session, stop: threading.Event) -> None:
+    """Runs the due notes jobs every minute until `serve` stops."""
+    while not stop.wait(SCHEDULE_SECONDS):
+        try:
+            session.run_jobs()
+        except Exception:
+            logger.exception("Scheduled jobs failed")
+
+
 def serve(
     storage: Path,
     vault: Path | None = None,
@@ -328,6 +663,8 @@ def serve(
     send = Writer(out)
     session = Session(storage, settings, emit=send)
     chats: list[threading.Thread] = []
+    stop_schedule = threading.Event()
+    threading.Thread(target=_schedule, args=(session, stop_schedule), daemon=True).start()
     try:
         send({"status": "ready", "version": __version__})
         if vault is not None:
@@ -349,6 +686,7 @@ def serve(
     except KeyboardInterrupt:
         logger.info("Sidecar interrupted; shutting down")
     finally:
+        stop_schedule.set()
         session.kill.trigger()
         for worker in chats:
             worker.join(timeout=5)

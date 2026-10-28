@@ -24,6 +24,12 @@ def get_key(provider: str) -> str | None:
         return None
 
 
+def key_hint(provider: str) -> str | None:
+    """The last four characters of a saved key, for telling keys apart. Never the whole key."""
+    key = get_key(provider)
+    return key[-4:] if key and len(key) > 4 else None
+
+
 def set_key(provider: str, key: str) -> None:
     keyring.set_password(SERVICE, _account(provider), key)
 
