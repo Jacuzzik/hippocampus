@@ -1,6 +1,5 @@
 <script lang="ts">
   import Assistant from "../assistant/Assistant.svelte";
-  import AgentStatus from "../owner/AgentStatus.svelte";
   import OwnerPanel from "../owner/OwnerPanel.svelte";
 
   // Kept mounted when hidden so the chat session and its tool log survive a toggle.
@@ -9,7 +8,6 @@
 
 <div class="right-panel" hidden={!open}>
   <div class="column">
-    <AgentStatus />
     <Assistant />
   </div>
   <OwnerPanel />

@@ -27,8 +27,20 @@
 
 /* The main agent card is a light card, like Munder Difflin's agent cards. */
 .md-theme .agent-card {
-  --color-text-muted: var(--color-md-card-muted);
+  --color-text-muted: var(--color-md-card-text);
   --color-text: var(--color-md-card-text);
+}
+
+/* Chat: the message box sits at the bottom, the log fills the space above. */
+.md-theme .composer {
+  margin-top: auto;
+}
+
+/* Bottom panel: the empty note sits under the card, left aligned. */
+.md-theme.owner-panel .empty {
+  margin: var(--space-2) 0 0;
+  align-self: flex-start;
+  font-size: 10px;
 }
 
 .md-theme .card-row {
@@ -55,6 +67,7 @@
 .md-theme .agents-btn {
   flex: none;
   align-self: center;
+  font-size: 10px;
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--color-md-border);
   border-radius: var(--radius-md);
