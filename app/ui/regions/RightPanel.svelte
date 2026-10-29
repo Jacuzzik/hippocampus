@@ -4,10 +4,11 @@
   // Kept mounted when hidden so the chat session and its tool log survive a toggle.
   let { open = true }: { open?: boolean } = $props();
 
-  // Only the terminal is built; the rest of the grid is shown, as in the mockup, and stays disabled.
+  // Only the terminal is built; the rest of the grid is shown and stays disabled.
+  // Names match Munder Difflin's Command Center tabs.
   const TABS = [
-    "terminal", "monitor", "tasks", "ask me", "triggers",
-    "memory", "graph", "activity", "commands", "workers",
+    "terminal", "monitor", "tasks", "ask me", "triggers", "history",
+    "memory", "graph", "activity", "skills", "temps",
   ];
   let fontSize = $state(12);
 </script>
