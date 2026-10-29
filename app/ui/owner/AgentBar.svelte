@@ -10,6 +10,9 @@
   // Added agents only; the main agent is not in this list, so it cannot be moved.
   let added = $state<{ id: string; name: string }[]>([]);
 
+  // Opens the Control panel's add-agent steps (name, face, provider, goal).
+  let { onadd }: { onadd: () => void } = $props();
+
   onMount(async () => {
     try {
       account = await invoke<Account>("sidecar_call", { method: "account" });
@@ -55,8 +58,7 @@
       <button type="button" aria-label="Move {agent.name} right" onclick={() => move(index, 1)}>›</button>
     </div>
   {/each}
-  <!-- Adding agents is not built yet; the button is shown so the layout matches the mockup. -->
-  <button type="button" class="add" disabled title="Adding agents is not built yet">+ Add agent</button>
+  <button type="button" class="add" onclick={onadd}>+ Add agent</button>
 </div>
 
 <style>
@@ -119,7 +121,7 @@
     color: var(--color-text-muted);
     font-family: "Press Start 2P", monospace;
     font-size: 8px;
-    cursor: default;
+    cursor: pointer;
   }
 
   .tokens {

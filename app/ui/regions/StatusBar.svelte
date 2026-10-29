@@ -4,13 +4,13 @@
   import AgentBar from "../owner/AgentBar.svelte";
   import type { GraphData } from "../graph/model.ts";
 
-  let { data = null }: { data?: GraphData | null } = $props();
+  let { data = null, onadd }: { data?: GraphData | null; onadd: () => void } = $props();
 
   const links = $derived(data?.edges.length ?? 0);
 </script>
 
 <footer class="status-bar md-theme">
-  <AgentBar />
+  <AgentBar {onadd} />
   <span class="counts">
     <span>{data?.nodes.length ?? 0} notes</span>
     <span>{links} links</span>

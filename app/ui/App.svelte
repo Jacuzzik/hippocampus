@@ -193,7 +193,7 @@
     onselect={(id) => (selectedId = id)}
   />
   <RightPanel open={panelOpen} />
-  <StatusBar {data} />
+  <StatusBar {data} onadd={() => (controlOpen = true)} />
 </div>
 
 <style>
