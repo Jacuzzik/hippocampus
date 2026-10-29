@@ -25,37 +25,54 @@
 
   // A cap of 0 means no limit for that window.
   const cap = (n: number) => (n === 0 ? "no cap" : n.toLocaleString());
+
+  let query = $state("");
+
+  // Each section lists [label, value] rows; the filter keeps rows whose text matches.
+  const sections = $derived.by(() => {
+    if (!view) return [];
+    const all = [
+      { title: "General", rows: [["Vault", view.general.vault ?? "not set"], ["Network", view.general.network]] },
+      {
+        title: "Agents and models",
+        rows: [["Provider", view.agents.provider], ["Model", view.agents.model], ["Ollama model", view.agents.ollama]],
+      },
+      {
+        title: "Autonomy and budgets",
+        rows: [
+          ["Max tool calls per request", String(view.budgets.max_tool_calls)],
+          ["App, 5 hours", cap(view.budgets.app.five_hour)],
+          ["App, daily", cap(view.budgets.app.daily)],
+          ["Assistant, daily", cap(view.budgets.assistant.daily)],
+        ],
+      },
+      {
+        title: "Memory and knowledge",
+        rows: [["Note size before archiving", `${view.memory.max_bytes.toLocaleString()} bytes`]],
+      },
+    ];
+    const q = query.trim().toLowerCase();
+    return all
+      .map((s) => ({ ...s, rows: s.rows.filter(([label, value]) => `${s.title} ${label} ${value}`.toLowerCase().includes(q)) }))
+      .filter((s) => s.rows.length > 0);
+  });
 </script>
 
 <section class="settings" aria-label="Settings">
   {#if failed}
     <p class="muted">Could not read the settings.</p>
   {:else if view}
-    <h3>General</h3>
-    <dl>
-      <dt>Vault</dt><dd>{view.general.vault ?? "not set"}</dd>
-      <dt>Network</dt><dd>{view.general.network}</dd>
-    </dl>
-
-    <h3>Agents and models</h3>
-    <dl>
-      <dt>Provider</dt><dd>{view.agents.provider}</dd>
-      <dt>Model</dt><dd>{view.agents.model}</dd>
-      <dt>Ollama model</dt><dd>{view.agents.ollama}</dd>
-    </dl>
-
-    <h3>Autonomy and budgets</h3>
-    <dl>
-      <dt>Max tool calls per request</dt><dd>{view.budgets.max_tool_calls}</dd>
-      <dt>App, 5 hours</dt><dd>{cap(view.budgets.app.five_hour)}</dd>
-      <dt>App, daily</dt><dd>{cap(view.budgets.app.daily)}</dd>
-      <dt>Assistant, daily</dt><dd>{cap(view.budgets.assistant.daily)}</dd>
-    </dl>
-
-    <h3>Memory and knowledge</h3>
-    <dl>
-      <dt>Note size before archiving</dt><dd>{view.memory.max_bytes.toLocaleString()} bytes</dd>
-    </dl>
+    <input type="search" aria-label="Filter settings" placeholder="Filter settings" bind:value={query} />
+    {#each sections as section (section.title)}
+      <h3>{section.title}</h3>
+      <dl>
+        {#each section.rows as [label, value] (label)}
+          <dt>{label}</dt><dd>{value}</dd>
+        {/each}
+      </dl>
+    {:else}
+      <p class="muted">No settings match "{query}".</p>
+    {/each}
 
     <p class="muted">Voice, dictation and prerequisites are not built yet.</p>
   {/if}
