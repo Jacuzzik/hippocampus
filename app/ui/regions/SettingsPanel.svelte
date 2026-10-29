@@ -1,5 +1,6 @@
-<!-- The saved settings, read only. Seven options, as in Munder Difflin's Settings page. -->
+<!-- The saved settings, read only, laid out as the Control panel's stacked sections. -->
 <script lang="ts">
+  import "../control/control.css";
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
 
@@ -11,20 +12,8 @@
     memory: { max_bytes: number };
   };
 
-  // The seven options from Munder Difflin's Settings page. Only the first four have saved values so far.
-  const OPTIONS = [
-    { id: "general", label: "General" },
-    { id: "agents", label: "Agents and models" },
-    { id: "autonomy", label: "Autonomy and budgets" },
-    { id: "memory", label: "Memory and knowledge" },
-    { id: "voice", label: "Voice" },
-    { id: "dictation", label: "Dictation" },
-    { id: "prerequisites", label: "Prerequisites" },
-  ];
-
   let view = $state<View | null>(null);
   let failed = $state(false);
-  let option = $state("general");
   let query = $state("");
 
   onMount(async () => {
@@ -39,22 +28,37 @@
   // A cap of 0 means no limit for that window.
   const cap = (n: number) => (n === 0 ? "no cap" : n.toLocaleString());
 
-  // Rows for the chosen option as [label, value] pairs, narrowed by the filter.
-  const rows = $derived.by((): [string, string][] => {
+  // Munder Difflin's seven settings sections. A section with no rows says it is not built yet.
+  const sections = $derived.by((): { title: string; rows: [string, string][] }[] => {
     if (!view) return [];
-    const byOption: Record<string, [string, string][]> = {
-      general: [["Vault", view.general.vault ?? "not set"], ["Network", view.general.network]],
-      agents: [["Provider", view.agents.provider], ["Model", view.agents.model], ["Ollama model", view.agents.ollama]],
-      autonomy: [
-        ["Max tool calls per request", String(view.budgets.max_tool_calls)],
-        ["App, 5 hours", cap(view.budgets.app.five_hour)],
-        ["App, daily", cap(view.budgets.app.daily)],
-        ["Assistant, daily", cap(view.budgets.assistant.daily)],
-      ],
-      memory: [["Note size before archiving", `${view.memory.max_bytes.toLocaleString()} bytes`]],
-    };
+    const all = [
+      { title: "General", rows: [["Vault", view.general.vault ?? "not set"], ["Network", view.general.network]] as [string, string][] },
+      {
+        title: "Agents and models",
+        rows: [["Provider", view.agents.provider], ["Model", view.agents.model], ["Ollama model", view.agents.ollama]] as [string, string][],
+      },
+      {
+        title: "Autonomy and budgets",
+        rows: [
+          ["Max tool calls per request", String(view.budgets.max_tool_calls)],
+          ["App, 5 hours", cap(view.budgets.app.five_hour)],
+          ["App, daily", cap(view.budgets.app.daily)],
+          ["Assistant, daily", cap(view.budgets.assistant.daily)],
+        ] as [string, string][],
+      },
+      {
+        title: "Memory and knowledge",
+        rows: [["Note size before archiving", `${view.memory.max_bytes.toLocaleString()} bytes`]] as [string, string][],
+      },
+      { title: "Voice", rows: [] as [string, string][] },
+      { title: "Dictation", rows: [] as [string, string][] },
+      { title: "Prerequisites", rows: [] as [string, string][] },
+    ];
     const q = query.trim().toLowerCase();
-    return (byOption[option] ?? []).filter(([label, value]) => `${label} ${value}`.toLowerCase().includes(q));
+    return all.map((s) => ({
+      title: s.title,
+      rows: s.rows.filter(([label, value]) => `${s.title} ${label} ${value}`.toLowerCase().includes(q)),
+    }));
   });
 </script>
 
@@ -62,31 +66,25 @@
   {#if failed}
     <p class="muted">Could not read the settings.</p>
   {:else if view}
-    <nav class="options" aria-label="Settings options">
-      {#each OPTIONS as item (item.id)}
-        <button
-          type="button"
-          class:on={option === item.id}
-          aria-pressed={option === item.id}
-          onclick={() => (option = item.id)}>{item.label}</button
-        >
-      {/each}
-    </nav>
-
-    {#if ["voice", "dictation", "prerequisites"].includes(option)}
-      <p class="muted">Not built yet.</p>
-    {:else}
-      <input type="search" aria-label="Filter settings" placeholder="Filter settings" bind:value={query} />
-      {#if rows.length}
-        <dl>
-          {#each rows as [label, value] (label)}
-            <dt>{label}</dt><dd>{value}</dd>
-          {/each}
-        </dl>
-      {:else}
-        <p class="muted">No settings match "{query}".</p>
+    <input type="search" aria-label="Filter settings" placeholder="Filter settings" bind:value={query} />
+    {#each sections as section (section.title)}
+      {#if section.rows.length || !query.trim()}
+        <section class="control-section" aria-label={section.title}>
+          <h3>{section.title}</h3>
+          {#if section.rows.length}
+            <dl>
+              {#each section.rows as [label, value] (label)}
+                <dt>{label}</dt><dd>{value}</dd>
+              {/each}
+            </dl>
+          {:else}
+            <p class="hint">Not built yet.</p>
+          {/if}
+        </section>
       {/if}
-    {/if}
+    {:else}
+      <p class="muted">No settings match "{query}".</p>
+    {/each}
   {/if}
 </section>
 
@@ -96,32 +94,6 @@
     font-size: var(--font-size-xs);
     color: var(--color-md-text);
     overflow-y: auto;
-  }
-
-  .options {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: var(--space-1);
-    margin-bottom: var(--space-2);
-  }
-
-  .options button {
-    min-height: 44px;
-    padding: var(--space-1);
-    font-family: "Press Start 2P", monospace;
-    font-size: 7px;
-    text-transform: uppercase;
-    border: 1px solid var(--color-md-border);
-    border-radius: var(--radius-sm);
-    background: var(--color-md-surface);
-    color: var(--color-md-text-muted);
-    cursor: pointer;
-  }
-
-  .options button.on {
-    background: var(--color-md-accent);
-    color: var(--color-md-accent-on);
-    border-color: var(--color-md-accent);
   }
 
   input[type="search"] {
