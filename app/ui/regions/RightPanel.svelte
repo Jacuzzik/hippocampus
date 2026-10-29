@@ -9,6 +9,8 @@
   <div class="column">
     <div class="tabs" role="tablist">
       <span class="tab on" role="tab" aria-selected="true">CLAUDE CODE</span>
+      <span class="tab" role="tab" aria-selected="false">PROVIDER</span>
+      <span class="tab" role="tab" aria-selected="false">TOOLS</span>
     </div>
     <Assistant />
   </div>
@@ -64,6 +66,11 @@
     background: var(--color-accent);
     color: var(--color-accent-on);
     border-color: var(--color-accent);
+  }
+
+  /* The mockup has no orb header in the sidebar: the status line is hidden. */
+  .column :global(.assistant .head) {
+    display: none;
   }
 
   .column > :global(.assistant) {
