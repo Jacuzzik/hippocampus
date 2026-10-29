@@ -30,6 +30,7 @@
     provider: "claude",
     model: "",
     command: "",
+    autonomy: "ask",
     description: "",
     goal: "",
   });
@@ -119,6 +120,13 @@
         placeholder="optional"
       /></label
     >
+    <label>
+      Autonomy
+      <select bind:value={draft.autonomy}>
+        <option value="ask">Ask before acting</option>
+        <option value="auto">Act on its own within its goal</option>
+      </select>
+    </label>
     <p class={engine.ready ? "muted" : "error"} role="status">{engine.text}</p>
   {:else}
     <label

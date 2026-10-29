@@ -154,6 +154,8 @@ export interface AgentDraft {
   provider: string;
   model: string;
   command: string;
+  /** "ask": it asks before acting; "auto": it acts on its own within its goal. */
+  autonomy: "ask" | "auto";
   description: string;
   goal: string;
 }
