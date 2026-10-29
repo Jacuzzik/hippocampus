@@ -163,6 +163,23 @@ class Session:
         rows.sort(key=lambda r: str(r.get("created_at") or ""), reverse=True)
         return {"messages": rows[:50]}
 
+    def memory_notes(self) -> dict[str, Any]:
+        # Read-only list of each agent's memory.md: size and last update, newest first.
+        agents = Path(os.environ.get("MD_HIVE_DIR", DEFAULT_HIVE_DIR)) / "agents"
+        rows: list[dict[str, Any]] = []
+        for file in agents.glob("*/memory.md"):
+            try:
+                stat = file.stat()
+            except OSError:
+                continue
+            rows.append({
+                "agent": file.parent.name,
+                "bytes": stat.st_size,
+                "updated_at": datetime.fromtimestamp(stat.st_mtime).isoformat(timespec="minutes"),
+            })
+        rows.sort(key=lambda r: r["updated_at"], reverse=True)
+        return {"notes": rows}
+
     def settings_view(self) -> dict[str, Any]:
         # Read-only view of the saved settings. API keys are never included.
         s = self.settings
@@ -615,6 +632,8 @@ class Session:
             return self.inbox()
         if method == "settings":
             return self.settings_view()
+        if method == "memory":
+            return self.memory_notes()
         if method == "sign_in":
             return self.sign_in(request)
         if method == "sign_out":

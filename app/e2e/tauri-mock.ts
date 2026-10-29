@@ -246,6 +246,13 @@ export async function mockSidecar(
               },
               memory: { max_bytes: 32000 },
             };
+          case "memory":
+            return {
+              notes: [
+                { agent: "god", bytes: 4096, updated_at: "2026-10-29T13:30" },
+                { agent: "kevin", bytes: 2048, updated_at: "2026-10-28T09:12" },
+              ],
+            };
           case "account":
             return {
               claude: claudeKey !== null,

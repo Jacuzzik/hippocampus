@@ -3,6 +3,7 @@
   import TasksPanel from "./TasksPanel.svelte";
   import InboxPanel from "./InboxPanel.svelte";
   import SettingsPanel from "./SettingsPanel.svelte";
+  import MemoryPanel from "./MemoryPanel.svelte";
 
   // Kept mounted when hidden so the chat session and its tool log survive a toggle.
   let { open = true }: { open?: boolean } = $props();
@@ -14,7 +15,7 @@
     "history", "memory", "graph", "activity", "skills", "temps",
   ];
   // Tabs that have content so far; the rest stay disabled.
-  const LIVE = ["terminal", "tasks", "inbox", "settings"];
+  const LIVE = ["terminal", "tasks", "inbox", "settings", "memory"];
   let tab = $state("terminal");
   let fontSize = $state(12);
 </script>
@@ -53,6 +54,8 @@
       <InboxPanel />
     {:else if tab === "settings"}
       <SettingsPanel />
+    {:else if tab === "memory"}
+      <MemoryPanel />
     {/if}
   </div>
 </div>

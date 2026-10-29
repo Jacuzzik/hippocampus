@@ -38,3 +38,8 @@ test("the settings tab shows the saved settings read only", async ({ page }) => 
   await page.getByRole("tab", { name: "settings" }).click();
   await expect(page.getByRole("region", { name: "Settings" })).toContainText("claude-sonnet-5-5");
 });
+
+test("the memory tab lists each agent's notes", async ({ page }) => {
+  await page.getByRole("tab", { name: "memory" }).click();
+  await expect(page.getByRole("region", { name: "Memory" })).toContainText("kevin");
+});
