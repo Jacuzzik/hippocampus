@@ -6,16 +6,12 @@ test.beforeEach(async ({ page }) => {
   await page.goto("/");
 });
 
-test("the sidebar shows the assistant's agent status", async ({ page }) => {
-  const agents = page.getByRole("region", { name: "Agent status" });
-  await expect(agents.getByText("Assistant")).toBeVisible();
-  await expect(
-    agents.getByRole("status", { name: "Assistant: Idle" }),
-  ).toBeVisible();
+test("the bottom agent bar shows HIPPO with its provider", async ({ page }) => {
+  const bar = page.getByLabel("Agents");
+  await expect(bar.getByText("HIPPO")).toBeVisible();
+  await expect(bar.getByText(/Claude Code|Ollama/)).toBeVisible();
 });
 
-test("the bottom-right owner panel is present and empty", async ({ page }) => {
-  const panel = page.getByRole("region", { name: "Owner panel" });
-  await expect(panel).toBeVisible();
-  await expect(panel.getByText("No cards yet.")).toBeVisible();
+test("the bottom agent bar shows a token placeholder until usage is counted", async ({ page }) => {
+  await expect(page.getByLabel("Agents").getByText("— tokens").first()).toBeVisible();
 });

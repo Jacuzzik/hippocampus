@@ -1,6 +1,5 @@
 <script lang="ts">
   import Assistant from "../assistant/Assistant.svelte";
-  import OwnerPanel from "../owner/OwnerPanel.svelte";
 
   // Kept mounted when hidden so the chat session and its tool log survive a toggle.
   let { open = true }: { open?: boolean } = $props();
@@ -10,7 +9,6 @@
   <div class="column">
     <Assistant />
   </div>
-  <OwnerPanel />
 </div>
 
 <style>
