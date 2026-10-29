@@ -27,12 +27,18 @@
     display: none;
   }
 
+  /* The dark terminal box from the mockup: the assistant's chat sits inside it. */
   .column {
     flex: 1;
     display: flex;
     flex-direction: column;
     min-width: 0;
     min-height: 0;
+    margin: var(--space-2);
+    padding: var(--space-2);
+    background: var(--color-bg-0);
+    border-radius: var(--radius-md);
+    font-family: var(--font-mono);
   }
 
   .tabs {
@@ -61,6 +67,9 @@
   }
 
   .column > :global(.assistant) {
+    background: transparent;
+    border-left: none;
+    padding: var(--space-2);
     flex: 1;
     min-height: 0;
     min-width: 0;
