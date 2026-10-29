@@ -163,6 +163,24 @@ class Session:
         rows.sort(key=lambda r: str(r.get("created_at") or ""), reverse=True)
         return {"messages": rows[:50]}
 
+    def settings_view(self) -> dict[str, Any]:
+        # Read-only view of the saved settings. API keys are never included.
+        s = self.settings
+        return {
+            "general": {"vault": str(s.vault) if s.vault else None, "network": s.network_mode},
+            "agents": {
+                "provider": s.provider,
+                "model": s.provider_model or s.claude_model,
+                "ollama": s.ollama_model,
+            },
+            "budgets": {
+                "app": asdict(s.budget),
+                "assistant": asdict(s.assistant_budget),
+                "max_tool_calls": s.max_tool_calls,
+            },
+            "memory": {"max_bytes": s.memory_max_bytes},
+        }
+
     def sign_in(self, request: dict[str, Any]) -> dict[str, Any]:
         key = request.get("key")
         if not isinstance(key, str) or not key.strip():
@@ -595,6 +613,8 @@ class Session:
             return self.tasks()
         if method == "inbox":
             return self.inbox()
+        if method == "settings":
+            return self.settings_view()
         if method == "sign_in":
             return self.sign_in(request)
         if method == "sign_out":

@@ -2,6 +2,7 @@
   import Assistant from "../assistant/Assistant.svelte";
   import TasksPanel from "./TasksPanel.svelte";
   import InboxPanel from "./InboxPanel.svelte";
+  import SettingsPanel from "./SettingsPanel.svelte";
 
   // Kept mounted when hidden so the chat session and its tool log survive a toggle.
   let { open = true }: { open?: boolean } = $props();
@@ -9,11 +10,11 @@
   // Only the terminal is built; the rest of the grid is shown and stays disabled.
   // Names match Munder Difflin's Command Center tabs.
   const TABS = [
-    "terminal", "monitor", "tasks", "inbox", "ask me", "triggers", "history",
-    "memory", "graph", "activity", "skills", "temps",
+    "terminal", "monitor", "tasks", "inbox", "settings", "ask me", "triggers",
+    "history", "memory", "graph", "activity", "skills", "temps",
   ];
   // Tabs that have content so far; the rest stay disabled.
-  const LIVE = ["terminal", "tasks", "inbox"];
+  const LIVE = ["terminal", "tasks", "inbox", "settings"];
   let tab = $state("terminal");
   let fontSize = $state(12);
 </script>
@@ -50,6 +51,8 @@
       <TasksPanel />
     {:else if tab === "inbox"}
       <InboxPanel />
+    {:else if tab === "settings"}
+      <SettingsPanel />
     {/if}
   </div>
 </div>

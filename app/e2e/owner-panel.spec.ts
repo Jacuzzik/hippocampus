@@ -33,3 +33,8 @@ test("the inbox tab lists agent messages", async ({ page }) => {
   await page.getByRole("tab", { name: "inbox" }).click();
   await expect(page.getByRole("region", { name: "Inbox" })).toContainText("Research the plan");
 });
+
+test("the settings tab shows the saved settings read only", async ({ page }) => {
+  await page.getByRole("tab", { name: "settings" }).click();
+  await expect(page.getByRole("region", { name: "Settings" })).toContainText("claude-sonnet-5-5");
+});

@@ -235,6 +235,17 @@ export async function mockSidecar(
                 { id: "m-2", from: "kevin", to: "god", act: "done", subject: "Research done", created_at: "2026-10-29T11:10:00Z", state: "done" },
               ],
             };
+          case "settings":
+            return {
+              general: { vault: "/home/thalha/Documents/Obsidian/Munder-Difflin", network: "off" },
+              agents: { provider: "claude", model: "claude-sonnet-5-5", ollama: "qwen2.5:1.5b" },
+              budgets: {
+                app: { five_hour: 0, daily: 0, weekly: 0, monthly: 0 },
+                assistant: { five_hour: 0, daily: 50000, weekly: 0, monthly: 0 },
+                max_tool_calls: 20,
+              },
+              memory: { max_bytes: 32000 },
+            };
           case "account":
             return {
               claude: claudeKey !== null,
