@@ -41,6 +41,7 @@
       onclick={() => onmemory(true)}>Memory</button
     >
   </header>
+  <span class="label" aria-hidden="true">GRAPH</span>
   <div class="body">
     {#if data}
       {#key viewKey}
@@ -83,6 +84,18 @@
   .graph > .tab-header {
     position: relative;
     z-index: 2;
+  }
+
+  /* The pane's name in the corner, as in the mockup. */
+  .label {
+    position: absolute;
+    left: var(--space-3);
+    top: calc(var(--layout-tab-header-height) + var(--space-2));
+    z-index: 2;
+    pointer-events: none;
+    font-family: "Press Start 2P", monospace;
+    font-size: 9px;
+    color: var(--color-md-text-muted);
   }
 
   /* Obsidian's tab header: a strip above the pane, the active tab lifted onto the pane colour. */

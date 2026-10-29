@@ -68,9 +68,14 @@
     border-color: var(--color-accent);
   }
 
-  /* The mockup has no orb header in the sidebar: the status line is hidden. */
+  /* The mockup has no orb header in the sidebar. Hidden by clipping, not display:none, so the status stays for screen readers. */
   .column :global(.assistant .head) {
-    display: none;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 
   .column > :global(.assistant) {

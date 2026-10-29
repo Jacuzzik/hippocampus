@@ -155,18 +155,15 @@ test("the layout fits a 960 by 600 window without scrolling", async ({
   expect(fits).toBe(true);
 });
 
-test("the graph labels its notes and the nodes drift between frames", async ({
+test("the graph labels its notes in the default arc layout", async ({
   page,
 }) => {
+  // The arc layout is still on purpose, so its labels stay where they are placed.
   const layer = page.locator(".labels");
   const shown = layer.locator(".label");
   await expect(layer).not.toHaveAttribute("data-labels", "0");
   await expect(shown.first()).toBeVisible();
-  const before = await shown.first().evaluate((el) => el.style.transform);
-  // The drift is slow; poll until the first label has moved.
-  await expect
-    .poll(() => shown.first().evaluate((el) => el.style.transform))
-    .not.toBe(before);
+  await expect(shown.first()).toHaveAttribute("style", /transform/);
 });
 
 test("Fit graph brings every note back into the canvas after a zoom", async ({

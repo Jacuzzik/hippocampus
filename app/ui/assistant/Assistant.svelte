@@ -115,27 +115,24 @@
   {/each}
 
   <section class="tools" aria-label="Tool log">
-    <h3>Tool log</h3>
+    <h3 class="visually-hidden">Tool log</h3>
     {#if chat.tools.length === 0 && chat.activity.length === 0}
       <p class="muted">No tools used yet.</p>
     {/if}
-    <ul class="activity">
+    <!-- Terminal lines, as in the mockup: the provider's session echoed as $ and > prompts. -->
+    <div class="term">
+      <div><span class="prompt">$</span> claude</div>
       {#each chat.activity as entry, index (index)}
-        <li>
-          <time>{entry.at}</time>
-          <span>{entry.text}</span>
-        </li>
+        <div><span class="arrow">&gt;</span> <time>{entry.at}</time> {entry.text}</div>
       {/each}
-    </ul>
-    <ul>
       {#each chat.tools as tool (tool.call + tool.name)}
-        <li>
-          <span class="tier {tool.tier}">{tool.tier}</span>
-          <span class="tool-name">{tool.name}</span>
+        <div>
+          <span class="arrow">&gt;</span> {tool.name}
           <span class="status">{STATUS_TEXT[tool.status]}</span>
-        </li>
+        </div>
       {/each}
-    </ul>
+      <div><span class="prompt">$</span> _</div>
+    </div>
     {#if chat.budgetPause !== null}
       <div class="budget-card" role="alert">
         <p>
@@ -276,24 +273,23 @@
     white-space: pre-wrap;
   }
 
-  .tools ul {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
+  .term {
     font-size: var(--font-size-xs);
+    line-height: 1.5;
+    color: var(--color-md-text-muted);
+    overflow-wrap: anywhere;
   }
 
-  .tools li {
-    display: flex;
-    gap: var(--space-2);
-    align-items: baseline;
+  .prompt {
+    color: var(--color-md-confirm);
   }
 
-  .tools time {
-    color: var(--color-text-muted);
+  .arrow {
+    color: var(--color-md-text-subtle);
+  }
+
+  .term time {
+    color: var(--color-md-text-subtle);
   }
 
   .continue {
