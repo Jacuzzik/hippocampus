@@ -86,11 +86,11 @@
     z-index: 2;
   }
 
-  /* The pane's name in the corner, as in the mockup. */
+  /* The pane's name in the bottom-left corner: the top corner holds the graph controls. */
   .label {
     position: absolute;
     left: var(--space-3);
-    top: calc(var(--layout-tab-header-height) + var(--space-2));
+    bottom: var(--space-2);
     z-index: 2;
     pointer-events: none;
     font-family: "Press Start 2P", monospace;
