@@ -672,13 +672,6 @@
     <label class="orphans">
       <input type="checkbox" bind:checked={hideOrphans} /> Hide orphans
     </label>
-    <label class="layout-pick">
-      Layout
-      <select bind:value={mode}>
-        <option value="arc">Arc</option>
-        <option value="force">Force</option>
-      </select>
-    </label>
   </div>
 
   {#if mode === "arc" && groups.names.length}
@@ -911,16 +904,6 @@
     font: inherit;
     pointer-events: auto;
     cursor: pointer;
-  }
-
-  .layout-pick select {
-    font: inherit;
-    font-size: var(--font-size-xs);
-    color: var(--color-text);
-    background: var(--color-bg-1);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    padding: var(--space-1);
   }
 
   .fit {
