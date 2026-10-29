@@ -10,6 +10,7 @@
   import ToolsDialog from "./overlays/ToolsDialog.svelte";
   import ControlDialog from "./control/ControlDialog.svelte";
   import SettingsDialog from "./control/SettingsDialog.svelte";
+  import SettingsFloat from "./regions/SettingsFloat.svelte";
   import CommandBox, { type Item } from "./overlays/CommandBox.svelte";
   import type { GraphData } from "./graph/model.ts";
   import { tick } from "svelte";
@@ -37,6 +38,7 @@
   let controlOpen = $state(false);
   // The settings: six tabs, from the command palette or the control panel.
   let settingsOpen = $state(false);
+  let settingsFloatOpen = $state(false);
 
   // Ctrl on Linux and Windows, Cmd on macOS. Both shortcuts take over the browser default.
   function onKey(e: KeyboardEvent): void {
@@ -153,6 +155,9 @@
 {#if settingsOpen}
   <SettingsDialog onclose={() => (settingsOpen = false)} />
 {/if}
+{#if settingsFloatOpen}
+  <SettingsFloat onclose={() => (settingsFloatOpen = false)} />
+{/if}
 
 {#if setupOpen}
   <AccountDialog
@@ -170,6 +175,7 @@
     bind:panelOpen
     onaccount={() => (setupOpen = true)}
     oncontrol={() => (controlOpen = true)}
+    onsettings={() => (settingsFloatOpen = true)}
   />
   {#if sidebarOpen && data}
     <NoteSidebar

@@ -34,13 +34,13 @@ test("the inbox tab lists agent messages", async ({ page }) => {
   await expect(page.getByRole("region", { name: "Inbox" })).toContainText("Research the plan");
 });
 
-test("the settings tab shows the saved settings read only", async ({ page }) => {
-  await page.getByRole("tab", { name: "settings" }).click();
-  await expect(page.getByRole("region", { name: "Settings" })).toContainText("claude-sonnet-5-5");
+test("the settings button opens the saved settings read only", async ({ page }) => {
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "Settings" })).toContainText("claude-sonnet-5-5");
 });
 
 test("the settings filter narrows the rows", async ({ page }) => {
-  await page.getByRole("tab", { name: "settings" }).click();
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
   await page.getByRole("searchbox", { name: "Filter settings" }).fill("ollama");
   const region = page.getByRole("region", { name: "Settings" });
   await expect(region).toContainText("Ollama model");
