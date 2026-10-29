@@ -36,11 +36,13 @@ test("the inbox tab lists agent messages", async ({ page }) => {
 
 test("the settings tab shows the saved settings read only", async ({ page }) => {
   await page.getByRole("tab", { name: "settings" }).click();
+  await page.getByRole("button", { name: "Agents and models" }).click();
   await expect(page.getByRole("region", { name: "Settings" })).toContainText("claude-sonnet-5-5");
 });
 
 test("the settings filter narrows the rows", async ({ page }) => {
   await page.getByRole("tab", { name: "settings" }).click();
+  await page.getByRole("button", { name: "Agents and models" }).click();
   await page.getByRole("searchbox", { name: "Filter settings" }).fill("ollama");
   const region = page.getByRole("region", { name: "Settings" });
   await expect(region).toContainText("Ollama model");
