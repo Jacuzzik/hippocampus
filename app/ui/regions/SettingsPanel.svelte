@@ -1,30 +1,76 @@
-<!-- The saved settings, read only: seven options on the left, the chosen one on the right. -->
+<!-- Settings laid out like Munder Difflin's: nine categories on the left, each with its option labels. -->
 <script lang="ts">
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
 
-  type Caps = { five_hour: number; daily: number; weekly: number; monthly: number };
   type View = {
     general: { vault: string | null; network: string };
     agents: { provider: string; model: string; ollama: string };
-    budgets: { app: Caps; assistant: Caps; max_tool_calls: number };
+    budgets: unknown;
     memory: { max_bytes: number };
   };
+  type Group = { heading?: string; items: string[] };
+  type Category = { name: string; groups: Group[] };
 
-  // Munder Difflin's seven settings options. Voice, Dictation and Prerequisites are not built yet.
-  const OPTIONS = [
-    "General",
-    "Agents and models",
-    "Autonomy and budgets",
-    "Memory and knowledge",
-    "Voice",
-    "Dictation",
-    "Prerequisites",
+  // Munder Difflin's nine settings categories and their option labels, in its order.
+  const CATEGORIES: Category[] = [
+    {
+      name: "General",
+      groups: [
+        { items: ["Home folder", "Skip the config picker on launch", "Environment", "Keep Mac awake while agents run", "Keep my agent order", "Sidebar shows only agents and notes", "Explain things simply", "Default view", "Theme", "Arabic / RTL text in terminals", "Language"] },
+        { heading: "Notifications", items: ["Desktop notifications"] },
+        { heading: "Maintenance", items: ["Scheduled auto-compact", "Auto-update", "Anonymous usage stats"] },
+        { heading: "DANGER ZONE", items: ["Reset & start over"] },
+      ],
+    },
+    {
+      name: "Prerequisites",
+      groups: [{ items: ["Prerequisites", "Memory layer", "Agent engines"] }],
+    },
+    {
+      name: "Agents & Models",
+      groups: [{ items: ["Default agent model", "Advanced", "Max turns per run"] }],
+    },
+    {
+      name: "Autonomy & Budgets",
+      groups: [
+        { heading: "Autonomy", items: ["Autonomous — agents act without asking", "Ask-first — agents pause for tool approval"] },
+        { heading: "Circuit breaker", items: ["token velocity (tok/min)", "repeated-tool limit", "error-storm limit", "Hard stop", "kill on trip", "steer first"] },
+        { heading: "Archiving", items: ["Ticket key prefix", "archive done tasks after (days)", "flag untouched tasks after (days)", "archive untouched tasks after (days)", "remind about an open question after (days)", "condense the board past (tokens)"] },
+      ],
+    },
+    {
+      name: "Connections",
+      groups: [
+        { heading: "Slack", items: ["Slack integration", "Signing secret", "Bot token", "Channel id (optional)", "Port", "Proactive posting (app-initiated) — off by default"] },
+        { heading: "Webhook triggers", items: ["Mode", "Secret", "URL"] },
+      ],
+    },
+    {
+      name: "Orchestrator's voice",
+      groups: [{ items: ["Groq API key", "Model", "OpenAI API key · voice", "Idle auto-disconnect"] }],
+    },
+    {
+      name: "Dictation & Meetings",
+      groups: [
+        { items: ["Engine", "Whisper model", "Dictate into any app", "Push to talk key", "Start and stop sounds", "Built in vocabulary", "Your words", "Test paste"] },
+        { heading: "Meetings", items: ["Start or stop a meeting", "Also record the other side of calls", "Take screenshots into the Stapler"] },
+        { heading: "Permissions", items: ["Microphone", "Accessibility"] },
+      ],
+    },
+    {
+      name: "Memory & Knowledge",
+      groups: [{ items: ["Search across memory", "Cross-session recall", "Knowledge Graph", "Enterprise knowledge base", "Memory folder", "Show in folder"] }],
+    },
+    {
+      name: "Keys & Secrets",
+      groups: [{ items: ["AI engine providers (BYOK)", "API keys"] }],
+    },
   ];
 
   let view = $state<View | null>(null);
   let failed = $state(false);
-  let option = $state("General");
+  let category = $state("General");
 
   onMount(async () => {
     try {
@@ -35,30 +81,16 @@
     }
   });
 
-  // A cap of 0 means no limit for that window.
-  const cap = (n: number) => (n === 0 ? "no cap" : n.toLocaleString());
-
-  // Rows for the chosen option, as [label, value] pairs.
-  const rows = $derived.by((): [string, string][] => {
-    if (!view) return [];
-    switch (option) {
-      case "General":
-        return [["Vault", view.general.vault ?? "not set"], ["Network", view.general.network]];
-      case "Agents and models":
-        return [["Provider", view.agents.provider], ["Model", view.agents.model], ["Ollama model", view.agents.ollama]];
-      case "Autonomy and budgets":
-        return [
-          ["Max tool calls per request", String(view.budgets.max_tool_calls)],
-          ["App, 5 hours", cap(view.budgets.app.five_hour)],
-          ["App, daily", cap(view.budgets.app.daily)],
-          ["Assistant, daily", cap(view.budgets.assistant.daily)],
-        ];
-      case "Memory and knowledge":
-        return [["Note size before archiving", `${view.memory.max_bytes.toLocaleString()} bytes`]];
-      default:
-        return [];
-    }
+  // Values the app can show today, keyed by option label. Everything else says "Not built yet".
+  const valueOf = $derived.by((): Record<string, string> => {
+    if (!view) return {};
+    return {
+      "Home folder": view.general.vault ?? "not set",
+      "Default agent model": `${view.agents.provider} · ${view.agents.model}`,
+    };
   });
+
+  const current = $derived<Category>(CATEGORIES.find((c) => c.name === category) ?? { name: category, groups: [] });
 </script>
 
 <section class="settings" aria-label="Settings">
@@ -66,24 +98,24 @@
     <p class="muted">Could not read the settings.</p>
   {:else if view}
     <div class="layout">
-      <nav class="options" aria-label="Settings options">
-        {#each OPTIONS as name (name)}
-          <button type="button" aria-pressed={option === name} class:on={option === name} onclick={() => (option = name)}>
-            {name}
+      <nav class="options" aria-label="Settings categories">
+        {#each CATEGORIES as item (item.name)}
+          <button type="button" aria-pressed={category === item.name} class:on={category === item.name} onclick={() => (category = item.name)}>
+            {item.name}
           </button>
         {/each}
       </nav>
       <div class="detail">
-        <h3>{option}</h3>
-        {#if rows.length}
+        <h3>{current.name}</h3>
+        {#each current.groups as group (group.heading ?? "")}
+          {#if group.heading}<h4>{group.heading}</h4>{/if}
           <dl>
-            {#each rows as [label, value] (label)}
-              <dt>{label}</dt><dd>{value}</dd>
+            {#each group.items as label (label)}
+              <dt>{label}</dt>
+              <dd>{valueOf[label] || "Not built yet"}</dd>
             {/each}
           </dl>
-        {:else}
-          <p class="muted">Not built yet.</p>
-        {/if}
+        {/each}
       </div>
     </div>
   {/if}
@@ -134,6 +166,12 @@
     color: var(--color-md-accent);
   }
 
+  h4 {
+    margin: var(--space-2) 0 var(--space-1);
+    font-size: var(--font-size-xs);
+    color: var(--color-md-text-muted);
+  }
+
   dl {
     display: grid;
     grid-template-columns: max-content 1fr;
@@ -142,15 +180,12 @@
   }
 
   dt {
-    color: var(--color-md-text-muted);
+    color: var(--color-md-text);
   }
 
   dd {
     margin: 0;
     overflow-wrap: anywhere;
-  }
-
-  .muted {
     color: var(--color-md-text-muted);
   }
 </style>
