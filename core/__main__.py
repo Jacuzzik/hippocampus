@@ -49,6 +49,7 @@ from ai.keys import clear_api_key, clear_key, get_api_key, get_key, key_hint, se
 
 # The office task board the Tasks tab reads; MD_TASKS_FILE overrides it.
 DEFAULT_TASKS_FILE = "/home/thalha/Documents/Obsidian/Munder-Difflin/hive/tasks.json"
+DEFAULT_HIVE_DIR = "/home/thalha/Documents/Obsidian/Munder-Difflin/hive"
 from ai.providers.openai_compat import PRESETS
 from ai.router import build_router, model_name
 from core import __version__, share, skills
@@ -143,6 +144,24 @@ class Session:
             return {"tasks": []}
         keep = ("id", "title", "status", "assignee", "updatedAt")
         return {"tasks": [{k: t.get(k) for k in keep} for t in raw if isinstance(t, dict)]}
+
+    def inbox(self) -> dict[str, Any]:
+        # Read-only view of every agent's inbox: pending messages first, then handled ones.
+        agents = Path(os.environ.get("MD_HIVE_DIR", DEFAULT_HIVE_DIR)) / "agents"
+        rows: list[dict[str, Any]] = []
+        for folder in sorted(p for p in agents.glob("*") if p.is_dir()):
+            for path, state in ((folder / "inbox", "pending"), (folder / "inbox" / ".done", "done")):
+                for file in path.glob("*.json"):
+                    try:
+                        msg = json.loads(file.read_text(encoding="utf-8"))
+                    except (OSError, ValueError):
+                        continue
+                    if not isinstance(msg, dict):
+                        continue
+                    keep = ("id", "from", "to", "act", "subject", "created_at")
+                    rows.append({**{k: msg.get(k) for k in keep}, "state": state})
+        rows.sort(key=lambda r: str(r.get("created_at") or ""), reverse=True)
+        return {"messages": rows[:50]}
 
     def sign_in(self, request: dict[str, Any]) -> dict[str, Any]:
         key = request.get("key")
@@ -574,6 +593,8 @@ class Session:
             return self.account()
         if method == "tasks":
             return self.tasks()
+        if method == "inbox":
+            return self.inbox()
         if method == "sign_in":
             return self.sign_in(request)
         if method == "sign_out":

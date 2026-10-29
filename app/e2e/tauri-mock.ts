@@ -228,6 +228,13 @@ export async function mockSidecar(
                 { id: "MDF-2", title: "Check the Inbox feed", status: "todo", assignee: null, updatedAt: null },
               ],
             };
+          case "inbox":
+            return {
+              messages: [
+                { id: "m-1", from: "god", to: "kevin", act: "task", subject: "Research the plan", created_at: "2026-10-29T12:30:00Z", state: "pending" },
+                { id: "m-2", from: "kevin", to: "god", act: "done", subject: "Research done", created_at: "2026-10-29T11:10:00Z", state: "done" },
+              ],
+            };
           case "account":
             return {
               claude: claudeKey !== null,

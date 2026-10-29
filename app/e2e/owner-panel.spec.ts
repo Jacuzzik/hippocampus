@@ -28,3 +28,8 @@ test("the tasks tab opens the task board", async ({ page }) => {
   await page.getByRole("tab", { name: "tasks" }).click();
   await expect(page.getByRole("region", { name: "Tasks" })).toBeVisible();
 });
+
+test("the inbox tab lists agent messages", async ({ page }) => {
+  await page.getByRole("tab", { name: "inbox" }).click();
+  await expect(page.getByRole("region", { name: "Inbox" })).toContainText("Research the plan");
+});
