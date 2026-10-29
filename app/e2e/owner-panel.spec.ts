@@ -36,15 +36,17 @@ test("the inbox tab lists agent messages", async ({ page }) => {
 
 test("the settings button opens the saved settings read only", async ({ page }) => {
   await page.getByRole("button", { name: "Settings", exact: true }).click();
-  await expect(page.getByRole("dialog", { name: "Settings" })).toContainText("claude-sonnet-5-5");
+  const dialog = page.getByRole("dialog", { name: "Settings" });
+  await dialog.getByRole("button", { name: "Agents and models" }).click();
+  await expect(dialog).toContainText("claude-sonnet-5-5");
 });
 
-test("the settings filter narrows the rows", async ({ page }) => {
+test("the settings options show one section at a time", async ({ page }) => {
   await page.getByRole("button", { name: "Settings", exact: true }).click();
-  await page.getByRole("searchbox", { name: "Filter settings" }).fill("ollama");
-  const region = page.getByRole("region", { name: "Settings" });
-  await expect(region).toContainText("Ollama model");
-  await expect(region).not.toContainText("Assistant, daily");
+  const dialog = page.getByRole("dialog", { name: "Settings" });
+  await dialog.getByRole("button", { name: "Agents and models" }).click();
+  await expect(dialog).toContainText("Ollama model");
+  await expect(dialog).not.toContainText("Assistant, daily");
 });
 
 test("the memory tab lists each agent's notes", async ({ page }) => {

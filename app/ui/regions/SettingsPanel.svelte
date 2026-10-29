@@ -1,6 +1,5 @@
-<!-- The saved settings, read only, laid out as the Control panel's stacked sections. -->
+<!-- The saved settings, read only: seven options on the left, the chosen one on the right. -->
 <script lang="ts">
-  import "../control/control.css";
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
 
@@ -12,9 +11,20 @@
     memory: { max_bytes: number };
   };
 
+  // Munder Difflin's seven settings options. Voice, Dictation and Prerequisites are not built yet.
+  const OPTIONS = [
+    "General",
+    "Agents and models",
+    "Autonomy and budgets",
+    "Memory and knowledge",
+    "Voice",
+    "Dictation",
+    "Prerequisites",
+  ];
+
   let view = $state<View | null>(null);
   let failed = $state(false);
-  let query = $state("");
+  let option = $state("General");
 
   onMount(async () => {
     try {
@@ -28,37 +38,26 @@
   // A cap of 0 means no limit for that window.
   const cap = (n: number) => (n === 0 ? "no cap" : n.toLocaleString());
 
-  // Munder Difflin's seven settings sections. A section with no rows says it is not built yet.
-  const sections = $derived.by((): { title: string; rows: [string, string][] }[] => {
+  // Rows for the chosen option, as [label, value] pairs.
+  const rows = $derived.by((): [string, string][] => {
     if (!view) return [];
-    const all = [
-      { title: "General", rows: [["Vault", view.general.vault ?? "not set"], ["Network", view.general.network]] as [string, string][] },
-      {
-        title: "Agents and models",
-        rows: [["Provider", view.agents.provider], ["Model", view.agents.model], ["Ollama model", view.agents.ollama]] as [string, string][],
-      },
-      {
-        title: "Autonomy and budgets",
-        rows: [
+    switch (option) {
+      case "General":
+        return [["Vault", view.general.vault ?? "not set"], ["Network", view.general.network]];
+      case "Agents and models":
+        return [["Provider", view.agents.provider], ["Model", view.agents.model], ["Ollama model", view.agents.ollama]];
+      case "Autonomy and budgets":
+        return [
           ["Max tool calls per request", String(view.budgets.max_tool_calls)],
           ["App, 5 hours", cap(view.budgets.app.five_hour)],
           ["App, daily", cap(view.budgets.app.daily)],
           ["Assistant, daily", cap(view.budgets.assistant.daily)],
-        ] as [string, string][],
-      },
-      {
-        title: "Memory and knowledge",
-        rows: [["Note size before archiving", `${view.memory.max_bytes.toLocaleString()} bytes`]] as [string, string][],
-      },
-      { title: "Voice", rows: [] as [string, string][] },
-      { title: "Dictation", rows: [] as [string, string][] },
-      { title: "Prerequisites", rows: [] as [string, string][] },
-    ];
-    const q = query.trim().toLowerCase();
-    return all.map((s) => ({
-      title: s.title,
-      rows: s.rows.filter(([label, value]) => `${s.title} ${label} ${value}`.toLowerCase().includes(q)),
-    }));
+        ];
+      case "Memory and knowledge":
+        return [["Note size before archiving", `${view.memory.max_bytes.toLocaleString()} bytes`]];
+      default:
+        return [];
+    }
   });
 </script>
 
@@ -66,25 +65,27 @@
   {#if failed}
     <p class="muted">Could not read the settings.</p>
   {:else if view}
-    <input type="search" aria-label="Filter settings" placeholder="Filter settings" bind:value={query} />
-    {#each sections as section (section.title)}
-      {#if section.rows.length || !query.trim()}
-        <section class="control-section" aria-label={section.title}>
-          <h3>{section.title}</h3>
-          {#if section.rows.length}
-            <dl>
-              {#each section.rows as [label, value] (label)}
-                <dt>{label}</dt><dd>{value}</dd>
-              {/each}
-            </dl>
-          {:else}
-            <p class="hint">Not built yet.</p>
-          {/if}
-        </section>
-      {/if}
-    {:else}
-      <p class="muted">No settings match "{query}".</p>
-    {/each}
+    <div class="layout">
+      <nav class="options" aria-label="Settings options">
+        {#each OPTIONS as name (name)}
+          <button type="button" aria-pressed={option === name} class:on={option === name} onclick={() => (option = name)}>
+            {name}
+          </button>
+        {/each}
+      </nav>
+      <div class="detail">
+        <h3>{option}</h3>
+        {#if rows.length}
+          <dl>
+            {#each rows as [label, value] (label)}
+              <dt>{label}</dt><dd>{value}</dd>
+            {/each}
+          </dl>
+        {:else}
+          <p class="muted">Not built yet.</p>
+        {/if}
+      </div>
+    </div>
   {/if}
 </section>
 
@@ -93,13 +94,44 @@
     font-family: var(--font-mono);
     font-size: var(--font-size-xs);
     color: var(--color-md-text);
-    overflow-y: auto;
   }
 
-  input[type="search"] {
-    width: 100%;
-    box-sizing: border-box;
-    margin-bottom: var(--space-2);
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(150px, 200px) 1fr;
+    gap: var(--space-3);
+    align-items: start;
+  }
+
+  .options {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .options button {
+    min-height: 44px;
+    padding: var(--space-1) var(--space-2);
+    text-align: left;
+    font-size: var(--font-size-xs);
+    color: var(--color-md-text-muted);
+    background: var(--color-md-surface);
+    border: 1px solid var(--color-md-border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+  }
+
+  .options button.on {
+    color: var(--color-md-accent-on);
+    background: var(--color-md-accent);
+    border-color: var(--color-md-accent);
+  }
+
+  h3 {
+    margin: 0 0 var(--space-2);
+    font-family: "Press Start 2P", monospace;
+    font-size: 8px;
+    color: var(--color-md-accent);
   }
 
   dl {
