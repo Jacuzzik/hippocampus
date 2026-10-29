@@ -1,6 +1,7 @@
 <script lang="ts">
   import { ORB_LABELS } from "../assistant/model";
   import { assistant } from "../assistant/session.svelte";
+  import AgentBar from "../owner/AgentBar.svelte";
   import type { GraphData } from "../graph/model.ts";
 
   let { data = null }: { data?: GraphData | null } = $props();
@@ -8,10 +9,13 @@
   const links = $derived(data?.edges.length ?? 0);
 </script>
 
-<footer class="status-bar">
-  <span>{data?.nodes.length ?? 0} notes</span>
-  <span>{links} links</span>
-  <span class="assistant-state">{ORB_LABELS[assistant.chat.orb]}</span>
+<footer class="status-bar md-theme">
+  <AgentBar />
+  <span class="counts">
+    <span>{data?.nodes.length ?? 0} notes</span>
+    <span>{links} links</span>
+    <span class="assistant-state">{ORB_LABELS[assistant.chat.orb]}</span>
+  </span>
 </footer>
 
 <style>
@@ -29,7 +33,10 @@
     white-space: nowrap;
   }
 
-  .assistant-state {
+  .counts {
+    display: flex;
+    gap: var(--space-3);
     margin-left: auto;
+    flex: none;
   }
 </style>
