@@ -23,3 +23,8 @@ test("+ Add agent opens the add-agent steps in the Control panel", async ({
   const dialog = page.getByRole("dialog", { name: "Control panel" });
   await expect(dialog.locator("#control-add-agent")).toBeVisible();
 });
+
+test("the tasks tab opens the task board", async ({ page }) => {
+  await page.getByRole("tab", { name: "tasks" }).click();
+  await expect(page.getByRole("region", { name: "Tasks" })).toBeVisible();
+});

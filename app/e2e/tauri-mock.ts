@@ -221,6 +221,13 @@ export async function mockSidecar(
               throw new Error("vault folder not found");
             vaultOpen = true;
             return { vault: args.params?.vault };
+          case "tasks":
+            return {
+              tasks: [
+                { id: "MDF-1", title: "Ship the Tasks page", status: "doing", assignee: "hippo", updatedAt: null },
+                { id: "MDF-2", title: "Check the Inbox feed", status: "todo", assignee: null, updatedAt: null },
+              ],
+            };
           case "account":
             return {
               claude: claudeKey !== null,

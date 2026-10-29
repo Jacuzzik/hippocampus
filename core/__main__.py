@@ -29,6 +29,7 @@ import contextlib
 import getpass
 import json
 import logging
+import os
 import shutil
 import signal
 import subprocess
@@ -45,6 +46,9 @@ from keyring.errors import KeyringError
 from ai import network
 from ai.agent import Agent, AgentPaused
 from ai.keys import clear_api_key, clear_key, get_api_key, get_key, key_hint, set_api_key, set_key
+
+# The office task board the Tasks tab reads; MD_TASKS_FILE overrides it.
+DEFAULT_TASKS_FILE = "/home/thalha/Documents/Obsidian/Munder-Difflin/hive/tasks.json"
 from ai.providers.openai_compat import PRESETS
 from ai.router import build_router, model_name
 from core import __version__, share, skills
@@ -129,6 +133,16 @@ class Session:
         # Only whether a key is saved and the model name; the key itself never leaves the keychain.
         api_key = get_api_key()
         return {"claude": api_key is not None, "model": model_name(self.settings, api_key)}
+
+    def tasks(self) -> dict[str, Any]:
+        # Read-only view of the office task board. A missing or unreadable file shows no tasks.
+        path = Path(os.environ.get("MD_TASKS_FILE", DEFAULT_TASKS_FILE))
+        try:
+            raw = json.loads(path.read_text(encoding="utf-8")).get("tasks", [])
+        except (OSError, ValueError, AttributeError):
+            return {"tasks": []}
+        keep = ("id", "title", "status", "assignee", "updatedAt")
+        return {"tasks": [{k: t.get(k) for k in keep} for t in raw if isinstance(t, dict)]}
 
     def sign_in(self, request: dict[str, Any]) -> dict[str, Any]:
         key = request.get("key")
@@ -558,6 +572,8 @@ class Session:
             return self.read(request)
         if method == "account":
             return self.account()
+        if method == "tasks":
+            return self.tasks()
         if method == "sign_in":
             return self.sign_in(request)
         if method == "sign_out":

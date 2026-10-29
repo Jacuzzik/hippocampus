@@ -1,5 +1,6 @@
 <script lang="ts">
   import Assistant from "../assistant/Assistant.svelte";
+  import TasksPanel from "./TasksPanel.svelte";
 
   // Kept mounted when hidden so the chat session and its tool log survive a toggle.
   let { open = true }: { open?: boolean } = $props();
@@ -10,6 +11,9 @@
     "terminal", "monitor", "tasks", "ask me", "triggers", "history",
     "memory", "graph", "activity", "skills", "temps",
   ];
+  // Tabs that have content so far; the rest stay disabled.
+  const LIVE = ["terminal", "tasks"];
+  let tab = $state("terminal");
   let fontSize = $state(12);
 </script>
 
@@ -21,10 +25,11 @@
           type="button"
           class="tab"
           role="tab"
-          aria-selected={name === "terminal"}
-          class:on={name === "terminal"}
-          disabled={name !== "terminal"}
-          title={name === "terminal" ? undefined : "Not built yet"}>{name}</button
+          aria-selected={tab === name}
+          class:on={tab === name}
+          disabled={!LIVE.includes(name)}
+          title={LIVE.includes(name) ? undefined : "Not built yet"}
+          onclick={() => (tab = name)}>{name}</button
         >
       {/each}
     </div>
@@ -37,7 +42,12 @@
         <button type="button" aria-label="Larger text" onclick={() => (fontSize = Math.min(18, fontSize + 1))}>+</button>
       </span>
     </div>
-    <Assistant />
+    <div class="pane" hidden={tab !== "terminal"}>
+      <Assistant />
+    </div>
+    {#if tab === "tasks"}
+      <TasksPanel />
+    {/if}
   </div>
 </div>
 
@@ -152,7 +162,18 @@
     font-size: 9px;
   }
 
-  .column > :global(.assistant) {
+  .pane {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .pane[hidden] {
+    display: none;
+  }
+
+  .pane > :global(.assistant) {
     background: transparent;
     border-left: none;
     padding: var(--space-2);
