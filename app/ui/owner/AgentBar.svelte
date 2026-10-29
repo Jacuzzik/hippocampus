@@ -39,6 +39,7 @@
     <div>
       <b>HIPPO</b>
       <i>{provider}</i>
+      <small class="fixed">MAIN · FIXED</small>
     </div>
     <span class="tokens">— tokens</span>
   </div>
@@ -54,6 +55,8 @@
       <button type="button" aria-label="Move {agent.name} right" onclick={() => move(index, 1)}>›</button>
     </div>
   {/each}
+  <!-- Adding agents is not built yet; the button is shown so the layout matches the mockup. -->
+  <button type="button" class="add" disabled title="Adding agents is not built yet">+ Add agent</button>
 </div>
 
 <style>
@@ -70,7 +73,9 @@
     align-items: center;
     gap: var(--space-2);
     flex: none;
-    padding: var(--space-1) var(--space-2);
+    min-height: 64px;
+    min-width: 180px;
+    padding: var(--space-2) var(--space-3);
     background: var(--color-md-card);
     color: var(--color-md-card-text);
     border-radius: var(--radius-md);
@@ -79,9 +84,10 @@
   }
 
   .chip img {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+    flex: none;
   }
 
   .chip b {
@@ -94,6 +100,26 @@
     font-size: 10px;
     color: var(--color-md-card-text);
     opacity: 0.7;
+  }
+
+  .fixed {
+    display: block;
+    font-family: "Press Start 2P", monospace;
+    font-size: 6px;
+    color: var(--color-accent);
+  }
+
+  .add {
+    flex: none;
+    min-height: 44px;
+    padding: 0 var(--space-3);
+    border: 1px dashed var(--color-border);
+    border-radius: var(--radius-md);
+    background: none;
+    color: var(--color-text-muted);
+    font-family: "Press Start 2P", monospace;
+    font-size: 8px;
+    cursor: default;
   }
 
   .tokens {

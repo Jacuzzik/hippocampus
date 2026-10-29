@@ -7,6 +7,9 @@
 
 <div class="right-panel" hidden={!open}>
   <div class="column">
+    <div class="tabs" role="tablist">
+      <span class="tab on" role="tab" aria-selected="true">CLAUDE CODE</span>
+    </div>
     <Assistant />
   </div>
 </div>
@@ -30,6 +33,31 @@
     flex-direction: column;
     min-width: 0;
     min-height: 0;
+  }
+
+  .tabs {
+    display: flex;
+    gap: var(--space-2);
+    padding: var(--space-2);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .tab {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    font-family: "Press Start 2P", monospace;
+    font-size: 8px;
+    padding: var(--space-1) var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    color: var(--color-text-muted);
+  }
+
+  .tab.on {
+    background: var(--color-accent);
+    color: var(--color-accent-on);
+    border-color: var(--color-accent);
   }
 
   .column > :global(.assistant) {

@@ -61,8 +61,28 @@
     flex-direction: column;
     min-width: 0;
     min-height: 0;
+    position: relative;
     background: var(--color-bg-0);
     color: var(--color-text-muted);
+  }
+
+  /* Dot grid, as in the mockup. Sits over the WebGL canvas, which clears to a solid colour. */
+  .graph::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background-image: radial-gradient(
+      color-mix(in srgb, var(--color-accent) 35%, transparent) 1.5px,
+      transparent 2px
+    );
+    background-size: 34px 34px;
+  }
+
+  .graph > .tab-header {
+    position: relative;
+    z-index: 2;
   }
 
   /* Obsidian's tab header: a strip above the pane, the active tab lifted onto the pane colour. */

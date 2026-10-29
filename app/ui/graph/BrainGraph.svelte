@@ -887,11 +887,14 @@
     margin-bottom: var(--space-1);
   }
 
+  /* 44px touch target; the padding keeps the visible swatch at 12px, and the negative margin keeps the row height. */
   .pick {
-    width: 12px;
-    height: 12px;
-    padding: 0;
-    margin-right: var(--space-2);
+    box-sizing: border-box;
+    box-sizing: border-box;
+    width: 44px;
+    height: 44px;
+    padding: 16px;
+    margin: -16px var(--space-2) -16px -16px;
     border: none;
     background: none;
     vertical-align: middle;
