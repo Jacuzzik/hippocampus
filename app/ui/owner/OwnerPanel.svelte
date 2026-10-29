@@ -4,7 +4,7 @@
   import { invoke } from "@tauri-apps/api/core";
   import AgentCard from "../assistant/AgentCard.svelte";
   import AgentStatus from "./AgentStatus.svelte";
-  import logo from "../assets/brand/hippocampus-logo.png";
+  import logo from "../assets/brand/hippocampus-mark-purple.png";
 
   let account = $state<{ claude: boolean; model: string } | null>(null);
   let showAgents = $state(false);
