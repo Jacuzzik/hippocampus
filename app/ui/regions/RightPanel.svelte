@@ -3,14 +3,38 @@
 
   // Kept mounted when hidden so the chat session and its tool log survive a toggle.
   let { open = true }: { open?: boolean } = $props();
+
+  // Only the terminal is built; the rest of the grid is shown, as in the mockup, and stays disabled.
+  const TABS = [
+    "terminal", "monitor", "tasks", "ask me", "triggers",
+    "memory", "graph", "activity", "commands", "workers",
+  ];
+  let fontSize = $state(12);
 </script>
 
 <div class="right-panel" hidden={!open}>
-  <div class="column">
-    <div class="tabs" role="tablist">
-      <span class="tab on" role="tab" aria-selected="true">CLAUDE CODE</span>
-      <span class="tab" role="tab" aria-selected="false">PROVIDER</span>
-      <span class="tab" role="tab" aria-selected="false">TOOLS</span>
+  <div class="column" style="--term-size: {fontSize}px">
+    <div class="tabs" role="tablist" aria-label="Panels">
+      {#each TABS as name (name)}
+        <button
+          type="button"
+          class="tab"
+          role="tab"
+          aria-selected={name === "terminal"}
+          class:on={name === "terminal"}
+          disabled={name !== "terminal"}
+          title={name === "terminal" ? undefined : "Not built yet"}>{name}</button
+        >
+      {/each}
+    </div>
+    <div class="live">
+      <span class="dot" aria-hidden="true"></span>
+      <span>live · pty hippo</span>
+      <span class="size">
+        <button type="button" aria-label="Smaller text" onclick={() => (fontSize = Math.max(9, fontSize - 1))}>−</button>
+        <output>{fontSize}px</output>
+        <button type="button" aria-label="Larger text" onclick={() => (fontSize = Math.min(18, fontSize + 1))}>+</button>
+      </span>
     </div>
     <Assistant />
   </div>
@@ -44,38 +68,87 @@
   }
 
   .tabs {
-    display: flex;
-    gap: var(--space-2);
-    padding: var(--space-2);
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
+    gap: var(--space-1);
+    padding-bottom: var(--space-2);
     border-bottom: 1px solid var(--color-border);
   }
 
   .tab {
-    display: inline-flex;
-    align-items: center;
     min-height: 44px;
     font-family: "Press Start 2P", monospace;
-    font-size: 8px;
-    padding: var(--space-1) var(--space-2);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    color: var(--color-text-muted);
+    font-size: 7px;
+    text-transform: uppercase;
+    padding: var(--space-1);
+    border: 1px solid var(--color-md-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-md-surface);
+    color: var(--color-md-text-muted);
+    cursor: pointer;
+  }
+
+  .tab:disabled {
+    cursor: default;
+    opacity: 0.6;
   }
 
   .tab.on {
-    background: var(--color-accent);
-    color: var(--color-accent-on);
-    border-color: var(--color-accent);
+    background: var(--color-md-accent);
+    color: var(--color-md-accent-on);
+    border-color: var(--color-md-accent);
   }
 
-  /* The mockup has no orb header in the sidebar. Hidden by clipping, not display:none, so the status stays for screen readers. */
+  .live {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) 0;
+    font-size: var(--font-size-xs);
+    color: var(--color-md-text-muted);
+  }
+
+  .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--color-md-accent);
+  }
+
+  .size {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+  }
+
+  .size button {
+    min-width: 44px;
+    min-height: 44px;
+    border: 1px solid var(--color-md-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-md-surface);
+    color: var(--color-md-text);
+    cursor: pointer;
+  }
+
+  .size output {
+    min-width: 40px;
+    text-align: center;
+  }
+
+  /* The orb status shows as a pill at the top of the panel, as in the mockup. */
   .column :global(.assistant .head) {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
+    display: inline-flex;
+    align-self: flex-start;
+    align-items: center;
+    gap: var(--space-1);
+    padding: 2px var(--space-2);
+    border: 1px solid var(--color-md-border);
+    border-radius: 999px;
+    background: var(--color-md-surface);
+    color: var(--color-md-text);
+    font-size: 9px;
   }
 
   .column > :global(.assistant) {

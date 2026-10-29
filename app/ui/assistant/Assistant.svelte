@@ -159,6 +159,7 @@
   </section>
 
   <form class="composer" onsubmit={submit}>
+    <span class="queue-label">Queue</span>
     <label class="visually-hidden" for="assistant-input"
       >Message the assistant</label
     >
@@ -169,6 +170,9 @@
       placeholder="Ask about your notes…"
       disabled={assistant.busy}></textarea>
     <div class="actions">
+      <!-- Files and voice are shown as in the mockup; not built yet. -->
+      <button type="button" disabled title="Not built yet">+ files</button>
+      <button type="button" disabled title="Not built yet">voice</button>
       <button type="submit" disabled={assistant.busy || !draft.trim()}
         >Send</button
       >
@@ -286,6 +290,18 @@
 
   .arrow {
     color: var(--color-md-text-subtle);
+  }
+
+  .term {
+    font-size: var(--term-size, var(--font-size-xs));
+  }
+
+  .queue-label {
+    display: block;
+    font-family: "Press Start 2P", monospace;
+    font-size: 7px;
+    color: var(--color-md-text-muted);
+    margin-bottom: var(--space-1);
   }
 
   .term time {
