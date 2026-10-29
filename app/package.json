@@ -14,19 +14,20 @@
     "prebuild": "npm run tokens",
     "build": "vite build",
     "check": "npm run tokens && svelte-check --tsconfig ./tsconfig.json",
-    "test": "node --test scripts/check-tokens.mjs",
+    "test": "node --test scripts/check-tokens.mjs scripts/graph-model.test.mjs scripts/markdown.test.mjs scripts/assistant-model.test.mjs scripts/contrast.test.mjs scripts/agent-card.test.mjs scripts/allowlist.test.mjs scripts/control.test.mjs",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "e2e": "playwright test"
   },
   "dependencies": {
     "@fontsource-variable/jetbrains-mono": "5.3.0",
-    "@fontsource-variable/outfit": "5.3.0",
     "@tauri-apps/api": "2.12.4"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
+    "@playwright/test": "1.64.1",
     "@sveltejs/vite-plugin-svelte": "7.3.1",
     "@tauri-apps/cli": "2.12.3",
     "@tsconfig/svelte": "5.0.8",

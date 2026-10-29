@@ -47,8 +47,8 @@ export function resolveValue(tokens, value, seen = new Set()) {
   return resolveValue(tokens, node.$value, seen);
 }
 
-// "Outfit (fallback: system-ui, sans-serif)" -> font-family stack that prefers
-// the bundled @fontsource-variable face.
+// "Inter (fallback: system-ui, sans-serif)" -> font-family stack that prefers
+// the named face (installed locally; no font package is bundled).
 export function fontStack(description) {
   const match = /^(.+?)\s*\(fallback:\s*(.+)\)$/.exec(description);
   if (!match) throw new Error(`Unrecognized font token: ${description}`);

@@ -17,3 +17,11 @@ app/ui/styles/tokens.css
 # User data (dev)
 storage/
 brains/
+
+# Playwright
+test-results/
+playwright-report/
+
+# Packaged build (build/ holds the PyInstaller venv and output; binaries/ the bundled sidecar)
+build/
+app/src-tauri/binaries/

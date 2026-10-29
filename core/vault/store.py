@@ -19,7 +19,7 @@ from core.vault.scanner import NoteFile
 
 logger = logging.getLogger("hippocampus.core.vault")
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 # RETURNING (used by upsert_note) arrived in 3.35.0; window functions in 3.25.0.
 MIN_SQLITE_VERSION = (3, 35, 0)
 
@@ -38,7 +38,8 @@ CREATE TABLE notes (
     mtime_ns     INTEGER NOT NULL,
     size         INTEGER NOT NULL,
     content_hash TEXT NOT NULL,
-    indexed_at   INTEGER NOT NULL
+    indexed_at   INTEGER NOT NULL,
+    created_by   TEXT
 );
 
 CREATE TABLE links (
@@ -208,17 +209,19 @@ class Store:
 
     def upsert_note(self, note: NoteFile, digest: str, parsed: ParsedNote) -> None:
         path = PurePosixPath(note.path)
+        created_by = parsed.frontmatter.get("created_by")
+        created_by = created_by if isinstance(created_by, str) else None
         with self.transaction() as conn:
             (note_id,) = conn.execute(
                 """
                 INSERT INTO notes (path, path_key, name_key, title, mtime_ns, size,
-                                   content_hash, indexed_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                                   content_hash, indexed_at, created_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT (path) DO UPDATE SET
                     path_key = excluded.path_key, name_key = excluded.name_key,
                     title = excluded.title, mtime_ns = excluded.mtime_ns,
                     size = excluded.size, content_hash = excluded.content_hash,
-                    indexed_at = excluded.indexed_at
+                    indexed_at = excluded.indexed_at, created_by = excluded.created_by
                 RETURNING id
                 """,
                 (
@@ -230,6 +233,7 @@ class Store:
                     note.size,
                     digest,
                     time.time_ns(),
+                    created_by,
                 ),
             ).fetchone()
             conn.execute("DELETE FROM links WHERE source_id = ?", (note_id,))
@@ -312,6 +316,41 @@ class Store:
             (tag.removeprefix("#").casefold(),),
         )
         return [str(p) for (p,) in rows]
+
+    def graph(self) -> dict[str, list]:
+        """Notes (path, title, tags, memory) and resolved links between them, for the brain graph.
+
+        Edges are unique (source, target) pairs; self-links and dangling links are left out.
+        """
+        nodes = {
+            str(p): {"id": str(p), "title": str(t), "tags": [], "memory": by == "assistant"}
+            for p, t, by in self._all("SELECT path, title, created_by FROM notes ORDER BY path")
+        }
+        for p, tag in self._all(
+            "SELECT DISTINCT n.path, g.tag_key FROM tags g JOIN notes n ON n.id = g.note_id"
+            " ORDER BY n.path, g.tag_key"
+        ):
+            nodes[str(p)]["tags"].append(str(tag))
+        edges = self._all(
+            """
+            SELECT DISTINCT s.path, t.path FROM resolved_links r
+            JOIN notes s ON s.id = r.source_id
+            JOIN notes t ON t.id = r.target_id
+            WHERE s.id <> t.id ORDER BY s.path, t.path
+            """
+        )
+        return {"nodes": list(nodes.values()), "edges": [[str(a), str(b)] for a, b in edges]}
+
+    def search(self, text: str, limit: int = 20) -> list[tuple[str, str]]:
+        """Notes whose title or path contains `text` (case-insensitive), as (path, title)."""
+        escaped = text.lower().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        like = f"%{escaped}%"
+        rows = self._all(
+            "SELECT path, title FROM notes WHERE lower(title) LIKE ? ESCAPE '\\'"
+            " OR lower(path) LIKE ? ESCAPE '\\' ORDER BY path LIMIT ?",
+            (like, like, limit),
+        )
+        return [(str(p), str(t)) for p, t in rows]
 
     def counts(self) -> dict[str, int]:
         (row,) = self._all(

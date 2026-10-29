@@ -16,5 +16,50 @@ body {
   color: var(--color-text);
   font-family: var(--font-ui);
   font-size: var(--font-size-sm);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
   overflow: hidden;
+}
+
+/* Headings are a single weight; sizes come from the component. */
+h1,
+h2,
+h3 {
+  line-height: 1.3;
+  font-weight: 600;
+}
+
+/* Code and paths use the monospace face, as Obsidian does. */
+code,
+kbd,
+pre {
+  font-family: var(--font-mono);
+}
+
+/* Thin scrollbars and selection colour, as in Obsidian. */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+::selection {
+  background: var(--color-accent);
+  color: var(--color-accent-on);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+/* Tablets and touch screens: controls grow to the 44px touch minimum. Wide desktop keeps its sizes. */
+@media (max-width: 1100px), (pointer: coarse) {
+  button,
+  select,
+  textarea,
+  input:not([type="checkbox"]):not([type="radio"]),
+  [role="button"],
+  [role="option"] {
+    min-height: var(--layout-touch-target);
+  }
 }

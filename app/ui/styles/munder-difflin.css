@@ -1,0 +1,101 @@
+/* Munder Difflin look for the agent panels (right sidebar and bottom owner panel).
+   Colours are the md-* semantic tokens in design/tokens.json (from the Munder Difflin
+   app's dark theme). Scoped to .md-theme so the rest of the app keeps its own tokens. */
+
+@font-face {
+  font-family: "Press Start 2P";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../assets/fonts/press-start-2p-latin-400.woff2") format("woff2");
+}
+
+.md-theme {
+  --color-bg-0: var(--color-md-bg-0);
+  --color-bg-1: var(--color-md-bg-1);
+  --color-surface: var(--color-md-surface);
+  --color-text: var(--color-md-text);
+  --color-text-muted: var(--color-md-text-muted);
+  --color-text-subtle: var(--color-md-text-subtle);
+  --color-border: var(--color-md-border);
+  --color-accent: var(--color-md-accent);
+  --color-accent-on: var(--color-md-accent-on);
+  --color-confirm: var(--color-md-confirm);
+  --color-danger: var(--color-md-danger);
+  --color-face-disc: var(--color-md-card);
+}
+
+/* The main agent card is a light card, like Munder Difflin's agent cards. */
+.md-theme .agent-card {
+  --color-text-muted: var(--color-md-card-text);
+  --color-text: var(--color-md-card-text);
+}
+
+/* Chat: the message box sits at the bottom, the log fills the space above. */
+.md-theme .composer {
+  margin-top: auto;
+}
+
+/* Bottom panel: the empty note sits under the card, left aligned. */
+.md-theme.owner-panel .empty {
+  margin: var(--space-2) 0 0;
+  align-self: flex-start;
+  font-size: 10px;
+}
+
+.md-theme .card-row {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-2);
+}
+
+.md-theme .card-row {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.md-theme .card-row .agent-card {
+  flex: 1;
+  min-width: 0;
+}
+
+.md-theme .card-row .agent-card .face {
+  width: 64px;
+  height: 64px;
+}
+
+.md-theme .agents-btn {
+  flex: none;
+  align-self: center;
+  font-size: 10px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-md-border);
+  border-radius: var(--radius-md);
+  background: var(--color-md-surface);
+  color: var(--color-md-text);
+  cursor: pointer;
+  font-family: "Press Start 2P", monospace;
+  font-size: 8px;
+  text-transform: uppercase;
+}
+
+.md-theme h3 {
+  font-family: "Press Start 2P", monospace;
+  font-size: 8px;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.md-theme .ask,
+.md-theme .confirm,
+.md-theme button {
+  box-shadow: 3px 3px 0 var(--color-md-shadow);
+}
+
+.md-theme time,
+.md-theme .tier,
+.md-theme .status,
+.md-theme .state {
+  font-family: var(--font-mono);
+}
