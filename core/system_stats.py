@@ -20,22 +20,40 @@ def cpu_percent(prev: tuple[int, int], now: tuple[int, int]) -> float:
     return 100 * busy / total if total > 0 else 0.0
 
 
-def _ram_percent() -> float:
+def _meminfo() -> dict[str, int]:
     info = {}
     for line in Path("/proc/meminfo").read_text().splitlines():
         key, _, rest = line.partition(":")
         info[key] = int(rest.split()[0])
+    return info
+
+
+def _ram_percent(info: dict[str, int]) -> float:
     total = info["MemTotal"]
     return 100 * (total - info["MemAvailable"]) / total
 
 
-def _disk_percent(folder: Path) -> float:
+def _swap_percent(info: dict[str, int]) -> float:
+    total = info["SwapTotal"]  # no swap configured: 0% used, not a division by zero
+    return 100 * (total - info["SwapFree"]) / total if total else 0.0
+
+
+def _disk_folder(folder: Path) -> Path:
     while not folder.exists() and folder != folder.parent:  # storage may not be created yet
         folder = folder.parent
-    st = os.statvfs(folder)
+    return folder
+
+
+def _disk_percent(folder: Path) -> float:
+    st = os.statvfs(_disk_folder(folder))
     used = st.f_blocks - st.f_bfree
     # The same formula `df` prints as Use%: used over the space a non-root user can use.
     return 100 * used / (used + st.f_bavail or 1)
+
+
+def _disk_free_gb(folder: Path) -> float:
+    st = os.statvfs(_disk_folder(folder))
+    return st.f_bavail * st.f_frsize / 1024**3  # GiB, as `df -h` shows it
 
 
 class SystemStats:
@@ -51,8 +69,11 @@ class SystemStats:
         now = _cpu_times()
         cpu = cpu_percent(self._cpu, now)
         self._cpu = now
+        info = _meminfo()
         return {
             "cpu": round(cpu, 1),
-            "ram": round(_ram_percent(), 1),
+            "ram": round(_ram_percent(info), 1),
+            "swap": round(_swap_percent(info), 1),
             "disk": round(_disk_percent(folder), 1),
+            "disk_free": round(_disk_free_gb(folder), 1),
         }

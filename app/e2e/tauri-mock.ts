@@ -365,7 +365,7 @@ export async function mockSidecar(
               throw new Error("Not set up: no embedding model is installed.");
             return { mode: "text", hits: ["ideas/memory.md"] };
           case "system":
-            return { cpu: 42, ram: 61, disk: 33 };
+            return { cpu: 42, ram: 61, swap: 12, disk: 33, disk_free: 120.5 };
           case "watchers":
             return {
               watchers: [

@@ -24,7 +24,7 @@
     last_event: string | null;
   };
 
-  type System = { cpu: number; ram: number; disk: number };
+  type System = { cpu: number; ram: number; swap: number; disk: number; disk_free: number };
 
   let mode = $state<NetworkMode | null>(null);
   let budget = $state<Budget | null>(null);
@@ -69,8 +69,12 @@
       <dd>{system ? `${system.cpu}%` : "…"}</dd>
       <dt>RAM</dt>
       <dd>{system ? `${system.ram}%` : "…"}</dd>
+      <dt>Swap</dt>
+      <dd>{system ? `${system.swap}%` : "…"}</dd>
       <dt>Disk</dt>
       <dd>{system ? `${system.disk}%` : "…"}</dd>
+      <dt>Disk free</dt>
+      <dd>{system ? `${system.disk_free} GB` : "…"}</dd>
     </dl>
     {#each SCOPES as [scope, label] (scope)}
       <h3>{label}</h3>

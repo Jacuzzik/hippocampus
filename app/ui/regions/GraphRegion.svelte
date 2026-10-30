@@ -4,7 +4,7 @@
   import BrainGraph from "../graph/BrainGraph.svelte";
   import type { GraphData } from "../graph/model.ts";
 
-  type System = { cpu: number; ram: number; disk: number };
+  type System = { cpu: number; ram: number; swap: number; disk: number; disk_free: number };
   let system = $state<System | null>(null);
 
   // Read only, so a failed read just leaves the last value on screen.
@@ -50,7 +50,9 @@
     <div class="stats" aria-label="System load">
       <span title="Total CPU use">CPU <b>{system ? `${system.cpu}%` : "…"}</b></span>
       <span title="RAM in use">RAM <b>{system ? `${system.ram}%` : "…"}</b></span>
+      <span title="Swap in use: disk used as RAM overflow; high means slow">SWAP <b>{system ? `${system.swap}%` : "…"}</b></span>
       <span title="Disk in use">DISK <b>{system ? `${system.disk}%` : "…"}</b></span>
+      <span title="Free space on the drive that holds the app data">DISK FREE <b>{system ? `${system.disk_free} GB` : "…"}</b></span>
     </div>
     <div class="icons">
       <button
