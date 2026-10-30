@@ -34,22 +34,6 @@ test("the inbox tab lists agent messages", async ({ page }) => {
   await expect(page.getByRole("region", { name: "Inbox" })).toContainText("Research the plan");
 });
 
-test("the settings button opens Munder Difflin's categories", async ({ page }) => {
-  await page.getByRole("button", { name: "Settings", exact: true }).click();
-  const dialog = page.getByRole("dialog", { name: "Settings" });
-  await expect(dialog).toContainText("Home folder");
-  await dialog.getByRole("button", { name: "Agents & Models" }).click();
-  await expect(dialog).toContainText("claude · claude-sonnet-5-5");
-});
-
-test("each settings category shows only its own options", async ({ page }) => {
-  await page.getByRole("button", { name: "Settings", exact: true }).click();
-  const dialog = page.getByRole("dialog", { name: "Settings" });
-  await dialog.getByRole("button", { name: "Dictation & Meetings" }).click();
-  await expect(dialog).toContainText("Push to talk key");
-  await expect(dialog).not.toContainText("Home folder");
-});
-
 test("the memory tab lists each agent's notes", async ({ page }) => {
   await page.getByRole("tab", { name: "memory" }).click();
   await expect(page.getByRole("region", { name: "Memory" })).toContainText("kevin");

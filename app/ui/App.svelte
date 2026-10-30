@@ -11,7 +11,6 @@
   import ToolsDialog from "./overlays/ToolsDialog.svelte";
   import ControlDialog from "./control/ControlDialog.svelte";
   import SettingsDialog from "./control/SettingsDialog.svelte";
-  import SettingsFloat from "./regions/SettingsFloat.svelte";
   import CommandBox, { type Item } from "./overlays/CommandBox.svelte";
   import type { GraphData } from "./graph/model.ts";
   import { tick } from "svelte";
@@ -39,7 +38,8 @@
   let controlOpen = $state(false);
   // The settings: six tabs, from the command palette or the control panel.
   let settingsOpen = $state(false);
-  let settingsFloatOpen = $state(false);
+  // Full screen layout from the top bar: only the terminal and the agent cards show.
+  let terminalOnly = $state(false);
 
   // Ctrl on Linux and Windows, Cmd on macOS. Both shortcuts take over the browser default.
   // F11 toggles full screen, as in browsers. Needs the window fullscreen permissions in capabilities.
@@ -168,9 +168,6 @@
 {#if settingsOpen}
   <SettingsDialog onclose={() => (settingsOpen = false)} />
 {/if}
-{#if settingsFloatOpen}
-  <SettingsFloat onclose={() => (settingsFloatOpen = false)} />
-{/if}
 
 {#if setupOpen}
   <AccountDialog
@@ -182,15 +179,19 @@
   />
 {/if}
 
-<div class="shell" class:no-sidebar={!sidebarOpen} class:no-panel={!panelOpen}>
+<div
+  class="shell"
+  class:no-sidebar={!sidebarOpen}
+  class:no-panel={!panelOpen}
+  class:terminal-only={terminalOnly}
+>
   <Ribbon
     bind:sidebarOpen
     bind:panelOpen
     onaccount={() => (setupOpen = true)}
     oncontrol={() => (controlOpen = true)}
-    onsettings={() => (settingsFloatOpen = true)}
   />
-  {#if sidebarOpen && data}
+  {#if sidebarOpen && data && !terminalOnly}
     <NoteSidebar
       {data}
       bind:query
@@ -208,10 +209,11 @@
     {memory}
     {selectedId}
     {viewKey}
-    onmemory={(on) => (memory = on)}
+    fullscreen={terminalOnly}
+    onfullscreen={() => (terminalOnly = !terminalOnly)}
     onselect={(id) => (selectedId = id)}
   />
-  <RightPanel open={panelOpen} />
+  <RightPanel open={panelOpen || terminalOnly} />
   <StatusBar {data} onadd={() => (controlOpen = true)} />
 </div>
 
@@ -288,6 +290,14 @@
 
   .shell.no-panel {
     --panel-col: 0px;
+  }
+
+  /* Full screen layout: the graph column shrinks to its top bar, the terminal takes the rest. */
+  .shell.terminal-only {
+    grid-template-columns: var(--layout-ribbon-width) auto minmax(0, 1fr);
+    grid-template-areas:
+      "rail graph panel"
+      "status status status";
   }
 
   /* The graph's status notice spans the whole graph area, which includes the note drawer beside it;
