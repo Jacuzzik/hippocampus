@@ -167,6 +167,8 @@ class Session:
                     keep = ("id", "from", "to", "act", "subject", "created_at")
                     rows.append({**{k: msg.get(k) for k in keep}, "state": state})
         rows.sort(key=lambda r: str(r.get("created_at") or ""), reverse=True)
+        # Stable sort: pending rows float above handled ones before the 50-row cap, or old pending rows vanish.
+        rows.sort(key=lambda r: r["state"] != "pending")
         return {"messages": rows[:50]}
 
     def memory_notes(self) -> dict[str, Any]:
