@@ -5,12 +5,11 @@ import {
   allTags,
   ARC_ROW,
   ARC_SEGMENTS,
-  arcCentreX,
   arcHubs,
-  arcReach,
   arcLayout,
   arcRows,
-  ARC_BOW,
+  ARC_HUB_RADIUS,
+  ringRadius,
   arcSegments,
   centerOn,
   groupsOf,
@@ -180,7 +179,7 @@ test("nodeRadius grows with the link count, capped, and a selected node is at le
   assert.ok(nodeRadius(16, true) >= nodeRadius(16, false));
 });
 
-test("arc rows run by group, then title, one row per note", () => {
+test("arc rows run by group, then title, one row per note, and each note sits on the ring", () => {
   const nodes = [
     { id: "b.md", title: "Beta", tags: ["zeta"] },
     { id: "a.md", title: "Alpha", tags: ["zeta"] },
@@ -189,7 +188,11 @@ test("arc rows run by group, then title, one row per note", () => {
   // Groups sort as "Ideas" (folder), then "zeta" (tag): Gamma, Alpha, Beta.
   assert.deepEqual(arcRows(nodes), [2, 1, 0]);
   const pos = arcLayout(arcRows(nodes));
-  assert.deepEqual([...pos], [0, 2 * ARC_ROW, 0, ARC_ROW, 0, 0]);
+  const r = ringRadius(3);
+  for (let i = 0; i < 3; i++)
+    assert.ok(Math.abs(Math.hypot(pos[2 * i] ?? 0, pos[2 * i + 1] ?? 0) - r) < 1e-3);
+  // Gamma is row 0, so it sits at the top of the ring.
+  assert.ok(Math.abs(pos[4] ?? 1) < 1e-3 && Math.abs((pos[5] ?? 0) + r) < 1e-3);
 });
 
 test("groups use the first tag, else the top folder, else Root", () => {
@@ -211,50 +214,41 @@ test("a blank tag or folder name never makes an unnamed group", () => {
   assert.deepEqual(groupsOf(nodes).names, ["Root"]);
 });
 
-test("an arc link starts and ends on its nodes and bows left of both", () => {
+test("an arc link starts and ends on its nodes and bows in toward the core", () => {
   const out = new Float32Array(ARC_SEGMENTS * 4);
-  const end = arcSegments(0, 0, 0, 100, out, 0);
+  const end = arcSegments(100, 0, 0, 100, out, 0);
   assert.equal(end, ARC_SEGMENTS * 4);
-  assert.deepEqual([out[0], out[1]], [0, 0]);
+  assert.deepEqual([out[0], out[1]], [100, 0]);
   const last = end - 2;
   assert.deepEqual([out[last], out[last + 1]], [0, 100]);
-  // The midpoint of a cubic with both controls at -h sits at -0.75h; h is half the span.
+  // Midpoint of the cubic with controls at half each end: (0.3125 * (A + B)), a straight midpoint would be (50, 50).
   const mid = (ARC_SEGMENTS / 2) * 4 - 2;
-  assert.ok(Math.abs(out[mid] - -37.5) < 1e-3, `midpoint x ${out[mid]}`);
-  for (let i = 0; i < end; i += 2) assert.ok(out[i] <= 1e-6);
+  assert.ok(Math.abs(out[mid] - 31.25) < 1e-3, `midpoint x ${out[mid]}`);
+  assert.ok(Math.abs(out[mid + 1] - 31.25) < 1e-3, `midpoint y ${out[mid + 1]}`);
 });
 
-test("arc hubs: a centre per group left of the column, the core on the column's middle row, every note strung to its centre", () => {
+test("round hubs: a centre per group inside the ring, the core at the origin, every note strung to its centre", () => {
   // Two groups: notes 0-1 in "A" (rows 0-1), note 2 in "B" (row 2). Note 1 is linked, but every note still gets a string.
   const rows = [0, 1, 2];
   const of = [0, 0, 1];
   const { pos, edges } = arcHubs(rows, of, 2);
-  const cx = arcCentreX(3);
-  assert.ok(cx < 0);
+  const r = ringRadius(3) * ARC_HUB_RADIUS;
   assert.equal(pos.length, (3 + 2 + 1) * 2);
-  // Centre A sits on the middle of rows 0-1, centre B on row 2; the core is on the column (x = 0) at the middle row.
-  assert.equal(pos[6], cx);
-  assert.equal(pos[7], 0.5 * ARC_ROW);
-  assert.equal(pos[8], cx);
-  assert.equal(pos[9], 2 * ARC_ROW);
-  assert.equal(pos[10], 0);
-  assert.equal(pos[11], ARC_ROW);
+  // Centre A sits at the middle of rows 0-1 (upper right), centre B on row 2 (lower left); each is r out from the core.
+  assert.ok(Math.abs(Math.hypot(pos[6] ?? 0, pos[7] ?? 0) - r) < 1e-3);
+  assert.ok(Math.abs(Math.hypot(pos[8] ?? 0, pos[9] ?? 0) - r) < 1e-3);
+  assert.ok((pos[6] ?? 0) > 0 && (pos[7] ?? 0) < 0);
+  assert.ok((pos[8] ?? 0) < 0 && (pos[9] ?? 0) > 0);
+  assert.deepEqual([pos[10], pos[11]], [0, 0]);
   // Strings: centre A to core, centre B to core, then every note to its centre (0 and 1 to A, 2 to B).
   assert.deepEqual([...edges], [3, 5, 4, 5, 0, 3, 1, 3, 2, 4]);
 });
 
-test("arc reach covers the group centres and every arc bow", () => {
-  for (const n of [3, 50, 2000]) {
-    const cx = arcCentreX(n);
-    assert.ok(arcReach(n) <= cx, `reach ${arcReach(n)} vs centre ${cx} for ${n}`);
-  }
-});
-
-test("an arc never bows past ARC_BOW, however far apart its ends, so long links stay thin curves", () => {
+test("an arc link never reaches past its ends, so a long link from the rim stays a thin curve inside the ring", () => {
   const out = new Float32Array(ARC_SEGMENTS * 4);
-  arcSegments(0, 0, 0, 100000, out, 0);
-  let min = 0;
-  for (let i = 0; i < out.length; i += 2) min = Math.min(min, out[i]);
-  assert.ok(min >= -0.75 * ARC_BOW - 1e-3, `deepest x ${min}`);
-  assert.ok(arcReach(5000) <= min + 1e-3, `reach ${arcReach(5000)} vs deepest ${min}`);
+  arcSegments(500, 0, 0, -300, out, 0);
+  let far = 0;
+  for (let i = 0; i < out.length; i += 2)
+    far = Math.max(far, Math.hypot(out[i] ?? 0, out[i + 1] ?? 0));
+  assert.ok(far <= 500 + 1e-3, `farthest point ${far}`);
 });

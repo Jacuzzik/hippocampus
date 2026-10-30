@@ -236,37 +236,40 @@ export function nodeRadius(links: number, selected: boolean): number {
 
 export type GraphLayout = "arc" | "force";
 
-/** Arc layout: world px between two rows of the note column. */
+/** Round layout: world px between neighbouring notes on the ring, measured along it. */
 export const ARC_ROW = 10;
-/** Arc layout: straight pieces each link curve is drawn with. */
+/** Round layout: straight pieces each link curve is drawn with. */
 export const ARC_SEGMENTS = 16;
-/** Arc layout: most a link bows out, as the cubic's control offset. Uncapped, long links swept into filled half-discs. */
-export const ARC_BOW = 8 * ARC_ROW;
+/** Round layout: how far a link's control points sit toward the core, as a share of each end's distance. Under 1 keeps every link a thin curve. */
+export const ARC_BEND = 0.5;
+/** Round layout: group centres sit this share of the ring's radius out from the core. */
+export const ARC_HUB_RADIUS = 0.55;
 
-/** Arc layout: the note column sits on x = 0, node i on row rows[i]. */
+/** Round layout: the note ring's radius, so neighbours sit about two ARC_ROW apart on it. */
+export function ringRadius(count: number): number {
+  return Math.max(4 * ARC_ROW, (count * ARC_ROW) / Math.PI);
+}
+
+/** Round layout: the angle of row `row` of `count` around the ring, starting at the top. */
+function ringAngle(row: number, count: number): number {
+  return (row / count) * Math.PI * 2 - Math.PI / 2;
+}
+
+/** Round layout: the note ring is centred on the core at (0, 0); node i sits at the angle of rows[i]. */
 export function arcLayout(rows: ArrayLike<number>): Float32Array<ArrayBuffer> {
-  const pos = new Float32Array(rows.length * 2);
-  for (let i = 0; i < rows.length; i++)
-    pos[2 * i + 1] = (rows[i] ?? 0) * ARC_ROW;
+  const count = rows.length;
+  const r = ringRadius(count);
+  const pos = new Float32Array(count * 2);
+  for (let i = 0; i < count; i++) {
+    const a = ringAngle(rows[i] ?? 0, count);
+    pos[2 * i] = Math.cos(a) * r;
+    pos[2 * i + 1] = Math.sin(a) * r;
+  }
   return pos;
 }
 
-/** Leftmost x any arc or group centre can reach for `count` rows, so the fit can frame them all. */
-export function arcReach(count: number): number {
-  return Math.min(bowReach(count), arcCentreX(count));
-}
-
-function bowReach(count: number): number {
-  return -0.75 * Math.min(0.5 * Math.max(0, count - 1) * ARC_ROW, ARC_BOW);
-}
-
-/** Arc layout: x of the group centres, left of the note column and the arcs, so each unlinked note has a string to its centre. */
-export function arcCentreX(count: number): number {
-  return Math.min(-4 * ARC_ROW, bowReach(count) / 2);
-}
-
 /**
- * Arc layout hubs: the note column, then one centre per group (at the middle row of its run), then the core.
+ * Round layout hubs: the note ring, then one centre per group (at the middle of its run, inside the ring), then the core at (0, 0).
  * Node index: note i is i, centre g is count + g, the core is count + groups.
  * `edges` joins every note to its group's centre, and each centre to the core.
  */
@@ -286,19 +289,16 @@ export function arcHubs(
     lo[g] = Math.min(lo[g] ?? Infinity, rows[i] ?? 0);
     hi[g] = Math.max(hi[g] ?? -Infinity, rows[i] ?? 0);
   }
-  const cx = arcCentreX(count);
+  const r = ringRadius(count) * ARC_HUB_RADIUS;
   const edges: number[] = [];
   for (let g = 0; g < groups; g++) {
+    const a = ringAngle(((lo[g] ?? 0) + (hi[g] ?? 0)) / 2, count);
     const at = 2 * (count + g);
-    pos[at] = cx;
-    pos[at + 1] = (((lo[g] ?? 0) + (hi[g] ?? 0)) / 2) * ARC_ROW;
+    pos[at] = Math.cos(a) * r;
+    pos[at + 1] = Math.sin(a) * r;
     edges.push(count + g, count + groups);
   }
   for (let i = 0; i < count; i++) edges.push(i, count + (of[i] ?? 0));
-  // The core sits on the column's middle row, so the arcs curve around it.
-  const core = 2 * (count + groups);
-  pos[core] = 0;
-  pos[core + 1] = ((count - 1) / 2) * ARC_ROW;
   return { pos, edges: Uint32Array.from(edges) };
 }
 
@@ -343,7 +343,7 @@ export function groupsOf(nodes: readonly GraphNode[]): {
 
 /**
  * Writes one link as ARC_SEGMENTS segments into `out` from offset `at`, and returns the next offset.
- * The curve is a cubic that bows left of both ends, by half the span up to ARC_BOW, so it stays a thin curve.
+ * The curve is a cubic whose control points are pulled toward the core, so each link bows round it as a thin curve.
  */
 export function arcSegments(
   ax: number,
@@ -353,16 +353,19 @@ export function arcSegments(
   out: Float32Array,
   at: number,
 ): number {
-  const cx = Math.min(ax, bx) - Math.min(0.5 * Math.abs(ay - by), ARC_BOW);
+  const c1x = ax * ARC_BEND;
+  const c1y = ay * ARC_BEND;
+  const c2x = bx * ARC_BEND;
+  const c2y = by * ARC_BEND;
   let px = ax;
   let py = ay;
   for (let s = 1; s <= ARC_SEGMENTS; s++) {
     const t = s / ARC_SEGMENTS;
     const u = 1 - t;
     const x =
-      u * u * u * ax + 3 * u * u * t * cx + 3 * u * t * t * cx + t * t * t * bx;
+      u * u * u * ax + 3 * u * u * t * c1x + 3 * u * t * t * c2x + t * t * t * bx;
     const y =
-      u * u * u * ay + 3 * u * u * t * ay + 3 * u * t * t * by + t * t * t * by;
+      u * u * u * ay + 3 * u * u * t * c1y + 3 * u * t * t * c2y + t * t * t * by;
     out[at++] = px;
     out[at++] = py;
     out[at++] = x;

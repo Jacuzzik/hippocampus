@@ -10,7 +10,6 @@
   import {
     arcHubs,
     arcLines,
-    arcReach,
     arcRows,
     centerOn,
     groupsOf,
@@ -153,7 +152,7 @@
   }
 
   // The nodes float only while nothing is selected and no drag is under way.
-  // The arc layout stays still: its links are read as a fixed column.
+  // The arc layout stays still: its links are read as a fixed ring.
   function drifting(): boolean {
     return (
       mode === "force" && !calm && !dragging && selected < 0 && pos.length > 0
@@ -357,7 +356,7 @@
   function fitAll(): void {
     if (!home.length) return;
     // Force: fit the middle 90% of nodes, so a few far-flung outliers don't zoom the whole graph out.
-    // Arc: the column has no outliers, so fit every dot, group centre and the core.
+    // Arc: the ring has no outliers, so fit every dot, group centre and the core. Its links stay inside those points.
     const arc = mode === "arc";
     const count = home.length / 2;
     const xs = Array.from({ length: count }, (_, i) => home[2 * i] ?? 0).sort(
@@ -369,10 +368,7 @@
     ).sort((a, b) => a - b);
     const lo = arc ? 0 : Math.floor(count * 0.05);
     const hi = arc ? count - 1 : Math.max(lo, Math.ceil(count * 0.95) - 1);
-    // The arc links bow left of the column, so the fit also takes in how far they reach.
-    const minX = arc
-      ? Math.min(xs[lo] ?? 0, arcReach(data.nodes.length))
-      : (xs[lo] ?? 0);
+    const minX = xs[lo] ?? 0;
     const maxX = xs[hi] ?? 0;
     const minY = ys[lo] ?? 0;
     const maxY = ys[hi] ?? 0;
@@ -642,7 +638,7 @@
     laid = home.slice();
     pos = new Float32Array(home.length);
     pos.set(home);
-    // The arc column has no drift: its rows are a few px apart, so any drift would show as a jitter.
+    // The round layout has no drift: its neighbours are a few px apart, so any drift would show as a jitter.
     drift =
       mode === "arc"
         ? new Float32Array(data.nodes.length * 6)
