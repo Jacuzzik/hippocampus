@@ -122,6 +122,13 @@
   const matched = $derived(matchFilter(data.nodes, { query, tag, memory }));
   const degree = $derived(linkCounts(data.nodes, data.edges));
   const groups = $derived(groupsOf(data.nodes));
+  // Arc layout: the hubs are the most-linked fifth of notes (at least two links). Only hubs carry a name and glow.
+  const hubDegree = $derived(
+    Math.max(
+      2,
+      [...degree].sort((a, b) => b - a)[Math.floor(degree.length * 0.2)] ?? 0,
+    ),
+  );
   const visible = $derived(
     matched.map((m, i) => m && !(hideOrphans && degree[i] === 0)),
   );
@@ -169,22 +176,35 @@
     ];
   }
 
-  // One spring step for each pulled node. While a node is grabbed, its linked nodes keep their laid-out offset from it; after release they spring back to rest.
-  function stepPulled(): void {
+  // Released nodes ease home at this rate (per second), so a drop drifts back slowly, as in Obsidian's graph.
+  const RETURN_RATE = 0.8;
+
+  // One step for each pulled node. While a node is grabbed, its linked nodes keep their laid-out offset from it on springs. After release, every pulled node eases back to rest and leaves the set once it arrives.
+  function stepPulled(dt: number): void {
+    const ease = 1 - Math.exp(-dt * RETURN_RATE);
     for (const i of pulled) {
       if (i === grabbed) continue;
       const k = 2 * i;
-      const [tx, ty] =
-        grabbed >= 0
-          ? [
-              (pos[2 * grabbed] ?? 0) +
-                (home[k] ?? 0) -
-                (home[2 * grabbed] ?? 0),
-              (pos[2 * grabbed + 1] ?? 0) +
-                (home[k + 1] ?? 0) -
-                (home[2 * grabbed + 1] ?? 0),
-            ]
-          : restAt(i);
+      if (grabbed < 0) {
+        const [tx, ty] = restAt(i);
+        const dx = tx - (pos[k] ?? 0);
+        const dy = ty - (pos[k + 1] ?? 0);
+        if (Math.abs(dx) + Math.abs(dy) < 0.5) {
+          pos[k] = tx;
+          pos[k + 1] = ty;
+          pulled.delete(i);
+        } else {
+          pos[k] = (pos[k] ?? 0) + dx * ease;
+          pos[k + 1] = (pos[k + 1] ?? 0) + dy * ease;
+        }
+        continue;
+      }
+      const tx =
+        (pos[2 * grabbed] ?? 0) + (home[k] ?? 0) - (home[2 * grabbed] ?? 0);
+      const ty =
+        (pos[2 * grabbed + 1] ?? 0) +
+        (home[k + 1] ?? 0) -
+        (home[2 * grabbed + 1] ?? 0);
       const vx = ((vel[k] ?? 0) + (tx - (pos[k] ?? 0)) * PULL_K) * PULL_DAMP;
       const vy =
         ((vel[k + 1] ?? 0) + (ty - (pos[k + 1] ?? 0)) * PULL_K) * PULL_DAMP;
@@ -192,15 +212,6 @@
       vel[k + 1] = vy;
       pos[k] = (pos[k] ?? 0) + vx;
       pos[k + 1] = (pos[k + 1] ?? 0) + vy;
-      if (
-        grabbed < 0 &&
-        Math.abs(tx - (pos[k] ?? 0)) + Math.abs(ty - (pos[k + 1] ?? 0)) < 0.5 &&
-        Math.abs(vx) + Math.abs(vy) < 0.05
-      ) {
-        pulled.delete(i);
-        vel[k] = 0;
-        vel[k + 1] = 0;
-      }
     }
     refreshLines();
   }
@@ -208,6 +219,7 @@
   // Put the node under the pointer in the spring set, with every node linked to it.
   function grab(i: number): void {
     grabbed = i;
+    vel.fill(0);
     pulled.add(i);
     for (const [a, b] of data.edges) {
       const ia = index.get(a);
@@ -303,7 +315,9 @@
     };
     if (hovered >= 0) place(hovered);
     // The arc layout labels every note in view, greedily: a label stays only if it clears the others.
-    if (mode === "arc") for (let i = 0; i < data.nodes.length; i++) place(i);
+    if (mode === "arc")
+      for (let i = 0; i < data.nodes.length; i++)
+        if ((degree[i] ?? 0) >= hubDegree) place(i);
 
     labels = placed;
   }
@@ -316,7 +330,7 @@
       clock += Math.min(now - last, 100) / 1000;
       moveNodes();
     }
-    if (pulled.size) stepPulled();
+    if (pulled.size) stepPulled(Math.min(now - last, 100) / 1000);
     last = now;
     if (renderer && colours) renderer.draw(cam, colours.bg, colours.edge);
     drawLabels();
@@ -448,15 +462,18 @@
     }
     for (let i = 0; i < n; i++) {
       const isSel = i === selected;
+      const hub = mode === "arc" && (degree[i] ?? 0) >= hubDegree;
       const group = picked[groups.of[i] ?? 0];
       const base = isSel
         ? colours.hot
         : mode === "arc" && group
           ? group
           : colours.node;
-      const alpha = visible[i] ? base[3] : base[3] * 0.15;
+      // Arc: hubs are the bright, larger dots; the other notes sit back so the bundled curves read as lines into them.
+      const lit = !hub && mode === "arc" && !isSel ? 0.55 : 1;
+      const alpha = visible[i] ? base[3] * lit : base[3] * 0.15;
       colors.set([base[0], base[1], base[2], alpha], i * 4);
-      radii[i] = nodeRadius(degree[i] ?? 0, isSel);
+      radii[i] = nodeRadius(degree[i] ?? 0, isSel) * (hub ? 1.5 : 1);
     }
     renderer.setColors(colors);
     renderer.setRadii(radii);
@@ -493,7 +510,7 @@
     colours = {
       node: token("accent"),
       hot: token("confirm"),
-      edge: [...token("link").slice(0, 3), 0.3] as Rgba,
+      edge: [...token("link").slice(0, 3), 0.16] as Rgba,
       bg: token("bg-0"),
     };
     // Refit on every size change, so opening the note drawer (which narrows the canvas) keeps the graph in view.
@@ -521,7 +538,8 @@
       c.setPointerCapture(e.pointerId);
       const [x, y] = local(e);
       const hit = hitTest(notes(), cam, x, y, 8);
-      const node = hit >= 0 && visible[hit] ? hit : -1;
+      // Every dot can be dragged, including the ones a filter has dimmed.
+      const node = hit;
       if (node >= 0) grab(node);
       drag = { x, y, cam, moved: false, node };
       dragging = true;
@@ -551,12 +569,7 @@
       schedule();
     };
     const endDrag = () => {
-      // The dropped node stays where it was let go: it becomes the new home. Its neighbours spring back.
-      if (grabbed >= 0) {
-        home[2 * grabbed] = pos[2 * grabbed] ?? 0;
-        home[2 * grabbed + 1] = pos[2 * grabbed + 1] ?? 0;
-        pulled.delete(grabbed);
-      }
+      // Nothing is re-homed: the dropped node and its neighbours ease back to their own positions.
       grabbed = -1;
       drag = null;
       dragging = false;
