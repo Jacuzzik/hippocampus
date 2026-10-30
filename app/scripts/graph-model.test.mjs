@@ -188,15 +188,15 @@ test("arc rows run by group, then title, one row per note", () => {
   assert.deepEqual([...pos], [0, 2 * ARC_ROW, 0, ARC_ROW, 0, 0]);
 });
 
-test("groups use the first tag, else the top folder, else Unclassified", () => {
+test("groups use the first tag, else the top folder, else Root", () => {
   const nodes = [
     { id: "x.md", title: "X", tags: ["t"] },
     { id: "f/y.md", title: "Y", tags: [] },
     { id: "z.md", title: "Z", tags: [] },
   ];
   const { names, of } = groupsOf(nodes);
-  assert.deepEqual(names, ["f", "t", "Unclassified"]);
-  assert.deepEqual(of, [1, 0, 2]);
+  assert.deepEqual(names, ["f", "Root", "t"]);
+  assert.deepEqual(of, [2, 0, 1]);
 });
 
 test("an arc link starts and ends on its nodes and bows left of both", () => {

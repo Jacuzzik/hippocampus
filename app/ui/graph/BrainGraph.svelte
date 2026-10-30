@@ -60,6 +60,8 @@
   let renderer: BrainRenderer | Canvas2DRenderer | null = null;
   // `home` is the laid-out position; `pos` is home plus the drift, and is what is drawn and hit-tested.
   let home: Float32Array<ArrayBuffer> = new Float32Array(0);
+  // `laid` is the computed layout as it was at relayout; Reset position puts `home` back to it.
+  let laid: Float32Array<ArrayBuffer> = new Float32Array(0);
   let pos: Float32Array<ArrayBuffer> = new Float32Array(0);
   // Arc is the default; force is the older spring layout, kept behind the Layout menu.
   let mode = $state<GraphLayout>("arc");
@@ -256,8 +258,15 @@
 
   // Greedy: a label is drawn only if it clears every label already placed this frame.
   // shortcut: label width is measured once per title and placement is a linear scan, so a few hundred labels at most; upgrade to a spatial grid if more.
+  // Below this zoom the names crowd into each other, so they are hidden until the view is closer.
+  const LABEL_ZOOM = 0.5;
+
   function drawLabels(): void {
     const [w, h] = size();
+    if (cam.zoom < LABEL_ZOOM) {
+      labels = [];
+      return;
+    }
     const placed: { text: string; x: number; y: number }[] = [];
     const boxes: number[] = [];
     const place = (i: number) => {
@@ -592,6 +601,7 @@
       mode === "arc"
         ? arcLayout(arcRows(data.nodes))
         : layout(data.nodes.length, pairs);
+    laid = home.slice();
     pos = new Float32Array(home.length);
     pos.set(home);
     // The arc column has no drift: its rows are a few px apart, so any drift would show as a jitter.
@@ -612,6 +622,18 @@
     r.setGraph(pos, lines);
     fitAll();
     pushStyle();
+    schedule();
+  }
+
+  // Puts every note back on the computed layout, after the user has dragged some. Asks first.
+  function resetPositions(): void {
+    if (!confirm("Reset every note to the computed layout? Your moved notes will go back.")) return;
+    home = laid.slice();
+    pos.set(home);
+    vel.fill(0);
+    pulled.clear();
+    grabbed = -1;
+    refreshLines();
     schedule();
   }
 
@@ -669,6 +691,9 @@
 
   <div class="tools">
     <button type="button" class="fit" onclick={fitAll}>Fit graph</button>
+    <button type="button" class="fit" onclick={resetPositions}
+      >Reset position</button
+    >
     <label class="orphans">
       <input type="checkbox" bind:checked={hideOrphans} /> Hide orphans
     </label>

@@ -272,12 +272,12 @@ export function arcRows(nodes: readonly GraphNode[]): number[] {
   return rows;
 }
 
-/** The group a note is coloured by: its first tag, else its top folder, else "Unclassified". */
+/** The group a note is coloured by: its first tag, else its top folder, else "Root" (a note at the vault root). Every note has a group. */
 export function groupOf(n: GraphNode): string {
   const tag = n.tags[0];
   if (tag) return tag;
   const slash = n.id.indexOf("/");
-  return slash > 0 ? n.id.slice(0, slash) : "Unclassified";
+  return slash > 0 ? n.id.slice(0, slash) : "Root";
 }
 
 /** Group names sorted, and per node the index of its group in that list. */
