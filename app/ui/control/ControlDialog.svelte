@@ -1,6 +1,7 @@
 <script lang="ts">
   import "./control.css";
   import ActivitySection from "./ActivitySection.svelte";
+  import ArchivedAgentsSection from "./ArchivedAgentsSection.svelte";
   import AsksSection from "./AsksSection.svelte";
   import BudgetSection from "./BudgetSection.svelte";
   import CapabilitiesSection from "./CapabilitiesSection.svelte";
@@ -65,6 +66,7 @@
       <HelpersSection />
       <CapabilitiesSection />
       <TeamsSection />
+      <ArchivedAgentsSection />
       <ShareSection />
       <SkillsSection />
       <KeysSection />

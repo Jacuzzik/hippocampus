@@ -82,3 +82,34 @@ test("an added agent is still listed after a reload", async ({ page }) => {
   await page.reload();
   await expect(page.getByLabel("Agents").getByText("Ada")).toBeVisible();
 });
+
+test("a card menu archives an added agent and the Control panel restores it", async ({
+  page,
+}) => {
+  const bar = page.getByLabel("Agents");
+  await bar.getByRole("button", { name: "+ Add agent" }).click();
+  const add = page.getByRole("dialog", { name: "Add agent" });
+  await add.getByRole("textbox", { name: "Name", exact: true }).fill("Grace");
+  await add.getByRole("button", { name: "Next" }).click();
+  await add
+    .getByRole("textbox", { name: "Folder", exact: true })
+    .fill("/home/me/notes");
+  await add.getByRole("button", { name: "Next" }).click();
+  await add
+    .getByRole("textbox", { name: "Model", exact: true })
+    .fill("claude-sonnet-5-5");
+  await add.getByRole("button", { name: "Next" }).click();
+  await add
+    .getByRole("textbox", { name: "Goal", exact: true })
+    .fill("Tidy the notes");
+  await add.getByRole("button", { name: "Spawn" }).click();
+  await bar.getByRole("button", { name: "Grace options" }).click();
+  await page.getByRole("menuitem", { name: "Archive" }).click();
+  await expect(bar.getByText("Grace")).toHaveCount(0);
+  await page.getByRole("button", { name: "Control panel" }).click();
+  await page
+    .getByRole("dialog", { name: "Control panel" })
+    .getByRole("button", { name: "Restore" })
+    .click();
+  await expect(bar.getByText("Grace")).toBeVisible();
+});
