@@ -3,12 +3,14 @@
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
   import logo from "../assets/brand/hippocampus-mark-purple.png";
+  import { addedAgents, setAddedAgents } from "./addedAgents.svelte";
+  import { AGENT_PROVIDERS } from "../control/model";
 
   type Account = { claude: boolean; model: string };
 
   let account = $state<Account | null>(null);
   // Added agents only; the main agent is not in this list, so it cannot be moved.
-  let added = $state<{ id: string; name: string }[]>([]);
+  const added = $derived(addedAgents.list);
 
   // Opens the Control panel's add-agent steps (name, face, provider, goal).
   let { onadd }: { onadd: () => void } = $props();
@@ -32,7 +34,7 @@
     if (!moved || !other) return;
     next[index] = other;
     next[target] = moved;
-    added = next;
+    setAddedAgents(next);
   }
 </script>
 
@@ -51,7 +53,7 @@
       <img src={logo} alt="" />
       <div>
         <b>{agent.name}</b>
-        <i>{provider}</i>
+        <i>{AGENT_PROVIDERS.find((p) => p.id === agent.provider)?.label ?? agent.provider}</i>
       </div>
       <span class="tokens">— tokens</span>
       <button type="button" aria-label="Move {agent.name} left" onclick={() => move(index, -1)}>‹</button>

@@ -2,6 +2,7 @@
   import { invoke } from "@tauri-apps/api/core";
   import { onMount } from "svelte";
   import { FACES } from "../assistant/agentCard";
+  import { addAgent } from "../owner/addedAgents.svelte";
   import {
     AGENT_PROVIDERS,
     AGENT_STEPS,
@@ -10,30 +11,35 @@
     type AgentDraft,
   } from "./model";
 
-  // A four-step form for a new agent. Creating one needs agent storage, which is not set up yet.
+  // A four-step form for a new agent. Created agents are saved by addedAgents.svelte.ts.
   const COLOURS = ["accent", "think", "confirm", "danger"];
   const ISOLATION = [
     { id: "shared", label: "Shared folder" },
     { id: "own", label: "Its own copy of the folder" },
   ] as const;
 
+  function blankDraft(): AgentDraft {
+    return {
+      name: "",
+      character: FACES[0],
+      colour: "accent",
+      folder: "",
+      isolation: "shared",
+      resume: true,
+      provider: "claude",
+      model: "",
+      command: "",
+      autonomy: "ask",
+      description: "",
+      goal: "",
+    };
+  }
+
   let step = $state(0);
   let error = $state<string | null>(null);
+  let created = $state<string | null>(null);
   let savedKeys = $state<string[]>([]);
-  let draft = $state<AgentDraft>({
-    name: "",
-    character: FACES[0],
-    colour: "accent",
-    folder: "",
-    isolation: "shared",
-    resume: true,
-    provider: "claude",
-    model: "",
-    command: "",
-    autonomy: "ask",
-    description: "",
-    goal: "",
-  });
+  let draft = $state<AgentDraft>(blankDraft());
 
   const engine = $derived(engineStatus(draft.provider, savedKeys));
 
@@ -50,7 +56,22 @@
 
   function next(): void {
     error = agentStepError(step, draft);
+    created = null;
     if (!error) step += 1;
+  }
+
+  // Checks every step again, so a jump back to an unanswered step shows its message.
+  function create(): void {
+    for (let i = 0; i < AGENT_STEPS.length; i++) {
+      error = agentStepError(i, draft);
+      if (error) {
+        step = i;
+        return;
+      }
+    }
+    created = addAgent(draft).name;
+    draft = blankDraft();
+    step = 0;
   }
 
   onMount(() => void loadKeys());
@@ -143,14 +164,10 @@
     {#if step < AGENT_STEPS.length - 1}
       <button type="button" class="primary" onclick={next}>Next</button>
     {:else}
-      <button type="button" disabled>Create agent: Not set up</button>
+      <button type="button" class="primary" onclick={create}>Create agent</button>
     {/if}
   </div>
-  {#if step === AGENT_STEPS.length - 1}
-    <p class="muted">
-      Agents are not stored yet, so this form cannot create one.
-    </p>
-  {/if}
+  {#if created}<p class="muted" role="status">Created {created}. It is on the agent bar.</p>{/if}
   {#if error}<p class="error" role="alert">{error}</p>{/if}
 </section>
 

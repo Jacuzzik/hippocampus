@@ -140,9 +140,11 @@ test("add an agent stops at each step until it is answered", async ({
   await add
     .getByRole("textbox", { name: "Goal", exact: true })
     .fill("Tidy the inbox notes");
-  await expect(
-    add.getByRole("button", { name: "Create agent: Not set up" }),
-  ).toBeDisabled();
+  await add.getByRole("button", { name: "Create agent" }).click();
+  await expect(add.getByRole("status")).toHaveText(
+    "Created Ada. It is on the agent bar.",
+  );
+  await expect(page.getByLabel("Agents").getByText("Ada")).toBeVisible();
 });
 
 test("the engine is ready once a Claude key is saved", async ({ page }) => {
