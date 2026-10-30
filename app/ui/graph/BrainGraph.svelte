@@ -243,12 +243,11 @@
 
   function buildLines(): Float32Array {
     if (mode !== "arc") return straightLines(pos, edgeIdx);
-    const arcs = arcLines(pos, edgeIdx);
-    const hubs = straightLines(pos, hubIdx);
-    const out = new Float32Array(arcs.length + hubs.length);
-    out.set(arcs);
-    out.set(hubs, arcs.length);
-    return out;
+    // Hub strings are arcs too: straight ones made the layout read as triangles.
+    const edges = new Uint32Array(edgeIdx.length + hubIdx.length);
+    edges.set(edgeIdx);
+    edges.set(hubIdx, edgeIdx.length);
+    return arcLines(pos, edges);
   }
 
   // Hit tests look only at the notes: the group centres and the core sit after them in pos.
@@ -343,8 +342,10 @@
 
   function fitAll(): void {
     if (!home.length) return;
-    // Fit the middle 90% of nodes, so a few far-flung outliers don't zoom the whole graph out.
-    const count = data.nodes.length;
+    // Force: fit the middle 90% of nodes, so a few far-flung outliers don't zoom the whole graph out.
+    // Arc: the column has no outliers, so fit every dot, group centre and the core.
+    const arc = mode === "arc";
+    const count = home.length / 2;
     const xs = Array.from({ length: count }, (_, i) => home[2 * i] ?? 0).sort(
       (a, b) => a - b,
     );
@@ -352,13 +353,12 @@
       { length: count },
       (_, i) => home[2 * i + 1] ?? 0,
     ).sort((a, b) => a - b);
-    const lo = Math.floor(xs.length * 0.05);
-    const hi = Math.max(lo, Math.ceil(xs.length * 0.95) - 1);
+    const lo = arc ? 0 : Math.floor(count * 0.05);
+    const hi = arc ? count - 1 : Math.max(lo, Math.ceil(count * 0.95) - 1);
     // The arc links bow left of the column, so the fit also takes in how far they reach.
-    const minX =
-      mode === "arc"
-        ? Math.min(xs[lo] ?? 0, arcReach(hi - lo + 1))
-        : (xs[lo] ?? 0);
+    const minX = arc
+      ? Math.min(xs[lo] ?? 0, arcReach(data.nodes.length))
+      : (xs[lo] ?? 0);
     const maxX = xs[hi] ?? 0;
     const minY = ys[lo] ?? 0;
     const maxY = ys[hi] ?? 0;

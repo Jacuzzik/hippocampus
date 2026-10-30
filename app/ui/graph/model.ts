@@ -249,9 +249,9 @@ export function arcLayout(rows: ArrayLike<number>): Float32Array<ArrayBuffer> {
   return pos;
 }
 
-/** Leftmost x any arc can reach for `count` rows, so the fit can frame the curves and the core. */
+/** Leftmost x any arc or group centre can reach for `count` rows, so the fit can frame them all. */
 export function arcReach(count: number): number {
-  return Math.min(bowReach(count), 2 * arcCentreX(count));
+  return Math.min(bowReach(count), arcCentreX(count));
 }
 
 function bowReach(count: number): number {
@@ -293,8 +293,9 @@ export function arcHubs(
     edges.push(count + g, count + groups);
   }
   for (let i = 0; i < count; i++) edges.push(i, count + (of[i] ?? 0));
+  // The core sits on the column's middle row, so the arcs curve around it.
   const core = 2 * (count + groups);
-  pos[core] = 2 * cx;
+  pos[core] = 0;
   pos[core + 1] = ((count - 1) / 2) * ARC_ROW;
   return { pos, edges: Uint32Array.from(edges) };
 }
