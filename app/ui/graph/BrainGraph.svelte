@@ -1,6 +1,6 @@
 <script lang="ts">
   import { untrack } from "svelte";
-  import { SvelteMap, SvelteSet } from "svelte/reactivity";
+  import { SvelteMap } from "svelte/reactivity";
   import { invoke } from "@tauri-apps/api/core";
   import { hexOf, parse, token } from "./colors";
   import { parseNote, type Block, type Inline } from "./markdown";
@@ -8,23 +8,23 @@
   import { BrainRenderer } from "./renderer";
   import { Canvas2DRenderer } from "./renderer-canvas";
   import {
-    arcHubs,
-    arcLines,
-    arcRows,
     centerOn,
     groupsOf,
     hitTest,
+    labelAlpha,
     LOW_POWER,
-    layout,
     linkCounts,
     matchFilter,
-    mulberry32,
+    newSim,
     nodeRadius,
+    reheat,
+    settle,
     straightLines,
+    tick,
     zoomAt,
     type Camera,
     type GraphData,
-    type GraphLayout,
+    type Sim,
   } from "./model";
 
   const LABEL_GAP = 4;
@@ -50,36 +50,18 @@
 
   let canvas: HTMLCanvasElement | undefined = $state();
   let labelLayer: HTMLDivElement | undefined = $state();
-  let labels = $state<{ text: string; x: number; y: number }[]>([]);
+  let labels = $state<{ text: string; x: number; y: number; a: number }[]>([]);
   let hovered = -1;
   let error = $state<string | null>(null);
   let cam = $state<Camera>({ x: 0, y: 0, zoom: 1 });
 
   // Plain variables: they are rebuilt from `data` and read by the draw loop, not by the template.
   let renderer: BrainRenderer | Canvas2DRenderer | null = null;
-  // `home` is the laid-out position; `pos` is home plus the drift, and is what is drawn and hit-tested.
-  let home: Float32Array<ArrayBuffer> = new Float32Array(0);
-  // `laid` is the computed layout as it was at relayout; Reset position puts `home` back to it.
-  let laid: Float32Array<ArrayBuffer> = new Float32Array(0);
+  // The live simulation. `pos` is its positions (the notes, then the core at the origin), which are what is drawn and hit-tested.
+  let sim: Sim = newSim(0, []);
   let pos: Float32Array<ArrayBuffer> = new Float32Array(0);
-  // Arc is the default; force is the older spring layout, kept behind the Layout menu.
-  let mode = $state<GraphLayout>("arc");
-  // Node index pairs for the links, and the world-space segments drawn from them.
-  let edgeIdx: Uint32Array = new Uint32Array(0);
-  // Arc layout only: index pairs for the straight strings to the group centres and the core (see arcHubs).
-  let hubIdx: Uint32Array = new Uint32Array(0);
+  // The world-space segments drawn for the links.
   let lines: Float32Array = new Float32Array(0);
-  // Per node: x and y drift amplitude, x and y angular speed, x and y phase. Six floats each.
-  let drift: Float32Array<ArrayBuffer> = new Float32Array(0);
-  let clock = 0;
-  let last = 0;
-  let dragging = false;
-  // Dragging a node pulls its linked nodes along on springs. `pulled` holds the nodes the springs drive; `grabbed` is the node under the pointer, or -1.
-  const PULL_K = 0.12;
-  const PULL_DAMP = 0.75;
-  let pulled = new SvelteSet<number>();
-  let grabbed = -1;
-  let vel: Float32Array<ArrayBuffer> = new Float32Array(0);
   // Hides notes with no links. Off by default, so every note shows.
   let hideOrphans = $state(false);
   // Reduced motion: the nodes stay still.
@@ -121,13 +103,6 @@
   const matched = $derived(matchFilter(data.nodes, { query, tag, memory }));
   const degree = $derived(linkCounts(data.nodes, data.edges));
   const groups = $derived(groupsOf(data.nodes));
-  // Arc layout: the hubs are the most-linked fifth of notes (at least two links). Only hubs carry a name and glow.
-  const hubDegree = $derived(
-    Math.max(
-      2,
-      [...degree].sort((a, b) => b - a)[Math.floor(degree.length * 0.2)] ?? 0,
-    ),
-  );
   const visible = $derived(
     matched.map((m, i) => m && !(hideOrphans && degree[i] === 0)),
   );
@@ -151,114 +126,12 @@
     if (!frame) frame = requestAnimationFrame(draw);
   }
 
-  // The nodes float only while nothing is selected and no drag is under way.
-  // The arc layout stays still: its links are read as a fixed ring.
-  function drifting(): boolean {
-    return (
-      mode === "force" && !calm && !dragging && selected < 0 && pos.length > 0
-    );
-  }
-
-  // Where node i rests: its laid-out place plus its drift (no drift under reduced motion).
-  function restAt(i: number): [number, number] {
-    const x = home[2 * i] ?? 0;
-    const y = home[2 * i + 1] ?? 0;
-    if (calm) return [x, y];
-    const d = i * 6;
-    return [
-      x +
-        (drift[d] ?? 0) *
-          Math.sin((drift[d + 2] ?? 0) * clock + (drift[d + 4] ?? 0)),
-      y +
-        (drift[d + 1] ?? 0) *
-          Math.sin((drift[d + 3] ?? 0) * clock + (drift[d + 5] ?? 0)),
-    ];
-  }
-
-  // Released nodes ease home at this rate (per second), so a drop drifts back slowly, as in Obsidian's graph.
-  const RETURN_RATE = 0.8;
-
-  // One step for each pulled node. While a node is grabbed, its linked nodes keep their laid-out offset from it on springs. After release, every pulled node eases back to rest and leaves the set once it arrives.
-  function stepPulled(dt: number): void {
-    const ease = 1 - Math.exp(-dt * RETURN_RATE);
-    for (const i of pulled) {
-      if (i === grabbed) continue;
-      const k = 2 * i;
-      if (grabbed < 0) {
-        const [tx, ty] = restAt(i);
-        const dx = tx - (pos[k] ?? 0);
-        const dy = ty - (pos[k + 1] ?? 0);
-        if (Math.abs(dx) + Math.abs(dy) < 0.5) {
-          pos[k] = tx;
-          pos[k + 1] = ty;
-          pulled.delete(i);
-        } else {
-          pos[k] = (pos[k] ?? 0) + dx * ease;
-          pos[k + 1] = (pos[k + 1] ?? 0) + dy * ease;
-        }
-        continue;
-      }
-      const tx =
-        (pos[2 * grabbed] ?? 0) + (home[k] ?? 0) - (home[2 * grabbed] ?? 0);
-      const ty =
-        (pos[2 * grabbed + 1] ?? 0) +
-        (home[k + 1] ?? 0) -
-        (home[2 * grabbed + 1] ?? 0);
-      const vx = ((vel[k] ?? 0) + (tx - (pos[k] ?? 0)) * PULL_K) * PULL_DAMP;
-      const vy =
-        ((vel[k + 1] ?? 0) + (ty - (pos[k + 1] ?? 0)) * PULL_K) * PULL_DAMP;
-      vel[k] = vx;
-      vel[k + 1] = vy;
-      pos[k] = (pos[k] ?? 0) + vx;
-      pos[k + 1] = (pos[k + 1] ?? 0) + vy;
-    }
-    refreshLines();
-  }
-
-  // Put the node under the pointer in the spring set, with every node linked to it.
-  function grab(i: number): void {
-    grabbed = i;
-    vel.fill(0);
-    pulled.add(i);
-    for (const [a, b] of data.edges) {
-      const ia = index.get(a);
-      const ib = index.get(b);
-      if (ia === i && ib !== undefined) pulled.add(ib);
-      if (ib === i && ia !== undefined) pulled.add(ia);
-    }
-  }
-
-  function moveNodes(): void {
-    for (let i = 0; i < pos.length; i += 2) {
-      if (pulled.has(i / 2)) continue;
-      const d = i * 3;
-      pos[i] =
-        (home[i] ?? 0) +
-        (drift[d] ?? 0) *
-          Math.sin((drift[d + 2] ?? 0) * clock + (drift[d + 4] ?? 0));
-      pos[i + 1] =
-        (home[i + 1] ?? 0) +
-        (drift[d + 1] ?? 0) *
-          Math.sin((drift[d + 3] ?? 0) * clock + (drift[d + 5] ?? 0));
-    }
-    refreshLines();
-  }
-
-  // Links are rebuilt from the node positions whenever those move: the arc curves follow their ends.
-  // shortcut: every link is rebuilt each time the nodes move, which is fine to a few thousand links; upgrade to a dirty flag if more.
+  // Links are rebuilt from the node positions whenever those move, so each line follows its two notes.
+  // shortcut: every link is rebuilt on each moving frame, which is fine to a few thousand links; upgrade to a dirty flag if more.
   function refreshLines(): void {
     renderer?.setPositions(pos);
-    lines = buildLines();
+    lines = straightLines(pos, sim.edges);
     renderer?.setLines(lines);
-  }
-
-  function buildLines(): Float32Array {
-    if (mode !== "arc") return straightLines(pos, edgeIdx);
-    // Hub strings are arcs too: straight ones made the layout read as triangles.
-    const edges = new Uint32Array(edgeIdx.length + hubIdx.length);
-    edges.set(edgeIdx);
-    edges.set(hubIdx, edgeIdx.length);
-    return arcLines(pos, edges);
   }
 
   // Hit tests look only at the notes: the group centres and the core sit after them in pos.
@@ -279,20 +152,13 @@
 
   // Greedy: a label is drawn only if it clears every label already placed this frame.
   // shortcut: label width is measured once per title and placement is a linear scan, so a few hundred labels at most; upgrade to a spatial grid if more.
-  // Below this zoom the names crowd into each other, so they are hidden until the view is closer.
-  const LABEL_ZOOM = 0.5;
-
   function drawLabels(): void {
     const [w, h] = size();
-    if (cam.zoom < LABEL_ZOOM) {
-      labels = [];
-      return;
-    }
-    const placed: { text: string; x: number; y: number }[] = [];
+    const fade = labelAlpha(cam.zoom);
+    const placed: { text: string; x: number; y: number; a: number }[] = [];
     const boxes: number[] = [];
-    const place = (i: number) => {
-      if (placed.length >= MAX_LABELS || !visible[i]) return;
-      if (i !== hovered && mode !== "arc") return;
+    const place = (i: number, a: number) => {
+      if (placed.length >= MAX_LABELS || !visible[i] || a <= 0) return;
       const sx = (pos[2 * i] ?? 0) * cam.zoom + cam.x;
       const sy = (pos[2 * i + 1] ?? 0) * cam.zoom + cam.y;
       if (sx < 0 || sy < 0 || sx > w || sy > h) return;
@@ -310,32 +176,25 @@
           return;
       }
       boxes.push(x, y, x1, y + LABEL_H);
-      placed.push({ text, x, y });
+      placed.push({ text, x, y, a });
     };
-    if (hovered >= 0) place(hovered);
-    // The arc layout labels every note in view, greedily: a label stays only if it clears the others.
-    if (mode === "arc")
-      for (let i = 0; i < data.nodes.length; i++)
-        if ((degree[i] ?? 0) >= hubDegree) place(i);
-
+    // The focused note and its links are always named; every other name fades in with zoom.
+    for (const i of near) place(i, 1);
+    for (let i = 0; i < data.nodes.length; i++) if (!near.has(i)) place(i, fade);
     labels = placed;
   }
 
   function draw(): void {
     frame = 0;
-    const now = performance.now();
-    // Capped, so a frame after a long pause (or the first frame) does not jump the nodes.
-    if (drifting()) {
-      clock += Math.min(now - last, 100) / 1000;
-      moveNodes();
+    // Live motion: one simulation step a frame while it is still hot. Reduced motion stays still.
+    if (!calm && tick(sim)) {
+      refreshLines();
+      schedule();
     }
-    if (pulled.size) stepPulled(Math.min(now - last, 100) / 1000);
-    last = now;
     if (renderer && colours) renderer.draw(cam, colours.bg, colours.edge);
     drawLabels();
     // Read by the e2e test: how many nodes the last frame placed inside the canvas.
     if (canvas) canvas.dataset.inView = String(countInView());
-    if (drifting() || pulled.size) schedule();
   }
 
   function size(): [number, number] {
@@ -354,24 +213,20 @@
   }
 
   function fitAll(): void {
-    if (!home.length) return;
-    // Force: fit the middle 90% of nodes, so a few far-flung outliers don't zoom the whole graph out.
-    // Arc: the ring has no outliers, so fit every dot, group centre and the core. Its links stay inside those points.
-    const arc = mode === "arc";
-    const count = home.length / 2;
-    const xs = Array.from({ length: count }, (_, i) => home[2 * i] ?? 0).sort(
-      (a, b) => a - b,
-    );
-    const ys = Array.from(
-      { length: count },
-      (_, i) => home[2 * i + 1] ?? 0,
-    ).sort((a, b) => a - b);
-    const lo = arc ? 0 : Math.floor(count * 0.05);
-    const hi = arc ? count - 1 : Math.max(lo, Math.ceil(count * 0.95) - 1);
-    const minX = xs[lo] ?? 0;
-    const maxX = xs[hi] ?? 0;
-    const minY = ys[lo] ?? 0;
-    const maxY = ys[hi] ?? 0;
+    if (!sim.count) return;
+    // Every dot fits the view, the core included, so no outlier is cut off.
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+    for (let i = 0; i < pos.length; i += 2) {
+      const x = pos[i] ?? 0;
+      const y = pos[i + 1] ?? 0;
+      minX = Math.min(minX, x);
+      maxX = Math.max(maxX, x);
+      minY = Math.min(minY, y);
+      maxY = Math.max(maxY, y);
+    }
     const [w, h] = size();
     const zoom = Math.min(w / (maxX - minX + 40), h / (maxY - minY + 40));
     cam = centerOn((minX + maxX) / 2, (minY + maxY) / 2, zoom, w, h);
@@ -444,32 +299,43 @@
     });
   });
 
+  // The notes linked to `i`, and `i` itself. Empty for -1.
+  let near = new Set<number>();
+  function neighbourhood(i: number): Set<number> {
+    const out = new Set<number>();
+    if (i < 0) return out;
+    out.add(i);
+    for (let e = 0; e < sim.edges.length; e += 2) {
+      const a = sim.edges[e] ?? 0;
+      const b = sim.edges[e + 1] ?? 0;
+      if (a === i) out.add(b);
+      else if (b === i) out.add(a);
+    }
+    return out;
+  }
+
   function pushStyle(): void {
     if (!renderer || !colours) return;
     const n = data.nodes.length;
-    // pos also holds the hubs after the notes (arc layout): the core is a dot, the group centres are not drawn.
+    // pos also holds the core after the notes: a dot at the origin, not a note.
     const total = pos.length / 2;
     const colors = new Float32Array(total * 4);
     const radii = new Float32Array(total);
     const picked = groups.names.map((name) => (picks[name] ? parse(picks[name]) : null));
+    // A hovered note (else the selected one) and its links stay bright; every other note dims.
+    const focus = hovered >= 0 ? hovered : selected;
+    near = neighbourhood(focus);
     for (let i = n; i < total; i++) {
       colors.set(colours.node, i * 4);
       radii[i] = i === total - 1 ? 8 : 0;
     }
     for (let i = 0; i < n; i++) {
       const isSel = i === selected;
-      const hub = mode === "arc" && (degree[i] ?? 0) >= hubDegree;
-      const group = picked[groups.of[i] ?? 0];
-      const base = isSel
-        ? colours.hot
-        : mode === "arc" && group
-          ? group
-          : colours.node;
-      // Arc: hubs are the bright, larger dots; the other notes sit back so the bundled curves read as lines into them.
-      const lit = !hub && mode === "arc" && !isSel ? 0.55 : 1;
+      const base = isSel ? colours.hot : (picked[groups.of[i] ?? 0] ?? colours.node);
+      const lit = focus < 0 || near.has(i) ? 1 : 0.2;
       const alpha = visible[i] ? base[3] * lit : base[3] * 0.15;
       colors.set([base[0], base[1], base[2], alpha], i * 4);
-      radii[i] = nodeRadius(degree[i] ?? 0, isSel) * (hub ? 1.5 : 1);
+      radii[i] = nodeRadius(degree[i] ?? 0, isSel);
     }
     renderer.setColors(colors);
     renderer.setRadii(radii);
@@ -536,19 +402,21 @@
       const hit = hitTest(notes(), cam, x, y, 8);
       // Every dot can be dragged, including the ones a filter has dimmed.
       const node = hit;
-      if (node >= 0) grab(node);
+      // A grabbed note is pinned under the pointer; its neighbours are pulled along by the simulation.
+      sim.grabbed = node;
       drag = { x, y, cam, moved: false, node };
-      dragging = true;
+      if (node >= 0) reheat(sim);
+      schedule();
     };
     const onMove = (e: PointerEvent) => {
       if (!drag) {
-        // Labels show only for the node under the pointer.
+        // Hover lights the note and its links, and names them.
         const [hx, hy] = local(e);
         const hit = hitTest(notes(), cam, hx, hy, 8);
         const next = hit >= 0 && visible[hit] ? hit : -1;
         if (next !== hovered) {
           hovered = next;
-          schedule();
+          pushStyle();
         }
         return;
       }
@@ -559,16 +427,18 @@
       if (drag.node >= 0) {
         pos[2 * drag.node] = (x - cam.x) / cam.zoom;
         pos[2 * drag.node + 1] = (y - cam.y) / cam.zoom;
+        reheat(sim);
+        refreshLines();
       } else {
         cam = { ...drag.cam, x: drag.cam.x + dx, y: drag.cam.y + dy };
       }
       schedule();
     };
     const endDrag = () => {
-      // Nothing is re-homed: the dropped node and its neighbours ease back to their own positions.
-      grabbed = -1;
+      // The dropped note is free again, and the simulation re-heats so it settles back among its neighbours.
+      sim.grabbed = -1;
+      if (drag?.node !== undefined && drag.node >= 0) reheat(sim);
       drag = null;
-      dragging = false;
       schedule();
     };
     const onUp = (e: PointerEvent) => {
@@ -609,10 +479,10 @@
   // Lay out the graph again whenever the notes change.
   $effect(() => {
     void data;
-    void mode;
     untrack(relayout);
   });
 
+  // A fresh simulation, settled before the first frame. Dragged notes go back to it too.
   function relayout(): void {
     const r = renderer;
     if (!r) return;
@@ -623,75 +493,25 @@
       if (ia !== undefined && ib !== undefined && ia !== ib)
         pairs.push([ia, ib]);
     }
-    if (mode === "arc") {
-      const hubs = arcHubs(
-        arcRows(data.nodes),
-        groups.of,
-        groups.names.length,
-      );
-      home = hubs.pos;
-      hubIdx = hubs.edges;
-    } else {
-      home = layout(data.nodes.length, pairs);
-      hubIdx = new Uint32Array(0);
-    }
-    laid = home.slice();
-    pos = new Float32Array(home.length);
-    pos.set(home);
-    // The round layout has no drift: its neighbours are a few px apart, so any drift would show as a jitter.
-    drift =
-      mode === "arc"
-        ? new Float32Array(data.nodes.length * 6)
-        : driftParams(data.nodes.length);
-    pulled = new SvelteSet();
-    grabbed = -1;
-    vel = new Float32Array(home.length);
-    const flat = new Uint32Array(pairs.length * 2);
-    pairs.forEach(([a, b], i) => {
-      flat[2 * i] = a;
-      flat[2 * i + 1] = b;
-    });
-    edgeIdx = flat;
-    lines = buildLines();
+    sim = newSim(data.nodes.length, pairs);
+    settle(sim, LOW_POWER.iterations);
+    pos = sim.pos;
+    lines = straightLines(pos, sim.edges);
     r.setGraph(pos, lines);
     fitAll();
     pushStyle();
-    schedule();
   }
 
-  // Puts every note back on the computed layout, after the user has dragged some. Asks first.
+  // Puts every note back on a fresh layout, after the user has dragged some. Asks first.
   function resetPositions(): void {
     if (!confirm("Reset every note to the computed layout? Your moved notes will go back.")) return;
-    home = laid.slice();
-    pos.set(home);
-    vel.fill(0);
-    pulled.clear();
-    grabbed = -1;
-    refreshLines();
-    schedule();
-  }
-
-  // Random but fixed per node (seeded), so a relayout drifts the same way each time.
-  function driftParams(n: number): Float32Array<ArrayBuffer> {
-    const rand = mulberry32(7);
-    const out = new Float32Array(n * 6);
-    const amp = 2 + 0.6 * Math.sqrt(n);
-    for (let i = 0; i < n * 6; i += 6) {
-      out[i] = amp * (0.5 + rand());
-      out[i + 1] = amp * (0.5 + rand());
-      out[i + 2] = 0.04 + 0.08 * rand();
-      out[i + 3] = 0.04 + 0.08 * rand();
-      out[i + 4] = rand() * Math.PI * 2;
-      out[i + 5] = rand() * Math.PI * 2;
-    }
-    return out;
+    relayout();
   }
 
   // Re-colour when the filter or the selection changes.
   $effect(() => {
     void visible;
     void selected;
-    void mode;
     pushStyle();
   });
 
@@ -716,7 +536,7 @@
       data-labels={labels.length}
     >
       {#each labels as l, k (k)}
-        <span class="label" style:transform="translate({l.x}px, {l.y}px)"
+        <span class="label" style:opacity={l.a} style:transform="translate({l.x}px, {l.y}px)"
           >{l.text}</span
         >
       {/each}
@@ -733,7 +553,7 @@
     </label>
   </div>
 
-  {#if mode === "arc" && groups.names.length}
+  {#if groups.names.length}
     <ul class="key" aria-label="Key: group colours">
       <li class="key-title">Key</li>
       {#each groups.names as name (name)}

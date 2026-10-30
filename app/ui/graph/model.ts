@@ -14,19 +14,15 @@ export interface GraphData {
   edges: [string, string][];
 }
 
+/** Simulation steps run before the first frame, and the canvas pixel ratio cap. */
 export interface LayoutPreset {
   iterations: number;
-  /** Random repulsion partners sampled per node per iteration. */
-  samples: number;
-  /** Device pixel ratio cap for the canvas. */
   dprCap: number;
 }
 
-// Low-power preset: fewer layout steps and a 1x canvas, for the Intel HD 5500 dev machine.
-// shortcut: repulsion is sampled, not exact, so dense clusters spread less; raise samples for quality.
+// Low-power preset: a 1x canvas, and the layout settles in this many steps before the first frame.
 export const LOW_POWER: LayoutPreset = {
-  iterations: 150,
-  samples: 12,
+  iterations: 300,
   dprCap: 1,
 };
 
@@ -51,60 +47,168 @@ export function mulberry32(seed: number): () => number {
   };
 }
 
-/** Interleaved x, y world positions for each node index. Deterministic for a given seed. */
-export function layout(
-  nodeCount: number,
-  edges: ReadonlyArray<readonly [number, number]>,
-  preset: LayoutPreset = LOW_POWER,
+// Force simulation, as in Obsidian's graph view: a centre force pulls notes to the core, repel pushes every pair apart, and a link force holds linked notes about LINK_DISTANCE apart.
+export const LINK_DISTANCE = 40;
+export const CENTER_STRENGTH = 0.02;
+export const REPEL_STRENGTH = 1500;
+/** Repel reaches this far, in world px. shortcut: a cutoff, not an all-pairs charge, so far-apart clusters push each other less; upgrade to Barnes-Hut if they drift together. */
+export const REPEL_RANGE = 60;
+/** Share of velocity kept each step (d3's default friction). */
+const VELOCITY_KEEP = 0.6;
+/** Heat falls from 1 to ALPHA_MIN over 300 steps. A grab or a drop re-heats it to REHEAT, so the neighbours settle back. */
+const ALPHA_MIN = 0.001;
+const ALPHA_DECAY = 1 - ALPHA_MIN ** (1 / 300);
+export const REHEAT = 0.3;
+
+export interface Sim {
+  /** Interleaved x, y per node. The core is the last node, pinned at (0, 0). */
+  pos: Float32Array<ArrayBuffer>;
+  vel: Float32Array<ArrayBuffer>;
+  /** Interleaved note index pairs for the links. */
+  edges: Uint32Array;
+  /** Links per note, for the link force. */
+  deg: Uint32Array;
+  /** Notes, the core excluded. */
+  count: number;
+  /** The note held under the pointer, pinned in place, or -1. */
+  grabbed: number;
+  /** Heat: how far the simulation still moves. */
+  alpha: number;
+}
+
+/** A simulation of `count` notes linked by `pairs`, started on a seeded random disc with the core at the origin. */
+export function newSim(
+  count: number,
+  pairs: ReadonlyArray<readonly [number, number]>,
   seed = 1,
-): Float32Array<ArrayBuffer> {
+): Sim {
   const rand = mulberry32(seed);
-  const pos = new Float32Array(nodeCount * 2);
-  const spread = Math.sqrt(nodeCount) * 12;
-  for (let i = 0; i < nodeCount; i++) {
+  const pos = new Float32Array((count + 1) * 2);
+  const spread = Math.sqrt(count) * LINK_DISTANCE;
+  for (let i = 0; i < count; i++) {
     const r = Math.sqrt(rand()) * spread;
     const a = rand() * Math.PI * 2;
     pos[2 * i] = Math.cos(a) * r;
     pos[2 * i + 1] = Math.sin(a) * r;
   }
-  const k = spread / Math.sqrt(nodeCount) + 1; // ideal spacing
-  const disp = new Float32Array(nodeCount * 2);
-  for (let it = 0; it < preset.iterations; it++) {
-    const temp = spread * 0.1 * (1 - it / preset.iterations) + 0.5;
-    disp.fill(0);
-    for (let i = 0; i < nodeCount; i++) {
-      for (let s = 0; s < preset.samples; s++) {
-        const j = Math.floor(rand() * nodeCount);
-        if (j === i) continue;
-        const dx = (pos[2 * i] ?? 0) - (pos[2 * j] ?? 0);
-        const dy = (pos[2 * i + 1] ?? 0) - (pos[2 * j + 1] ?? 0);
-        const d2 = dx * dx + dy * dy + 0.01;
-        const f = (k * k) / d2; // repulsion ~ 1/d, scaled to the sample count
-        add(disp, 2 * i, dx * f * (nodeCount / preset.samples));
-        add(disp, 2 * i + 1, dy * f * (nodeCount / preset.samples));
-      }
-    }
-    for (const [a, b] of edges) {
-      const dx = (pos[2 * a] ?? 0) - (pos[2 * b] ?? 0);
-      const dy = (pos[2 * a + 1] ?? 0) - (pos[2 * b + 1] ?? 0);
-      const d = Math.sqrt(dx * dx + dy * dy) + 0.01;
-      const f = (d * d) / k / d; // attraction ~ d
-      add(disp, 2 * a, -dx * f);
-      add(disp, 2 * a + 1, -dy * f);
-      add(disp, 2 * b, dx * f);
-      add(disp, 2 * b + 1, dy * f);
-    }
-    for (let i = 0; i < nodeCount; i++) {
-      const dx = disp[2 * i] ?? 0;
-      const dy = disp[2 * i + 1] ?? 0;
-      const m = Math.sqrt(dx * dx + dy * dy) + 1e-9;
-      const step = Math.min(m, temp) / m;
-      pos[2 * i] = (pos[2 * i] ?? 0) + dx * step - (pos[2 * i] ?? 0) * 0.002; // weak pull to the centre
-      pos[2 * i + 1] =
-        (pos[2 * i + 1] ?? 0) + dy * step - (pos[2 * i + 1] ?? 0) * 0.002;
+  const edges = new Uint32Array(pairs.length * 2);
+  const deg = new Uint32Array(count);
+  pairs.forEach(([a, b], e) => {
+    edges[2 * e] = a;
+    edges[2 * e + 1] = b;
+    deg[a] = (deg[a] ?? 0) + 1;
+    deg[b] = (deg[b] ?? 0) + 1;
+  });
+  return {
+    pos,
+    vel: new Float32Array(pos.length),
+    edges,
+    deg,
+    count,
+    grabbed: -1,
+    alpha: 1,
+  };
+}
+
+/** One simulation step. Returns false, and does nothing, once the heat has settled. */
+export function tick(sim: Sim): boolean {
+  if (sim.alpha < ALPHA_MIN) return false;
+  const { pos, vel, edges, deg, count, grabbed } = sim;
+  const a = sim.alpha;
+  const cx = pos[2 * count] ?? 0;
+  const cy = pos[2 * count + 1] ?? 0;
+
+  // Repel: notes in the same or a neighbouring grid cell push each other apart, with a 1/d² charge.
+  const cell = (v: number) => Math.floor(v / REPEL_RANGE);
+  const key = (gx: number, gy: number) => (gx + 1e4) * 2e4 + (gy + 1e4);
+  const cells = new Map<number, number[]>();
+  for (let i = 0; i < count; i++) {
+    const k = key(cell(pos[2 * i] ?? 0), cell(pos[2 * i + 1] ?? 0));
+    const list = cells.get(k);
+    if (list) list.push(i);
+    else cells.set(k, [i]);
+  }
+  const reach2 = REPEL_RANGE * REPEL_RANGE;
+  for (let i = 0; i < count; i++) {
+    const x = pos[2 * i] ?? 0;
+    const y = pos[2 * i + 1] ?? 0;
+    const gx = cell(x);
+    const gy = cell(y);
+    for (let dx = -1; dx <= 1; dx++)
+      for (let dy = -1; dy <= 1; dy++)
+        for (const j of cells.get(key(gx + dx, gy + dy)) ?? []) {
+          if (j === i) continue;
+          const ddx = x - (pos[2 * j] ?? 0);
+          const ddy = y - (pos[2 * j + 1] ?? 0);
+          const d2 = ddx * ddx + ddy * ddy + 0.01;
+          if (d2 > reach2) continue;
+          const f = (REPEL_STRENGTH * a) / (d2 * Math.sqrt(d2));
+          add(vel, 2 * i, ddx * f);
+          add(vel, 2 * i + 1, ddy * f);
+        }
+  }
+
+  // Link: each link pulls or pushes its ends toward LINK_DISTANCE, weaker for the busier end.
+  for (let e = 0; e < edges.length; e += 2) {
+    const i = edges[e] ?? 0;
+    const j = edges[e + 1] ?? 0;
+    const dx = (pos[2 * j] ?? 0) - (pos[2 * i] ?? 0);
+    const dy = (pos[2 * j + 1] ?? 0) - (pos[2 * i + 1] ?? 0);
+    const d = Math.sqrt(dx * dx + dy * dy) || 1e-6;
+    const k =
+      ((d - LINK_DISTANCE) / d) * a / Math.min(deg[i] ?? 1, deg[j] ?? 1);
+    add(vel, 2 * i, dx * k);
+    add(vel, 2 * i + 1, dy * k);
+    add(vel, 2 * j, -dx * k);
+    add(vel, 2 * j + 1, -dy * k);
+  }
+
+  // Centre, then move. The grabbed note stays under the pointer.
+  for (let i = 0; i < count; i++) {
+    const x = pos[2 * i] ?? 0;
+    const y = pos[2 * i + 1] ?? 0;
+    const grab = i === grabbed;
+    const vx = grab ? 0 : ((vel[2 * i] ?? 0) + (cx - x) * CENTER_STRENGTH * a) * VELOCITY_KEEP;
+    const vy = grab ? 0 : ((vel[2 * i + 1] ?? 0) + (cy - y) * CENTER_STRENGTH * a) * VELOCITY_KEEP;
+    vel[2 * i] = vx;
+    vel[2 * i + 1] = vy;
+    if (!grab) {
+      pos[2 * i] = x + vx;
+      pos[2 * i + 1] = y + vy;
     }
   }
-  return pos;
+  sim.alpha -= sim.alpha * ALPHA_DECAY;
+  return true;
+}
+
+/** Runs up to `steps` ticks at once, so a fresh layout is already settled before the first frame. */
+export function settle(sim: Sim, steps: number): void {
+  for (let s = 0; s < steps; s++) if (!tick(sim)) break;
+}
+
+/** Heats the simulation so it moves again, e.g. after a note is grabbed or dropped. */
+export function reheat(sim: Sim): void {
+  sim.alpha = Math.max(sim.alpha, REHEAT);
+}
+
+/** Settled x, y per note for a fresh layout. Deterministic for a seed. */
+export function layout(
+  count: number,
+  pairs: ReadonlyArray<readonly [number, number]>,
+  preset: LayoutPreset = LOW_POWER,
+  seed = 1,
+): Float32Array<ArrayBuffer> {
+  const sim = newSim(count, pairs, seed);
+  settle(sim, preset.iterations);
+  return sim.pos.slice(0, count * 2);
+}
+
+/** Label opacity at a zoom: hidden below LABEL_FADE_START, fully shown from LABEL_FADE_FULL. Obsidian's text fade threshold. */
+export const LABEL_FADE_START = 0.5;
+export const LABEL_FADE_FULL = 1;
+export function labelAlpha(zoom: number): number {
+  const t = (zoom - LABEL_FADE_START) / (LABEL_FADE_FULL - LABEL_FADE_START);
+  return Math.min(1, Math.max(0, t));
 }
 
 function add(arr: Float32Array, i: number, v: number): void {

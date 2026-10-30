@@ -15,7 +15,10 @@ import {
   groupsOf,
   clampZoom,
   hitTest,
+  labelAlpha,
   layout,
+  newSim,
+  settle,
   linkCounts,
   matchFilter,
   MAX_ZOOM,
@@ -251,4 +254,18 @@ test("an arc link never reaches past its ends, so a long link from the rim stays
   for (let i = 0; i < out.length; i += 2)
     far = Math.max(far, Math.hypot(out[i] ?? 0, out[i + 1] ?? 0));
   assert.ok(far <= 500 + 1e-3, `farthest point ${far}`);
+});
+
+test("a grabbed note stays where it is held while the simulation settles its neighbours", () => {
+  const sim = newSim(3, [[0, 1], [1, 2]]);
+  sim.grabbed = 0;
+  const [x, y] = [sim.pos[0], sim.pos[1]];
+  settle(sim, 50);
+  assert.deepEqual([sim.pos[0], sim.pos[1]], [x, y]);
+});
+
+test("labels fade in from zoom 0.5 to 1", () => {
+  assert.equal(labelAlpha(0.4), 0);
+  assert.equal(labelAlpha(1), 1);
+  assert.ok(Math.abs(labelAlpha(0.75) - 0.5) < 1e-9);
 });
