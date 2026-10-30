@@ -3,7 +3,12 @@
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
   import logo from "../assets/brand/hippocampus-mark-purple.png";
-  import { addedAgents, setAddedAgents } from "./addedAgents.svelte";
+  import {
+    addedAgents,
+    archived,
+    setAddedAgents,
+    setArchived,
+  } from "./addedAgents.svelte";
   import { AGENT_PROVIDERS, AVATARS } from "../control/model";
   import { ORB_LABELS } from "../assistant/model";
   import { assistant } from "../assistant/session.svelte";
@@ -11,8 +16,17 @@
   type Account = { claude: boolean; model: string };
 
   let account = $state<Account | null>(null);
-  // Added agents only; the main agent is not in this list, so it cannot be moved.
-  const added = $derived(addedAgents.list);
+  // Added agents only, minus archived ones; the main agent is not in this list, so it cannot be moved.
+  const added = $derived(
+    addedAgents.list.filter((a) => !archived.ids.includes(a.id)),
+  );
+  // The card whose options menu is open; null when closed. The bar sits at the bottom of the window, so the menu opens upward.
+  let menu = $state<{ id: string; x: number; bottom: number } | null>(null);
+
+  function openMenu(e: MouseEvent, id: string): void {
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    menu = { id, x: rect.left, bottom: window.innerHeight - rect.top + 4 };
+  }
 
   // Opens the Add agent dialog (identity, workspace, engine, briefing).
   let { onadd }: { onadd: () => void } = $props();
@@ -48,20 +62,58 @@
   const faceOf = (id: string): string =>
     AVATARS.find((a) => a.id === id)?.name ?? NO_DATA;
 
-  function move(index: number, step: number): void {
-    const target = index + step;
-    if (target < 0 || target >= added.length) return;
-    const next = [...added];
-    const moved = next[index];
-    const other = next[target];
-    if (!moved || !other) return;
-    next[index] = other;
-    next[target] = moved;
+  // Swaps a card with its visible neighbour in the full list, so archived cards keep their place.
+  function move(id: string, step: number): void {
+    const visible = added.map((a) => a.id);
+    const target = visible[visible.indexOf(id) + step];
+    if (target === undefined) return;
+    const next = [...addedAgents.list];
+    const i = next.findIndex((a) => a.id === id);
+    const j = next.findIndex((a) => a.id === target);
+    const a = next[i];
+    const b = next[j];
+    if (!a || !b) return;
+    next[i] = b;
+    next[j] = a;
     setAddedAgents(next);
   }
 </script>
 
-<svelte:window onkeydown={(e) => e.key === "Escape" && (info = null)} />
+<svelte:window
+  onkeydown={(e) => {
+    if (e.key !== "Escape") return;
+    info = null;
+    menu = null;
+  }}
+/>
+
+{#snippet details(model: string, status: string)}
+  <span class="line model">{model}</span>
+  <span class="line command">Command · {NO_DATA}</span>
+  <span class="line ctx" aria-label="Context {NO_DATA}">
+    <span class="dashes" aria-hidden="true">----------</span> {NO_DATA}
+  </span>
+  <span class="line status">{status}</span>
+{/snippet}
+
+{#if menu}
+  {@const open = menu}
+  <div class="menu-scrim" role="presentation" onmousedown={() => (menu = null)}></div>
+  <div
+    class="card-menu"
+    role="menu"
+    style="left: {open.x}px; bottom: {open.bottom}px"
+  >
+    <button
+      type="button"
+      role="menuitem"
+      onclick={() => {
+        setArchived(open.id, true);
+        menu = null;
+      }}>Archive</button
+    >
+  </div>
+{/if}
 
 {#if info}
   <div class="info-scrim" role="presentation" onmousedown={() => (info = null)}>
@@ -109,12 +161,16 @@
 <div class="agent-bar" aria-label="Agents">
   <div class="chip main">
     <img src={logo} alt="" />
-    <div>
+    <div class="text">
       <b>HIPPO</b>
       <i>{provider}</i>
       <small class="fixed">MAIN · FIXED</small>
+      {@render details(account?.model ?? NO_DATA, ORB_LABELS[assistant.chat.orb])}
     </div>
     <span class="tokens">— tokens</span>
+    <button type="button" class="ptt" disabled title="Push to talk is not set up yet"
+      >PTT</button
+    >
     <button
       type="button"
       class="info"
@@ -133,23 +189,38 @@
         })}>INFO</button
     >
   </div>
-  {#each added as agent, index (agent.id)}
+  {#each added as agent (agent.id)}
     <div class="chip">
-      <img src={logo} alt="" />
-      <div>
-        <b>{agent.name}</b>
-        <i>{labelOf(agent.provider)}</i>
-      </div>
+      <button
+        type="button"
+        class="card-open"
+        aria-haspopup="menu"
+        aria-label="{agent.name} options"
+        onclick={(e) => openMenu(e, agent.id)}
+      >
+        <img src={logo} alt="" />
+        <span class="text">
+          <b>{agent.name}</b>
+          <i>{labelOf(agent.provider)}</i>
+          {@render details(agent.model || NO_DATA, NO_DATA)}
+        </span>
+      </button>
       <span class="tokens">— tokens</span>
       <button
         type="button"
+        class="ptt"
+        disabled
+        title="Push to talk is not set up yet">PTT</button
+      >
+      <button
+        type="button"
         aria-label="Move {agent.name} left"
-        onclick={() => move(index, -1)}>‹</button
+        onclick={() => move(agent.id, -1)}>‹</button
       >
       <button
         type="button"
         aria-label="Move {agent.name} right"
-        onclick={() => move(index, 1)}>›</button
+        onclick={() => move(agent.id, 1)}>›</button
       >
       <button
         type="button"
@@ -305,5 +376,75 @@
   .info-box dd {
     margin: 0;
     overflow-wrap: anywhere;
+  }
+
+  /* .chip .card-open beats the generic .chip button rule. */
+  .chip .card-open {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 0;
+    border: none;
+    background: none;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .text {
+    display: block;
+  }
+
+  .line {
+    display: block;
+    font-size: 10px;
+    opacity: 0.8;
+  }
+
+  .dashes {
+    letter-spacing: 1px;
+    opacity: 0.5;
+  }
+
+  .ptt {
+    font-family: "Press Start 2P", monospace;
+    font-size: 8px;
+  }
+
+  .ptt:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .menu-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+  }
+
+  .card-menu {
+    position: fixed;
+    z-index: 21;
+    display: grid;
+    min-width: 140px;
+    padding: var(--space-1);
+    background: var(--color-md-card);
+    color: var(--color-md-card-text);
+    border: 2px solid var(--color-accent);
+    border-radius: var(--radius-md);
+  }
+
+  .card-menu button {
+    padding: var(--space-2);
+    border: none;
+    background: none;
+    color: inherit;
+    text-align: left;
+    font-size: var(--font-size-xs);
+    cursor: pointer;
+  }
+
+  .card-menu button:hover {
+    background: var(--color-md-surface);
   }
 </style>

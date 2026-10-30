@@ -41,6 +41,31 @@ export const addedAgents = $state<{ list: SavedAgent[] }>({
   list: readLocal(),
 });
 
+// Archived agent ids: hidden from the bottom bar, kept on this machine only.
+const ARCHIVE_KEY = "hippocampus.archivedAgents";
+
+function readArchived(): string[] {
+  try {
+    return JSON.parse(localStorage.getItem(ARCHIVE_KEY) ?? "[]");
+  } catch (cause) {
+    console.error("Could not read the archived agents", cause);
+    return [];
+  }
+}
+
+export const archived = $state<{ ids: string[] }>({ ids: readArchived() });
+
+export function setArchived(id: string, on: boolean): void {
+  archived.ids = on
+    ? [...archived.ids.filter((x) => x !== id), id]
+    : archived.ids.filter((x) => x !== id);
+  try {
+    localStorage.setItem(ARCHIVE_KEY, JSON.stringify(archived.ids));
+  } catch (cause) {
+    console.error("Could not save the archived agents", cause);
+  }
+}
+
 // Set once the user changes the list, so a slow load never overwrites a newer agent.
 let changed = false;
 
