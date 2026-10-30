@@ -289,4 +289,10 @@
   .shell.no-panel {
     --panel-col: 0px;
   }
+
+  /* The graph's status notice spans the whole graph area, which includes the note drawer beside it;
+     let clicks and wheel reach the drawer. shortcut: fix the notice rule in ui/graph/BrainGraph.svelte. */
+  :global(.brain > .notice) {
+    pointer-events: none;
+  }
 </style>
