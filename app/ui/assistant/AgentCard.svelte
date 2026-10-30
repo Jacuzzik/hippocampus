@@ -11,12 +11,12 @@
 
   let { name, accent, model, details = [], logo }: Props = $props();
 
-  const faces = import.meta.glob("../assets/faces/*.png", {
+  const faces = import.meta.glob("../assets/faces-new/*.svg", {
     eager: true,
     query: "?url",
     import: "default",
   }) as Record<string, string>;
-  const face = $derived(logo ?? faces[`../assets/faces/${faceFor(name)}`]);
+  const face = $derived(logo ?? faces[`../assets/faces-new/${faceFor(name)}`]);
 </script>
 
 <section
