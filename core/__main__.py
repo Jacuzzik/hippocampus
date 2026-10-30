@@ -52,7 +52,7 @@ DEFAULT_TASKS_FILE = "/home/thalha/Documents/Obsidian/Munder-Difflin/hive/tasks.
 DEFAULT_HIVE_DIR = "/home/thalha/Documents/Obsidian/Munder-Difflin/hive"
 from ai.providers.openai_compat import PRESETS
 from ai.router import build_router, model_name
-from core import __version__, share, skills
+from core import __version__, added_agents, share, skills
 from core import activity as journal
 from core import budget as budgets
 from core import jobs as job_store
@@ -577,6 +577,18 @@ class Session:
         self.note("tool", tool="open_skill_folder", tier="open", status="done")
         return self.skills_state()
 
+    def agents_state(self) -> dict[str, Any]:
+        return {"agents": added_agents.load(self.agents_path)}
+
+    def save_agents(self, request: dict[str, Any]) -> dict[str, Any]:
+        agents = request.get("agents")
+        added_agents.save(self.agents_path, agents)
+        return {"agents": agents}
+
+    @property
+    def agents_path(self) -> Path:
+        return self.storage / "agents.json"
+
     def share_note(self, request: dict[str, Any]) -> dict[str, Any]:
         password = request.get("password")
         if not isinstance(password, str):
@@ -678,6 +690,7 @@ class Session:
             "helpers": self.helpers_state,
             "skills": self.skills_state,
             "keys": self.keys,
+            "agents": self.agents_state,
         }
         if method in simple:
             return simple[method]()
@@ -692,6 +705,7 @@ class Session:
             "install_skill": self.install_skill,
             "open_skill_folder": self.open_skill_folder,
             "share": self.share_note,
+            "save_agents": self.save_agents,
             "save_key": self.save_key,
             "clear_key": self.clear_key,
         }

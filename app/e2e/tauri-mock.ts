@@ -32,6 +32,7 @@ export async function mockSidecar(
       if (opts.orphan)
         graph.nodes.push({ id: "delta.md", title: "Delta", tags: [] });
       let vaultOpen = !opts.noVault;
+      let savedAgents: unknown[] = [];
       // The Claude key is kept here, never sent back to the page: account reports only yes or no.
       let claudeKey: string | null = opts.signedIn ? "sk-saved" : null;
 
@@ -213,6 +214,11 @@ export async function mockSidecar(
         params?: Record<string, unknown>;
       }): Promise<unknown> {
         switch (args.method) {
+          case "agents":
+            return { agents: savedAgents };
+          case "save_agents":
+            savedAgents = (args.params?.agents as unknown[]) ?? [];
+            return { agents: savedAgents };
           case "graph":
             if (!vaultOpen) throw new Error("no vault is open");
             return graph;
