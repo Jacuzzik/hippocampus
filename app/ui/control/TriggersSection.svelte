@@ -5,11 +5,11 @@
 
   // What starts work without you: the network state, scheduled jobs, context compaction and webhooks.
   type Job = { enabled: boolean };
-  // Webhooks are not stored yet, so the list is empty until they are.
-  const webhooks: { name: string; url: string }[] = [];
+  type Webhook = { id: string; name: string; kind: string };
 
   let mode = $state<NetworkMode | null>(null);
   let jobs = $state<Job[]>([]);
+  let webhooks = $state<Webhook[]>([]);
   let error = $state<string | null>(null);
   const on = $derived(jobs.filter((job) => job.enabled).length);
 
@@ -22,6 +22,9 @@
       ).mode;
       jobs = (await invoke<{ jobs: Job[] }>("sidecar_call", { method: "jobs" }))
         .jobs;
+      webhooks = (
+        await invoke<{ webhooks: Webhook[] }>("sidecar_call", { method: "webhooks" })
+      ).webhooks;
     } catch (cause) {
       error = String(cause);
     }
@@ -43,11 +46,11 @@
   </dl>
   <h4>Webhooks</h4>
   {#if webhooks.length === 0}
-    <p class="muted">None. Webhooks are not set up in this build.</p>
+    <p class="muted">None saved yet.</p>
   {:else}
     <ul>
-      {#each webhooks as hook (hook.url)}
-        <li>{hook.name} <span class="muted">{hook.url}</span></li>
+      {#each webhooks as hook (hook.id)}
+        <li>{hook.name} <span class="muted">runs {hook.kind}</span></li>
       {/each}
     </ul>
   {/if}

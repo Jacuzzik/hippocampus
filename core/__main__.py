@@ -52,7 +52,7 @@ DEFAULT_TASKS_FILE = "/home/thalha/Documents/Obsidian/Munder-Difflin/hive/tasks.
 DEFAULT_HIVE_DIR = "/home/thalha/Documents/Obsidian/Munder-Difflin/hive"
 from ai.providers.openai_compat import PRESETS
 from ai.router import build_router, model_name
-from core import __version__, share, skills
+from core import __version__, share, skills, webhooks
 from core import activity as journal
 from core import budget as budgets
 from core import jobs as job_store
@@ -585,6 +585,37 @@ class Session:
         share.request_link(password, minutes)  # always raises until a share host is set up
         return {}
 
+    def webhooks_state(self) -> dict[str, Any]:
+        return {"webhooks": webhooks.load(self.webhooks_path)}
+
+    def save_webhook(self, request: dict[str, Any]) -> dict[str, Any]:
+        hooks = webhooks.add(
+            webhooks.load(self.webhooks_path), request.get("name"), request.get("kind")
+        )
+        webhooks.save(self.webhooks_path, hooks)
+        return self.webhooks_state()
+
+    def delete_webhook(self, request: dict[str, Any]) -> dict[str, Any]:
+        hook_id = request.get("id")
+        if not isinstance(hook_id, str):
+            raise ValueError('"delete_webhook" needs an "id"')
+        kept = webhooks.remove(webhooks.load(self.webhooks_path), hook_id)
+        webhooks.save(self.webhooks_path, kept)
+        return self.webhooks_state()
+
+    def run_webhook(self, request: dict[str, Any]) -> dict[str, Any]:
+        if request.get("approve") is not True:
+            raise ValueError("running a webhook needs the user's approval")
+        hook = webhooks.find(webhooks.load(self.webhooks_path), request.get("id"))
+        result = {"link_check": self._link_check}[hook["kind"]]()
+        self.note("approval", tool="run_webhook", tier="act", approved=True, by="card")
+        self.note("handoff", text=result)
+        return {"result": result}
+
+    @property
+    def webhooks_path(self) -> Path:
+        return self.storage / "webhooks.json"
+
     def keys(self) -> dict[str, Any]:
         rows = [{"provider": "claude", "label": "Claude (Anthropic)"}]
         rows += [
@@ -678,6 +709,7 @@ class Session:
             "helpers": self.helpers_state,
             "skills": self.skills_state,
             "keys": self.keys,
+            "webhooks": self.webhooks_state,
         }
         if method in simple:
             return simple[method]()
@@ -694,6 +726,9 @@ class Session:
             "share": self.share_note,
             "save_key": self.save_key,
             "clear_key": self.clear_key,
+            "save_webhook": self.save_webhook,
+            "delete_webhook": self.delete_webhook,
+            "run_webhook": self.run_webhook,
         }
         if method in extra:
             return extra[method](request)
