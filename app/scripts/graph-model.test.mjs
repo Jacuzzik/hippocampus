@@ -67,6 +67,14 @@ test("1,167 notes spread out: the typical note keeps room for its dot", () => {
   assert.ok(nearest[n >> 1] >= 15, `median nearest gap ${nearest[n >> 1]} px`);
 });
 
+test("a hub with 30 links does not blow up the layout", () => {
+  // Regression: the link force added its full pull to each end, so a hub's 30 links
+  // overshot and the vault's positions ran off to Infinity/NaN (88 of 1,175 real notes).
+  const hub = Array.from({ length: 30 }, (_, i) => [0, i + 1]);
+  const pos = layout(1175, hub, undefined, 1);
+  assert.ok(pos.every(Number.isFinite), "positions must stay finite");
+});
+
 test("linked nodes end up closer than unlinked ones", () => {
   // Two cliques of 20 with no link between them.
   const edges = [];

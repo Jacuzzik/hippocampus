@@ -149,7 +149,7 @@ export function tick(sim: Sim): boolean {
         }
   }
 
-  // Link: each link pulls or pushes its ends toward LINK_DISTANCE, weaker for the busier end.
+  // Link: each link pulls or pushes its ends toward LINK_DISTANCE. Each end takes 1/its own degree, so a hub's links cannot overshoot and diverge.
   for (let e = 0; e < edges.length; e += 2) {
     const i = edges[e] ?? 0;
     const j = edges[e + 1] ?? 0;
@@ -157,11 +157,11 @@ export function tick(sim: Sim): boolean {
     const dy = (pos[2 * j + 1] ?? 0) - (pos[2 * i + 1] ?? 0);
     const d = Math.sqrt(dx * dx + dy * dy) || 1e-6;
     const k =
-      ((d - LINK_DISTANCE) / d) * a / Math.min(deg[i] ?? 1, deg[j] ?? 1);
-    add(vel, 2 * i, dx * k);
-    add(vel, 2 * i + 1, dy * k);
-    add(vel, 2 * j, -dx * k);
-    add(vel, 2 * j + 1, -dy * k);
+      ((d - LINK_DISTANCE) / d) * a;
+    add(vel, 2 * i, (dx * k) / (deg[i] ?? 1));
+    add(vel, 2 * i + 1, (dy * k) / (deg[i] ?? 1));
+    add(vel, 2 * j, (-dx * k) / (deg[j] ?? 1));
+    add(vel, 2 * j + 1, (-dy * k) / (deg[j] ?? 1));
   }
 
   // Centre, then move. The grabbed note stays under the pointer.
