@@ -20,18 +20,44 @@
     act: "acts",
   };
 
+  // shortcut: text files up to 100 KB, read in the browser and sent inline with the next message.
+  const MAX_FILE_BYTES = 100_000;
+  // No speech-to-text source exists in this build (no voice/ module), so voice input cannot transcribe yet.
+  const NO_STT = "No speech-to-text source is set up, so voice input is not available. Type your message instead.";
+
   let draft = $state("");
   let answers = $state<Record<string, string>>({});
+  let attached = $state<{ name: string; text: string }[]>([]);
+  let fileInput = $state<HTMLInputElement>();
+  let notice = $state("");
   const chat = $derived(assistant.chat);
 
   onMount(() => {
     void assistant.start();
   });
 
+  async function pickFiles(event: Event): Promise<void> {
+    const input = event.currentTarget as HTMLInputElement;
+    const picked = Array.from(input.files ?? []);
+    input.value = "";
+    for (const file of picked) {
+      if (file.size > MAX_FILE_BYTES) {
+        notice = `${file.name} is larger than 100 KB, so it was not attached.`;
+        continue;
+      }
+      attached = [...attached, { name: file.name, text: await file.text() }];
+    }
+  }
+
   function submit(event: SubmitEvent): void {
     event.preventDefault();
-    const text = draft;
+    const files = attached.map(
+      (file) => `Attached file: ${file.name}\n\`\`\`\n${file.text}\n\`\`\``,
+    );
+    const text = [...files, draft].join("\n\n");
     draft = "";
+    attached = [];
+    notice = "";
     void assistant.send(text);
   }
 
@@ -163,17 +189,54 @@
     <label class="visually-hidden" for="assistant-input"
       >Message the assistant</label
     >
+    {#if attached.length > 0}
+      <ul class="chips" aria-label="Attached files">
+        {#each attached as file, index (index)}
+          <li class="chip">
+            <span>{file.name}</span>
+            <button
+              type="button"
+              aria-label="Remove {file.name}"
+              onclick={() => (attached = attached.filter((_, i) => i !== index))}
+              >×</button
+            >
+          </li>
+        {/each}
+      </ul>
+    {/if}
     <textarea
       id="assistant-input"
       rows="2"
       bind:value={draft}
       placeholder="Ask about your notes…"
       disabled={assistant.busy}></textarea>
+    {#if notice}
+      <p class="notice" role="status">{notice}</p>
+    {/if}
+    <input
+      bind:this={fileInput}
+      type="file"
+      multiple
+      accept="text/*,.md,.txt,.csv,.json"
+      class="visually-hidden"
+      tabindex="-1"
+      aria-hidden="true"
+      onchange={pickFiles}
+    />
     <div class="actions">
-      <!-- Files and voice are shown as in the mockup; not built yet. -->
-      <button type="button" disabled title="Not built yet">+ files</button>
-      <button type="button" disabled title="Not built yet">voice</button>
-      <button type="submit" disabled={assistant.busy || !draft.trim()}
+      <button
+        type="button"
+        disabled={assistant.busy}
+        onclick={() => fileInput?.click()}>+ files</button
+      >
+      <button
+        type="button"
+        disabled={assistant.busy}
+        onclick={() => (notice = NO_STT)}>voice</button
+      >
+      <button
+        type="submit"
+        disabled={assistant.busy || (!draft.trim() && attached.length === 0)}
         >Send</button
       >
       <button
@@ -342,6 +405,46 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
+  }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    max-width: 100%;
+    padding: 0 var(--space-1) 0 var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    font-size: 0.85em;
+  }
+
+  .chip span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .chip button {
+    padding: 0 var(--space-1);
+    border: none;
+    background: none;
+    line-height: 1;
+  }
+
+  .notice {
+    margin: 0;
+    color: var(--color-text-muted);
+    font-size: 0.85em;
   }
 
   textarea {
