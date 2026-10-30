@@ -50,6 +50,23 @@ test("layout is deterministic for a seed and finite for 2,000 nodes", () => {
   assert.ok(elapsed < 5000, `layout took ${elapsed} ms`);
 });
 
+test("1,167 notes spread out: the typical note keeps room for its dot", () => {
+  // Regression: with the old 1/d² charge the vault packed into dots about 8 px apart.
+  const n = 1167;
+  const pos = layout(n, syntheticEdges(n, 2, 11), undefined, 5);
+  const nearest = [];
+  for (let i = 0; i < n; i++) {
+    let best = Infinity;
+    for (let j = 0; j < n; j++) {
+      if (i === j) continue;
+      best = Math.min(best, Math.hypot(pos[2 * i] - pos[2 * j], pos[2 * i + 1] - pos[2 * j + 1]));
+    }
+    nearest.push(best);
+  }
+  nearest.sort((a, b) => a - b);
+  assert.ok(nearest[n >> 1] >= 15, `median nearest gap ${nearest[n >> 1]} px`);
+});
+
 test("linked nodes end up closer than unlinked ones", () => {
   // Two cliques of 20 with no link between them.
   const edges = [];
