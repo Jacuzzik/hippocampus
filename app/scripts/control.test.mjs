@@ -3,7 +3,10 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   ACTIVITY_FILTERS,
+  AGENT_TEMPLATES,
+  AVATARS,
   WINDOWS,
+  agentCommand,
   WINDOW_LABELS,
   activityText,
   agentStepError,
@@ -78,7 +81,9 @@ test("activity filters keep one kind, and approvals say who decided", () => {
 test("every activity kind the sidecar writes has a filter button", () => {
   // The kinds from KINDS in core/activity.py. A new kind needs a button here too.
   const kinds = ["handoff", "tool", "approval", "error", "budget", "setting"];
-  const buttons = ACTIVITY_FILTERS.map((f) => f.id).filter((id) => id !== "all");
+  const buttons = ACTIVITY_FILTERS.map((f) => f.id).filter(
+    (id) => id !== "all",
+  );
   assert.deepEqual([...buttons].sort(), [...kinds].sort());
 });
 
@@ -147,4 +152,34 @@ test("a dispatch needs an agent and a task", () => {
   assert.equal(dispatchError("", "Tidy"), "Pick an agent.");
   assert.equal(dispatchError("helper", "  "), "Write the task.");
   assert.equal(dispatchError("helper", "Tidy"), null);
+});
+
+test("the command line follows the provider, model and autonomy", () => {
+  const base = {
+    provider: "claude",
+    model: "claude-sonnet-5-5",
+    autonomy: "auto",
+  };
+  assert.equal(
+    agentCommand(base),
+    "claude --model claude-sonnet-5-5 --permission-mode bypassPermissions",
+  );
+  assert.equal(
+    agentCommand({ ...base, autonomy: "ask" }),
+    "claude --model claude-sonnet-5-5 --permission-mode default",
+  );
+  assert.equal(
+    agentCommand({ ...base, provider: "ollama", model: "qwen2.5" }),
+    "ollama run qwen2.5",
+  );
+});
+
+test("every avatar is an 8 by 8 grid and every template fills a briefing", () => {
+  for (const avatar of AVATARS) {
+    assert.equal(avatar.rows.length, 8, avatar.id);
+    for (const row of avatar.rows) assert.match(row, /^[#.]{8}$/, avatar.id);
+  }
+  for (const t of AGENT_TEMPLATES) {
+    assert.ok(t.description.length > 0 && t.goal.length > 0, t.id);
+  }
 });

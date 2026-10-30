@@ -4,8 +4,7 @@
   import { invoke } from "@tauri-apps/api/core";
   import logo from "../assets/brand/hippocampus-mark-purple.png";
   import { addedAgents, setAddedAgents } from "./addedAgents.svelte";
-  import { AGENT_PROVIDERS } from "../control/model";
-  import { FACES } from "../assistant/agentCard";
+  import { AGENT_PROVIDERS, AVATARS } from "../control/model";
   import { ORB_LABELS } from "../assistant/model";
   import { assistant } from "../assistant/session.svelte";
 
@@ -15,7 +14,7 @@
   // Added agents only; the main agent is not in this list, so it cannot be moved.
   const added = $derived(addedAgents.list);
 
-  // Opens the Control panel's add-agent steps (name, face, provider, goal).
+  // Opens the Add agent dialog (identity, workspace, engine, briefing).
   let { onadd }: { onadd: () => void } = $props();
 
   onMount(async () => {
@@ -45,11 +44,9 @@
     ctx: string;
   } | null>(null);
   const NO_DATA = "—";
-  // An added agent keeps its face as a file name; show it as the form's "Character N".
-  const faceOf = (file: string): string => {
-    const at = FACES.findIndex((f) => f === file);
-    return at < 0 ? NO_DATA : `Character ${at + 1}`;
-  };
+  // An added agent keeps its character id; show the avatar's name.
+  const faceOf = (id: string): string =>
+    AVATARS.find((a) => a.id === id)?.name ?? NO_DATA;
 
   function move(index: number, step: number): void {
     const target = index + step;

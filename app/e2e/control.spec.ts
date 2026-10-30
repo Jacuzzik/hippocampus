@@ -119,9 +119,11 @@ test("add an agent stops at each step until it is answered", async ({
 }) => {
   await mockSidecar(page);
   await page.goto("/");
-  await openControl(page);
-  const dialog = page.getByRole("dialog", { name: "Control panel" });
-  const add = dialog.locator("#control-add-agent").locator("..");
+  await page
+    .getByLabel("Agents")
+    .getByRole("button", { name: "+ Add agent" })
+    .click();
+  const add = page.getByRole("dialog", { name: "Add agent" });
   await add.getByRole("button", { name: "Next" }).click();
   await expect(add.getByRole("alert")).toHaveText("Give the agent a name.");
   await add.getByRole("textbox", { name: "Name", exact: true }).fill("Ada");
@@ -140,19 +142,19 @@ test("add an agent stops at each step until it is answered", async ({
   await add
     .getByRole("textbox", { name: "Goal", exact: true })
     .fill("Tidy the inbox notes");
-  await add.getByRole("button", { name: "Create agent" }).click();
-  await expect(add.getByRole("status")).toHaveText(
-    "Created Ada. It is on the agent bar.",
-  );
+  await add.getByRole("button", { name: "Spawn" }).click();
+  await expect(add).toHaveCount(0);
   await expect(page.getByLabel("Agents").getByText("Ada")).toBeVisible();
 });
 
 test("the engine is ready once a Claude key is saved", async ({ page }) => {
   await mockSidecar(page, { signedIn: true });
   await page.goto("/");
-  await openControl(page);
-  const dialog = page.getByRole("dialog", { name: "Control panel" });
-  const add = dialog.locator("#control-add-agent").locator("..");
+  await page
+    .getByLabel("Agents")
+    .getByRole("button", { name: "+ Add agent" })
+    .click();
+  const add = page.getByRole("dialog", { name: "Add agent" });
   await add.getByRole("textbox", { name: "Name", exact: true }).fill("Ada");
   await add.getByRole("button", { name: "Next" }).click();
   await add
