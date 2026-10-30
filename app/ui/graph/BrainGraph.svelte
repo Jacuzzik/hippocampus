@@ -22,6 +22,7 @@
     straightLines,
     tick,
     zoomAt,
+    incidentLines,
     type Camera,
     type GraphData,
     type Sim,
@@ -74,8 +75,12 @@
     node: Rgba;
     hot: Rgba;
     edge: Rgba;
+    edgeDim: Rgba;
+    edgeFocus: Rgba;
     bg: Rgba;
   } | null = null;
+  // The hovered (else selected) note, or -1; its links are drawn bright, the rest dim.
+  let focusIdx = -1;
   let frame = 0;
   // Group colours the viewer picked in the key; unset groups use the accent. Kept per viewer.
   const PICKS_KEY = "graph-group-colours";
@@ -132,6 +137,12 @@
     renderer?.setPositions(pos);
     lines = straightLines(pos, sim.edges);
     renderer?.setLines(lines);
+    focusEdges();
+  }
+
+  // The links of the focused note only, so they can be drawn bright. Follows the note as it moves.
+  function focusEdges(): void {
+    renderer?.setFocusLines(incidentLines(pos, sim.edges, focusIdx));
   }
 
   // Hit tests look only at the notes: the group centres and the core sit after them in pos.
@@ -191,7 +202,13 @@
       refreshLines();
       schedule();
     }
-    if (renderer && colours) renderer.draw(cam, colours.bg, colours.edge);
+    if (renderer && colours)
+      renderer.draw(
+        cam,
+        colours.bg,
+        focusIdx >= 0 ? colours.edgeDim : colours.edge,
+        colours.edgeFocus,
+      );
     drawLabels();
     // Read by the e2e test: how many nodes the last frame placed inside the canvas.
     if (canvas) canvas.dataset.inView = String(countInView());
@@ -325,6 +342,8 @@
     // A hovered note (else the selected one) and its links stay bright; every other note dims.
     const focus = hovered >= 0 ? hovered : selected;
     near = neighbourhood(focus);
+    focusIdx = focus;
+    focusEdges();
     for (let i = n; i < total; i++) {
       colors.set(colours.node, i * 4);
       radii[i] = i === total - 1 ? 8 : 0;
@@ -373,6 +392,8 @@
       node: token("accent"),
       hot: token("confirm"),
       edge: [...token("link").slice(0, 3), 0.16] as Rgba,
+      edgeDim: [...token("link").slice(0, 3), 0.04] as Rgba,
+      edgeFocus: [...token("link").slice(0, 3), 0.7] as Rgba,
       bg: token("bg-0"),
     };
     // Refit on every size change, so opening the note drawer (which narrows the canvas) keeps the graph in view.
@@ -515,8 +536,26 @@
     pushStyle();
   });
 
+  // Obsidian's keys: +/- zoom about the middle, arrows move the view (Shift for a bigger step). Not while typing.
   function onWindowKey(e: KeyboardEvent): void {
-    if (e.key === "Escape" && selected >= 0) onselect(null);
+    if (e.key === "Escape" && selected >= 0) return onselect(null);
+    const target = e.target instanceof HTMLElement ? e.target : null;
+    if (target?.closest("input, textarea, select, [contenteditable]")) return;
+    const [w, h] = size();
+    const step = e.shiftKey ? 160 : 40;
+    const moves: Record<string, [number, number]> = {
+      ArrowLeft: [-step, 0],
+      ArrowRight: [step, 0],
+      ArrowUp: [0, -step],
+      ArrowDown: [0, step],
+    };
+    const move = moves[e.key];
+    if (e.key === "+" || e.key === "=") cam = zoomAt(cam, w / 2, h / 2, 1.25);
+    else if (e.key === "-" || e.key === "_") cam = zoomAt(cam, w / 2, h / 2, 0.8);
+    else if (move) cam = { ...cam, x: cam.x + move[0], y: cam.y + move[1] };
+    else return;
+    e.preventDefault();
+    schedule();
   }
 </script>
 

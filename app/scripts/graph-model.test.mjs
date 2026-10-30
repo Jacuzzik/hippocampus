@@ -27,6 +27,7 @@ import {
   screenToWorld,
   tagCounts,
   zoomAt,
+  incidentLines,
 } from "../ui/graph/model.ts";
 
 function syntheticEdges(n, perNode, seed) {
@@ -317,4 +318,13 @@ test("labels fade in from zoom 0.5 to 1", () => {
   assert.equal(labelAlpha(0.4), 0);
   assert.equal(labelAlpha(1), 1);
   assert.ok(Math.abs(labelAlpha(0.75) - 0.5) < 1e-9);
+});
+
+test("incidentLines keeps only the links that touch the focused note", () => {
+  const pos = new Float32Array([0, 0, 10, 0, 20, 0, 30, 0]);
+  const edges = new Uint32Array([0, 1, 2, 3, 1, 2]);
+  // Note 1 touches links 0-1 and 1-2 only.
+  assert.deepEqual(Array.from(incidentLines(pos, edges, 1)), [0, 0, 10, 0, 10, 0, 20, 0]);
+  assert.equal(incidentLines(pos, edges, -1).length, 0);
+  assert.equal(incidentLines(pos, edges, 9).length, 0);
 });

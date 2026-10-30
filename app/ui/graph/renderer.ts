@@ -103,9 +103,12 @@ export class BrainRenderer {
   private readonly radiusBuf: WebGLBuffer;
   private readonly colorBuf: WebGLBuffer;
   private readonly edgeBuf: WebGLBuffer;
+  private readonly focusVao: WebGLVertexArrayObject;
+  private readonly focusBuf: WebGLBuffer;
   private dpr = 1;
   private nodeCount = 0;
   private edgeVertexCount = 0;
+  private focusVertexCount = 0;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
     const gl = canvas.getContext("webgl2", {
@@ -123,6 +126,7 @@ export class BrainRenderer {
     this.radiusBuf = buffer(gl, gl.ARRAY_BUFFER, new Float32Array(0));
     this.colorBuf = buffer(gl, gl.ARRAY_BUFFER, new Float32Array(0));
     this.edgeBuf = buffer(gl, gl.ARRAY_BUFFER, new Float32Array(0));
+    this.focusBuf = buffer(gl, gl.ARRAY_BUFFER, new Float32Array(0));
 
     this.nodeVao = this.makeVao(() => {
       const corner = buffer(gl, gl.ARRAY_BUFFER, quad);
@@ -133,6 +137,9 @@ export class BrainRenderer {
     });
     this.edgeVao = this.makeVao(() => {
       this.bindAttr(this.edgeProg, "pos", this.edgeBuf, 2, 0);
+    });
+    this.focusVao = this.makeVao(() => {
+      this.bindAttr(this.edgeProg, "pos", this.focusBuf, 2, 0);
     });
   }
 
@@ -183,6 +190,13 @@ export class BrainRenderer {
     this.gl.bufferData(this.gl.ARRAY_BUFFER, lines, this.gl.DYNAMIC_DRAW);
   }
 
+  /** The links of the hovered or selected note, drawn in their own colour over the rest. */
+  setFocusLines(lines: Float32Array): void {
+    this.focusVertexCount = lines.length / 2;
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.focusBuf);
+    this.gl.bufferData(this.gl.ARRAY_BUFFER, lines, this.gl.DYNAMIC_DRAW);
+  }
+
   /** One radius (px) per node. */
   setRadii(radii: Float32Array): void {
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.radiusBuf);
@@ -203,7 +217,7 @@ export class BrainRenderer {
     this.gl.viewport(0, 0, this.canvas.width, this.canvas.height);
   }
 
-  draw(cam: Camera, background: Rgba, edgeColor: Rgba): void {
+  draw(cam: Camera, background: Rgba, edgeColor: Rgba, focusColor: Rgba): void {
     const gl = this.gl;
     const cvp: [number, number] = [this.canvas.width, this.canvas.height];
     // Camera values are in CSS pixels; scale them to the backing store.
@@ -227,6 +241,11 @@ export class BrainRenderer {
     );
     gl.bindVertexArray(this.edgeVao);
     gl.drawArrays(gl.LINES, 0, this.edgeVertexCount);
+    if (this.focusVertexCount > 0) {
+      gl.uniform4f(gl.getUniformLocation(this.edgeProg, "edgeColor"), ...focusColor);
+      gl.bindVertexArray(this.focusVao);
+      gl.drawArrays(gl.LINES, 0, this.focusVertexCount);
+    }
 
     gl.useProgram(this.nodeProg);
     gl.uniform3f(gl.getUniformLocation(this.nodeProg, "cam"), ...camU);
@@ -250,5 +269,7 @@ export class BrainRenderer {
       gl.deleteBuffer(b);
     gl.deleteVertexArray(this.nodeVao);
     gl.deleteVertexArray(this.edgeVao);
+    gl.deleteBuffer(this.focusBuf);
+    gl.deleteVertexArray(this.focusVao);
   }
 }

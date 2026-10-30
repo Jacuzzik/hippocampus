@@ -15,6 +15,7 @@ export class Canvas2DRenderer {
   private readonly ctx: CanvasRenderingContext2D;
   private pos: Float32Array = new Float32Array(0);
   private lines: Float32Array = new Float32Array(0);
+  private focusLines: Float32Array = new Float32Array(0);
   private colors: Float32Array = new Float32Array(0);
   private radii: Float32Array = new Float32Array(0);
   private dpr = 1;
@@ -39,6 +40,10 @@ export class Canvas2DRenderer {
     this.lines = lines;
   }
 
+  setFocusLines(lines: Float32Array): void {
+    this.focusLines = lines;
+  }
+
   /** One radius (CSS px) per node. */
   setRadii(radii: Float32Array): void {
     this.radii = radii;
@@ -55,8 +60,8 @@ export class Canvas2DRenderer {
     this.canvas.height = Math.max(1, Math.round(cssHeight * this.dpr));
   }
 
-  draw(cam: Camera, background: Rgba, edgeColor: Rgba): void {
-    const { ctx, pos, lines, colors, radii } = this;
+  draw(cam: Camera, background: Rgba, edgeColor: Rgba, focusColor: Rgba): void {
+    const { ctx, pos, lines, focusLines, colors, radii } = this;
     const width = this.canvas.width / this.dpr;
     const height = this.canvas.height / this.dpr;
     // Work in CSS pixels; the transform maps them to the backing store.
@@ -64,19 +69,24 @@ export class Canvas2DRenderer {
     ctx.fillStyle = css(background);
     ctx.fillRect(0, 0, width, height);
 
+    const strokeLines = (segs: Float32Array) => {
+      ctx.beginPath();
+      for (let i = 0; i < segs.length; i += 4) {
+        ctx.moveTo(
+          (segs[i] ?? 0) * cam.zoom + cam.x,
+          (segs[i + 1] ?? 0) * cam.zoom + cam.y,
+        );
+        ctx.lineTo(
+          (segs[i + 2] ?? 0) * cam.zoom + cam.x,
+          (segs[i + 3] ?? 0) * cam.zoom + cam.y,
+        );
+      }
+      ctx.stroke();
+    };
     ctx.strokeStyle = css(edgeColor);
-    ctx.beginPath();
-    for (let i = 0; i < lines.length; i += 4) {
-      ctx.moveTo(
-        (lines[i] ?? 0) * cam.zoom + cam.x,
-        (lines[i + 1] ?? 0) * cam.zoom + cam.y,
-      );
-      ctx.lineTo(
-        (lines[i + 2] ?? 0) * cam.zoom + cam.x,
-        (lines[i + 3] ?? 0) * cam.zoom + cam.y,
-      );
-    }
-    ctx.stroke();
+    strokeLines(lines);
+    ctx.strokeStyle = css(focusColor);
+    strokeLines(focusLines);
 
     for (let i = 0; i < radii.length; i++) {
       const c = [0, 1, 2, 3].map((k) => colors[4 * i + k] ?? 0) as Rgba;

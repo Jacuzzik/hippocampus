@@ -522,3 +522,15 @@ export function straightLines(
   }
   return out;
 }
+
+/** World-space segments for only the links that touch note `focus`, so hovering lights them. Empty for -1. */
+export function incidentLines(
+  pos: ArrayLike<number>,
+  edges: Uint32Array,
+  focus: number,
+): Float32Array<ArrayBuffer> {
+  const picked: number[] = [];
+  for (let e = 0; e < edges.length; e += 2)
+    if (edges[e] === focus || edges[e + 1] === focus) picked.push(edges[e] ?? 0, edges[e + 1] ?? 0);
+  return straightLines(pos, Uint32Array.from(picked));
+}
