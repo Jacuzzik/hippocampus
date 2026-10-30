@@ -348,11 +348,28 @@ export const SHAPE_TALL = 2;
 /** Hit-test reach in px: the largest node shape at the largest radius (a tall rectangle's top or bottom). */
 export const NODE_HIT_PX = 14;
 
-/** A note's shape from a hash of its id, so it is the same on every draw and every launch. */
-export function nodeShape(id: string): number {
+function idHash(id: string): number {
   let h = 2166136261;
   for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 16777619);
-  return h & 1 ? SHAPE_SQUARE : SHAPE_TALL;
+  return h >>> 0;
+}
+
+/** A note's shape from a hash of its id, so it is the same on every draw and every launch. */
+export function nodeShape(id: string): number {
+  return idHash(id) & 1 ? SHAPE_SQUARE : SHAPE_TALL;
+}
+
+/** Outline tones a note can take: the accent, then two lighter tints of it. */
+export const TONES = 3;
+
+/** A note's tone from the same id hash, so it is stable across draws and launches. */
+export function nodeTone(id: string): number {
+  return idHash(id) % TONES;
+}
+
+/** Mix an RGBA colour toward white by t (0 to 1), keeping its alpha. */
+export function tint([r = 0, g = 0, b = 0, a = 1]: number[], t: number): [number, number, number, number] {
+  return [r + (1 - r) * t, g + (1 - g) * t, b + (1 - b) * t, a];
 }
 
 export type GraphLayout = "arc" | "force";

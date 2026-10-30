@@ -24,6 +24,8 @@ import {
   MAX_ZOOM,
   nodeRadius,
   nodeShape,
+  nodeTone,
+  TONES,
   SHAPE_SQUARE,
   SHAPE_TALL,
   MIN_ZOOM,
@@ -241,6 +243,14 @@ test("nodeShape is a stable hash of the id, and both hollow shapes occur", () =>
   assert.deepEqual(shapes, ids.map(nodeShape));
   assert.ok(shapes.includes(SHAPE_SQUARE) && shapes.includes(SHAPE_TALL));
   assert.ok(shapes.every((s) => s === SHAPE_SQUARE || s === SHAPE_TALL));
+});
+
+test("nodeTone is a stable hash of the id into the accent tones, and all of them occur", () => {
+  const ids = Array.from({ length: 200 }, (_, i) => `Notes/n${i}.md`);
+  const tones = ids.map(nodeTone);
+  assert.deepEqual(tones, ids.map(nodeTone));
+  assert.ok(tones.every((t) => t >= 0 && t < TONES));
+  assert.equal(new Set(tones).size, TONES);
 });
 
 test("arc rows run by group, then title, one row per note, and each note sits on the ring", () => {

@@ -19,7 +19,9 @@
     newSim,
     nodeRadius,
     nodeShape,
+    nodeTone,
     SHAPE_DISK,
+    tint,
     reheat,
     settle,
     straightLines,
@@ -76,6 +78,7 @@
   const measurer = document.createElement("canvas").getContext("2d");
   let colours: {
     node: Rgba;
+    tones: Rgba[];
     hot: Rgba;
     edge: Rgba;
     edgeDim: Rgba;
@@ -355,7 +358,8 @@
     }
     for (let i = 0; i < n; i++) {
       const isSel = i === selected;
-      const base = isSel ? colours.hot : (picked[groups.of[i] ?? 0] ?? colours.node);
+      const tone = colours.tones[nodeTone(data.nodes[i]?.id ?? "")] ?? colours.node;
+      const base = isSel ? colours.hot : (picked[groups.of[i] ?? 0] ?? tone);
       const lit = focus < 0 || near.has(i) ? 1 : 0.2;
       const alpha = visible[i] ? base[3] * lit : base[3] * 0.15;
       colors.set([base[0], base[1], base[2], alpha], i * 4);
@@ -397,6 +401,8 @@
     renderer = r;
     colours = {
       node: token("accent"),
+      // Note outlines: the accent, then two lighter tints of it (see nodeTone in model.ts).
+      tones: [0, 0.3, 0.55].map((t) => tint(token("accent"), t) as Rgba),
       hot: token("confirm"),
       edge: [...token("link").slice(0, 3), 0.16] as Rgba,
       edgeDim: [...token("link").slice(0, 3), 0.04] as Rgba,
