@@ -563,6 +563,15 @@ class Session:
         self.note("approval", tool="remove_skill", tier="act", approved=True, by="card")
         return self.skills_state()
 
+    def install_skill(self, request: dict[str, Any]) -> dict[str, Any]:
+        if request.get("approve") is not True:
+            raise ValueError("installing a skill needs the user's approval")
+        name = skills.install_skill(SKILLS_DIR, request.get("path"))
+        self.note(
+            "approval", tool="install_skill", tier="write", approved=True, by="card", name=name
+        )
+        return self.skills_state()
+
     def open_skill_folder(self, request: dict[str, Any]) -> dict[str, Any]:
         skills.open_folder(SKILLS_DIR, request.get("name"), subprocess.Popen)
         self.note("tool", tool="open_skill_folder", tier="open", status="done")
@@ -680,6 +689,7 @@ class Session:
             "set_job": self.set_job,
             "start_helper": self.start_helper,
             "remove_skill": self.remove_skill,
+            "install_skill": self.install_skill,
             "open_skill_folder": self.open_skill_folder,
             "share": self.share_note,
             "save_key": self.save_key,

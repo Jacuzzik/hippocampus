@@ -2,8 +2,8 @@
   import { invoke } from "@tauri-apps/api/core";
   import { onMount } from "svelte";
 
-  // What the app can use: MCP servers, skills and plugins. Only skills can be removed (the
-  // remove_skill call exists). Install has no sidecar call yet, so it stays Not set up.
+  // What the app can use: MCP servers, skills and plugins. Skills can be installed from a folder
+  // and removed (the install_skill and remove_skill calls). MCP and plugins stay Not set up.
   type Skill = { name: string; description: string };
   // MCP servers and plugins are not read from disk yet, so these lists are empty for now.
   const mcpServers: { name: string }[] = [];
@@ -43,14 +43,38 @@
     }
   }
 
+  // Installing copies a skill folder the user names into the skills folder. Two clicks, as for remove.
+  let installPath = $state("");
+  let installArmed = $state(false);
+
+  async function installSkill(): Promise<void> {
+    if (!installArmed) {
+      installArmed = true;
+      return;
+    }
+    installArmed = false;
+    try {
+      skills = (
+        await invoke<{ skills: Skill[] }>("sidecar_call", {
+          method: "install_skill",
+          params: { path: installPath.trim(), approve: true },
+        })
+      ).skills;
+      installPath = "";
+      error = null;
+    } catch (cause) {
+      error = String(cause);
+    }
+  }
+
   onMount(() => void load());
 </script>
 
 <section class="control-section" aria-labelledby="control-capabilities">
   <h3 id="control-capabilities">Capabilities</h3>
   <p class="hint">
-    Tools and skills the assistant can use. You can remove a skill here. Installing
-    is Not set up in this build.
+    Tools and skills the assistant can use. You can install a skill from a folder
+    and remove one here. MCP servers and plugins are Not set up in this build.
   </p>
   {#each [{ title: "MCP servers", items: mcpServers }, { title: "Plugins", items: plugins }] as group (group.title)}
     <h4>{group.title}</h4>
@@ -88,7 +112,16 @@
     </ul>
   {/if}
   <div class="row">
-    <button type="button" disabled>Install: Not set up</button>
+    <input
+      type="text"
+      aria-label="Skill folder path"
+      placeholder="Path to a skill folder"
+      bind:value={installPath}
+      oninput={() => (installArmed = false)}
+    />
+    <button type="button" disabled={!installPath.trim()} onclick={installSkill}>
+      {installArmed ? `Confirm install of ${installPath.trim()}` : "Install"}
+    </button>
   </div>
   {#if error}<p class="error" role="alert">{error}</p>{/if}
 </section>

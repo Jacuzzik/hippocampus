@@ -49,6 +49,21 @@ def remove_skill(root: Path, name: object) -> None:
     shutil.rmtree(skill_folder(root, name))
 
 
+def install_skill(root: Path, source: object) -> str:
+    """Copy a skill folder (one holding SKILL.md) into the skills folder. Returns its name."""
+    if not isinstance(source, str) or not source.strip():
+        raise ValueError("give the path of a skill folder")
+    folder = Path(source.strip()).expanduser().resolve()
+    if not (folder / "SKILL.md").is_file():
+        raise ValueError(f"{folder} has no SKILL.md file")
+    if not NAME.fullmatch(folder.name):
+        raise ValueError("skill names are lowercase letters, digits and hyphens")
+    if (root / folder.name).exists():
+        raise ValueError(f"a skill named {folder.name} is already installed")
+    shutil.copytree(folder, root / folder.name)
+    return folder.name
+
+
 def open_folder(root: Path, name: object, launch: Callable[[list[str]], object]) -> None:
     # shortcut: one fixed file-manager command per OS, no shell; upgrade if a platform needs more.
     launch([FILE_MANAGER, str(skill_folder(root, name))])

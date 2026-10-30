@@ -390,6 +390,12 @@ export async function mockSidecar(
           case "remove_skill":
             skillRows = skillRows.filter((k) => k.name !== args.params?.name);
             return { skills: skillRows };
+          case "install_skill": {
+            const path = String(args.params?.path ?? "");
+            const name = path.split("/").pop() ?? "";
+            skillRows = [...skillRows, { name, description: "Installed from a folder", path }];
+            return { skills: skillRows };
+          }
           case "share":
             throw new Error("Not set up: no share host is configured.");
           case "keys":

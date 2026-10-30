@@ -392,6 +392,27 @@ def test_skills_are_listed_and_only_installed_ones_can_be_removed(tmp_path: Path
     assert not (tmp_path / "tidy").exists()
 
 
+def test_a_skill_folder_is_copied_in_only_when_valid_and_new(tmp_path: Path) -> None:
+    installed, source = tmp_path / "installed", tmp_path / "src" / "tidy"
+    installed.mkdir()
+    source.mkdir(parents=True)
+    (source / "SKILL.md").write_text("---\nname: tidy\ndescription: Keeps notes neat\n---\n")
+    assert skills.install_skill(installed, str(source)) == "tidy"
+    assert (installed / "tidy" / "SKILL.md").is_file()
+    with pytest.raises(ValueError, match="already installed"):
+        skills.install_skill(installed, str(source))
+    (tmp_path / "loose").mkdir()
+    for bad in ["", None, str(tmp_path / "loose")]:
+        with pytest.raises(ValueError):
+            skills.install_skill(installed, bad)
+
+
+def test_install_skill_needs_approval(tmp_path: Path) -> None:
+    session = sidecar.Session(tmp_path / "storage", Settings(), emit=lambda e: None)
+    with pytest.raises(ValueError, match="approval"):
+        session.dispatch({"method": "install_skill", "path": str(tmp_path)})
+
+
 def test_a_skill_folder_opens_only_when_installed(tmp_path: Path) -> None:
     (tmp_path / "tidy").mkdir()
     (tmp_path / "tidy" / "SKILL.md").write_text("---\nname: tidy\n---\n")
