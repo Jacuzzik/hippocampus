@@ -1,7 +1,6 @@
 <script lang="ts">
   import "./control.css";
   import ActivitySection from "./ActivitySection.svelte";
-  import AddAgentSection from "./AddAgentSection.svelte";
   import AsksSection from "./AsksSection.svelte";
   import BudgetSection from "./BudgetSection.svelte";
   import CapabilitiesSection from "./CapabilitiesSection.svelte";
@@ -16,7 +15,7 @@
   import TeamsSection from "./TeamsSection.svelte";
   import TriggersSection from "./TriggersSection.svelte";
 
-  // The control panel: network, triggers, budgets, agents, dispatch, the activity log, questions,
+  // The control panel: network, triggers, budgets, dispatch, the activity log, questions,
   // memory, jobs, helpers, capabilities, teams, sharing, skills and keys, in one scrolling list.
   let { onclose, onsettings }: { onclose: () => void; onsettings: () => void } =
     $props();
@@ -58,7 +57,6 @@
       <NetworkSection />
       <TriggersSection />
       <BudgetSection />
-      <AddAgentSection />
       <DispatchSection />
       <AsksSection />
       <ActivitySection />

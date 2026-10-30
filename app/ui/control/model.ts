@@ -143,6 +143,103 @@ export const AGENT_PROVIDERS = [
   { id: "ollama", label: "Ollama (on this computer)", needsKey: false },
 ] as const;
 
+/** Original 8x8 pixel avatars drawn here in code. "#" is a filled pixel, "." is empty. */
+export const AVATARS = [
+  {
+    id: "pip",
+    name: "Pip",
+    rows: [
+      "..####..",
+      ".######.",
+      "##.##.##",
+      "########",
+      "########",
+      ".######.",
+      "..#..#..",
+      "..#..#..",
+    ],
+  },
+  {
+    id: "moss",
+    name: "Moss",
+    rows: [
+      "...##...",
+      "..####..",
+      ".##..##.",
+      ".######.",
+      ".######.",
+      "..####..",
+      ".#.##.#.",
+      "........",
+    ],
+  },
+  {
+    id: "ember",
+    name: "Ember",
+    rows: [
+      "#......#",
+      ".#....#.",
+      "..####..",
+      ".######.",
+      ".#.##.#.",
+      ".######.",
+      "..####..",
+      "........",
+    ],
+  },
+  {
+    id: "quill",
+    name: "Quill",
+    rows: [
+      "...#....",
+      "..###...",
+      ".#####..",
+      "#.###.#.",
+      "#######.",
+      ".#####..",
+      "..#.#...",
+      "........",
+    ],
+  },
+] as const;
+
+export const AGENT_COLOURS = ["accent", "think", "confirm", "danger"] as const;
+
+/** Briefing starters. They fill the description and goal; the name stays the user's. */
+export const AGENT_TEMPLATES = [
+  {
+    id: "janitor",
+    label: "Repo janitor",
+    description:
+      "Keeps the repository tidy: stale branches, dead code and clutter.",
+    goal: "Find clutter each week and list it with a proposed fix. Delete nothing without a yes.",
+  },
+  {
+    id: "docs",
+    label: "Docs writer",
+    description: "Keeps the docs in step with the code.",
+    goal: "Update docs for any code change and flag the pages that no longer match.",
+  },
+  {
+    id: "triage",
+    label: "Bug triager",
+    description: "Reads new bug reports and sorts them.",
+    goal: "Label each new bug by area and severity, and ask for a repro when one is missing.",
+  },
+  {
+    id: "research",
+    label: "Research assistant",
+    description: "Finds and summarises sources on a question.",
+    goal: "Collect the best sources on the topic and write a short summary with links.",
+  },
+  {
+    id: "release",
+    label: "Release manager",
+    description: "Prepares each release.",
+    goal: "Draft the changelog, check the release checklist, and report anything blocking.",
+  },
+] as const;
+
 /** What the add-agent form collects. Empty strings are not yet answered. */
 export interface AgentDraft {
   name: string;
@@ -187,6 +284,16 @@ export function engineStatus(
   return savedKeys.includes(provider)
     ? { ready: true, text: `Ready: ${row.label} key saved.` }
     : { ready: false, text: `Not set up: no ${row.label} key saved.` };
+}
+
+/** The command line the choice builds, e.g. "claude --model m --permission-mode bypassPermissions". */
+export function agentCommand(
+  draft: Pick<AgentDraft, "provider" | "model" | "autonomy">,
+): string {
+  const model = draft.model.trim();
+  if (draft.provider === "ollama") return `ollama run ${model}`;
+  const mode = draft.autonomy === "auto" ? "bypassPermissions" : "default";
+  return `claude --model ${model} --permission-mode ${mode}`;
 }
 
 /** A dispatched task needs words in it. The agent is picked from the list the panel shows. */

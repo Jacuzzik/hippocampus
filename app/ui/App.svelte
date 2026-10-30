@@ -10,6 +10,7 @@
   import AccountDialog from "./overlays/AccountDialog.svelte";
   import ToolsDialog from "./overlays/ToolsDialog.svelte";
   import ControlDialog from "./control/ControlDialog.svelte";
+  import AddAgentDialog from "./control/AddAgentDialog.svelte";
   import SettingsDialog from "./control/SettingsDialog.svelte";
   import SettingsFloat from "./regions/SettingsFloat.svelte";
   import CommandBox, { type Item } from "./overlays/CommandBox.svelte";
@@ -37,6 +38,7 @@
   let toolsOpen = $state(false);
   // The control panel: network, budgets, activity, questions, memory, jobs, helpers, sharing, skills, keys.
   let controlOpen = $state(false);
+  let addOpen = $state(false);
   // The settings: six tabs, from the command palette or the control panel.
   let settingsOpen = $state(false);
   let settingsFloatOpen = $state(false);
@@ -82,7 +84,11 @@
       run: () => (panelOpen = !panelOpen),
     },
     { id: "search", label: "Search notes", run: focusSearch },
-    { id: "fullscreen", label: "Toggle full screen (F11)", run: toggleFullscreen },
+    {
+      id: "fullscreen",
+      label: "Toggle full screen (F11)",
+      run: toggleFullscreen,
+    },
     {
       id: "reset-graph",
       label: "Reset graph view",
@@ -165,6 +171,10 @@
   />
 {/if}
 
+{#if addOpen}
+  <AddAgentDialog onclose={() => (addOpen = false)} />
+{/if}
+
 {#if settingsOpen}
   <SettingsDialog onclose={() => (settingsOpen = false)} />
 {/if}
@@ -212,7 +222,7 @@
     onselect={(id) => (selectedId = id)}
   />
   <RightPanel open={panelOpen} />
-  <StatusBar {data} onadd={() => (controlOpen = true)} />
+  <StatusBar {data} onadd={() => (addOpen = true)} />
 </div>
 
 <style>
