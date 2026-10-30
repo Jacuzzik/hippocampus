@@ -340,7 +340,7 @@
   function pushStyle(): void {
     if (!renderer || !colours) return;
     const n = data.nodes.length;
-    // pos also holds the core after the notes: a dot at the origin, not a note.
+    // pos also holds the core and the group centres after the notes. They are not drawn (radius 0) and not hit (hit tests stop at the notes).
     const total = pos.length / 2;
     const colors = new Float32Array(total * 4);
     const radii = new Float32Array(total);
@@ -353,7 +353,7 @@
     focusEdges();
     for (let i = n; i < total; i++) {
       colors.set(colours.node, i * 4);
-      radii[i] = i === total - 1 ? 8 : 0;
+      radii[i] = 0;
       shapes[i] = SHAPE_DISK;
     }
     for (let i = 0; i < n; i++) {
