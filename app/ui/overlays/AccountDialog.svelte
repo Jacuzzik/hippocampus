@@ -1,5 +1,6 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
+  import { open } from "@tauri-apps/plugin-dialog";
   import { onMount, tick } from "svelte";
 
   // Setup and account, as in Munder Difflin's onboarding: open the brain folder, then sign in to
@@ -28,16 +29,35 @@
     vaultInput?.focus();
   });
 
-  async function openBrain(e: SubmitEvent): Promise<void> {
-    e.preventDefault();
+  // Saves the folder as the brain folder (settings file) and opens it.
+  async function setVault(folder: string): Promise<void> {
     error = null;
     try {
       await invoke("sidecar_call", {
-        method: "open",
-        params: { vault: vault.trim() },
+        method: "set_vault",
+        params: { vault: folder },
       });
       onopened();
       onclose();
+    } catch (cause) {
+      error = String(cause);
+    }
+  }
+
+  async function openBrain(e: SubmitEvent): Promise<void> {
+    e.preventDefault();
+    await setVault(vault.trim());
+  }
+
+  async function chooseFolder(): Promise<void> {
+    error = null;
+    try {
+      const picked = await open({
+        directory: true,
+        multiple: false,
+        title: "Choose the brain folder",
+      });
+      if (typeof picked === "string") await setVault(picked);
     } catch (cause) {
       error = String(cause);
     }
@@ -130,6 +150,7 @@
           autocomplete="off"
           required
         />
+        <button type="button" onclick={chooseFolder}>Choose folder…</button>
         <button type="submit" class="primary">Open brain</button>
       </div>
     </form>

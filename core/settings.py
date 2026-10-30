@@ -1,5 +1,6 @@
 """Reads config/settings.toml. It holds no secrets: API keys live in the OS keychain."""
 
+import json
 import os
 import re
 import tomllib
@@ -162,6 +163,13 @@ def save_allowed_tools(names: tuple[str, ...] | None, path: Path = SETTINGS_PATH
         else:
             lines += ["", "[ai]", entry]
     _write(path, "\n".join(lines) + "\n")
+
+
+def save_vault(folder: Path, path: Path = SETTINGS_PATH) -> None:
+    """Write `[vault] path` (an absolute folder) to the settings file, keeping the rest."""
+    # A JSON string is also a valid TOML basic string, so json.dumps quotes and escapes the path.
+    block = f"[vault]\npath = {json.dumps(str(folder))}"
+    _write(path, _replace_sections(_read(path), ("[vault]",), [block]))
 
 
 def save_network_mode(mode: str, path: Path = SETTINGS_PATH) -> None:
