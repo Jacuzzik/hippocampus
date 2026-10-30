@@ -64,7 +64,31 @@ test("1,167 notes spread out: the typical note keeps room for its dot", () => {
     nearest.push(best);
   }
   nearest.sort((a, b) => a - b);
-  assert.ok(nearest[n >> 1] >= 15, `median nearest gap ${nearest[n >> 1]} px`);
+  // 12, not 15: the repel softening lets linked clusters sit ~14 px apart. The 8 px regression still fails.
+  assert.ok(nearest[n >> 1] >= 12, `median nearest gap ${nearest[n >> 1]} px`);
+});
+
+test("unlinked notes scatter irregularly, not on a lattice", () => {
+  // Regression: the real vault is 92% unlinked. Without the repel softening they settled into a regular grid (nearest-gap CV 0.22).
+  const n = 1175;
+  const linked = 95;
+  const pairs = [];
+  for (let i = 1; i < linked; i++) pairs.push([i, ((i * 7919) % 97) % i]);
+  const deg = new Uint32Array(n);
+  for (const [a, b] of pairs) (deg[a]++, deg[b]++);
+  const pos = layout(n, pairs, undefined, 1);
+  assert.ok(pos.every(Number.isFinite));
+  const free = [];
+  for (let i = 0; i < n; i++) if (deg[i] === 0) free.push(i);
+  const gaps = free.map((i) => {
+    let best = Infinity;
+    for (const j of free)
+      if (j !== i) best = Math.min(best, Math.hypot(pos[2 * i] - pos[2 * j], pos[2 * i + 1] - pos[2 * j + 1]));
+    return best;
+  });
+  const mean = gaps.reduce((a, b) => a + b, 0) / gaps.length;
+  const sd = Math.sqrt(gaps.reduce((a, b) => a + (b - mean) ** 2, 0) / gaps.length);
+  assert.ok(sd / mean >= 0.4, `nearest-gap CV ${(sd / mean).toFixed(3)}`);
 });
 
 test("a hub with 30 links does not blow up the layout", () => {

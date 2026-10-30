@@ -54,6 +54,8 @@ export const CENTER_STRENGTH = 0.02;
 export const REPEL_STRENGTH = 400;
 /** Repel reaches this far, in world px. shortcut: a cutoff, not an all-pairs charge, so far-apart clusters push each other less; upgrade to Barnes-Hut if they drift together. */
 export const REPEL_RANGE = 200;
+/** Repel softening, px²: notes closer than ~40 px push with a finite force. Without it, the first steps overshoot and settle into a regular lattice. shortcut: tuned on a 1,175-note proxy; 2,500 collapses notes onto one point, so re-check on the real vault before raising it. */
+export const REPEL_SOFTEN = 1600;
 /** Share of velocity kept each step (d3's default friction). */
 const VELOCITY_KEEP = 0.6;
 /** Heat falls from 1 to ALPHA_MIN over 300 steps. A grab or a drop re-heats it to REHEAT, so the neighbours settle back. */
@@ -141,7 +143,7 @@ export function tick(sim: Sim): boolean {
           if (j === i) continue;
           const ddx = x - (pos[2 * j] ?? 0);
           const ddy = y - (pos[2 * j + 1] ?? 0);
-          const d2 = ddx * ddx + ddy * ddy + 0.01;
+          const d2 = ddx * ddx + ddy * ddy + REPEL_SOFTEN;
           if (d2 > reach2) continue;
           const f = (REPEL_STRENGTH * a) / d2;
           add(vel, 2 * i, ddx * f);
