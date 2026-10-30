@@ -70,6 +70,7 @@
   let lines: Float32Array = new Float32Array(0);
   // Hides notes with no links. Off by default, so every note shows.
   let hideOrphans = $state(false);
+  let hideNames = $state(false);
   // Reduced motion: the nodes stay still.
   const calm =
     typeof matchMedia === "function" &&
@@ -170,6 +171,10 @@
   // Greedy: a label is drawn only if it clears every label already placed this frame.
   // shortcut: label width is measured once per title and placement is a linear scan, so a few hundred labels at most; upgrade to a spatial grid if more.
   function drawLabels(): void {
+    if (hideNames) {
+      labels = [];
+      return;
+    }
     const [w, h] = size();
     const fade = labelAlpha(cam.zoom);
     const placed: { text: string; x: number; y: number; a: number }[] = [];
@@ -536,17 +541,13 @@
     pushStyle();
   }
 
-  // Puts every note back on a fresh layout, after the user has dragged some. Asks first.
-  function resetPositions(): void {
-    if (!confirm("Reset every note to the computed layout? Your moved notes will go back.")) return;
-    relayout();
-  }
-
   // Re-colour when the filter or the selection changes.
   $effect(() => {
     void visible;
     void selected;
+    void hideNames;
     pushStyle();
+    schedule();
   });
 
   // Obsidian's keys: +/- zoom about the middle, arrows move the view (Shift for a bigger step). Not while typing.
@@ -597,11 +598,11 @@
 
   <div class="tools">
     <button type="button" class="fit" onclick={fitAll}>Fit graph</button>
-    <button type="button" class="fit" onclick={resetPositions}
-      >Reset position</button
-    >
-    <label class="orphans">
+    <label class="toggle">
       <input type="checkbox" bind:checked={hideOrphans} /> Hide orphans
+    </label>
+    <label class="toggle">
+      <input type="checkbox" bind:checked={hideNames} /> Hide names
     </label>
   </div>
 
@@ -848,9 +849,9 @@
     cursor: pointer;
   }
 
-  /* Tablets and touch screens: the Hide orphans label is the touch target, so it takes the minimum height. */
+  /* Tablets and touch screens: the toggle labels are the touch target, so they take the minimum height. */
   @media (max-width: 1100px), (pointer: coarse) {
-    .orphans {
+    .toggle {
       display: inline-flex;
       align-items: center;
       min-height: var(--layout-touch-target);
