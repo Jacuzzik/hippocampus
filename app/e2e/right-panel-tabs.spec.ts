@@ -44,6 +44,8 @@ test("the monitor tab lists the background watchers with their status", async ({
   await page.getByRole("tab", { name: "monitor" }).click();
   const region = page.getByRole("region", { name: "Monitor" });
   await expect(region).toContainText("Watchers");
+  await expect(region).toContainText("CPU");
+  await expect(region).toContainText("42%");
   await expect(region).toContainText("Weekly link check");
   await expect(region).toContainText("trigger");
 });
