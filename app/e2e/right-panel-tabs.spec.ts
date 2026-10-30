@@ -39,3 +39,11 @@ test("the right panel tabs save screenshots when SHOTS_DIR is set", async ({ pag
     await page.screenshot({ path: `${process.env.SHOTS_DIR}/${name}.png` });
   }
 });
+
+test("the monitor tab lists the background watchers with their status", async ({ page }) => {
+  await page.getByRole("tab", { name: "monitor" }).click();
+  const region = page.getByRole("region", { name: "Monitor" });
+  await expect(region).toContainText("Watchers");
+  await expect(region).toContainText("Weekly link check");
+  await expect(region).toContainText("trigger");
+});

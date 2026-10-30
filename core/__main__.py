@@ -553,6 +553,23 @@ class Session:
     def helpers_state(self) -> dict[str, Any]:
         return {"helpers": self.helpers.list(), "limit": 4}
 
+    def watchers_state(self) -> dict[str, Any]:
+        """Background watchers, read only. `watch` runs VaultWatcher, not `serve`, so the
+        vault row is always stopped here; the minute timer runs triggers only with a vault."""
+        rows: list[dict[str, str | None]] = []
+        if self.indexer is not None:
+            rows.append(_watcher(self.indexer.vault.name, "vault watcher", "stopped"))
+        for job in job_store.load(self.jobs_path):
+            on = "running" if job.enabled and self.indexer is not None else "stopped"
+            rows.append(_watcher(job.name, "trigger", on, job.last_run))
+        for hook in webhooks.load(self.webhooks_path):  # saved only: nothing listens for them
+            rows.append(_watcher(hook["name"], "webhook", "stopped"))
+        status = {"running": "running", "done": "stopped", "failed": "error"}
+        for job in self.helpers.list():
+            name = f"helper {job['id']}: {job['prompt'][:40]}"
+            rows.append(_watcher(name, "helper", status[job["status"]]))
+        return {"watchers": rows}
+
     def start_helper(self, request: dict[str, Any]) -> dict[str, Any]:
         prompt = request.get("prompt")
         if not isinstance(prompt, str):
@@ -739,6 +756,7 @@ class Session:
             "memory_status": self.memory_status,
             "jobs": self.jobs,
             "helpers": self.helpers_state,
+            "watchers": self.watchers_state,
             "skills": self.skills_state,
             "keys": self.keys,
             "webhooks": self.webhooks_state,
@@ -774,6 +792,12 @@ class Session:
             if self.indexer is not None:
                 self.indexer.store.close()
                 self.indexer = None
+
+
+def _watcher(
+    name: str, kind: str, status: str, last_event: str | None = None
+) -> dict[str, str | None]:
+    return {"name": name, "kind": kind, "status": status, "last_event": last_event}
 
 
 def _whole(value: object, name: str) -> int:

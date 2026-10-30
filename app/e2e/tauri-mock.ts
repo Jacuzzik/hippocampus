@@ -364,6 +364,18 @@ export async function mockSidecar(
             if (args.params?.mode === "meaning")
               throw new Error("Not set up: no embedding model is installed.");
             return { mode: "text", hits: ["ideas/memory.md"] };
+          case "watchers":
+            return {
+              watchers: [
+                { name: "brain", kind: "vault watcher", status: "stopped", last_event: null },
+                {
+                  name: "Weekly link check",
+                  kind: "trigger",
+                  status: "stopped",
+                  last_event: null,
+                },
+              ],
+            };
           case "jobs":
             return { jobs: jobRows };
           case "set_job": {

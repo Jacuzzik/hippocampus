@@ -17,14 +17,23 @@
     ["assistant", "Assistant"],
   ] as const;
 
+  type Watcher = {
+    name: string;
+    kind: string;
+    status: "running" | "stopped" | "error";
+    last_event: string | null;
+  };
+
   let mode = $state<NetworkMode | null>(null);
   let budget = $state<Budget | null>(null);
+  let watchers = $state<Watcher[]>([]);
   let failed = $state(false);
 
   onMount(async () => {
     try {
       mode = (await invoke<{ mode: NetworkMode }>("sidecar_call", { method: "network" })).mode;
       budget = await invoke<Budget>("sidecar_call", { method: "budget" });
+      watchers = (await invoke<{ watchers: Watcher[] }>("sidecar_call", { method: "watchers" })).watchers;
     } catch (cause) {
       failed = true;
       console.error("Could not read the monitor", cause);
@@ -49,6 +58,20 @@
         {/each}
       </dl>
     {/each}
+    <h3>Watchers</h3>
+    {#if watchers.length === 0}
+      <p class="muted">No background watchers are set up.</p>
+    {:else}
+      <ul>
+        {#each watchers as watcher, i (i)}
+          <li>
+            <span class="status {watcher.status}">{watcher.status}</span>
+            {watcher.name}
+            <span class="muted">{watcher.kind}{watcher.last_event ? `, last ${watcher.last_event}` : ""}</span>
+          </li>
+        {/each}
+      </ul>
+    {/if}
   {/if}
 </section>
 
@@ -88,5 +111,29 @@
 
   .muted {
     color: var(--color-md-text-muted);
+  }
+
+  ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  li {
+    padding: var(--space-1) 0;
+  }
+
+  .status {
+    display: inline-block;
+    min-width: 6ch;
+    color: var(--color-md-text-muted);
+  }
+
+  .status.running {
+    color: var(--color-md-accent);
+  }
+
+  .status.error {
+    color: var(--color-md-danger);
   }
 </style>

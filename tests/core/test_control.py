@@ -519,3 +519,39 @@ def test_a_saved_key_is_used_by_the_next_request_without_a_restart(
     chat(session, "after")
     assert keys_used == [None, "sk-ant-new-w9x8"]
     assert "sk-ant-new-w9x8" not in json.dumps(saved)
+
+
+# --- watchers ----------------------------------------------------------------------------
+
+
+def test_watchers_list_each_background_piece_and_its_status(tmp_path: Path) -> None:
+    vault = tmp_path / "brain"
+    vault.mkdir()
+    session = sidecar.Session(tmp_path / "storage", Settings(), emit=lambda e: None)
+
+    def watchers() -> list[dict[str, Any]]:
+        return session.dispatch({"method": "watchers"})["watchers"]
+
+    assert [(w["kind"], w["status"]) for w in watchers()] == [("trigger", "stopped")]
+    session.open(vault)
+    session.dispatch({"method": "set_job", "id": "link-check", "enabled": True})
+    session.dispatch({"method": "save_webhook", "name": "Nightly check", "kind": "link_check"})
+    gate = threading.Event()
+
+    def slow_helper(prompt: str) -> str:
+        gate.wait(5)
+        return "ok"
+
+    session.helpers = helpers.Helpers(slow_helper, lambda e: None)
+    session.helpers.start("Find broken links")
+    try:
+        rows = watchers()
+        assert [(w["kind"], w["status"]) for w in rows] == [
+            ("vault watcher", "stopped"),
+            ("trigger", "running"),
+            ("webhook", "stopped"),
+            ("helper", "running"),
+        ]
+        assert rows[0]["name"] == "brain"
+    finally:
+        gate.set()
