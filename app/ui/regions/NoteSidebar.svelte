@@ -139,6 +139,16 @@
     padding: var(--space-1) var(--space-2);
   }
 
+  /* Native dropdown: dark popup, and option text in our colours so "All tags" is not black on black. */
+  select {
+    color-scheme: dark;
+  }
+
+  select option {
+    color: var(--color-text);
+    background: var(--color-bg-0);
+  }
+
   .memory {
     font: inherit;
     font-size: var(--font-size-xs);
