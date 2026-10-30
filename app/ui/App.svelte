@@ -1,5 +1,6 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
+  import { getCurrentWindow } from "@tauri-apps/api/window";
   import { onMount } from "svelte";
   import GraphRegion from "./regions/GraphRegion.svelte";
   import NoteSidebar from "./regions/NoteSidebar.svelte";
@@ -41,7 +42,18 @@
   let settingsFloatOpen = $state(false);
 
   // Ctrl on Linux and Windows, Cmd on macOS. Both shortcuts take over the browser default.
+  // F11 toggles full screen, as in browsers. Needs the window fullscreen permissions in capabilities.
+  async function toggleFullscreen(): Promise<void> {
+    const win = getCurrentWindow();
+    await win.setFullscreen(!(await win.isFullscreen()));
+  }
+
   function onKey(e: KeyboardEvent): void {
+    if (e.key === "F11" && !e.altKey && !e.ctrlKey && !e.metaKey) {
+      e.preventDefault();
+      void toggleFullscreen();
+      return;
+    }
     if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return;
     if (e.key === "o") box = "switcher";
     else if (e.key === "p") box = "palette";
@@ -70,6 +82,7 @@
       run: () => (panelOpen = !panelOpen),
     },
     { id: "search", label: "Search notes", run: focusSearch },
+    { id: "fullscreen", label: "Toggle full screen (F11)", run: toggleFullscreen },
     {
       id: "reset-graph",
       label: "Reset graph view",
