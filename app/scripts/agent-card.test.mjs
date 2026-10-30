@@ -34,7 +34,7 @@ function ratio(a, b) {
 test("every face in the card set is a file on disk", () => {
   for (const file of FACES) {
     assert.ok(
-      existsSync(new URL(`../ui/assets/faces/${file}`, import.meta.url)),
+      existsSync(new URL(`../ui/assets/faces-new/${file}`, import.meta.url)),
       file,
     );
   }
