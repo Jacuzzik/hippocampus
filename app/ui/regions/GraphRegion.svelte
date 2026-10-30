@@ -1,6 +1,23 @@
 <script lang="ts">
+  import { onMount } from "svelte";
+  import { invoke } from "@tauri-apps/api/core";
   import BrainGraph from "../graph/BrainGraph.svelte";
   import type { GraphData } from "../graph/model.ts";
+
+  type System = { cpu: number; ram: number; disk: number };
+  let system = $state<System | null>(null);
+
+  // Read only, so a failed read just leaves the last value on screen.
+  onMount(() => {
+    const read = () =>
+      invoke<System>("sidecar_call", { method: "system" }).then(
+        (value) => (system = value),
+        (cause) => console.error("Could not read system stats", cause),
+      );
+    void read();
+    const timer = setInterval(read, 3000);
+    return () => clearInterval(timer);
+  });
 
   // Loaded by App.svelte through the sidecar bridge; null while loading or after an error.
   let {
@@ -30,6 +47,11 @@
 
 <main class="graph" aria-label="Brain graph">
   <header class="topbar">
+    <div class="stats" aria-label="System load">
+      <span title="Total CPU use">CPU <b>{system ? `${system.cpu}%` : "…"}</b></span>
+      <span title="RAM in use">RAM <b>{system ? `${system.ram}%` : "…"}</b></span>
+      <span title="Disk in use">DISK <b>{system ? `${system.disk}%` : "…"}</b></span>
+    </div>
     <div class="icons">
       <button
         type="button"
@@ -126,6 +148,21 @@
     height: var(--layout-tab-header-height);
     background: var(--color-bg-1);
     border-bottom: 1px solid var(--color-border);
+  }
+
+  .stats {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: 0 var(--space-2);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
+  }
+
+  .stats b {
+    font-weight: normal;
+    color: var(--color-text);
   }
 
   .icons {
