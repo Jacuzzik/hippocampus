@@ -7,6 +7,10 @@
   import GraphPanel from "./GraphPanel.svelte";
   import AsksSection from "../control/AsksSection.svelte";
   import TriggersSection from "../control/TriggersSection.svelte";
+  import ActivityPanel from "./ActivityPanel.svelte";
+  import SkillsPanel from "./SkillsPanel.svelte";
+  import TempsPanel from "./TempsPanel.svelte";
+  import HistoryPanel from "./HistoryPanel.svelte";
 
   // Kept mounted when hidden so the chat session and its tool log survive a toggle.
   let { open = true }: { open?: boolean } = $props();
@@ -18,7 +22,10 @@
     "history", "memory", "graph", "activity", "skills", "temps",
   ];
   // Tabs that have content so far; the rest stay disabled.
-  const LIVE = ["terminal", "monitor", "tasks", "inbox", "ask me", "triggers", "memory", "graph"];
+  const LIVE = [
+    "terminal", "monitor", "tasks", "inbox", "ask me", "triggers", "memory", "graph",
+    "activity", "skills", "temps", "history",
+  ];
   let tab = $state("terminal");
   let fontSize = $state(12);
 </script>
@@ -65,6 +72,14 @@
       <TriggersSection />
     {:else if tab === "graph"}
       <GraphPanel />
+    {:else if tab === "activity"}
+      <ActivityPanel />
+    {:else if tab === "skills"}
+      <SkillsPanel />
+    {:else if tab === "temps"}
+      <TempsPanel />
+    {:else if tab === "history"}
+      <HistoryPanel />
     {/if}
   </div>
 </div>
