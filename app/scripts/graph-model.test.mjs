@@ -199,6 +199,14 @@ test("groups use the first tag, else the top folder, else Root", () => {
   assert.deepEqual(of, [2, 0, 1]);
 });
 
+test("a blank tag or folder name never makes an unnamed group", () => {
+  const nodes = [
+    { id: "x.md", title: "X", tags: ["  "] },
+    { id: " /y.md", title: "Y", tags: [] },
+  ];
+  assert.deepEqual(groupsOf(nodes).names, ["Root"]);
+});
+
 test("an arc link starts and ends on its nodes and bows left of both", () => {
   const out = new Float32Array(ARC_SEGMENTS * 4);
   const end = arcSegments(0, 0, 0, 100, out, 0);

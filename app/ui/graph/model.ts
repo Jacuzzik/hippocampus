@@ -274,10 +274,11 @@ export function arcRows(nodes: readonly GraphNode[]): number[] {
 
 /** The group a note is coloured by: its first tag, else its top folder, else "Root" (a note at the vault root). Every note has a group. */
 export function groupOf(n: GraphNode): string {
-  const tag = n.tags[0];
+  // Trimmed, so a blank tag or folder name falls through to the next rule instead of an unnamed group.
+  const tag = n.tags[0]?.trim();
   if (tag) return tag;
   const slash = n.id.indexOf("/");
-  return slash > 0 ? n.id.slice(0, slash) : "Root";
+  return (slash > 0 && n.id.slice(0, slash).trim()) || "Root";
 }
 
 /** Group names sorted, and per node the index of its group in that list. */

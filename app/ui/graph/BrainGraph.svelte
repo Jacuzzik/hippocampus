@@ -346,7 +346,7 @@
     // The arc links bow left of the column, so the fit also takes in how far they reach.
     const minX =
       mode === "arc"
-        ? Math.min(xs[lo] ?? 0, arcReach(xs.length))
+        ? Math.min(xs[lo] ?? 0, arcReach(hi - lo + 1))
         : (xs[lo] ?? 0);
     const maxX = xs[hi] ?? 0;
     const minY = ys[lo] ?? 0;
