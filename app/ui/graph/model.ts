@@ -240,6 +240,8 @@ export type GraphLayout = "arc" | "force";
 export const ARC_ROW = 10;
 /** Arc layout: straight pieces each link curve is drawn with. */
 export const ARC_SEGMENTS = 16;
+/** Arc layout: most a link bows out, as the cubic's control offset. Uncapped, long links swept into filled half-discs. */
+export const ARC_BOW = 8 * ARC_ROW;
 
 /** Arc layout: the note column sits on x = 0, node i on row rows[i]. */
 export function arcLayout(rows: ArrayLike<number>): Float32Array<ArrayBuffer> {
@@ -255,7 +257,7 @@ export function arcReach(count: number): number {
 }
 
 function bowReach(count: number): number {
-  return -0.375 * Math.max(0, count - 1) * ARC_ROW;
+  return -0.75 * Math.min(0.5 * Math.max(0, count - 1) * ARC_ROW, ARC_BOW);
 }
 
 /** Arc layout: x of the group centres, left of the note column and the arcs, so each unlinked note has a string to its centre. */
@@ -341,7 +343,7 @@ export function groupsOf(nodes: readonly GraphNode[]): {
 
 /**
  * Writes one link as ARC_SEGMENTS segments into `out` from offset `at`, and returns the next offset.
- * The curve is a cubic that bows left of both ends, so a link between far rows bows further.
+ * The curve is a cubic that bows left of both ends, by half the span up to ARC_BOW, so it stays a thin curve.
  */
 export function arcSegments(
   ax: number,
@@ -351,7 +353,7 @@ export function arcSegments(
   out: Float32Array,
   at: number,
 ): number {
-  const cx = Math.min(ax, bx) - 0.5 * Math.abs(ay - by);
+  const cx = Math.min(ax, bx) - Math.min(0.5 * Math.abs(ay - by), ARC_BOW);
   let px = ax;
   let py = ay;
   for (let s = 1; s <= ARC_SEGMENTS; s++) {

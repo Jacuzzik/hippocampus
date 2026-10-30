@@ -10,6 +10,7 @@ import {
   arcReach,
   arcLayout,
   arcRows,
+  ARC_BOW,
   arcSegments,
   centerOn,
   groupsOf,
@@ -247,4 +248,13 @@ test("arc reach covers the group centres and every arc bow", () => {
     const cx = arcCentreX(n);
     assert.ok(arcReach(n) <= cx, `reach ${arcReach(n)} vs centre ${cx} for ${n}`);
   }
+});
+
+test("an arc never bows past ARC_BOW, however far apart its ends, so long links stay thin curves", () => {
+  const out = new Float32Array(ARC_SEGMENTS * 4);
+  arcSegments(0, 0, 0, 100000, out, 0);
+  let min = 0;
+  for (let i = 0; i < out.length; i += 2) min = Math.min(min, out[i]);
+  assert.ok(min >= -0.75 * ARC_BOW - 1e-3, `deepest x ${min}`);
+  assert.ok(arcReach(5000) <= min + 1e-3, `reach ${arcReach(5000)} vs deepest ${min}`);
 });
