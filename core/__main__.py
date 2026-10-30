@@ -68,6 +68,7 @@ from core.settings import (
     save_allowed_tools,
     save_budget,
     save_network_mode,
+    save_vault,
 )
 from core.vault import Indexer, open_index
 from core.vault.scanner import iter_notes
@@ -97,10 +98,15 @@ class Session:
     """
 
     def __init__(
-        self, storage: Path, settings: Settings | None = None, emit: Emit | None = None
+        self,
+        storage: Path,
+        settings: Settings | None = None,
+        emit: Emit | None = None,
+        settings_path: Path = SETTINGS_PATH,
     ) -> None:
         self.storage = storage
-        self.settings = settings if settings is not None else load_settings(SETTINGS_PATH)
+        self.settings_path = settings_path
+        self.settings = settings if settings is not None else load_settings(settings_path)
         self.emit: Emit = emit or (lambda _event: None)
         self.indexer: Indexer | None = None
         self.cards = CardStore(storage / "cards")
@@ -420,6 +426,18 @@ class Session:
     def network_state(self) -> dict[str, Any]:
         return {"mode": self.settings.network_mode, "modes": list(network.MODES)}
 
+    def set_vault(self, request: dict[str, Any]) -> dict[str, Any]:
+        # Opens the folder first, so a bad path is never saved.
+        vault = request.get("vault")
+        if not isinstance(vault, str) or not vault:
+            raise ValueError('"set_vault" needs a "vault" folder path')
+        folder = Path(vault).resolve()
+        result = self.open(folder)
+        save_vault(folder, self.settings_path)
+        self.settings = replace(self.settings, vault=folder)
+        self.note("setting", text=f"brain folder set to {folder.name}")
+        return result
+
     def set_network(self, request: dict[str, Any]) -> dict[str, Any]:
         mode = request.get("mode")
         if not isinstance(mode, str):
@@ -728,6 +746,7 @@ class Session:
             return simple[method]()
         extra = {
             "set_network": self.set_network,
+            "set_vault": self.set_vault,
             "set_budget": self.set_budget,
             "activity": self.activity,
             "memory_search": self.memory_search,
@@ -817,9 +836,10 @@ def serve(
     lines: TextIO = sys.stdin,
     out: TextIO = sys.stdout,
     settings: Settings | None = None,
+    settings_path: Path = SETTINGS_PATH,
 ) -> int:
     send = Writer(out)
-    session = Session(storage, settings, emit=send)
+    session = Session(storage, settings, emit=send, settings_path=settings_path)
     chats: list[threading.Thread] = []
     stop_schedule = threading.Event()
     threading.Thread(target=_schedule, args=(session, stop_schedule), daemon=True).start()
@@ -960,7 +980,12 @@ def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.INFO, stream=sys.stderr)
     if args.command == "serve":
         settings = load_settings(args.settings)
-        return serve(args.storage, args.vault or settings.vault, settings=settings)
+        return serve(
+            args.storage,
+            args.vault or settings.vault,
+            settings=settings,
+            settings_path=args.settings,
+        )
     if args.command == "key":
         return manage_key(args.action)
     if args.command == "index":

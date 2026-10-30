@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from core.settings import Settings, load_settings
+from core.settings import Settings, load_settings, save_vault
 
 
 def test_missing_file_gives_defaults(tmp_path: Path) -> None:
@@ -57,3 +57,15 @@ def test_provider_defaults_to_claude_and_rejects_unknown_names(tmp_path: Path) -
     config.write_text('[ai]\nprovider = "nope"\n', "utf-8")
     with pytest.raises(ValueError, match="ai.provider"):
         load_settings(config)
+
+
+def test_save_vault_writes_the_path_and_keeps_other_sections(tmp_path: Path) -> None:
+    path = tmp_path / "config" / "settings.toml"
+    path.parent.mkdir()
+    path.write_text('[vault]\npath = "brains/old"\n\n[ai]\nprovider = "claude"\n', encoding="utf-8")
+    folder = tmp_path / 'My "brain"'
+    save_vault(folder, path)
+    data = tomllib.loads(path.read_text(encoding="utf-8"))
+    assert data["vault"] == {"path": str(folder)}
+    assert data["ai"] == {"provider": "claude"}
+    assert load_settings(path).vault == folder.resolve()
