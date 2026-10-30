@@ -618,7 +618,6 @@
       const hubs = arcHubs(
         arcRows(data.nodes),
         groups.of,
-        degree,
         groups.names.length,
       );
       home = hubs.pos;

@@ -266,12 +266,11 @@ export function arcCentreX(count: number): number {
 /**
  * Arc layout hubs: the note column, then one centre per group (at the middle row of its run), then the core.
  * Node index: note i is i, centre g is count + g, the core is count + groups.
- * `edges` joins a note with no links to its centre, and each centre to the core.
+ * `edges` joins every note to its group's centre, and each centre to the core.
  */
 export function arcHubs(
   rows: ArrayLike<number>,
   of: ArrayLike<number>,
-  degree: ArrayLike<number>,
   groups: number,
 ): { pos: Float32Array<ArrayBuffer>; edges: Uint32Array<ArrayBuffer> } {
   const count = rows.length;
@@ -293,8 +292,7 @@ export function arcHubs(
     pos[at + 1] = (((lo[g] ?? 0) + (hi[g] ?? 0)) / 2) * ARC_ROW;
     edges.push(count + g, count + groups);
   }
-  for (let i = 0; i < count; i++)
-    if ((degree[i] ?? 0) === 0) edges.push(i, count + (of[i] ?? 0));
+  for (let i = 0; i < count; i++) edges.push(i, count + (of[i] ?? 0));
   const core = 2 * (count + groups);
   pos[core] = 2 * cx;
   pos[core + 1] = ((count - 1) / 2) * ARC_ROW;
