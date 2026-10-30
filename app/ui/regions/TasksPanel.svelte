@@ -37,8 +37,8 @@
     <p class="muted">No tasks yet.</p>
   {:else}
     {#each groups as group (group.status)}
+      <h3>{group.status.toUpperCase()} · {group.items.length}</h3>
       {#if group.items.length}
-        <h3>{group.status.toUpperCase()} · {group.items.length}</h3>
         <ul>
           {#each group.items as task (task.id)}
             <li>
@@ -48,6 +48,8 @@
             </li>
           {/each}
         </ul>
+      {:else}
+        <p class="muted">None.</p>
       {/if}
     {/each}
   {/if}
