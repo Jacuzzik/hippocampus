@@ -24,10 +24,24 @@
     last_event: string | null;
   };
 
+  type System = { cpu: number; ram: number; disk: number };
+
   let mode = $state<NetworkMode | null>(null);
   let budget = $state<Budget | null>(null);
   let watchers = $state<Watcher[]>([]);
+  let system = $state<System | null>(null);
   let failed = $state(false);
+
+  onMount(() => {
+    const read = () =>
+      invoke<System>("sidecar_call", { method: "system" }).then(
+        (value) => (system = value),
+        (cause) => console.error("Could not read system stats", cause),
+      );
+    void read();
+    const timer = setInterval(read, 5000);
+    return () => clearInterval(timer);
+  });
 
   onMount(async () => {
     try {
@@ -49,6 +63,15 @@
   {:else}
     <h3>Network</h3>
     <p>{mode}: {NETWORK_TEXT[mode]}</p>
+    <h3>System</h3>
+    <dl>
+      <dt>CPU</dt>
+      <dd>{system ? `${system.cpu}%` : "…"}</dd>
+      <dt>RAM</dt>
+      <dd>{system ? `${system.ram}%` : "…"}</dd>
+      <dt>Disk</dt>
+      <dd>{system ? `${system.disk}%` : "…"}</dd>
+    </dl>
     {#each SCOPES as [scope, label] (scope)}
       <h3>{label}</h3>
       <dl>

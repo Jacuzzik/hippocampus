@@ -70,6 +70,7 @@ from core.settings import (
     save_network_mode,
     save_vault,
 )
+from core.system_stats import SystemStats
 from core.vault import Indexer, open_index
 from core.vault.scanner import iter_notes
 from core.vault.watcher import VaultWatcher
@@ -105,6 +106,7 @@ class Session:
         settings_path: Path = SETTINGS_PATH,
     ) -> None:
         self.storage = storage
+        self.system = SystemStats()
         self.settings_path = settings_path
         self.settings = settings if settings is not None else load_settings(settings_path)
         self.emit: Emit = emit or (lambda _event: None)
@@ -570,6 +572,10 @@ class Session:
             rows.append(_watcher(name, "helper", status[job["status"]]))
         return {"watchers": rows}
 
+    def system_state(self) -> dict[str, Any]:
+        """CPU, RAM and disk use in percent. Disk is the drive that holds the app data."""
+        return self.system.read(self.storage)
+
     def start_helper(self, request: dict[str, Any]) -> dict[str, Any]:
         prompt = request.get("prompt")
         if not isinstance(prompt, str):
@@ -757,6 +763,7 @@ class Session:
             "jobs": self.jobs,
             "helpers": self.helpers_state,
             "watchers": self.watchers_state,
+            "system": self.system_state,
             "skills": self.skills_state,
             "keys": self.keys,
             "webhooks": self.webhooks_state,
