@@ -15,8 +15,11 @@
     LOW_POWER,
     linkCounts,
     matchFilter,
+    NODE_HIT_PX,
     newSim,
     nodeRadius,
+    nodeShape,
+    SHAPE_DISK,
     reheat,
     settle,
     straightLines,
@@ -338,6 +341,7 @@
     const total = pos.length / 2;
     const colors = new Float32Array(total * 4);
     const radii = new Float32Array(total);
+    const shapes = new Float32Array(total);
     const picked = groups.names.map((name) => (picks[name] ? parse(picks[name]) : null));
     // A hovered note (else the selected one) and its links stay bright; every other note dims.
     const focus = hovered >= 0 ? hovered : selected;
@@ -347,6 +351,7 @@
     for (let i = n; i < total; i++) {
       colors.set(colours.node, i * 4);
       radii[i] = i === total - 1 ? 8 : 0;
+      shapes[i] = SHAPE_DISK;
     }
     for (let i = 0; i < n; i++) {
       const isSel = i === selected;
@@ -355,9 +360,11 @@
       const alpha = visible[i] ? base[3] * lit : base[3] * 0.15;
       colors.set([base[0], base[1], base[2], alpha], i * 4);
       radii[i] = nodeRadius(degree[i] ?? 0, isSel);
+      shapes[i] = nodeShape(data.nodes[i]?.id ?? "");
     }
     renderer.setColors(colors);
     renderer.setRadii(radii);
+    renderer.setShapes(shapes);
     schedule();
   }
 
@@ -420,7 +427,7 @@
     const onDown = (e: PointerEvent) => {
       c.setPointerCapture(e.pointerId);
       const [x, y] = local(e);
-      const hit = hitTest(notes(), cam, x, y, 8);
+      const hit = hitTest(notes(), cam, x, y, NODE_HIT_PX);
       // Every dot can be dragged, including the ones a filter has dimmed.
       const node = hit;
       // A grabbed note is pinned under the pointer; its neighbours are pulled along by the simulation.
@@ -433,7 +440,7 @@
       if (!drag) {
         // Hover lights the note and its links, and names them.
         const [hx, hy] = local(e);
-        const hit = hitTest(notes(), cam, hx, hy, 8);
+        const hit = hitTest(notes(), cam, hx, hy, NODE_HIT_PX);
         const next = hit >= 0 && visible[hit] ? hit : -1;
         if (next !== hovered) {
           hovered = next;
@@ -466,7 +473,7 @@
       if (!drag) return;
       const [x, y] = local(e);
       if (!drag.moved) {
-        const hit = hitTest(notes(), cam, x, y, 8);
+        const hit = hitTest(notes(), cam, x, y, NODE_HIT_PX);
         const id = hit >= 0 && visible[hit] ? data.nodes[hit]?.id : undefined;
         onselect(id ?? null);
       }

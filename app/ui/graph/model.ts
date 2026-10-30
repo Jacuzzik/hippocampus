@@ -341,6 +341,20 @@ export function nodeRadius(links: number, selected: boolean): number {
   return selected ? Math.max(7, size) : size;
 }
 
+/** Node shapes, as the per-instance value the renderers read: a filled disk (the core), a hollow square, a hollow tall rectangle. */
+export const SHAPE_DISK = 0;
+export const SHAPE_SQUARE = 1;
+export const SHAPE_TALL = 2;
+/** Hit-test reach in px: the largest node shape at the largest radius (a tall rectangle's top or bottom). */
+export const NODE_HIT_PX = 14;
+
+/** A note's shape from a hash of its id, so it is the same on every draw and every launch. */
+export function nodeShape(id: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 16777619);
+  return h & 1 ? SHAPE_SQUARE : SHAPE_TALL;
+}
+
 export type GraphLayout = "arc" | "force";
 
 /** Round layout: world px between neighbouring notes on the ring, measured along it. */

@@ -23,6 +23,9 @@ import {
   matchFilter,
   MAX_ZOOM,
   nodeRadius,
+  nodeShape,
+  SHAPE_SQUARE,
+  SHAPE_TALL,
   MIN_ZOOM,
   screenToWorld,
   tagCounts,
@@ -230,6 +233,14 @@ test("nodeRadius grows with the link count, capped, and a selected node is at le
   assert.equal(nodeRadius(10000, false), 10);
   assert.equal(nodeRadius(0, true), 7);
   assert.ok(nodeRadius(16, true) >= nodeRadius(16, false));
+});
+
+test("nodeShape is a stable hash of the id, and both hollow shapes occur", () => {
+  const ids = Array.from({ length: 200 }, (_, i) => `Notes/n${i}.md`);
+  const shapes = ids.map(nodeShape);
+  assert.deepEqual(shapes, ids.map(nodeShape));
+  assert.ok(shapes.includes(SHAPE_SQUARE) && shapes.includes(SHAPE_TALL));
+  assert.ok(shapes.every((s) => s === SHAPE_SQUARE || s === SHAPE_TALL));
 });
 
 test("arc rows run by group, then title, one row per note, and each note sits on the ring", () => {

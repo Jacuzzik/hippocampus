@@ -7,29 +7,49 @@ const NODE_VS = `#version 300 es
 in vec2 corner;
 in vec2 center;
 in float radius;
+in float shape;
 in vec4 color;
 uniform vec3 cam;
 uniform vec2 viewport;
 uniform float dpr;
 out vec2 v_corner;
+out vec2 v_half;
+flat out float v_shape;
 out vec4 v_color;
 void main() {
-  vec2 px = center * cam.x + cam.yz + corner * radius * dpr;
+  // Tall rectangles are 0.6 wide and 1.4 high, times the radius (see SHAPE_TALL in model.ts).
+  vec2 ext = shape > 1.5 ? vec2(0.6, 1.4) : vec2(1.0);
+  vec2 hs = radius * ext * dpr;
+  vec2 px = center * cam.x + cam.yz + corner * hs;
   vec2 clip = px / viewport * 2.0 - 1.0;
   gl_Position = vec4(clip.x, -clip.y, 0.0, 1.0);
   v_corner = corner;
+  v_half = hs;
+  v_shape = shape;
   v_color = color;
 }`;
 
 const NODE_FS = `#version 300 es
 precision mediump float;
+uniform float dpr;
 in vec2 v_corner;
+in vec2 v_half;
+flat in float v_shape;
 in vec4 v_color;
 out vec4 frag;
 void main() {
-  float d = length(v_corner);
-  if (d > 1.0) discard;
-  frag = vec4(v_color.rgb, v_color.a * smoothstep(1.0, 0.8, d));
+  if (v_shape < 0.5) {
+    float d = length(v_corner);
+    if (d > 1.0) discard;
+    frag = vec4(v_color.rgb, v_color.a * smoothstep(1.0, 0.8, d));
+    return;
+  }
+  // Hollow: a 1.5 px outline just inside the box's edge, nothing inside.
+  vec2 p = v_corner * v_half;
+  float edge = min(v_half.x - abs(p.x), v_half.y - abs(p.y));
+  float a = 1.0 - smoothstep(1.5 * dpr - 0.5, 1.5 * dpr + 0.5, edge);
+  if (a <= 0.0) discard;
+  frag = vec4(v_color.rgb, v_color.a * a);
 }`;
 
 const EDGE_VS = `#version 300 es
@@ -101,6 +121,7 @@ export class BrainRenderer {
   private readonly edgeVao: WebGLVertexArrayObject;
   private readonly centerBuf: WebGLBuffer;
   private readonly radiusBuf: WebGLBuffer;
+  private readonly shapeBuf: WebGLBuffer;
   private readonly colorBuf: WebGLBuffer;
   private readonly edgeBuf: WebGLBuffer;
   private readonly focusVao: WebGLVertexArrayObject;
@@ -124,6 +145,7 @@ export class BrainRenderer {
     const quad = new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]);
     this.centerBuf = buffer(gl, gl.ARRAY_BUFFER, new Float32Array(0));
     this.radiusBuf = buffer(gl, gl.ARRAY_BUFFER, new Float32Array(0));
+    this.shapeBuf = buffer(gl, gl.ARRAY_BUFFER, new Float32Array(0));
     this.colorBuf = buffer(gl, gl.ARRAY_BUFFER, new Float32Array(0));
     this.edgeBuf = buffer(gl, gl.ARRAY_BUFFER, new Float32Array(0));
     this.focusBuf = buffer(gl, gl.ARRAY_BUFFER, new Float32Array(0));
@@ -133,6 +155,7 @@ export class BrainRenderer {
       this.bindAttr(this.nodeProg, "corner", corner, 2, 0);
       this.bindAttr(this.nodeProg, "center", this.centerBuf, 2, 1);
       this.bindAttr(this.nodeProg, "radius", this.radiusBuf, 1, 1);
+      this.bindAttr(this.nodeProg, "shape", this.shapeBuf, 1, 1);
       this.bindAttr(this.nodeProg, "color", this.colorBuf, 4, 1);
     });
     this.edgeVao = this.makeVao(() => {
@@ -203,6 +226,12 @@ export class BrainRenderer {
     this.gl.bufferData(this.gl.ARRAY_BUFFER, radii, this.gl.DYNAMIC_DRAW);
   }
 
+  /** One shape per node: SHAPE_DISK, SHAPE_SQUARE or SHAPE_TALL from model.ts. */
+  setShapes(shapes: Float32Array): void {
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.shapeBuf);
+    this.gl.bufferData(this.gl.ARRAY_BUFFER, shapes, this.gl.DYNAMIC_DRAW);
+  }
+
   /** One RGBA colour (0 to 1) per node, four floats each. */
   setColors(colors: Float32Array): void {
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.colorBuf);
@@ -263,6 +292,7 @@ export class BrainRenderer {
     for (const b of [
       this.centerBuf,
       this.radiusBuf,
+      this.shapeBuf,
       this.colorBuf,
       this.edgeBuf,
     ])

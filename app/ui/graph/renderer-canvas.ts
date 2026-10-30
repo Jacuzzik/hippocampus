@@ -1,6 +1,6 @@
 // 2D canvas renderer for the brain graph, used when WebGL 2 is missing (some phone browsers).
 // Same methods as BrainRenderer, so the graph component can use either one.
-import type { Camera } from "./model";
+import { SHAPE_DISK, SHAPE_TALL, type Camera } from "./model";
 import type { Rgba } from "./renderer";
 
 // Colours come from design tokens (see colors.ts); this only turns them into a canvas hex string.
@@ -18,6 +18,7 @@ export class Canvas2DRenderer {
   private focusLines: Float32Array = new Float32Array(0);
   private colors: Float32Array = new Float32Array(0);
   private radii: Float32Array = new Float32Array(0);
+  private shapes: Float32Array = new Float32Array(0);
   private dpr = 1;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
@@ -49,6 +50,11 @@ export class Canvas2DRenderer {
     this.radii = radii;
   }
 
+  /** One shape per node, as SHAPE_DISK / SHAPE_SQUARE / SHAPE_TALL in model.ts. */
+  setShapes(shapes: Float32Array): void {
+    this.shapes = shapes;
+  }
+
   /** One RGBA colour (0 to 1) per node, four floats each. */
   setColors(colors: Float32Array): void {
     this.colors = colors;
@@ -61,7 +67,7 @@ export class Canvas2DRenderer {
   }
 
   draw(cam: Camera, background: Rgba, edgeColor: Rgba, focusColor: Rgba): void {
-    const { ctx, pos, lines, focusLines, colors, radii } = this;
+    const { ctx, pos, lines, focusLines, colors, radii, shapes } = this;
     const width = this.canvas.width / this.dpr;
     const height = this.canvas.height / this.dpr;
     // Work in CSS pixels; the transform maps them to the backing store.
@@ -90,16 +96,23 @@ export class Canvas2DRenderer {
 
     for (let i = 0; i < radii.length; i++) {
       const c = [0, 1, 2, 3].map((k) => colors[4 * i + k] ?? 0) as Rgba;
-      ctx.fillStyle = css(c);
-      ctx.beginPath();
-      ctx.arc(
-        (pos[2 * i] ?? 0) * cam.zoom + cam.x,
-        (pos[2 * i + 1] ?? 0) * cam.zoom + cam.y,
-        radii[i] ?? 0,
-        0,
-        Math.PI * 2,
-      );
-      ctx.fill();
+      const x = (pos[2 * i] ?? 0) * cam.zoom + cam.x;
+      const y = (pos[2 * i + 1] ?? 0) * cam.zoom + cam.y;
+      const r = radii[i] ?? 0;
+      const shape = shapes[i] ?? SHAPE_DISK;
+      if (shape === SHAPE_DISK) {
+        ctx.fillStyle = css(c);
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+        continue;
+      }
+      // Hollow outline, same size as the WebGL shape (tall rectangles are 0.6 by 1.4 times the radius).
+      const w = shape === SHAPE_TALL ? 0.6 * r : r;
+      const h = shape === SHAPE_TALL ? 1.4 * r : r;
+      ctx.strokeStyle = css(c);
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(x - w, y - h, 2 * w, 2 * h);
     }
   }
 
