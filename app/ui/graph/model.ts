@@ -48,10 +48,10 @@ export function mulberry32(seed: number): () => number {
 }
 
 // Force simulation, as in Obsidian's graph view: a centre force pulls notes to the core, repel pushes every pair apart, and a link force holds linked notes about LINK_DISTANCE apart.
-export const LINK_DISTANCE = 40;
+export const LINK_DISTANCE = 15;
 export const CENTER_STRENGTH = 0.02;
 /** Repel charge: force = strength / distance, as d3's many-body force. With 1/d² it packed 1,167 notes into dots 8 px apart. */
-export const REPEL_STRENGTH = 600;
+export const REPEL_STRENGTH = 400;
 /** Repel reaches this far, in world px. shortcut: a cutoff, not an all-pairs charge, so far-apart clusters push each other less; upgrade to Barnes-Hut if they drift together. */
 export const REPEL_RANGE = 200;
 /** Share of velocity kept each step (d3's default friction). */
