@@ -47,6 +47,11 @@
 
 <main class="graph" aria-label="Brain graph">
   <header class="topbar">
+    <div class="stats" aria-label="System load">
+      <span title="Total CPU use">CPU <b>{system ? `${system.cpu}%` : "…"}</b></span>
+      <span title="RAM in use">RAM <b>{system ? `${system.ram}%` : "…"}</b></span>
+      <span title="Disk in use">DISK <b>{system ? `${system.disk}%` : "…"}</b></span>
+    </div>
     <div class="icons">
       <button
         type="button"
@@ -74,11 +79,6 @@
           <rect x="13" y="13" width="7" height="7" rx="1" />
         </svg>
       </button>
-    </div>
-    <div class="stats" aria-label="System load">
-      <span title="Total CPU use">CPU <b>{system ? `${system.cpu}%` : "…"}</b></span>
-      <span title="RAM in use">RAM <b>{system ? `${system.ram}%` : "…"}</b></span>
-      <span title="Disk in use">DISK <b>{system ? `${system.disk}%` : "…"}</b></span>
     </div>
   </header>
   {#if !fullscreen}
@@ -152,6 +152,7 @@
 
   .stats {
     display: flex;
+    margin-right: auto;
     align-items: center;
     gap: var(--space-3);
     padding: 0 var(--space-2);
