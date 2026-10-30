@@ -5,6 +5,9 @@
   import logo from "../assets/brand/hippocampus-mark-purple.png";
   import { addedAgents, setAddedAgents } from "./addedAgents.svelte";
   import { AGENT_PROVIDERS } from "../control/model";
+  import { FACES } from "../assistant/agentCard";
+  import { ORB_LABELS } from "../assistant/model";
+  import { assistant } from "../assistant/session.svelte";
 
   type Account = { claude: boolean; model: string };
 
@@ -29,14 +32,24 @@
   const labelOf = (id: string): string =>
     AGENT_PROVIDERS.find((p) => p.id === id)?.label ?? id;
 
-  // The card whose INFO panel is open; null when closed.
+  // The card whose INFO panel is open; null when closed. "—" marks a row the app has no data for yet.
   let info = $state<{
     name: string;
     role: string;
     provider: string;
     model: string;
     folder: string;
+    face: string;
+    boss: string;
+    status: string;
+    ctx: string;
   } | null>(null);
+  const NO_DATA = "—";
+  // An added agent keeps its face as a file name; show it as the form's "Character N".
+  const faceOf = (file: string): string => {
+    const at = FACES.findIndex((f) => f === file);
+    return at < 0 ? NO_DATA : `Character ${at + 1}`;
+  };
 
   function move(index: number, step: number): void {
     const target = index + step;
@@ -83,6 +96,14 @@
           <dt>FOLDER</dt>
           <dd>{info.folder}</dd>
         {/if}
+        <dt>FACE</dt>
+        <dd>{info.face}</dd>
+        <dt>BOSS</dt>
+        <dd>{info.boss}</dd>
+        <dt>STATUS</dt>
+        <dd>{info.status}</dd>
+        <dt>CTX</dt>
+        <dd>{info.ctx}</dd>
       </dl>
     </div>
   </div>
@@ -108,6 +129,10 @@
           provider,
           model: account?.model ?? "Loading model",
           folder: "",
+          face: NO_DATA,
+          boss: NO_DATA,
+          status: ORB_LABELS[assistant.chat.orb],
+          ctx: NO_DATA,
         })}>INFO</button
     >
   </div>
@@ -140,6 +165,10 @@
             provider: labelOf(agent.provider),
             model: agent.model,
             folder: agent.folder,
+            face: faceOf(agent.character),
+            boss: NO_DATA,
+            status: NO_DATA,
+            ctx: NO_DATA,
           })}>INFO</button
       >
     </div>
