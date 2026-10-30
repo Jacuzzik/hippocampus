@@ -31,7 +31,8 @@ void main() {
 
 const NODE_FS = `#version 300 es
 precision mediump float;
-uniform float dpr;
+// highp to match the vertex shader's uniform, or the program fails to link on strict drivers.
+uniform highp float dpr;
 in vec2 v_corner;
 in vec2 v_half;
 flat in float v_shape;
