@@ -8,7 +8,7 @@
   import { BrainRenderer } from "./renderer";
   import { Canvas2DRenderer } from "./renderer-canvas";
   import {
-    arcLayout,
+    arcHubs,
     arcLines,
     arcReach,
     arcRows,
@@ -67,6 +67,8 @@
   let mode = $state<GraphLayout>("arc");
   // Node index pairs for the links, and the world-space segments drawn from them.
   let edgeIdx: Uint32Array = new Uint32Array(0);
+  // Arc layout only: index pairs for the straight strings to the group centres and the core (see arcHubs).
+  let hubIdx: Uint32Array = new Uint32Array(0);
   let lines: Float32Array = new Float32Array(0);
   // Per node: x and y drift amplitude, x and y angular speed, x and y phase. Six floats each.
   let drift: Float32Array<ArrayBuffer> = new Float32Array(0);
@@ -240,9 +242,18 @@
   }
 
   function buildLines(): Float32Array {
-    return mode === "arc"
-      ? arcLines(pos, edgeIdx)
-      : straightLines(pos, edgeIdx);
+    if (mode !== "arc") return straightLines(pos, edgeIdx);
+    const arcs = arcLines(pos, edgeIdx);
+    const hubs = straightLines(pos, hubIdx);
+    const out = new Float32Array(arcs.length + hubs.length);
+    out.set(arcs);
+    out.set(hubs, arcs.length);
+    return out;
+  }
+
+  // Hit tests look only at the notes: the group centres and the core sit after them in pos.
+  function notes(): Float32Array {
+    return pos.subarray(0, 2 * data.nodes.length);
   }
 
   function labelWidth(text: string): number {
@@ -322,7 +333,7 @@
   function countInView(): number {
     const [w, h] = size();
     let n = 0;
-    for (let i = 0; i < pos.length; i += 2) {
+    for (let i = 0; i < 2 * data.nodes.length; i += 2) {
       const sx = (pos[i] ?? 0) * cam.zoom + cam.x;
       const sy = (pos[i + 1] ?? 0) * cam.zoom + cam.y;
       if (sx >= 0 && sy >= 0 && sx <= w && sy <= h) n++;
@@ -333,12 +344,12 @@
   function fitAll(): void {
     if (!home.length) return;
     // Fit the middle 90% of nodes, so a few far-flung outliers don't zoom the whole graph out.
-    const xs = Array.from(
-      { length: home.length / 2 },
-      (_, i) => home[2 * i] ?? 0,
-    ).sort((a, b) => a - b);
+    const count = data.nodes.length;
+    const xs = Array.from({ length: count }, (_, i) => home[2 * i] ?? 0).sort(
+      (a, b) => a - b,
+    );
     const ys = Array.from(
-      { length: home.length / 2 },
+      { length: count },
       (_, i) => home[2 * i + 1] ?? 0,
     ).sort((a, b) => a - b);
     const lo = Math.floor(xs.length * 0.05);
@@ -426,9 +437,15 @@
   function pushStyle(): void {
     if (!renderer || !colours) return;
     const n = data.nodes.length;
-    const colors = new Float32Array(n * 4);
-    const radii = new Float32Array(n);
+    // pos also holds the hubs after the notes (arc layout): the core is a dot, the group centres are not drawn.
+    const total = pos.length / 2;
+    const colors = new Float32Array(total * 4);
+    const radii = new Float32Array(total);
     const picked = groups.names.map((name) => (picks[name] ? parse(picks[name]) : null));
+    for (let i = n; i < total; i++) {
+      colors.set(colours.node, i * 4);
+      radii[i] = i === total - 1 ? 8 : 0;
+    }
     for (let i = 0; i < n; i++) {
       const isSel = i === selected;
       const group = picked[groups.of[i] ?? 0];
@@ -503,7 +520,7 @@
     const onDown = (e: PointerEvent) => {
       c.setPointerCapture(e.pointerId);
       const [x, y] = local(e);
-      const hit = hitTest(pos, cam, x, y, 8);
+      const hit = hitTest(notes(), cam, x, y, 8);
       const node = hit >= 0 && visible[hit] ? hit : -1;
       if (node >= 0) grab(node);
       drag = { x, y, cam, moved: false, node };
@@ -513,7 +530,7 @@
       if (!drag) {
         // Labels show only for the node under the pointer.
         const [hx, hy] = local(e);
-        const hit = hitTest(pos, cam, hx, hy, 8);
+        const hit = hitTest(notes(), cam, hx, hy, 8);
         const next = hit >= 0 && visible[hit] ? hit : -1;
         if (next !== hovered) {
           hovered = next;
@@ -549,7 +566,7 @@
       if (!drag) return;
       const [x, y] = local(e);
       if (!drag.moved) {
-        const hit = hitTest(pos, cam, x, y, 8);
+        const hit = hitTest(notes(), cam, x, y, 8);
         const id = hit >= 0 && visible[hit] ? data.nodes[hit]?.id : undefined;
         onselect(id ?? null);
       }
@@ -597,10 +614,19 @@
       if (ia !== undefined && ib !== undefined && ia !== ib)
         pairs.push([ia, ib]);
     }
-    home =
-      mode === "arc"
-        ? arcLayout(arcRows(data.nodes))
-        : layout(data.nodes.length, pairs);
+    if (mode === "arc") {
+      const hubs = arcHubs(
+        arcRows(data.nodes),
+        groups.of,
+        degree,
+        groups.names.length,
+      );
+      home = hubs.pos;
+      hubIdx = hubs.edges;
+    } else {
+      home = layout(data.nodes.length, pairs);
+      hubIdx = new Uint32Array(0);
+    }
     laid = home.slice();
     pos = new Float32Array(home.length);
     pos.set(home);

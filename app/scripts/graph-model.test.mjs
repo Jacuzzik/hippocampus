@@ -5,6 +5,8 @@ import {
   allTags,
   ARC_ROW,
   ARC_SEGMENTS,
+  arcCentreX,
+  arcHubs,
   arcLayout,
   arcRows,
   arcSegments,
@@ -218,4 +220,24 @@ test("an arc link starts and ends on its nodes and bows left of both", () => {
   const mid = (ARC_SEGMENTS / 2) * 4 - 2;
   assert.ok(Math.abs(out[mid] - -37.5) < 1e-3, `midpoint x ${out[mid]}`);
   for (let i = 0; i < end; i += 2) assert.ok(out[i] <= 1e-6);
+});
+
+test("arc hubs: a centre per group left of the column, the core left of all, unlinked notes strung to their centre", () => {
+  // Two groups: notes 0-1 in "A" (rows 0-1), note 2 in "B" (row 2). Note 1 is linked, so 0 and 2 are unlinked.
+  const rows = [0, 1, 2];
+  const of = [0, 0, 1];
+  const degree = [0, 1, 0];
+  const { pos, edges } = arcHubs(rows, of, degree, 2);
+  const cx = arcCentreX(3);
+  assert.ok(cx < 0);
+  assert.equal(pos.length, (3 + 2 + 1) * 2);
+  // Centre A sits on the middle of rows 0-1, centre B on row 2; the core is left of both at the middle row.
+  assert.equal(pos[6], cx);
+  assert.equal(pos[7], 0.5 * ARC_ROW);
+  assert.equal(pos[8], cx);
+  assert.equal(pos[9], 2 * ARC_ROW);
+  assert.equal(pos[10], 2 * cx);
+  assert.equal(pos[11], ARC_ROW);
+  // Strings: centre A to core, centre B to core, unlinked 0 to A, unlinked 2 to B.
+  assert.deepEqual([...edges], [3, 5, 4, 5, 0, 3, 2, 4]);
 });

@@ -249,9 +249,56 @@ export function arcLayout(rows: ArrayLike<number>): Float32Array<ArrayBuffer> {
   return pos;
 }
 
-/** Leftmost x any arc can reach for `count` rows, so the fit can frame the curves. */
+/** Leftmost x any arc can reach for `count` rows, so the fit can frame the curves and the core. */
 export function arcReach(count: number): number {
+  return Math.min(bowReach(count), 2 * arcCentreX(count));
+}
+
+function bowReach(count: number): number {
   return -0.375 * Math.max(0, count - 1) * ARC_ROW;
+}
+
+/** Arc layout: x of the group centres, left of the note column and the arcs, so each unlinked note has a string to its centre. */
+export function arcCentreX(count: number): number {
+  return Math.min(-4 * ARC_ROW, bowReach(count) / 2);
+}
+
+/**
+ * Arc layout hubs: the note column, then one centre per group (at the middle row of its run), then the core.
+ * Node index: note i is i, centre g is count + g, the core is count + groups.
+ * `edges` joins a note with no links to its centre, and each centre to the core.
+ */
+export function arcHubs(
+  rows: ArrayLike<number>,
+  of: ArrayLike<number>,
+  degree: ArrayLike<number>,
+  groups: number,
+): { pos: Float32Array<ArrayBuffer>; edges: Uint32Array<ArrayBuffer> } {
+  const count = rows.length;
+  if (!count) return { pos: new Float32Array(0), edges: new Uint32Array(0) };
+  const pos = new Float32Array((count + groups + 1) * 2);
+  pos.set(arcLayout(rows));
+  const lo = Array.from({ length: groups }, () => Infinity);
+  const hi = Array.from({ length: groups }, () => -Infinity);
+  for (let i = 0; i < count; i++) {
+    const g = of[i] ?? 0;
+    lo[g] = Math.min(lo[g] ?? Infinity, rows[i] ?? 0);
+    hi[g] = Math.max(hi[g] ?? -Infinity, rows[i] ?? 0);
+  }
+  const cx = arcCentreX(count);
+  const edges: number[] = [];
+  for (let g = 0; g < groups; g++) {
+    const at = 2 * (count + g);
+    pos[at] = cx;
+    pos[at + 1] = (((lo[g] ?? 0) + (hi[g] ?? 0)) / 2) * ARC_ROW;
+    edges.push(count + g, count + groups);
+  }
+  for (let i = 0; i < count; i++)
+    if ((degree[i] ?? 0) === 0) edges.push(i, count + (of[i] ?? 0));
+  const core = 2 * (count + groups);
+  pos[core] = 2 * cx;
+  pos[core + 1] = ((count - 1) / 2) * ARC_ROW;
+  return { pos, edges: Uint32Array.from(edges) };
 }
 
 /** Row per node: sorted by group, then title, so each group is one run of rows. */
