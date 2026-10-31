@@ -1,4 +1,4 @@
-<!-- The right-panel tab for a selected added agent, laid out as in the agreed picture: header, controls, note, tabs, terminal, queue. -->
+<!-- The right-panel tab for a selected added agent, laid out as in the agreed picture: header, controls, note, tabs, terminal, stats, queue. -->
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
   import { listen } from "@tauri-apps/api/event";
@@ -6,24 +6,15 @@
   import { Terminal } from "@xterm/xterm";
   import { FitAddon } from "@xterm/addon-fit";
   import "@xterm/xterm/css/xterm.css";
-  import type { Message } from "../assistant/model";
   import { removeAgent, selection, startEdit, type SavedAgent } from "./addedAgents.svelte";
 
   let { agent }: { agent: SavedAgent } = $props();
-
-  interface SavedSession {
-    session: string;
-    messages: Message[];
-  }
 
   // The app does not report a status or usage for an added agent yet, so these show a dash, not made-up numbers.
   const NOT_REPORTED = "Not reported";
   const NO_DATA = "—";
 
-  let sessions = $state<SavedSession[]>([]);
-  let messages = $state<Message[]>([]);
   let text = $state("");
-  let busy = $state(false);
   let error = $state<string | null>(null);
 
   // The live terminal: the agent's own CLI in a real pseudo-terminal, drawn by xterm.js.
@@ -43,7 +34,13 @@
   }
 
   async function startTerminal(): Promise<void> {
-    term = new Terminal({ fontFamily: "JetBrains Mono, monospace", fontSize: 12, cursorBlink: true, convertEol: true });
+    term = new Terminal({
+      fontFamily: "JetBrains Mono, monospace",
+      fontSize: 12,
+      cursorBlink: true,
+      convertEol: true,
+      theme: { background: "#111111", foreground: "#e8e8e8", cursor: "#e8e8e8" },
+    });
     fit = new FitAddon();
     term.loadAddon(fit);
     term.open(screen);
@@ -70,26 +67,8 @@
     }
   }
 
-  // Each added agent has its own Claude Code session; the sidecar keeps the sessions and their chat.
-  onMount(async () => {
+  onMount(() => {
     startTerminal();
-    try {
-      const saved = await invoke<{ sessions: SavedSession[] }>("sidecar_call", {
-        method: "chat_history",
-        params: { agent: agent.id },
-      });
-      sessions = saved.sessions;
-      if (sessions.length === 0) {
-        const created = await invoke<{ session: string }>("sidecar_call", {
-          method: "agent_session",
-          params: { agent: agent.id },
-        });
-        sessions = [{ session: created.session, messages: [] }];
-      }
-      messages = sessions[sessions.length - 1]?.messages ?? [];
-    } catch (cause) {
-      error = String(cause);
-    }
   });
 
   onDestroy(() => {
@@ -100,40 +79,20 @@
     invoke("sidecar_call", { method: "terminal_stop", params: { agent: agent.id } }).catch(() => {});
   });
 
-  function save(): void {
-    const last = sessions.length - 1;
-    const next = last < 0 ? [{ session: "", messages }] : sessions.map((s, i) => (i === last ? { ...s, messages } : s));
-    sessions = next;
-    invoke("sidecar_call", {
-      method: "chat_history_save",
-      params: { agent: agent.id, sessions: next },
-    }).catch((cause) => console.error("Could not save the agent's chat", cause));
-  }
-
+  // The queue sends the message into the agent's terminal, as if typed there.
   async function send(event: SubmitEvent): Promise<void> {
     event.preventDefault();
     const trimmed = text.trim();
-    if (!trimmed || busy) return;
+    if (!trimmed) return;
     text = "";
-    busy = true;
     error = null;
-    messages = [...messages, { role: "user", text: trimmed }];
     try {
-      const result = await invoke<{ reply: string; stopped: boolean }>("sidecar_call", {
-        method: "chat",
-        params: { chat: Date.now(), text: trimmed, continue: false, agent: agent.id },
+      await invoke("sidecar_call", {
+        method: "terminal_input",
+        params: { agent: agent.id, data: `${trimmed}\r` },
       });
-      messages = [
-        ...messages,
-        result.stopped
-          ? { role: "error", text: "Stopped." }
-          : { role: "assistant", text: result.reply || "(no reply)" },
-      ];
     } catch (cause) {
-      messages = [...messages, { role: "error", text: String(cause) }];
-    } finally {
-      busy = false;
-      save();
+      error = String(cause);
     }
   }
 </script>
@@ -179,15 +138,6 @@
 
   <div class="screen" bind:this={screen} aria-label="Terminal for {agent.name}"></div>
 
-  <div class="chat" aria-label="Chat with {agent.name}">
-    {#if error}<p class="error" role="alert">{error}</p>{/if}
-    <ol>
-      {#each messages as message, index (index)}
-        <li class={message.role}>{message.text}</li>
-      {/each}
-    </ol>
-  </div>
-
   <dl class="stats">
     <div><dt>Cost</dt><dd>{NO_DATA}</dd></div>
     <div><dt>Tokens</dt><dd>{NO_DATA}</dd></div>
@@ -198,8 +148,9 @@
   <p class="queue-label">QUEUE</p>
   <form class="composer" onsubmit={send}>
     <input type="text" bind:value={text} placeholder={`Message ${agent.name}`} aria-label={`Message ${agent.name}`} />
-    <button type="submit" class="send" disabled={busy || !text.trim()}>{busy ? "Working…" : "Send"}</button>
+    <button type="submit" class="send" disabled={!text.trim()}>Send</button>
   </form>
+  {#if error}<p class="error" role="alert">{error}</p>{/if}
   <!-- Dummy attachment buttons: they do nothing until their behaviour is decided. -->
   <div class="bar">
     <button type="button">voice</button>
@@ -296,24 +247,6 @@
     justify-content: space-between;
     color: var(--color-md-text-muted);
   }
-  .chat ol {
-    display: grid;
-    gap: var(--space-1);
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-  .chat li {
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
-  }
-  .chat li.user {
-    color: var(--color-md-text-muted);
-  }
-  .chat li.error,
-  .error {
-    color: var(--color-danger);
-  }
   .stats {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -333,11 +266,15 @@
     font-size: 10px;
   }
   .screen {
-    height: 320px;
+    height: 420px;
     padding: var(--space-1);
     border: 1px solid var(--color-md-border);
     border-radius: var(--radius-sm);
     background: #111;
+  }
+  .error {
+    margin: 0;
+    color: var(--color-danger);
   }
   .note {
     margin: 0;
