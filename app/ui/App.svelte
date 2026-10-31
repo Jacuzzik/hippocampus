@@ -231,7 +231,7 @@
   .shell {
     --sidebar-col: var(--layout-sidebar-width);
     --panel-col: var(--layout-right-panel-width);
-    --layout-status-bar-height: 72px;
+    --layout-status-bar-height: 136px;
     display: grid;
     grid-template-columns:
       var(--layout-ribbon-width) var(--sidebar-col) minmax(0, 1fr)
