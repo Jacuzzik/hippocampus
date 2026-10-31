@@ -198,8 +198,14 @@
   <p class="queue-label">QUEUE</p>
   <form class="composer" onsubmit={send}>
     <input type="text" bind:value={text} placeholder={`Message ${agent.name}`} aria-label={`Message ${agent.name}`} />
-    <button type="submit" disabled={busy || !text.trim()}>{busy ? "Working…" : "Send"}</button>
+    <button type="submit" class="send" disabled={busy || !text.trim()}>{busy ? "Working…" : "Send"}</button>
   </form>
+  <!-- Dummy attachment buttons: they do nothing until their behaviour is decided. -->
+  <div class="bar">
+    <button type="button">voice</button>
+    <button type="button">+ files</button>
+    <button type="button">+ folder</button>
+  </div>
 
   <div class="actions">
     <button type="button" onclick={() => startEdit(agent.id, "note")}>Add note</button>
@@ -274,6 +280,17 @@
   }
   .tabs .on {
     border-color: var(--color-md-text);
+    border-bottom: 2px solid var(--color-md-accent);
+  }
+  .send {
+    background: var(--color-md-accent);
+    color: var(--color-md-accent-on);
+    border-color: var(--color-md-accent);
+  }
+  .bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
   }
   .live {
     justify-content: space-between;
