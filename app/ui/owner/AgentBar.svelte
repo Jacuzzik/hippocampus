@@ -58,6 +58,8 @@
     ctx: string;
   } | null>(null);
   const NO_DATA = "—";
+  // The HIPPO card's context bar has eight segments; none are filled until the app reports context use.
+  const CTX_SEGMENTS = Array.from({ length: 8 }, (_, i) => i);
   // An added agent keeps its character id; show the avatar's name.
   const faceOf = (id: string): string =>
     AVATARS.find((a) => a.id === id)?.name ?? NO_DATA;
@@ -161,7 +163,7 @@
 
 <div class="agent-bar" aria-label="Agents">
   <div class="chip main">
-    <img src={logo} alt="" />
+    <img src={logo} alt="" class="face" />
     <div class="text">
       <span class="head">
         <b>HIPPO</b>
@@ -171,31 +173,45 @@
         <span class="dot" class:on={account !== null}></span>
         {account ? "ONLINE" : NO_DATA}
       </span>
-      <i>{provider}</i>
-      <small class="fixed">MAIN · FIXED</small>
-      {@render details(account?.model ?? NO_DATA, ORB_LABELS[assistant.chat.orb])}
+      <span class="row">
+        <span class="key">MODEL</span>
+        <span class="val">{account?.model ?? NO_DATA}</span>
+      </span>
+      <span class="row">
+        <span class="key">CMD</span>
+        <span class="val">{NO_DATA}</span>
+      </span>
+      <span class="row" aria-label="Context {NO_DATA}">
+        <span class="key">CTX</span>
+        <span class="segs" aria-hidden="true">
+          {#each CTX_SEGMENTS as seg (seg)}<span class="seg"></span>{/each}
+        </span>
+        <span class="pct">{NO_DATA}</span>
+      </span>
     </div>
-    <span class="tokens">— tokens</span>
-    <button type="button" class="talk" disabled title="Talk is not set up yet"
-      >TALK</button
-    >
-    <button
-      type="button"
-      class="info"
-      aria-label="Info"
-      onclick={() =>
-        (info = {
-          name: "HIPPO",
-          role: "Main · fixed",
-          provider,
-          model: account?.model ?? "Loading model",
-          folder: "",
-          face: NO_DATA,
-          boss: NO_DATA,
-          status: ORB_LABELS[assistant.chat.orb],
-          ctx: NO_DATA,
-        })}>INFO</button
-    >
+    <div class="side">
+      <button type="button" class="talk" disabled title="Talk is not set up yet"
+        >TALK</button
+      >
+      <button
+        type="button"
+        class="info"
+        aria-label="Info"
+        onclick={() =>
+          (info = {
+            name: "HIPPO",
+            role: "Main · fixed",
+            provider,
+            model: account?.model ?? "Loading model",
+            folder: "",
+            face: NO_DATA,
+            boss: NO_DATA,
+            status: ORB_LABELS[assistant.chat.orb],
+            ctx: NO_DATA,
+          })}>INFO</button
+      >
+      <span class="status">{ORB_LABELS[assistant.chat.orb]}</span>
+    </div>
   </div>
   {#each added as agent (agent.id)}
     <div class="chip">
@@ -293,13 +309,6 @@
     opacity: 0.7;
   }
 
-  .fixed {
-    display: block;
-    font-family: "Press Start 2P", monospace;
-    font-size: 6px;
-    color: var(--color-accent);
-  }
-
   .add {
     flex: none;
     min-height: 44px;
@@ -330,6 +339,146 @@
   .chip .info {
     font-family: "Press Start 2P", monospace;
     font-size: 8px;
+  }
+
+  /* HIPPO main card, per the mockup: white body, purple top bar and outline.
+     shortcut: the purple is hardcoded because .md-theme remaps --color-accent to lilac and no token holds #6A58E0; move it to design/tokens.json. */
+  .chip.main {
+    --hippo-purple: #6a58e0;
+    align-items: flex-start;
+    width: 320px;
+    min-height: 0;
+    padding: 8px 12px 8px;
+    background: var(--color-md-card);
+    color: var(--color-md-card-text);
+    border: 2px solid var(--hippo-purple);
+    border-top-width: 8px;
+    border-radius: 0 0 10px 10px;
+    box-shadow: none;
+    font-family: var(--font-mono);
+  }
+
+  .chip.main img.face {
+    width: 52px;
+    height: 52px;
+    margin-top: 4px;
+  }
+
+  .chip.main .text {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .chip.main b {
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  .chip.main .badge {
+    padding: 3px 6px;
+    border-radius: 3px;
+    background: var(--hippo-purple);
+    color: var(--color-md-card);
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 700;
+  }
+
+  .chip.main .online {
+    margin: 2px 0 4px;
+    font-size: 10px;
+    opacity: 1;
+    color: var(--color-md-card-text);
+  }
+
+  .chip.main .dot.on {
+    background: var(--color-success);
+  }
+
+  .chip.main .row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    line-height: 1.6;
+  }
+
+  .chip.main .key {
+    width: 44px;
+    flex: none;
+    font-size: 8px;
+    color: var(--color-md-card-muted);
+  }
+
+  .chip.main .val {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .chip.main .segs {
+    display: inline-flex;
+    gap: 3px;
+  }
+
+  .chip.main .seg {
+    width: 12px;
+    height: 5px;
+    border-radius: 3px;
+    background: var(--hippo-purple);
+    opacity: 0.2;
+  }
+
+  .chip.main .pct {
+    font-size: 10px;
+    color: var(--color-md-card-muted);
+  }
+
+  .chip.main .side {
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    gap: 6px;
+    width: 64px;
+    align-self: stretch;
+  }
+
+  .chip.main .talk,
+  .chip.main .info {
+    width: 100%;
+    height: 26px;
+    padding: 0;
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .chip.main .talk {
+    border: none;
+    background: var(--hippo-purple);
+    color: var(--color-md-card);
+  }
+
+  .chip.main .talk:disabled {
+    opacity: 1;
+    cursor: not-allowed;
+  }
+
+  .chip.main .info {
+    border: 1px solid var(--hippo-purple);
+    background: var(--color-md-card);
+    color: var(--hippo-purple);
+  }
+
+  .chip.main .status {
+    margin-top: auto;
+    align-self: flex-end;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--hippo-purple);
   }
 
   .info-scrim {
