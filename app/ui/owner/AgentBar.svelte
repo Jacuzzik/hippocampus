@@ -6,6 +6,7 @@
   import {
     addedAgents,
     archived,
+    setAddedAgents,
     setArchived,
   } from "./addedAgents.svelte";
   import { AGENT_PROVIDERS, AVATARS, CARD_FACES } from "../control/model";
@@ -22,9 +23,14 @@
   // The card whose options menu is open; null when closed. The bar sits at the bottom of the window, so the menu opens upward.
   let menu = $state<{ id: string; x: number; bottom: number } | null>(null);
 
+  // The menu opens at the cursor.
   function openMenu(e: MouseEvent, id: string): void {
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    menu = { id, x: rect.left, bottom: window.innerHeight - rect.top + 4 };
+    menu = { id, x: e.clientX, bottom: window.innerHeight - e.clientY };
+  }
+
+  function remove(id: string): void {
+    setAddedAgents(addedAgents.list.filter((a) => a.id !== id));
+    menu = null;
   }
 
   // Opens the Add agent dialog (identity, workspace, engine, briefing).
@@ -87,7 +93,14 @@
       onclick={() => {
         setArchived(open.id, true);
         menu = null;
-      }}>Archive</button
+      }}
+      class="danger">Archive</button
+    >
+    <button
+      type="button"
+      role="menuitem"
+      class="danger"
+      onclick={() => remove(open.id)}>Delete</button
     >
   </div>
 {/if}
@@ -194,7 +207,10 @@
         class="card-open"
         aria-haspopup="menu"
         aria-label="{agent.name} options"
-        onclick={(e) => openMenu(e, agent.id)}
+        oncontextmenu={(e) => {
+          e.preventDefault();
+          openMenu(e, agent.id);
+        }}
       >
         <img src={CARD_FACES.find((f) => f.id === agent.character)?.url ?? logo} alt="" class="face" />
         <span class="text">
@@ -640,10 +656,10 @@
     display: grid;
     min-width: 140px;
     padding: var(--space-1);
-    background: var(--color-md-card);
-    color: var(--color-md-card-text);
-    border: 2px solid var(--color-accent);
-    border-radius: var(--radius-md);
+    background: var(--color-bg-1);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+    border-radius: 0;
   }
 
   .card-menu button {
@@ -657,6 +673,14 @@
   }
 
   .card-menu button:hover {
-    background: var(--color-md-surface);
+    background: var(--color-surface);
+  }
+
+  /* Archive and Delete sit under a divider, in red, as in the office app's menu. */
+  .card-menu .danger {
+    margin-top: 4px;
+    padding-top: var(--space-2);
+    border-top: 1px solid var(--color-border);
+    color: var(--color-danger);
   }
 </style>
