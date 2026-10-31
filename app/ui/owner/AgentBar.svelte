@@ -33,6 +33,21 @@
     menu = null;
   }
 
+  // The info box for an added agent; the card's INFO button and the menu's Open both use it.
+  function showInfo(agent: (typeof added)[number]): void {
+    info = {
+      name: agent.name,
+      role: "Added",
+      provider: labelOf(agent.provider),
+      model: agent.model,
+      folder: agent.folder,
+      face: faceOf(agent.character),
+      boss: NO_DATA,
+      status: NO_DATA,
+      ctx: NO_DATA,
+    };
+  }
+
   // Opens the Add agent dialog (identity, workspace, engine, briefing).
   let { onadd }: { onadd: () => void } = $props();
 
@@ -87,6 +102,15 @@
     role="menu"
     style="left: {open.x}px; bottom: {open.bottom}px"
   >
+    <button
+      type="button"
+      role="menuitem"
+      onclick={() => {
+        const agent = added.find((a) => a.id === open.id);
+        menu = null;
+        if (agent) showInfo(agent);
+      }}>Open</button
+    >
     <button
       type="button"
       role="menuitem"
@@ -241,18 +265,7 @@
           type="button"
           class="info"
           aria-label="Info"
-          onclick={() =>
-            (info = {
-              name: agent.name,
-              role: "Added",
-              provider: labelOf(agent.provider),
-              model: agent.model,
-              folder: agent.folder,
-              face: faceOf(agent.character),
-              boss: NO_DATA,
-              status: NO_DATA,
-              ctx: NO_DATA,
-            })}>INFO</button
+          onclick={() => showInfo(agent)}>INFO</button
         >
         <span class="status">{ORB_LABELS[assistant.chat.orb]}</span>
       </div>
