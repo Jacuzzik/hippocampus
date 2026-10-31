@@ -252,6 +252,8 @@
     grid-template-columns: repeat(4, 1fr);
     gap: var(--space-1);
     margin: 0;
+    padding-top: var(--space-2);
+    border-top: 1px solid var(--color-md-border);
   }
   .stats dt {
     color: var(--color-md-text-muted);
@@ -262,8 +264,14 @@
   }
   .queue-label {
     margin: 0;
+    padding-top: var(--space-2);
+    border-top: 1px solid var(--color-md-border);
     color: var(--color-md-text-muted);
     font-size: 10px;
+  }
+  .actions {
+    padding-top: var(--space-2);
+    border-top: 1px solid var(--color-md-border);
   }
   .screen {
     height: 420px;
