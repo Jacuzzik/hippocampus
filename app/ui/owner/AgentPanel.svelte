@@ -54,7 +54,12 @@
       if (event.payload.data !== undefined) term.write(event.payload.data);
       if (event.payload.exit !== undefined) term.write(`\r\n[the terminal closed, exit ${event.payload.exit}]\r\n`);
     });
-    observer = new ResizeObserver(() => sendSize());
+    // Wait until a drag settles before telling the CLI its new size, so it is not sent on every frame.
+    let settle: ReturnType<typeof setTimeout> | undefined;
+    observer = new ResizeObserver(() => {
+      clearTimeout(settle);
+      settle = setTimeout(sendSize, 200);
+    });
     observer.observe(screen);
     fit.fit();
     try {

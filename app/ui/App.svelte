@@ -32,15 +32,28 @@
   /** Drag a side column's edge to resize it; the graph takes the rest. */
   function startResize(side: "left" | "right", event: PointerEvent): void {
     if (!shell) return;
+    event.preventDefault(); // no text selection while dragging
     const column = side === "left" ? "--sidebar-col" : "--panel-col";
     const startX = event.clientX;
     const startWidth = (side === "left" ? shell.querySelector(".sidebar") : shell.querySelector(".right-panel"))?.getBoundingClientRect().width ?? 240;
+    let width = startWidth;
+    let frame: number | null = null;
+    // Apply at most one width per animation frame, so the graph redraws once per frame, not per mouse move.
     const move = (e: PointerEvent): void => {
       const delta = side === "left" ? e.clientX - startX : startX - e.clientX;
-      const width = Math.min(560, Math.max(160, startWidth + delta));
-      shell?.style.setProperty(column, `${width}px`);
+      width = Math.min(560, Math.max(160, startWidth + delta));
+      frame ??= requestAnimationFrame(() => {
+        frame = null;
+        shell?.style.setProperty(column, `${width}px`);
+      });
     };
+    document.body.style.userSelect = "none";
+    document.body.style.cursor = "col-resize";
     const up = (): void => {
+      if (frame !== null) cancelAnimationFrame(frame);
+      shell?.style.setProperty(column, `${width}px`);
+      document.body.style.userSelect = "";
+      document.body.style.cursor = "";
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
     };
