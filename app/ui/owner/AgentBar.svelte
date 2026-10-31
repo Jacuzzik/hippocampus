@@ -33,6 +33,31 @@
     menu = null;
   }
 
+  // The rename and note dialog. A note is only shown here, to the user.
+  let editing = $state<{ id: string; mode: "rename" | "note"; value: string } | null>(null);
+
+  function startEdit(id: string, mode: "rename" | "note"): void {
+    const agent = addedAgents.list.find((a) => a.id === id);
+    if (!agent) return;
+    editing = { id, mode, value: mode === "rename" ? agent.name : (agent.note ?? "") };
+    menu = null;
+  }
+
+  function saveEdit(): void {
+    if (!editing) return;
+    const { id, mode, value } = editing;
+    setAddedAgents(
+      addedAgents.list.map((a) =>
+        a.id !== id
+          ? a
+          : mode === "rename"
+            ? { ...a, name: value.trim() || a.name }
+            : { ...a, note: value },
+      ),
+    );
+    editing = null;
+  }
+
   // The info box for an added agent; the card's INFO button and the menu's Open both use it.
   function showInfo(agent: (typeof added)[number]): void {
     info = {
@@ -91,6 +116,7 @@
     if (e.key !== "Escape") return;
     info = null;
     menu = null;
+    editing = null;
   }}
 />
 
@@ -114,6 +140,16 @@
     <button
       type="button"
       role="menuitem"
+      onclick={() => startEdit(open.id, "note")}>Add note</button
+    >
+    <button
+      type="button"
+      role="menuitem"
+      onclick={() => startEdit(open.id, "rename")}>Rename</button
+    >
+    <button
+      type="button"
+      role="menuitem"
       onclick={() => {
         setArchived(open.id, true);
         menu = null;
@@ -126,6 +162,32 @@
       class="danger"
       onclick={() => remove(open.id)}>Delete</button
     >
+  </div>
+{/if}
+
+{#if editing}
+  <div class="info-scrim" role="presentation" onmousedown={() => (editing = null)}>
+    <div
+      class="info-box"
+      role="dialog"
+      aria-modal="true"
+      aria-label={editing.mode === "rename" ? "Rename agent" : "Agent note"}
+      tabindex="-1"
+      onmousedown={(e) => e.stopPropagation()}
+    >
+      <header>
+        <b>{editing.mode === "rename" ? "Rename" : "Note (only you can see this)"}</b>
+      </header>
+      {#if editing.mode === "rename"}
+        <input class="edit-field" bind:value={editing.value} aria-label="Name" />
+      {:else}
+        <textarea class="edit-field" rows="5" bind:value={editing.value} aria-label="Note"></textarea>
+      {/if}
+      <div class="edit-actions">
+        <button type="button" onclick={() => (editing = null)}>Cancel</button>
+        <button type="button" onclick={saveEdit}>Save</button>
+      </div>
+    </div>
   </div>
 {/if}
 
@@ -535,6 +597,24 @@
     align-items: center;
     gap: var(--space-2);
     margin-bottom: var(--space-3);
+  }
+
+  .edit-field {
+    box-sizing: border-box;
+    width: 100%;
+    font: inherit;
+    padding: var(--space-2);
+    background: var(--color-bg-0);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+    border-radius: 0;
+  }
+
+  .edit-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
   }
 
   .info-close {

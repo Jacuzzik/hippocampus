@@ -3,7 +3,8 @@
 import { invoke } from "@tauri-apps/api/core";
 import type { AgentDraft } from "../control/model";
 
-export type SavedAgent = AgentDraft & { id: string };
+// The note is private to the user: it is shown only in the card's menu dialog.
+export type SavedAgent = AgentDraft & { id: string; note?: string };
 
 const KEY = "hippocampus.addedAgents";
 
