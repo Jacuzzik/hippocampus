@@ -89,9 +89,10 @@
 
 {#snippet details(model: string, status: string)}
   <span class="line model">{model}</span>
-  <span class="line command">Command · {NO_DATA}</span>
+  <span class="line command">CMD · {NO_DATA}</span>
   <span class="line ctx" aria-label="Context {NO_DATA}">
-    <span class="dashes" aria-hidden="true">----------</span> {NO_DATA}
+    <span class="bar" aria-hidden="true"><span class="fill"></span></span>
+    <span class="pct">{NO_DATA}</span>
   </span>
   <span class="line status">{status}</span>
 {/snippet}
@@ -162,14 +163,21 @@
   <div class="chip main">
     <img src={logo} alt="" />
     <div class="text">
-      <b>HIPPO</b>
+      <span class="head">
+        <b>HIPPO</b>
+        <span class="badge">BOSS</span>
+      </span>
+      <span class="online">
+        <span class="dot" class:on={account !== null}></span>
+        {account ? "ONLINE" : NO_DATA}
+      </span>
       <i>{provider}</i>
       <small class="fixed">MAIN · FIXED</small>
       {@render details(account?.model ?? NO_DATA, ORB_LABELS[assistant.chat.orb])}
     </div>
     <span class="tokens">— tokens</span>
-    <button type="button" class="ptt" disabled title="Push to talk is not set up yet"
-      >PTT</button
+    <button type="button" class="talk" disabled title="Talk is not set up yet"
+      >TALK</button
     >
     <button
       type="button"
@@ -201,16 +209,14 @@
         <img src={logo} alt="" />
         <span class="text">
           <b>{agent.name}</b>
+          <span class="online"><span class="dot"></span>{NO_DATA}</span>
           <i>{labelOf(agent.provider)}</i>
           {@render details(agent.model || NO_DATA, NO_DATA)}
         </span>
       </button>
       <span class="tokens">— tokens</span>
-      <button
-        type="button"
-        class="ptt"
-        disabled
-        title="Push to talk is not set up yet">PTT</button
+      <button type="button" class="talk" disabled title="Talk is not set up yet"
+        >TALK</button
       >
       <button
         type="button"
@@ -401,17 +407,72 @@
     opacity: 0.8;
   }
 
-  .dashes {
-    letter-spacing: 1px;
-    opacity: 0.5;
+  .head {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
   }
 
-  .ptt {
+  .badge {
+    padding: 1px 3px;
+    border-radius: var(--radius-sm);
+    background: var(--color-accent);
+    color: var(--color-accent-on);
+    font-family: "Press Start 2P", monospace;
+    font-size: 6px;
+  }
+
+  .online {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    opacity: 0.8;
+  }
+
+  .dot {
+    width: 8px;
+    height: 8px;
+    flex: none;
+    border-radius: 50%;
+    background: var(--color-md-text-subtle);
+  }
+
+  .dot.on {
+    background: var(--color-md-confirm);
+  }
+
+  .bar {
+    display: inline-block;
+    width: 60px;
+    height: 6px;
+    overflow: hidden;
+    border-radius: 3px;
+    background: var(--color-md-border);
+    vertical-align: middle;
+  }
+
+  .fill {
+    display: block;
+    width: 0;
+    height: 100%;
+    background: var(--color-md-accent);
+  }
+
+  .pct {
+    margin-left: 4px;
+  }
+
+  .status {
+    text-transform: uppercase;
+  }
+
+  .talk {
     font-family: "Press Start 2P", monospace;
     font-size: 8px;
   }
 
-  .ptt:disabled {
+  .talk:disabled {
     opacity: 0.5;
     cursor: not-allowed;
   }
