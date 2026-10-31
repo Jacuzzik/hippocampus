@@ -54,6 +54,7 @@ from ai.providers.openai_compat import PRESETS
 from ai.router import build_router, model_name
 from core import __version__, added_agents, share, skills, webhooks
 from ai import chat_history, cli_sessions
+from core.terminal import Terminals
 from core import activity as journal
 from core import budget as budgets
 from core import jobs as job_store
@@ -114,6 +115,7 @@ class Session:
         self.settings_path = settings_path
         self.settings = settings if settings is not None else load_settings(settings_path)
         self.emit: Emit = emit or (lambda _event: None)
+        self.terminals = Terminals(lambda event: self.emit(event))
         self.indexer: Indexer | None = None
         self.cards = CardStore(storage / "cards")
         self.lock = threading.RLock()
@@ -736,6 +738,22 @@ class Session:
             raise ValueError(KEYCHAIN_MISSING) from error
         return self.keys()
 
+    def terminal(self, method: str, request: dict[str, Any]) -> dict[str, Any]:
+        """The agent's live terminal: start its CLI, send it keys, resize it, stop it."""
+        agent = request.get("agent")
+        if not isinstance(agent, str) or not agent:
+            raise ValueError(f'"{method}" needs an "agent" id')
+        rows, cols = int(request.get("rows") or 24), int(request.get("cols") or 80)
+        if method == "terminal_start":
+            return self.terminals.start(agent, str(request.get("provider") or ""), rows, cols)
+        if method == "terminal_input":
+            self.terminals.write(agent, str(request.get("data") or ""))
+        elif method == "terminal_resize":
+            self.terminals.resize(agent, rows, cols)
+        else:
+            self.terminals.stop(agent)
+        return {"ok": True}
+
     def dispatch(self, request: dict[str, Any]) -> dict[str, Any]:
         method = request.get("method")
         if method == "graph":
@@ -770,6 +788,8 @@ class Session:
             if not isinstance(agent, str) or not agent:
                 raise ValueError('"agent_session" needs an "agent" id')
             return {"session": cli_sessions.get(agent)["id"]}
+        if method in ("terminal_start", "terminal_input", "terminal_resize", "terminal_stop"):
+            return self.terminal(method, request)
         if method == "chat_history":
             agent = request.get("agent")
             if not isinstance(agent, str) or not agent:

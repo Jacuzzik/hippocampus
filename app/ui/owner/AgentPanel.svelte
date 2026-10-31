@@ -1,7 +1,11 @@
 <!-- The right-panel tab for a selected added agent, laid out as in the agreed picture: header, controls, note, tabs, terminal, queue. -->
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
-  import { onMount } from "svelte";
+  import { listen } from "@tauri-apps/api/event";
+  import { onDestroy, onMount } from "svelte";
+  import { Terminal } from "@xterm/xterm";
+  import { FitAddon } from "@xterm/addon-fit";
+  import "@xterm/xterm/css/xterm.css";
   import type { Message } from "../assistant/model";
   import { removeAgent, selection, startEdit, type SavedAgent } from "./addedAgents.svelte";
 
@@ -22,8 +26,53 @@
   let busy = $state(false);
   let error = $state<string | null>(null);
 
+  // The live terminal: the agent's own CLI in a real pseudo-terminal, drawn by xterm.js.
+  let screen: HTMLDivElement;
+  let term: Terminal | null = null;
+  let fit: FitAddon | null = null;
+  let unlisten: (() => void) | null = null;
+  let observer: ResizeObserver | null = null;
+
+  function sendSize(): void {
+    if (!term || !fit) return;
+    fit.fit();
+    invoke("sidecar_call", {
+      method: "terminal_resize",
+      params: { agent: agent.id, rows: term.rows, cols: term.cols },
+    }).catch(() => {});
+  }
+
+  async function startTerminal(): Promise<void> {
+    term = new Terminal({ fontFamily: "JetBrains Mono, monospace", fontSize: 12, cursorBlink: true, convertEol: true });
+    fit = new FitAddon();
+    term.loadAddon(fit);
+    term.open(screen);
+    term.onData((data) => {
+      invoke("sidecar_call", { method: "terminal_input", params: { agent: agent.id, data } }).catch((cause) =>
+        console.error("Could not send to the terminal", cause),
+      );
+    });
+    unlisten = await listen<{ event?: string; agent?: string; data?: string; exit?: number }>("sidecar-event", (event) => {
+      if (event.payload.event !== "terminal" || event.payload.agent !== agent.id || !term) return;
+      if (event.payload.data !== undefined) term.write(event.payload.data);
+      if (event.payload.exit !== undefined) term.write(`\r\n[the terminal closed, exit ${event.payload.exit}]\r\n`);
+    });
+    observer = new ResizeObserver(() => sendSize());
+    observer.observe(screen);
+    fit.fit();
+    try {
+      await invoke("sidecar_call", {
+        method: "terminal_start",
+        params: { agent: agent.id, provider: agent.provider, rows: term.rows, cols: term.cols },
+      });
+    } catch (cause) {
+      term.write(`${String(cause)}\r\n`);
+    }
+  }
+
   // Each added agent has its own Claude Code session; the sidecar keeps the sessions and their chat.
   onMount(async () => {
+    startTerminal();
     try {
       const saved = await invoke<{ sessions: SavedSession[] }>("sidecar_call", {
         method: "chat_history",
@@ -41,6 +90,14 @@
     } catch (cause) {
       error = String(cause);
     }
+  });
+
+  onDestroy(() => {
+    observer?.disconnect();
+    unlisten?.();
+    term?.dispose();
+    // The CLI's session is kept by the sidecar, so the next open resumes it.
+    invoke("sidecar_call", { method: "terminal_stop", params: { agent: agent.id } }).catch(() => {});
   });
 
   function save(): void {
@@ -119,6 +176,8 @@
     <span>● live · pty {agent.id.slice(0, 8)}</span>
     <span class="size"><button type="button">−</button> 12px <button type="button">+</button></span>
   </div>
+
+  <div class="screen" bind:this={screen} aria-label="Terminal for {agent.name}"></div>
 
   <div class="chat" aria-label="Chat with {agent.name}">
     {#if error}<p class="error" role="alert">{error}</p>{/if}
@@ -255,6 +314,13 @@
     margin: 0;
     color: var(--color-md-text-muted);
     font-size: 10px;
+  }
+  .screen {
+    height: 320px;
+    padding: var(--space-1);
+    border: 1px solid var(--color-md-border);
+    border-radius: var(--radius-sm);
+    background: #111;
   }
   .note {
     margin: 0;

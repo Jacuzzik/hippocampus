@@ -387,6 +387,12 @@ export async function mockSidecar(
             return { session: "mock-session" };
           case "provider_status":
             return { clis: [] };
+          case "terminal_start":
+            return { running: true };
+          case "terminal_input":
+          case "terminal_resize":
+          case "terminal_stop":
+            return { ok: true };
           case "jobs":
             return { jobs: jobRows };
           case "set_job": {
