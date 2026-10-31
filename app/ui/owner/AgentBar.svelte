@@ -219,21 +219,7 @@
 {/if}
 
 <div class="agent-bar" aria-label="Agents">
-  <div
-    class="chip main"
-    class:selected={selection.id === "hippo"}
-    role="button"
-    tabindex="0"
-    aria-label="HIPPO panel"
-    aria-pressed={selection.id === "hippo"}
-    onclick={(e) => {
-      if ((e.target as HTMLElement).closest("button")) return;
-      selectAgent("hippo");
-    }}
-    onkeydown={(e) => {
-      if (e.key === "Enter" || e.key === " ") selectAgent("hippo");
-    }}
-  >
+  <div class="chip main">
     <img src={CARD_FACES.find((f) => f.id === "card-face-17")?.url ?? logo} alt="" class="face" />
     <div class="text">
       <span class="head">
