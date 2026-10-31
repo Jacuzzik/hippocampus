@@ -378,6 +378,15 @@ export async function mockSidecar(
                 },
               ],
             };
+          case "chat_history":
+            return { sessions: [] };
+          case "chat_history_save":
+            return { saved: true };
+          case "agent_session":
+          case "new_session":
+            return { session: "mock-session" };
+          case "provider_status":
+            return { clis: [] };
           case "jobs":
             return { jobs: jobRows };
           case "set_job": {

@@ -71,7 +71,7 @@ test("an added agent is still listed after a reload", async ({ page }) => {
     .fill("/home/me/notes");
   await add.getByRole("button", { name: "Next" }).click();
   await add
-    .getByRole("textbox", { name: "Model", exact: true })
+    .getByLabel("Model", { exact: true })
     .fill("claude-sonnet-5-5");
   await add.getByRole("button", { name: "Next" }).click();
   await add
@@ -96,7 +96,7 @@ test("a card menu archives an added agent and the Control panel restores it", as
     .fill("/home/me/notes");
   await add.getByRole("button", { name: "Next" }).click();
   await add
-    .getByRole("textbox", { name: "Model", exact: true })
+    .getByLabel("Model", { exact: true })
     .fill("claude-sonnet-5-5");
   await add.getByRole("button", { name: "Next" }).click();
   await add
