@@ -31,7 +31,7 @@ def _calls(*ids: str) -> Reply:
 def _session(
     storage: Path, provider: Steps, limit: int, monkeypatch: pytest.MonkeyPatch
 ) -> sidecar.Session:
-    monkeypatch.setattr(sidecar, "build_router", lambda settings, key: Router(None, provider))
+    monkeypatch.setattr(sidecar, "build_router", lambda settings, key, agent="hippo": Router(None, provider))
     return sidecar.Session(storage, Settings(max_tool_calls=limit))
 
 

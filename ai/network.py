@@ -7,7 +7,7 @@ import threading
 
 MODES = ("off", "listen", "converse", "open")
 _lock = threading.Lock()
-_mode = "off"
+_mode = "converse"
 
 
 def set_mode(mode: str) -> None:

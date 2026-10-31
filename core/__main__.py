@@ -53,6 +53,7 @@ DEFAULT_HIVE_DIR = "/home/thalha/Documents/Obsidian/Munder-Difflin/hive"
 from ai.providers.openai_compat import PRESETS
 from ai.router import build_router, model_name
 from core import __version__, added_agents, share, skills, webhooks
+from ai import chat_history, cli_sessions
 from core import activity as journal
 from core import budget as budgets
 from core import jobs as job_store
@@ -106,6 +107,9 @@ class Session:
         settings_path: Path = SETTINGS_PATH,
     ) -> None:
         self.storage = storage
+        # The sessions and chat history live in the app's storage folder, which survives restarts.
+        cli_sessions.FILE = storage / "claude_sessions.json"
+        chat_history.FILE = storage / "chat_history.json"
         self.system = SystemStats()
         self.settings_path = settings_path
         self.settings = settings if settings is not None else load_settings(settings_path)
@@ -261,13 +265,15 @@ class Session:
         messages, self.paused = self.paused, None
         if request.get("continue") is True and messages is None:
             raise ValueError("nothing is paused to continue")
+        agent_name = request.get("agent") if isinstance(request.get("agent"), str) else "hippo"
         if request.get("continue") is not True:
-            messages = None
+            # The saved chat turns give the model the conversation so far (Claude's session keeps its own).
+            messages = chat_history.model_turns(agent_name)
         else:
             self.note("handoff", text="continued a request paused at the tool-call limit")
         self.kill.reset()  # a stop only ends the work that was running when it was sent
         tools = vault_tools(self.indexer, self.lock) if self.indexer is not None else {}
-        router = build_router(self.settings, get_api_key())
+        router = build_router(self.settings, get_api_key(), agent_name)
 
         def emit(event: dict[str, Any]) -> None:
             self.journal_event(event)
@@ -623,6 +629,28 @@ class Session:
     def agents_state(self) -> dict[str, Any]:
         return {"agents": added_agents.load(self.agents_path)}
 
+    def provider_status(self) -> dict[str, Any]:
+        # Is each CLI installed, and is its login file there? Only file names are checked, never contents.
+        # logged_in is None where the login file is not known for this CLI.
+        home = Path.home()
+        clis = [
+            ("claude", "claude", "Claude Code", home / ".claude" / ".credentials.json", "Run `claude` in a terminal and log in."),
+            ("codex", "codex", "Codex", home / ".codex" / "auth.json", "Run `codex login` in a terminal and finish the browser step."),
+            ("gemini-cli", "gemini", "Gemini CLI", None, "Run `gemini` in a terminal and pick a login method."),
+        ]
+        rows = []
+        for provider, binary, label, login_file, login_steps in clis:
+            installed = shutil.which(binary) is not None
+            logged_in = None if login_file is None else login_file.exists()
+            if not installed:
+                steps = f"Install {label} first. {login_steps}"
+            elif logged_in is False:
+                steps = login_steps
+            else:
+                steps = ""
+            rows.append({"provider": provider, "label": label, "installed": installed, "logged_in": logged_in, "steps": steps})
+        return {"clis": rows}
+
     def save_agents(self, request: dict[str, Any]) -> dict[str, Any]:
         agents = request.get("agents")
         added_agents.save(self.agents_path, agents)
@@ -737,6 +765,28 @@ class Session:
             return self.remove_data()
         if method == "chat":
             return self.chat(request)
+        if method == "agent_session":
+            agent = request.get("agent")
+            if not isinstance(agent, str) or not agent:
+                raise ValueError('"agent_session" needs an "agent" id')
+            return {"session": cli_sessions.get(agent)["id"]}
+        if method == "chat_history":
+            agent = request.get("agent")
+            if not isinstance(agent, str) or not agent:
+                raise ValueError('"chat_history" needs an "agent" id')
+            return {"sessions": chat_history.load(agent)}
+        if method == "chat_history_save":
+            agent = request.get("agent")
+            if not isinstance(agent, str) or not agent:
+                raise ValueError('"chat_history_save" needs an "agent" id')
+            chat_history.save(agent, request.get("sessions"))
+            return {"saved": True}
+        if method == "new_session":
+            agent = request.get("agent")
+            if not isinstance(agent, str) or not agent:
+                raise ValueError('"new_session" needs an "agent" id')
+            cli_sessions.switch(agent)
+            return {"session": cli_sessions.get(agent)["id"]}
         if method == "confirm":
             return self.confirm(request)
         if method == "answer":
@@ -768,6 +818,7 @@ class Session:
             "keys": self.keys,
             "webhooks": self.webhooks_state,
             "agents": self.agents_state,
+            "provider_status": self.provider_status,
         }
         if method in simple:
             return simple[method]()

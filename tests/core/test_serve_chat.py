@@ -43,7 +43,7 @@ def run_serve(
     out: io.StringIO,
     monkeypatch: pytest.MonkeyPatch,
 ) -> threading.Thread:
-    monkeypatch.setattr(sidecar, "build_router", lambda settings, key: Router(None, provider))
+    monkeypatch.setattr(sidecar, "build_router", lambda settings, key, agent="hippo": Router(None, provider))
     thread = threading.Thread(
         target=sidecar.serve,
         kwargs={"storage": storage, "lines": feed(lines), "out": out, "settings": Settings()},

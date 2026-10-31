@@ -44,8 +44,8 @@ class Settings:
     max_tool_calls: int = 20
     # Tools the assistant may use, by name. None means every tool.
     allowed_tools: tuple[str, ...] | None = None
-    # Outbound switch: off, listen, converse or open. Off is the default.
-    network_mode: str = "off"
+    # Outbound switch: off, listen, converse or open. Converse is the default.
+    network_mode: str = "converse"
     # Token caps for the whole app, and for the assistant.
     budget: Caps = Caps()
     assistant_budget: Caps = Caps()

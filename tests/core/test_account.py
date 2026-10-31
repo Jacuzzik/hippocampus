@@ -32,8 +32,9 @@ def session(tmp_path: Path) -> sidecar.Session:
 
 
 def test_sign_in_saves_the_key_and_status_never_returns_it(
-    keychain: Keychain, tmp_path: Path
+    keychain: Keychain, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    monkeypatch.setattr("ai.router.cli_ready", lambda: False)  # the CLI would count as a key
     s = session(tmp_path)
     assert s.dispatch({"method": "account"}) == {"claude": False, "model": "qwen2.5:1.5b"}
     assert s.dispatch({"method": "sign_in", "key": " sk-test "}) == {"claude": True}

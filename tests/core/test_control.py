@@ -60,12 +60,12 @@ def test_only_converse_and_open_allow_model_calls() -> None:
         network.set_mode("everywhere")
 
 
-def test_network_mode_defaults_to_off_and_is_saved(
+def test_network_mode_defaults_to_converse_and_is_saved(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     path = tmp_path / "settings.toml"
     path.write_text('settings_version = 1\n\n[ai]\nprovider = "claude"\n', encoding="utf-8")
-    assert load_settings(path).network_mode == "off"
+    assert load_settings(path).network_mode == "converse"
     monkeypatch.setattr(sidecar, "SETTINGS_PATH", path)
     session = sidecar.Session(tmp_path, Settings(), emit=lambda e: None)
     assert session.dispatch({"method": "set_network", "mode": "converse"}) == {
@@ -86,7 +86,7 @@ def test_a_tiny_cap_pauses_the_next_request_and_allowance_lets_one_through(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     provider = Scripted(Reply("first", tokens=50), Reply("second", tokens=50))
-    monkeypatch.setattr(sidecar, "build_router", lambda settings, key: Router(None, provider))
+    monkeypatch.setattr(sidecar, "build_router", lambda settings, key, agent="hippo": Router(None, provider))
     session = sidecar.Session(tmp_path, Settings(assistant_budget=Caps(daily=10)))
     assert chat(session, "one") == {"reply": "first", "stopped": False}
 
@@ -508,7 +508,7 @@ def test_a_saved_key_is_used_by_the_next_request_without_a_restart(
     monkeypatch.setattr("ai.keys.keyring", keychain)
     keys_used: list[str | None] = []
 
-    def router_for(settings: Settings, key: str | None) -> Router:
+    def router_for(settings: Settings, key: str | None, agent: str = "hippo") -> Router:
         keys_used.append(key)
         return Router(None, Scripted(Reply("one", tokens=1), Reply("two", tokens=1)))
 

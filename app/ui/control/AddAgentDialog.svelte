@@ -4,6 +4,7 @@
   import { addAgent } from "../owner/addedAgents.svelte";
   import {
     AGENT_COLOURS,
+    AGENT_MODELS,
     AGENT_PROVIDERS,
     AGENT_STEPS,
     AGENT_TEMPLATES,
@@ -12,6 +13,7 @@
     agentStepError,
     engineStatus,
     type AgentDraft,
+    type CliState,
   } from "./model";
 
   // The Add agent dialog: four steps, then Spawn adds the agent to the agent bar.
@@ -44,7 +46,8 @@
   let savedKeys = $state<string[]>([]);
   let draft = $state<AgentDraft>(blankDraft());
 
-  const engine = $derived(engineStatus(draft.provider, savedKeys));
+  let clis = $state<CliState[]>([]);
+  const engine = $derived(engineStatus(draft.provider, savedKeys, clis));
   const command = $derived(
     draft.model.trim() === "" ? "" : agentCommand(draft),
   );
@@ -57,6 +60,11 @@
       savedKeys = result.keys.filter((k) => k.saved).map((k) => k.provider);
     } catch (cause) {
       error = String(cause);
+    }
+    try {
+      clis = (await invoke<{ clis: CliState[] }>("sidecar_call", { method: "provider_status" })).clis;
+    } catch (cause) {
+      console.error("Could not check the CLI logins", cause);
     }
   }
 
@@ -203,7 +211,12 @@
           {/each}
         </select>
       </label>
-      <label>Model <input type="text" bind:value={draft.model} /></label>
+      <label>Model <input type="text" list="model-suggestions" bind:value={draft.model} /></label>
+      <datalist id="model-suggestions">
+        {#each AGENT_MODELS[draft.provider] ?? [] as m (m)}
+          <option value={m}></option>
+        {/each}
+      </datalist>
       <label>
         Autonomy
         <select bind:value={draft.autonomy}>

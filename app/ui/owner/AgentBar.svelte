@@ -5,9 +5,14 @@
   import logo from "../assets/brand/hippocampus-mark-purple.png";
   import {
     addedAgents,
+    agentEdit,
     archived,
-    setAddedAgents,
-    setArchived,
+    archiveAgent,
+    removeAgent,
+    saveEdit,
+    selectAgent,
+    selection,
+    startEdit,
   } from "./addedAgents.svelte";
   import { AGENT_PROVIDERS, AVATARS, CARD_FACES } from "../control/model";
   import { ORB_LABELS } from "../assistant/model";
@@ -26,36 +31,6 @@
   // The menu opens at the cursor.
   function openMenu(e: MouseEvent, id: string): void {
     menu = { id, x: e.clientX, bottom: window.innerHeight - e.clientY };
-  }
-
-  function remove(id: string): void {
-    setAddedAgents(addedAgents.list.filter((a) => a.id !== id));
-    menu = null;
-  }
-
-  // The rename and note dialog. A note is only shown here, to the user.
-  let editing = $state<{ id: string; mode: "rename" | "note"; value: string } | null>(null);
-
-  function startEdit(id: string, mode: "rename" | "note"): void {
-    const agent = addedAgents.list.find((a) => a.id === id);
-    if (!agent) return;
-    editing = { id, mode, value: mode === "rename" ? agent.name : (agent.note ?? "") };
-    menu = null;
-  }
-
-  function saveEdit(): void {
-    if (!editing) return;
-    const { id, mode, value } = editing;
-    setAddedAgents(
-      addedAgents.list.map((a) =>
-        a.id !== id
-          ? a
-          : mode === "rename"
-            ? { ...a, name: value.trim() || a.name }
-            : { ...a, note: value },
-      ),
-    );
-    editing = null;
   }
 
   // The info box for an added agent; the card's INFO button and the menu's Open both use it.
@@ -116,7 +91,7 @@
     if (e.key !== "Escape") return;
     info = null;
     menu = null;
-    editing = null;
+    agentEdit.current = null;
   }}
 />
 
@@ -140,18 +115,24 @@
     <button
       type="button"
       role="menuitem"
-      onclick={() => startEdit(open.id, "note")}>Add note</button
-    >
-    <button
-      type="button"
-      role="menuitem"
-      onclick={() => startEdit(open.id, "rename")}>Rename</button
+      onclick={() => {
+        menu = null;
+        startEdit(open.id, "note");
+      }}>Add note</button
     >
     <button
       type="button"
       role="menuitem"
       onclick={() => {
-        setArchived(open.id, true);
+        menu = null;
+        startEdit(open.id, "rename");
+      }}>Rename</button
+    >
+    <button
+      type="button"
+      role="menuitem"
+      onclick={() => {
+        archiveAgent(open.id);
         menu = null;
       }}
       class="danger">Archive</button
@@ -160,31 +141,34 @@
       type="button"
       role="menuitem"
       class="danger"
-      onclick={() => remove(open.id)}>Delete</button
+      onclick={() => {
+        removeAgent(open.id);
+        menu = null;
+      }}>Delete</button
     >
   </div>
 {/if}
 
-{#if editing}
-  <div class="info-scrim" role="presentation" onmousedown={() => (editing = null)}>
+{#if agentEdit.current}
+  <div class="info-scrim" role="presentation" onmousedown={() => (agentEdit.current = null)}>
     <div
       class="info-box"
       role="dialog"
       aria-modal="true"
-      aria-label={editing.mode === "rename" ? "Rename agent" : "Agent note"}
+      aria-label={agentEdit.current.mode === "rename" ? "Rename agent" : "Agent note"}
       tabindex="-1"
       onmousedown={(e) => e.stopPropagation()}
     >
       <header>
-        <b>{editing.mode === "rename" ? "Rename" : "Note (only you can see this)"}</b>
+        <b>{agentEdit.current.mode === "rename" ? "Rename" : "Note (only you can see this)"}</b>
       </header>
-      {#if editing.mode === "rename"}
-        <input class="edit-field" bind:value={editing.value} aria-label="Name" />
+      {#if agentEdit.current.mode === "rename"}
+        <input class="edit-field" bind:value={agentEdit.current.value} aria-label="Name" />
       {:else}
-        <textarea class="edit-field" rows="5" bind:value={editing.value} aria-label="Note"></textarea>
+        <textarea class="edit-field" rows="5" bind:value={agentEdit.current.value} aria-label="Note"></textarea>
       {/if}
       <div class="edit-actions">
-        <button type="button" onclick={() => (editing = null)}>Cancel</button>
+        <button type="button" onclick={() => (agentEdit.current = null)}>Cancel</button>
         <button type="button" onclick={saveEdit}>Save</button>
       </div>
     </div>
@@ -287,12 +271,14 @@
     </div>
   </div>
   {#each added as agent (agent.id)}
-    <div class="chip main added">
+    <div class="chip main added" class:selected={selection.id === agent.id}>
       <button
         type="button"
         class="card-open"
         aria-haspopup="menu"
         aria-label="{agent.name} options"
+        aria-pressed={selection.id === agent.id}
+        onclick={() => selectAgent(agent.id)}
         oncontextmenu={(e) => {
           e.preventDefault();
           openMenu(e, agent.id);
@@ -304,7 +290,7 @@
           <span class="online"><span class="dot"></span>{NO_DATA}</span>
           <span class="row">
             <span class="key">MODEL</span>
-            <span class="val">{agent.model || NO_DATA}</span>
+            <span class="val">{agent.model || "No model set"}</span>
           </span>
           <span class="row">
             <span class="key">CMD</span>
@@ -549,6 +535,12 @@
     border-top-width: 2px;
     padding-top: 14px;
     box-shadow: none;
+  }
+
+  /* The card whose panel is open in the right panel. */
+  .chip.main.added.selected {
+    outline: 2px solid var(--hippo-purple);
+    outline-offset: 2px;
   }
 
   /* Hidden BOSS-tag slot: keeps the name on HIPPO's line without showing the tag. */

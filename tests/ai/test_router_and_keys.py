@@ -47,13 +47,15 @@ def test_both_failing_names_both() -> None:
         ask(router)
 
 
-def test_build_router_picks_claude_only_with_a_key() -> None:
+def test_build_router_picks_claude_only_with_a_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("ai.router.cli_ready", lambda: False)  # the CLI would count as a key
     settings = Settings()
     assert build_router(settings, None).primary is None
     assert build_router(settings, "k").primary is not None
 
 
-def test_model_name_is_the_one_replies_come_from() -> None:
+def test_model_name_is_the_one_replies_come_from(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("ai.router.cli_ready", lambda: False)  # the CLI would count as a key
     settings = Settings()
     assert model_name(settings, None) == settings.ollama_model
     assert model_name(settings, "k") == settings.claude_model

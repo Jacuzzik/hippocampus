@@ -138,10 +138,45 @@ export const AGENT_STEPS = [
   "Briefing",
 ] as const;
 
+// kind: "key" needs a saved API key; "cli" runs a command-line tool the user must log in to; "local" runs on this computer.
 export const AGENT_PROVIDERS = [
-  { id: "claude", label: "Claude (Anthropic)", needsKey: true },
-  { id: "ollama", label: "Ollama (on this computer)", needsKey: false },
+  { id: "claude", label: "Claude (Anthropic)", needsKey: true, kind: "key" },
+  { id: "codex", label: "Codex (OpenAI CLI)", needsKey: false, kind: "cli" },
+  { id: "gemini-cli", label: "Gemini CLI (Google)", needsKey: false, kind: "cli" },
+  { id: "ollama", label: "Ollama (on this computer)", needsKey: false, kind: "local" },
+  { id: "openai", label: "OpenAI", needsKey: true, kind: "key" },
+  { id: "xai", label: "xAI Grok", needsKey: true, kind: "key" },
+  { id: "moonshot", label: "Moonshot Kimi", needsKey: true, kind: "key" },
+  { id: "gemini", label: "Google Gemini (API)", needsKey: true, kind: "key" },
+  { id: "qwen", label: "Alibaba Qwen", needsKey: true, kind: "key" },
+  { id: "deepseek", label: "DeepSeek", needsKey: true, kind: "key" },
+  { id: "mistral", label: "Mistral", needsKey: true, kind: "key" },
+  { id: "groq", label: "Groq", needsKey: true, kind: "key" },
+  { id: "openrouter", label: "OpenRouter", needsKey: true, kind: "key" },
+  { id: "lmstudio", label: "LM Studio (local)", needsKey: false, kind: "local" },
+  { id: "vllm", label: "vLLM (local)", needsKey: false, kind: "local" },
 ] as const;
+
+// Model names shown as suggestions; the model field still accepts any name typed in.
+// Claude: the project's Claude 5 list. Codex, Gemini, xAI, DeepSeek and Mistral: 2026 names from web sources, not checked against provider docs.
+// Moonshot, Qwen, Groq and OpenRouter names are older and unverified for 2026.
+export const AGENT_MODELS: Record<string, string[]> = {
+  claude: ["claude-fable-5-1", "claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5"],
+  codex: ["gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-5.5", "gpt-5.4", "gpt-5.3-codex"],
+  "gemini-cli": ["gemini-3.1-pro-preview", "gemini-3-flash-preview", "gemini-2.5-pro", "gemini-2.5-flash"],
+  ollama: ["qwen2.5:1.5b"],
+  openai: ["gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-5.5", "gpt-5.4", "gpt-5.4-mini", "gpt-5.4-nano"],
+  xai: ["grok-4.6", "grok-4.5", "grok-4.3", "grok-latest"],
+  moonshot: ["kimi-k3", "kimi-k2.6", "moonshot-v1-8k"],
+  gemini: ["gemini-3.1-pro-preview", "gemini-3.1-flash-lite", "gemini-3-flash-preview", "gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite"],
+  qwen: ["qwen-max", "qwen-plus", "qwen-turbo"],
+  deepseek: ["deepseek-v4-pro", "deepseek-v4-flash"],
+  mistral: ["mistral-large-3", "mistral-small-4", "codestral-latest"],
+  groq: ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "qwen/qwen3-32b"],
+  openrouter: ["anthropic/claude-sonnet-4.5", "openai/gpt-4o", "google/gemini-2.5-pro"],
+  lmstudio: [],
+  vllm: [],
+};
 
 /** Card faces: one per card-face-XX.svg in ui/assets/faces-new. The id is the file name. */
 const cardFaceUrls = import.meta.glob("../assets/faces-new/card-face-*.svg", {
@@ -283,15 +318,32 @@ export function agentStepError(step: number, draft: AgentDraft): string | null {
   return null;
 }
 
+/** A command-line tool's state from the sidecar's provider_status: installed, logged in (null when unknown), and the steps. */
+export interface CliState {
+  provider: string;
+  label: string;
+  installed: boolean;
+  logged_in: boolean | null;
+  steps: string;
+}
+
 /** "Ready" when the provider needs no key or a key is saved, else "Not set up" with the reason. */
 export function engineStatus(
   provider: string,
   savedKeys: string[],
+  clis: CliState[] = [],
 ): { ready: boolean; text: string } {
   const row = AGENT_PROVIDERS.find((p) => p.id === provider);
   if (!row) return { ready: false, text: "Not set up: pick a provider." };
-  if (!row.needsKey)
+  if (row.kind === "local")
     return { ready: true, text: "Ready: runs on this computer." };
+  if (row.kind === "cli") {
+    const cli = clis.find((c) => c.provider === provider);
+    if (!cli) return { ready: false, text: `Checking ${row.label}…` };
+    if (cli.logged_in === true && cli.installed)
+      return { ready: true, text: `Ready: ${row.label} is logged in.` };
+    return { ready: false, text: cli.steps || `Not checked: log in to ${row.label} first.` };
+  }
   return savedKeys.includes(provider)
     ? { ready: true, text: `Ready: ${row.label} key saved.` }
     : { ready: false, text: `Not set up: no ${row.label} key saved.` };
@@ -303,6 +355,10 @@ export function agentCommand(
 ): string {
   const model = draft.model.trim();
   if (draft.provider === "ollama") return `ollama run ${model}`;
+  if (draft.provider === "codex") return `codex --model ${model}`;
+  if (draft.provider === "gemini-cli") return `gemini --model ${model}`;
+  // API providers have no command line: the app calls them directly with the saved key.
+  if (draft.provider !== "claude") return "";
   const mode = draft.autonomy === "auto" ? "bypassPermissions" : "default";
   return `claude --model ${model} --permission-mode ${mode}`;
 }

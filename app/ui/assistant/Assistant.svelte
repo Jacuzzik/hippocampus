@@ -83,6 +83,21 @@
   <header class="head">
     <Orb state={chat.orb} />
     <span class="state">{ORB_LABELS[chat.orb]}</span>
+    <label class="session">
+      <span class="muted">Session</span>
+      <select
+        aria-label="Session"
+        value={assistant.viewing ?? assistant.sessions.length - 1}
+        onchange={(e) => assistant.showSession(Number(e.currentTarget.value))}
+      >
+        {#each assistant.sessions as _, i (i)}
+          <option value={i}>{i === assistant.sessions.length - 1 ? "Current" : `Past ${i + 1}`}</option>
+        {/each}
+      </select>
+    </label>
+    <button type="button" class="new-session" disabled={assistant.busy} onclick={() => assistant.newSession()}>
+      New session
+    </button>
   </header>
 
   <ol class="messages" aria-live="polite" aria-label="Conversation">

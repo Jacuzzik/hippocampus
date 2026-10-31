@@ -11,9 +11,16 @@
   import SkillsPanel from "./SkillsPanel.svelte";
   import TempsPanel from "./TempsPanel.svelte";
   import HistoryPanel from "./HistoryPanel.svelte";
+  import AgentPanel from "../owner/AgentPanel.svelte";
+  import { addedAgents, archived, selection } from "../owner/addedAgents.svelte";
 
   // Kept mounted when hidden so the chat session and its tool log survive a toggle.
   let { open = true }: { open?: boolean } = $props();
+
+  // The selected added agent (a card click). Its own tab shows while it is selected.
+  const agent = $derived(
+    addedAgents.list.find((a) => a.id === selection.id && !archived.ids.includes(a.id)) ?? null,
+  );
 
   // Only the terminal is built; the rest of the grid is shown and stays disabled.
   // Names match Munder Difflin's Command Center tabs.
@@ -28,6 +35,12 @@
   ];
   let tab = $state("terminal");
   let fontSize = $state(12);
+
+  // Selecting a card opens its tab; deselecting (or archiving or deleting it) returns to the terminal.
+  $effect(() => {
+    if (agent) tab = "agent";
+    else if (tab === "agent") tab = "terminal";
+  });
 </script>
 
 <div class="right-panel" hidden={!open}>
@@ -45,6 +58,16 @@
           onclick={() => (tab = name)}>{name}</button
         >
       {/each}
+      {#if agent}
+        <button
+          type="button"
+          class="tab"
+          role="tab"
+          aria-selected={tab === "agent"}
+          class:on={tab === "agent"}
+          onclick={() => (tab = "agent")}>{agent.name}</button
+        >
+      {/if}
     </div>
     <div class="live">
       <span class="dot" aria-hidden="true"></span>
@@ -58,7 +81,9 @@
     <div class="pane" hidden={tab !== "terminal"}>
       <Assistant />
     </div>
-    {#if tab === "tasks"}
+    {#if tab === "agent" && agent}
+      <AgentPanel {agent} />
+    {:else if tab === "tasks"}
       <TasksPanel />
     {:else if tab === "inbox"}
       <InboxPanel />

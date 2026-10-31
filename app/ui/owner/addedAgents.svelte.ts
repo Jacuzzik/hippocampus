@@ -94,6 +94,10 @@ void load();
 export function addAgent(draft: AgentDraft): SavedAgent {
   const agent = { ...draft, id: crypto.randomUUID() };
   setAddedAgents([...addedAgents.list, agent]);
+  // Each agent gets its own Claude Code session at setup; the sidecar keeps it across restarts.
+  invoke("sidecar_call", { method: "agent_session", params: { agent: agent.id } }).catch((cause) =>
+    console.error("Could not create the agent's session", cause),
+  );
   return agent;
 }
 
@@ -101,4 +105,52 @@ export function setAddedAgents(list: SavedAgent[]): void {
   changed = true;
   addedAgents.list = list;
   void persist(list);
+}
+
+// The card the user clicked; its panel shows in the right panel. Null when none is selected.
+export const selection = $state<{ id: string | null }>({ id: null });
+
+export function selectAgent(id: string | null): void {
+  selection.id = id;
+}
+
+// The rename or note dialog, opened from the card menu or the agent panel. Its markup lives in AgentBar.
+export const agentEdit = $state<{
+  current: { id: string; mode: "rename" | "note"; value: string } | null;
+}>({ current: null });
+
+export function startEdit(id: string, mode: "rename" | "note"): void {
+  const agent = addedAgents.list.find((a) => a.id === id);
+  if (!agent) return;
+  agentEdit.current = {
+    id,
+    mode,
+    value: mode === "rename" ? agent.name : (agent.note ?? ""),
+  };
+}
+
+export function saveEdit(): void {
+  const edit = agentEdit.current;
+  if (!edit) return;
+  const { id, mode, value } = edit;
+  setAddedAgents(
+    addedAgents.list.map((a) =>
+      a.id !== id
+        ? a
+        : mode === "rename"
+          ? { ...a, name: value.trim() || a.name }
+          : { ...a, note: value },
+    ),
+  );
+  agentEdit.current = null;
+}
+
+export function archiveAgent(id: string): void {
+  setArchived(id, true);
+  if (selection.id === id) selection.id = null;
+}
+
+export function removeAgent(id: string): void {
+  setAddedAgents(addedAgents.list.filter((a) => a.id !== id));
+  if (selection.id === id) selection.id = null;
 }
