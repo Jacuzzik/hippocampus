@@ -147,12 +147,13 @@
 
   <p class="queue-label">QUEUE</p>
   <form class="composer" onsubmit={send}>
-    <input type="text" bind:value={text} placeholder={`Message ${agent.name}`} aria-label={`Message ${agent.name}`} />
-    <button type="submit" class="send" disabled={!text.trim()}>Send</button>
+    <textarea rows="3" bind:value={text} placeholder={`Message ${agent.name}`} aria-label={`Message ${agent.name}`}></textarea>
+    <button type="submit" class="send" disabled={!text.trim()}>Send →</button>
   </form>
   {#if error}<p class="error" role="alert">{error}</p>{/if}
   <!-- Dummy attachment buttons: they do nothing until their behaviour is decided. -->
   <div class="bar">
+    <span class="hint">Press and hold Alt</span>
     <button type="button">voice</button>
     <button type="button">+ files</button>
     <button type="button">+ folder</button>
@@ -198,6 +199,36 @@
   }
   .title b {
     font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .status::before {
+    content: "■ ";
+  }
+  .tabs button {
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+  }
+  .tabs .on {
+    background: var(--color-md-surface-raised, var(--color-md-surface));
+  }
+  .hint {
+    margin-right: auto;
+    color: var(--color-md-text-muted);
+    font-size: 10px;
+  }
+  textarea {
+    flex: 1;
+    min-width: 0;
+    min-height: 64px;
+    padding: var(--space-2);
+    border: 1px solid var(--color-md-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-md-surface);
+    color: var(--color-md-text);
+    font: inherit;
+    resize: vertical;
   }
   .status,
   .branch {
@@ -219,7 +250,11 @@
   button {
     cursor: pointer;
   }
-  .stop,
+  .stop {
+    border-color: var(--color-danger);
+    background: var(--color-danger);
+    color: var(--color-md-accent-on);
+  }
   .danger,
   .close {
     color: var(--color-danger);
@@ -261,6 +296,7 @@
   }
   .stats dd {
     margin: 0;
+    font-size: 14px;
   }
   .queue-label {
     margin: 0;
