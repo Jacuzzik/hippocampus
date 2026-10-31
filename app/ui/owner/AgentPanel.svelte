@@ -105,7 +105,7 @@
       <span class="branch">{agent.description || NO_DATA}</span>
     </div>
     <div class="icons">
-      <button type="button" onclick={() => startEdit(agent.id, "rename")}>Edit</button>
+      {#if agent.id !== "hippo"}<button type="button" onclick={() => startEdit(agent.id, "rename")}>Edit</button>{/if}
       <button type="button">IDE</button>
       <button type="button">Open</button>
       <button type="button" class="close" aria-label="Close panel" onclick={() => (selection.id = null)}>×</button>
@@ -160,8 +160,10 @@
   </div>
 
   <div class="actions">
-    <button type="button" onclick={() => startEdit(agent.id, "note")}>Add note</button>
-    <button type="button" class="danger" onclick={() => removeAgent(agent.id)}>Delete</button>
+    {#if agent.id !== "hippo"}
+      <button type="button" onclick={() => startEdit(agent.id, "note")}>Add note</button>
+      <button type="button" class="danger" onclick={() => removeAgent(agent.id)}>Delete</button>
+    {/if}
     {#if agent.note}<p class="note">{agent.note}</p>{/if}
   </div>
 </div>

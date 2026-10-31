@@ -12,14 +12,32 @@
   import TempsPanel from "./TempsPanel.svelte";
   import HistoryPanel from "./HistoryPanel.svelte";
   import AgentPanel from "../owner/AgentPanel.svelte";
-  import { addedAgents, archived, selection } from "../owner/addedAgents.svelte";
+  import { addedAgents, archived, selection, type SavedAgent } from "../owner/addedAgents.svelte";
 
   // Kept mounted when hidden so the chat session and its tool log survive a toggle.
   let { open = true }: { open?: boolean } = $props();
 
   // The selected added agent (a card click). Its own tab shows while it is selected.
+  // The main agent (HIPPO) uses the same panel; its session is the one the chat uses.
+  const MAIN: SavedAgent = {
+    id: "hippo",
+    name: "HIPPO",
+    character: "",
+    colour: "",
+    folder: "",
+    isolation: "shared",
+    resume: true,
+    provider: "claude",
+    model: "",
+    command: "",
+    autonomy: "ask",
+    description: "Main agent",
+    goal: "",
+  };
   const agent = $derived(
-    addedAgents.list.find((a) => a.id === selection.id && !archived.ids.includes(a.id)) ?? null,
+    selection.id === "hippo"
+      ? MAIN
+      : (addedAgents.list.find((a) => a.id === selection.id && !archived.ids.includes(a.id)) ?? null),
   );
 
   // Only the terminal is built; the rest of the grid is shown and stays disabled.

@@ -26,6 +26,27 @@
   const narrow = window.matchMedia("(max-width: 900px)").matches;
   let sidebarOpen = $state(!narrow);
   let panelOpen = $state(!narrow);
+  // The shell element, so a drag handle can set the sidebar and panel widths on it.
+  let shell: HTMLDivElement | undefined = $state();
+
+  /** Drag a side column's edge to resize it; the graph takes the rest. */
+  function startResize(side: "left" | "right", event: PointerEvent): void {
+    if (!shell) return;
+    const column = side === "left" ? "--sidebar-col" : "--panel-col";
+    const startX = event.clientX;
+    const startWidth = (side === "left" ? shell.querySelector(".sidebar") : shell.querySelector(".right-panel"))?.getBoundingClientRect().width ?? 240;
+    const move = (e: PointerEvent): void => {
+      const delta = side === "left" ? e.clientX - startX : startX - e.clientX;
+      const width = Math.min(560, Math.max(160, startWidth + delta));
+      shell?.style.setProperty(column, `${width}px`);
+    };
+    const up = (): void => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  }
   // Which overlay box is open: the quick switcher (Ctrl+O) or the command palette (Ctrl+P).
   let box = $state<"switcher" | "palette" | null>(null);
   let searchEl = $state<HTMLInputElement | null>(null);
@@ -191,6 +212,7 @@
 
 <div
   class="shell"
+  bind:this={shell}
   class:no-sidebar={!sidebarOpen}
   class:no-panel={!panelOpen}
   class:terminal-only={terminalOnly}
@@ -224,11 +246,44 @@
     onselect={(id) => (selectedId = id)}
   />
   <RightPanel open={panelOpen || terminalOnly} />
+  {#if sidebarOpen && data && !terminalOnly}
+    <div
+      class="resize-handle left"
+      role="separator"
+      aria-orientation="vertical"
+      aria-label="Resize notes sidebar"
+      onpointerdown={(e) => startResize("left", e)}
+    ></div>
+  {/if}
+  {#if panelOpen || terminalOnly}
+    <div
+      class="resize-handle right"
+      role="separator"
+      aria-orientation="vertical"
+      aria-label="Resize right panel"
+      onpointerdown={(e) => startResize("right", e)}
+    ></div>
+  {/if}
   <StatusBar {data} onadd={() => (addOpen = true)} />
 </div>
 
 <style>
+  .resize-handle {
+    position: absolute;
+    top: 0;
+    bottom: var(--layout-status-bar-height);
+    width: 6px;
+    cursor: col-resize;
+    z-index: 2;
+  }
+  .resize-handle.left {
+    left: calc(var(--layout-ribbon-width) + var(--sidebar-col) - 3px);
+  }
+  .resize-handle.right {
+    right: calc(var(--panel-col) - 3px);
+  }
   .shell {
+    position: relative;
     --sidebar-col: var(--layout-sidebar-width);
     --panel-col: var(--layout-right-panel-width);
     --layout-status-bar-height: 136px;
