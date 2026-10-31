@@ -143,6 +143,17 @@ export const AGENT_PROVIDERS = [
   { id: "ollama", label: "Ollama (on this computer)", needsKey: false },
 ] as const;
 
+/** Card faces: one per card-face-XX.svg in ui/assets/faces-new. The id is the file name. */
+const cardFaceUrls = import.meta.glob("../assets/faces-new/card-face-*.svg", {
+  eager: true,
+  query: "?url",
+  import: "default",
+}) as Record<string, string>;
+
+export const CARD_FACES = Object.entries(cardFaceUrls)
+  .map(([path, url]) => ({ id: path.split("/").pop()?.replace(".svg", "") ?? path, url }))
+  .sort((a, b) => a.id.localeCompare(b.id));
+
 /** Original 8x8 pixel avatars drawn here in code. "#" is a filled pixel, "." is empty. */
 export const AVATARS = [
   {
