@@ -1,9 +1,9 @@
-<!-- The right-panel tab for a selected added agent: its header, its own chat, and the card menu's actions. -->
+<!-- The right-panel tab for a selected added agent, laid out as in the agreed picture: header, controls, note, tabs, terminal, queue. -->
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
   import { onMount } from "svelte";
   import type { Message } from "../assistant/model";
-  import { archiveAgent, removeAgent, startEdit, type SavedAgent } from "./addedAgents.svelte";
+  import { removeAgent, selection, startEdit, type SavedAgent } from "./addedAgents.svelte";
 
   let { agent }: { agent: SavedAgent } = $props();
 
@@ -12,8 +12,9 @@
     messages: Message[];
   }
 
-  // Not reported until the app has a real status and the user decides how to show it.
+  // The app does not report a status or usage for an added agent yet, so these show a dash, not made-up numbers.
   const NOT_REPORTED = "Not reported";
+  const NO_DATA = "—";
 
   let sessions = $state<SavedSession[]>([]);
   let messages = $state<Message[]>([]);
@@ -85,30 +86,38 @@
     <div class="title">
       <b>{agent.name}</b>
       <span class="status">{NOT_REPORTED}</span>
+      <span class="branch">{agent.description || NO_DATA}</span>
     </div>
     <div class="icons">
-      <button type="button" aria-label="Rename" onclick={() => startEdit(agent.id, "rename")}>Edit</button>
-      <button type="button" class="danger" onclick={() => archiveAgent(agent.id)}>Archive</button>
-      <button type="button" class="danger" onclick={() => removeAgent(agent.id)}>Delete</button>
+      <button type="button" onclick={() => startEdit(agent.id, "rename")}>Edit</button>
+      <button type="button">IDE</button>
+      <button type="button">Open</button>
+      <button type="button" class="close" aria-label="Close panel" onclick={() => (selection.id = null)}>×</button>
     </div>
   </header>
 
-  <p class="meta">
-    <span>{agent.model || "No model set"}</span>
-    <span>{agent.folder || "No folder"}</span>
-  </p>
+  <!-- Dummy controls: they do nothing until their behaviour is decided. -->
+  <div class="controls">
+    <button type="button">Block tools</button>
+    <button type="button" class="stop">Stop after this step</button>
+    <button type="button">▶ 1:1</button>
+  </div>
 
-  <!-- Dummy controls for now: they do nothing until their behaviour is decided. -->
+  <div class="note-row">
+    <input type="text" placeholder="send this agent a note… (arrives as context on its next turn)" aria-label="Note for {agent.name}" />
+    <button type="button">steer</button>
+  </div>
+
   <div class="tabs" role="group" aria-label="Agent views">
-    <button type="button" aria-pressed="true">Terminal</button>
+    <button type="button" class="on" aria-pressed="true">Terminal</button>
     <button type="button" aria-pressed="false">Git</button>
     <button type="button" aria-pressed="false">Messages</button>
     <button type="button" aria-pressed="false">Traces</button>
   </div>
-  <div class="controls" role="group" aria-label="Agent controls">
-    <button type="button">Block tools</button>
-    <button type="button">Stop after this step</button>
-    <button type="button">1:1</button>
+
+  <div class="live">
+    <span>● live · pty {agent.id.slice(0, 8)}</span>
+    <span class="size"><button type="button">−</button> 12px <button type="button">+</button></span>
   </div>
 
   <div class="chat" aria-label="Chat with {agent.name}">
@@ -118,14 +127,24 @@
         <li class={message.role}>{message.text}</li>
       {/each}
     </ol>
-    <form onsubmit={send}>
-      <input type="text" bind:value={text} placeholder={`Message ${agent.name}`} aria-label={`Message ${agent.name}`} />
-      <button type="submit" disabled={busy || !text.trim()}>{busy ? "Working…" : "Send"}</button>
-    </form>
   </div>
+
+  <dl class="stats">
+    <div><dt>Cost</dt><dd>{NO_DATA}</dd></div>
+    <div><dt>Tokens</dt><dd>{NO_DATA}</dd></div>
+    <div><dt>Agent time</dt><dd>{NO_DATA}</dd></div>
+    <div><dt>Context</dt><dd>{NO_DATA}</dd></div>
+  </dl>
+
+  <p class="queue-label">QUEUE</p>
+  <form class="composer" onsubmit={send}>
+    <input type="text" bind:value={text} placeholder={`Message ${agent.name}`} aria-label={`Message ${agent.name}`} />
+    <button type="submit" disabled={busy || !text.trim()}>{busy ? "Working…" : "Send"}</button>
+  </form>
 
   <div class="actions">
     <button type="button" onclick={() => startEdit(agent.id, "note")}>Add note</button>
+    <button type="button" class="danger" onclick={() => removeAgent(agent.id)}>Delete</button>
     {#if agent.note}<p class="note">{agent.note}</p>{/if}
   </div>
 </div>
@@ -134,56 +153,72 @@
   .agent-panel {
     display: flex;
     flex-direction: column;
-    gap: var(--space-3);
+    gap: var(--space-2);
     padding: var(--space-2);
     color: var(--color-md-text);
     font-size: var(--font-size-xs);
   }
-  header {
+  header,
+  .controls,
+  .note-row,
+  .tabs,
+  .live,
+  .icons,
+  .actions,
+  .composer {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
+    gap: var(--space-1);
+  }
+  header {
     justify-content: space-between;
-    gap: var(--space-2);
   }
   .title {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: var(--space-2);
   }
   .title b {
     font-size: 14px;
   }
-  .status {
+  .status,
+  .branch {
     padding: 0 var(--space-1);
     border: 1px solid var(--color-md-border);
     border-radius: var(--radius-sm);
     color: var(--color-md-text-muted);
   }
-  .meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-    margin: 0;
-    color: var(--color-md-text-muted);
-  }
-  .icons,
-  .actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-1);
-  }
-  button {
-    min-height: 44px;
+  button,
+  input {
+    min-height: 36px;
     padding: 0 var(--space-2);
     border: 1px solid var(--color-md-border);
     border-radius: var(--radius-sm);
     background: var(--color-md-surface);
     color: var(--color-md-text);
+    font: inherit;
+  }
+  button {
     cursor: pointer;
   }
-  .danger {
+  .stop,
+  .danger,
+  .close {
     color: var(--color-danger);
+  }
+  .note-row input,
+  .composer input {
+    flex: 1;
+    min-width: 0;
+  }
+  .tabs .on {
+    border-color: var(--color-md-text);
+  }
+  .live {
+    justify-content: space-between;
+    color: var(--color-md-text-muted);
   }
   .chat ol {
     display: grid;
@@ -203,29 +238,23 @@
   .error {
     color: var(--color-danger);
   }
-  .chat form {
-    display: flex;
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
     gap: var(--space-1);
-    margin-top: var(--space-2);
+    margin: 0;
   }
-  .chat input {
-    flex: 1;
-    min-width: 0;
-    min-height: 44px;
-    padding: 0 var(--space-2);
-    color: inherit;
-    background: var(--color-md-surface);
-    border: 1px solid var(--color-md-border);
-    border-radius: var(--radius-sm);
+  .stats dt {
+    color: var(--color-md-text-muted);
+    font-size: 10px;
   }
-  .tabs,
-  .controls {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-1);
+  .stats dd {
+    margin: 0;
   }
-  .tabs button[aria-pressed="true"] {
-    border-color: var(--color-md-text);
+  .queue-label {
+    margin: 0;
+    color: var(--color-md-text-muted);
+    font-size: 10px;
   }
   .note {
     margin: 0;

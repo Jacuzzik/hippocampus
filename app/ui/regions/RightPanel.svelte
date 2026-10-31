@@ -45,39 +45,41 @@
 
 <div class="right-panel" hidden={!open}>
   <div class="column" style="--term-size: {fontSize}px">
-    <div class="tabs" role="tablist" aria-label="Panels">
-      {#each TABS as name (name)}
-        <button
-          type="button"
-          class="tab"
-          role="tab"
-          aria-selected={tab === name}
-          class:on={tab === name}
-          disabled={!LIVE.includes(name)}
-          title={LIVE.includes(name) ? undefined : "Not built yet"}
-          onclick={() => (tab = name)}>{name}</button
-        >
-      {/each}
-      {#if agent}
-        <button
-          type="button"
-          class="tab"
-          role="tab"
-          aria-selected={tab === "agent"}
-          class:on={tab === "agent"}
-          onclick={() => (tab = "agent")}>{agent.name}</button
-        >
-      {/if}
-    </div>
-    <div class="live">
-      <span class="dot" aria-hidden="true"></span>
-      <span>live · pty hippo</span>
-      <span class="size">
-        <button type="button" aria-label="Smaller text" onclick={() => (fontSize = Math.max(9, fontSize - 1))}>−</button>
-        <output>{fontSize}px</output>
-        <button type="button" aria-label="Larger text" onclick={() => (fontSize = Math.min(18, fontSize + 1))}>+</button>
-      </span>
-    </div>
+    {#if !(tab === "agent" && agent)}
+      <div class="tabs" role="tablist" aria-label="Panels">
+        {#each TABS as name (name)}
+          <button
+            type="button"
+            class="tab"
+            role="tab"
+            aria-selected={tab === name}
+            class:on={tab === name}
+            disabled={!LIVE.includes(name)}
+            title={LIVE.includes(name) ? undefined : "Not built yet"}
+            onclick={() => (tab = name)}>{name}</button
+          >
+        {/each}
+        {#if agent}
+          <button
+            type="button"
+            class="tab"
+            role="tab"
+            aria-selected={tab === "agent"}
+            class:on={tab === "agent"}
+            onclick={() => (tab = "agent")}>{agent.name}</button
+          >
+        {/if}
+      </div>
+      <div class="live">
+        <span class="dot" aria-hidden="true"></span>
+        <span>live · pty hippo</span>
+        <span class="size">
+          <button type="button" aria-label="Smaller text" onclick={() => (fontSize = Math.max(9, fontSize - 1))}>−</button>
+          <output>{fontSize}px</output>
+          <button type="button" aria-label="Larger text" onclick={() => (fontSize = Math.min(18, fontSize + 1))}>+</button>
+        </span>
+      </div>
+    {/if}
     <div class="pane" hidden={tab !== "terminal"}>
       <Assistant />
     </div>
