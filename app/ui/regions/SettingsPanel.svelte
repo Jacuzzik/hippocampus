@@ -6,7 +6,7 @@
   type View = {
     general: { vault: string | null; network: string };
     agents: { provider: string; model: string; ollama: string };
-    budgets: unknown;
+    budgets: { max_tool_calls: number };
     memory: { max_bytes: number };
   };
   type Group = { heading?: string; items: string[] };
@@ -81,12 +81,15 @@
     }
   });
 
-  // Values the app can show today, keyed by option label. Everything else says "Not built yet".
+  // Values read from the saved settings, keyed by option label. Any other row says "Not in Hippocampus yet".
   const valueOf = $derived.by((): Record<string, string> => {
     if (!view) return {};
     return {
       "Home folder": view.general.vault ?? "not set",
       "Default agent model": `${view.agents.provider} · ${view.agents.model}`,
+      "AI engine providers (BYOK)": view.agents.provider,
+      "Agent engines": `Ollama fallback · ${view.agents.ollama}`,
+      "Max turns per run": `${view.budgets.max_tool_calls} tool calls per request`,
     };
   });
 
@@ -112,7 +115,11 @@
           <dl>
             {#each group.items as label (label)}
               <dt>{label}</dt>
-              <dd>{valueOf[label] || "Not built yet"}</dd>
+              {#if valueOf[label]}
+                <dd>{valueOf[label]}</dd>
+              {:else}
+                <dd class="missing">Not in Hippocampus yet</dd>
+              {/if}
             {/each}
           </dl>
         {/each}
@@ -187,5 +194,9 @@
     margin: 0;
     overflow-wrap: anywhere;
     color: var(--color-md-text-muted);
+  }
+
+  dd.missing {
+    font-style: italic;
   }
 </style>
