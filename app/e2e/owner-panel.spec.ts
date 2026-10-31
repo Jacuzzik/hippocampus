@@ -9,15 +9,21 @@ test.beforeEach(async ({ page }) => {
 test("the bottom agent bar shows HIPPO with its provider", async ({ page }) => {
   const bar = page.getByLabel("Agents");
   await expect(bar.getByText("HIPPO")).toBeVisible();
-  await expect(bar.getByText(/Claude Code|Ollama/)).toBeVisible();
+  // The provider is shown in the HIPPO details (INFO), not on the bar.
+  await bar.getByRole("button", { name: "Info" }).first().click();
+  const info = page.getByRole("dialog", { name: "HIPPO details" });
+  await expect(info.getByText(/Claude Code|Ollama/)).toBeVisible();
+  await page.keyboard.press("Escape");
 });
 
 test("the bottom agent bar shows a token placeholder until usage is counted", async ({
   page,
 }) => {
-  await expect(
-    page.getByLabel("Agents").getByText("— tokens").first(),
-  ).toBeVisible();
+  // The bar shows no token count until usage is reported; the HIPPO details still say so.
+  const info = page.getByLabel("Agents").getByRole("button", { name: "Info" }).first();
+  await info.click();
+  await expect(page.getByRole("dialog", { name: "HIPPO details" }).getByText("—").first()).toBeVisible();
+  await page.keyboard.press("Escape");
 });
 
 test("+ Add agent opens the Add agent dialog", async ({ page }) => {
@@ -103,7 +109,7 @@ test("a card menu archives an added agent and the Control panel restores it", as
     .getByRole("textbox", { name: "Goal", exact: true })
     .fill("Tidy the notes");
   await add.getByRole("button", { name: "Spawn" }).click();
-  await bar.getByRole("button", { name: "Grace options" }).click();
+  await bar.getByRole("button", { name: "Grace options" }).click({ button: "right" });
   await page.getByRole("menuitem", { name: "Archive" }).click();
   await expect(bar.getByText("Grace")).toHaveCount(0);
   await page.getByRole("button", { name: "Control panel" }).click();
