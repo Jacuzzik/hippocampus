@@ -10,7 +10,7 @@ export const ACCENTS = {
 
 export type Accent = keyof typeof ACCENTS;
 
-/** Original pixel avatars in ui/assets/faces-new, drawn in the accent token. */
+/** Pixel avatars in ui/assets/faces-new: avatar-XX (original) and card-face-XX (card set), drawn in the accent token. */
 export const FACES = [
   "avatar-01.svg",
   "avatar-02.svg",
@@ -28,6 +28,23 @@ export const FACES = [
   "avatar-14.svg",
   "avatar-15.svg",
   "avatar-16.svg",
+  "card-face-01.svg",
+  "card-face-02.svg",
+  "card-face-03.svg",
+  "card-face-04.svg",
+  "card-face-05.svg",
+  "card-face-06.svg",
+  "card-face-07.svg",
+  "card-face-08.svg",
+  "card-face-09.svg",
+  "card-face-10.svg",
+  "card-face-11.svg",
+  "card-face-12.svg",
+  "card-face-13.svg",
+  "card-face-14.svg",
+  "card-face-15.svg",
+  "card-face-16.svg",
+  "card-face-17.svg",
 ] as const;
 
 /** The same name always gets the same face. */

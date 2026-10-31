@@ -6,10 +6,9 @@
   import {
     addedAgents,
     archived,
-    setAddedAgents,
     setArchived,
   } from "./addedAgents.svelte";
-  import { AGENT_PROVIDERS, AVATARS } from "../control/model";
+  import { AGENT_PROVIDERS, AVATARS, CARD_FACES } from "../control/model";
   import { ORB_LABELS } from "../assistant/model";
   import { assistant } from "../assistant/session.svelte";
 
@@ -64,21 +63,6 @@
   const faceOf = (id: string): string =>
     AVATARS.find((a) => a.id === id)?.name ?? NO_DATA;
 
-  // Swaps a card with its visible neighbour in the full list, so archived cards keep their place.
-  function move(id: string, step: number): void {
-    const visible = added.map((a) => a.id);
-    const target = visible[visible.indexOf(id) + step];
-    if (target === undefined) return;
-    const next = [...addedAgents.list];
-    const i = next.findIndex((a) => a.id === id);
-    const j = next.findIndex((a) => a.id === target);
-    const a = next[i];
-    const b = next[j];
-    if (!a || !b) return;
-    next[i] = b;
-    next[j] = a;
-    setAddedAgents(next);
-  }
 </script>
 
 <svelte:window
@@ -88,16 +72,6 @@
     menu = null;
   }}
 />
-
-{#snippet details(model: string, status: string)}
-  <span class="line model">{model}</span>
-  <span class="line command">CMD · {NO_DATA}</span>
-  <span class="line ctx" aria-label="Context {NO_DATA}">
-    <span class="bar" aria-hidden="true"><span class="fill"></span></span>
-    <span class="pct">{NO_DATA}</span>
-  </span>
-  <span class="line status">{status}</span>
-{/snippet}
 
 {#if menu}
   {@const open = menu}
@@ -163,7 +137,7 @@
 
 <div class="agent-bar" aria-label="Agents">
   <div class="chip main">
-    <img src={logo} alt="" class="face" />
+    <img src={CARD_FACES.find((f) => f.id === "card-face-17")?.url ?? logo} alt="" class="face" />
     <div class="text">
       <span class="head">
         <b>HIPPO</b>
@@ -214,7 +188,7 @@
     </div>
   </div>
   {#each added as agent (agent.id)}
-    <div class="chip">
+    <div class="chip main added">
       <button
         type="button"
         class="card-open"
@@ -222,45 +196,50 @@
         aria-label="{agent.name} options"
         onclick={(e) => openMenu(e, agent.id)}
       >
-        <img src={logo} alt="" />
+        <img src={CARD_FACES.find((f) => f.id === agent.character)?.url ?? logo} alt="" class="face" />
         <span class="text">
-          <b>{agent.name}</b>
+          <span class="head"><b>{agent.name}</b><span class="badge spacer" aria-hidden="true">BOSS</span></span>
           <span class="online"><span class="dot"></span>{NO_DATA}</span>
-          <i>{labelOf(agent.provider)}</i>
-          {@render details(agent.model || NO_DATA, NO_DATA)}
+          <span class="row">
+            <span class="key">MODEL</span>
+            <span class="val">{agent.model || NO_DATA}</span>
+          </span>
+          <span class="row">
+            <span class="key">CMD</span>
+            <span class="val">{NO_DATA}</span>
+          </span>
+          <span class="row" aria-label="Context {NO_DATA}">
+            <span class="key">CTX</span>
+            <span class="segs" aria-hidden="true">
+              {#each CTX_SEGMENTS as seg (seg)}<span class="seg"></span>{/each}
+            </span>
+            <span class="pct">{NO_DATA}</span>
+          </span>
         </span>
       </button>
-      <span class="tokens">— tokens</span>
-      <button type="button" class="talk" disabled title="Talk is not set up yet"
-        >TALK</button
-      >
-      <button
-        type="button"
-        aria-label="Move {agent.name} left"
-        onclick={() => move(agent.id, -1)}>‹</button
-      >
-      <button
-        type="button"
-        aria-label="Move {agent.name} right"
-        onclick={() => move(agent.id, 1)}>›</button
-      >
-      <button
-        type="button"
-        class="info"
-        aria-label="Info"
-        onclick={() =>
-          (info = {
-            name: agent.name,
-            role: "Added",
-            provider: labelOf(agent.provider),
-            model: agent.model,
-            folder: agent.folder,
-            face: faceOf(agent.character),
-            boss: NO_DATA,
-            status: NO_DATA,
-            ctx: NO_DATA,
-          })}>INFO</button
-      >
+      <div class="side">
+        <button type="button" class="talk" disabled title="Talk is not set up yet"
+          >TALK</button
+        >
+        <button
+          type="button"
+          class="info"
+          aria-label="Info"
+          onclick={() =>
+            (info = {
+              name: agent.name,
+              role: "Added",
+              provider: labelOf(agent.provider),
+              model: agent.model,
+              folder: agent.folder,
+              face: faceOf(agent.character),
+              boss: NO_DATA,
+              status: NO_DATA,
+              ctx: NO_DATA,
+            })}>INFO</button
+        >
+        <span class="status">{ORB_LABELS[assistant.chat.orb]}</span>
+      </div>
     </div>
   {/each}
   <button type="button" class="add" onclick={onadd}>+ Add agent</button>
@@ -349,7 +328,7 @@
     width: 320px;
     min-height: 0;
     padding: 8px 12px 8px;
-    background: var(--color-md-card);
+    background: #ffffff;
     color: var(--color-md-card-text);
     border: 2px solid var(--hippo-purple);
     border-top-width: 8px;
@@ -393,7 +372,7 @@
   }
 
   .chip.main .dot.on {
-    background: var(--color-success);
+    background: #149c6a;
   }
 
   .chip.main .row {
@@ -470,6 +449,29 @@
     border: 1px solid var(--hippo-purple);
     background: var(--color-md-card);
     color: var(--hippo-purple);
+  }
+
+
+  /* Added agents: HIPPO's layout and outline, but no purple accent top line. */
+  .chip.main.added {
+    border-top-width: 2px;
+    box-shadow: none;
+  }
+
+  /* Hidden BOSS-tag slot: keeps the name on HIPPO's line without showing the tag. */
+  .chip.main.added .badge.spacer {
+    visibility: hidden;
+  }
+
+  /* The card-open button wraps the text, so it takes HIPPO's font and column layout. */
+  .chip.main.added .card-open {
+    flex: 1;
+    min-width: 0;
+    align-items: flex-start;
+    font: inherit;
+    line-height: inherit;
+    border-radius: 0;
+    box-shadow: none;
   }
 
   .chip.main .status {
