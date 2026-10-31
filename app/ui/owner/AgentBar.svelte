@@ -544,8 +544,10 @@
 
 
   /* Added agents: HIPPO's layout and outline, but no purple accent top line. */
+  /* The 6px less top border is made up in padding, so the card is as tall as HIPPO's. */
   .chip.main.added {
     border-top-width: 2px;
+    padding-top: 14px;
     box-shadow: none;
   }
 
