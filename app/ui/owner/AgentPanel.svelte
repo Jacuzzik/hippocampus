@@ -106,9 +106,14 @@
     </div>
     <div class="icons">
       {#if agent.id !== "hippo"}<button type="button" onclick={() => startEdit(agent.id, "rename")}>Edit</button>{/if}
-      <button type="button">IDE</button>
-      <button type="button">Open</button>
-      <button type="button" class="close" aria-label="Close panel" onclick={() => (selection.id = null)}>×</button>
+      {#if agent.id === "hippo"}
+        <button type="button">auto</button>
+        <button type="button">IDE</button>
+      {:else}
+        <button type="button">IDE</button>
+        <button type="button">Open</button>
+        <button type="button" class="close" aria-label="Close panel" onclick={() => (selection.id = null)}>×</button>
+      {/if}
     </div>
   </header>
 

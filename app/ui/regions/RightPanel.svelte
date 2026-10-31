@@ -63,7 +63,7 @@
 
 <div class="right-panel" hidden={!open}>
   <div class="column" style="--term-size: {fontSize}px">
-    {#if !(tab === "agent" && agent)}
+    {#if !(tab === "agent" && agent && agent.id !== "hippo")}
       <div class="tabs" role="tablist" aria-label="Panels">
         {#each TABS as name (name)}
           <button
