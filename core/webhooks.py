@@ -1,4 +1,4 @@
-"""Webhook triggers the user saves in the app. Their list lives in storage/webhooks.json.
+"""Webhook triggers the user saves in the app. Their list lives in data/storage/webhooks.json.
 
 A webhook names one kind of job from core.jobs.KINDS. Running it needs the user's approval in the
 app, and it only runs that local job. Nothing listens on a port and nothing is sent out.

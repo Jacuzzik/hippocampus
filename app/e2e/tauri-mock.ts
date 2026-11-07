@@ -243,7 +243,7 @@ export async function mockSidecar(
             };
           case "settings":
             return {
-              general: { vault: "brains/Hippocampus", network: "off" },
+              general: { vault: "data/brains/Hippocampus", network: "off" },
               agents: { provider: "claude", model: "claude-sonnet-5-5", ollama: "qwen2.5:1.5b" },
               budgets: {
                 app: { five_hour: 0, daily: 0, weekly: 0, monthly: 0 },

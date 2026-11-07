@@ -90,7 +90,7 @@ LEFT JOIN ranked r ON r.link_id = l.rowid AND r.pick = 1;
 
 
 def index_path_for(vault: Path, storage: Path) -> Path:
-    """storage/index/<first 16 hex chars of sha256(absolute vault path)>.sqlite3"""
+    """data/storage/index/<first 16 hex chars of sha256(absolute vault path)>.sqlite3"""
     digest = hashlib.sha256(str(vault.resolve()).encode()).hexdigest()[:16]
     return storage / "index" / f"{digest}.sqlite3"
 

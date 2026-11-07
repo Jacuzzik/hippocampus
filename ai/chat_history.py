@@ -10,7 +10,7 @@ from typing import Any
 
 from core.settings import ROOT
 
-FILE = ROOT / "storage" / "chat_history.json"
+FILE = ROOT / "data" / "storage" / "chat_history.json"
 # Messages kept per session; older ones drop off the top.
 LIMIT = 300
 

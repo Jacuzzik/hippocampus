@@ -1,6 +1,6 @@
 """Token budgets: caps per day, week and month, for the whole app and for the assistant.
 
-Usage is one JSON line per model reply in storage/usage.jsonl. Windows start 5 hours ago (a
+Usage is one JSON line per model reply in data/storage/usage.jsonl. Windows start 5 hours ago (a
 rolling window), at local midnight, Monday, or the 1st of the month.
 """
 

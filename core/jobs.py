@@ -1,4 +1,4 @@
-"""Scheduled notes jobs. Each job repeats every N days. Its state lives in storage/jobs.json.
+"""Scheduled notes jobs. Each job repeats every N days. Its state lives in data/storage/jobs.json.
 
 The sidecar checks the list about once a minute and runs each enabled job that is due.
 """

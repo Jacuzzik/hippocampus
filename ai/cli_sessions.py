@@ -14,7 +14,7 @@ from typing import Any
 
 from core.settings import ROOT
 
-FILE = ROOT / "storage" / "claude_sessions.json"
+FILE = ROOT / "data" / "storage" / "claude_sessions.json"
 # Terminal and chat both read and rewrite this file; one lock keeps a concurrent write from dropping an agent's session.
 _LOCK = threading.Lock()
 

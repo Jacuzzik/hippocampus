@@ -2,7 +2,7 @@
 
 Used by the tests (always into tmp_path) and by hand:
 
-    uv run python tests/fixtures/make_sample_vault.py brains/sample [--count 200] [--seed 42]
+    uv run python tests/fixtures/make_sample_vault.py data/brains/sample [--count 200] [--seed 42]
 
 Standard library only, so it never depends on the code it checks.
 """

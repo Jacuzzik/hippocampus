@@ -15,7 +15,7 @@ ollama_model = "qwen2.5:1.5b"
 max_tool_calls = 20
 
 [vault]
-path = "brains/Hippocampus"
+path = "data/brains/Hippocampus"
 
 [network]
 mode = "converse"

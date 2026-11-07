@@ -37,7 +37,7 @@ def has_note(db: Path, path: str) -> bool:
 
 
 def test_default_storage_is_under_the_project() -> None:
-    assert DEFAULT_STORAGE == PROJECT_ROOT / "storage"
+    assert DEFAULT_STORAGE == PROJECT_ROOT / "data" / "storage"
 
 
 def test_index(sample_vault: tuple[Path, dict[str, Any]], storage: Path) -> None:

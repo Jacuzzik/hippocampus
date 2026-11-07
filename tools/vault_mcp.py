@@ -67,7 +67,7 @@ def handle(msg: dict[str, Any], tools: dict[str, Any]) -> dict[str, Any] | None:
 
 def main() -> None:
     vault = Path(sys.argv[1]).resolve()
-    indexer = open_index(vault, ROOT / "storage")
+    indexer = open_index(vault, ROOT / "data" / "storage")
     tools = vault_tools(indexer, threading.RLock())
     for line in sys.stdin:
         try:

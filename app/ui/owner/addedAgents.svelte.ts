@@ -1,4 +1,4 @@
-// Agents the user created in the add-agent form. The sidecar keeps them in storage/agents.json;
+// Agents the user created in the add-agent form. The sidecar keeps them in data/storage/agents.json;
 // localStorage mirrors the list and is what loads when the sidecar cannot answer.
 import { invoke } from "@tauri-apps/api/core";
 import type { AgentDraft } from "../control/model";

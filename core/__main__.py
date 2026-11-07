@@ -86,7 +86,7 @@ from tools.vault_tools import vault_tools
 
 logger = logging.getLogger("hippocampus.core")
 
-DEFAULT_STORAGE = Path(__file__).resolve().parent.parent / "storage"
+DEFAULT_STORAGE = Path(__file__).resolve().parent.parent / "data" / "storage"
 SKILLS_DIR = Path(__file__).resolve().parent.parent / "skills"
 SCHEDULE_SECONDS = 60
 KEYCHAIN_MISSING = (
@@ -1463,7 +1463,7 @@ def main(argv: list[str] | None = None) -> int:
             "--storage",
             type=Path,
             default=DEFAULT_STORAGE,
-            help="folder for the index (default: storage/ in the project)",
+            help="folder for the index (default: data/storage/ in the project)",
         )
     key_cmd = sub.add_parser("key", help="Manage the Claude API key in the OS keychain")
     key_cmd.add_argument("action", choices=["set", "status", "clear"])

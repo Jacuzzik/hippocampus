@@ -9,7 +9,7 @@ export const CELL_H = 9;
 const HUB_RADII = [20, 40, 50, 70];
 const NOTE_RADII = [5, 10, 7, 9, 14];
 
-/** Drops the vault's test<digits> notes (brains/Hippocampus/test*.md) from the graph view. The files stay. */
+/** Drops the vault's test<digits> notes (data/brains/Hippocampus/test*.md) from the graph view. The files stay. */
 export function hideTestNotes(data: GraphData): GraphData {
   const gone = new Set(
     data.nodes.filter((n) => /^test\d+$/.test(n.id.split("/").pop()!.replace(/\.md$/i, ""))).map((n) => n.id),

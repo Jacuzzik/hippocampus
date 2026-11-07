@@ -1,4 +1,4 @@
-"""Agents the user added in the app. Their list lives in storage/agents.json.
+"""Agents the user added in the app. Their list lives in data/storage/agents.json.
 
 Each agent is one object with a string "id" and "name" plus the form's fields. The sidecar
 stores them as given, so the app owns the rest of the shape.
