@@ -47,9 +47,9 @@ export function mulberry32(seed: number): () => number {
   };
 }
 
-// Force simulation, as in Obsidian's graph view: a centre force pulls notes to the core, repel pushes every pair apart, and a link force holds linked notes about LINK_DISTANCE apart.
-export const LINK_DISTANCE = 15;
-export const CENTER_STRENGTH = 0.02;
+// Force simulation, as in the notes app's graph view: a centre force pulls notes to the core, repel pushes every pair apart, and a link force holds linked notes about LINK_DISTANCE apart.
+export const LINK_DISTANCE = 40;
+export const CENTER_STRENGTH = 0.01;
 /** Centre pull multiplier for notes with no links, so the lonely ones stay nearer the middle. shortcut: 1.5 is tuned on the 1,175-note proxy; at 2 or more the lonely notes stack on one another, so re-check on the real vault before raising it. */
 export const LONELY_PULL = 1.5;
 /** Repel charge: force = strength / distance, as d3's many-body force. With 1/d² it packed 1,167 notes into dots 8 px apart. */
@@ -79,6 +79,15 @@ export interface Sim {
   grabbed: number;
   /** Heat: how far the simulation still moves. */
   alpha: number;
+  /** Half the side of each note's box, in px, so boxes do not overlap. */
+  half: Float32Array<ArrayBuffer>;
+  /** Multiplier on each node's pull toward the centre: high keeps a note central, low lets a hub sit out. */
+  pull: Float32Array<ArrayBuffer>;
+}
+
+/** Half the side of a note's box: its widest shape (2 × radius) plus a gap. */
+function boxHalf(links: number): number {
+  return 2 * nodeRadius(links, false) + 3;
 }
 
 /** A simulation of `count` notes linked by `pairs`, started on a seeded random disc with the core at the origin. */
@@ -86,13 +95,14 @@ export function newSim(
   count: number,
   pairs: ReadonlyArray<readonly [number, number]>,
   seed = 1,
+  pull?: Float32Array<ArrayBuffer>,
 ): Sim {
-  const rand = mulberry32(seed);
   const pos = new Float32Array((count + 1) * 2);
-  const spread = Math.sqrt(count) * LINK_DISTANCE;
+  // A golden-angle spiral: no two notes start on top of each other, so every name and icon is visible at launch.
+  const turn = mulberry32(seed)() * Math.PI * 2;
   for (let i = 0; i < count; i++) {
-    const r = Math.sqrt(rand()) * spread;
-    const a = rand() * Math.PI * 2;
+    const r = LINK_DISTANCE * Math.sqrt(i + 0.5);
+    const a = i * 2.39996323 + turn;
     pos[2 * i] = Math.cos(a) * r;
     pos[2 * i + 1] = Math.sin(a) * r;
   }
@@ -104,6 +114,8 @@ export function newSim(
     deg[a] = (deg[a] ?? 0) + 1;
     deg[b] = (deg[b] ?? 0) + 1;
   });
+  const half = new Float32Array(count);
+  for (let i = 0; i < count; i++) half[i] = boxHalf(deg[i] ?? 0);
   return {
     pos,
     vel: new Float32Array(pos.length),
@@ -112,7 +124,54 @@ export function newSim(
     count,
     grabbed: -1,
     alpha: 1,
+    half,
+    pull: pull ?? new Float32Array(count).fill(1),
   };
+}
+
+/** Pushes overlapping note boxes apart, along the axis with the smaller overlap. The grabbed note stays put. */
+export function separate(sim: Sim, passes: number): void {
+  const { pos, half, count, grabbed } = sim;
+  let maxHalf = 0;
+  for (let i = 0; i < count; i++) maxHalf = Math.max(maxHalf, half[i] ?? 0);
+  const cell = 2 * maxHalf || 1;
+  const key = (gx: number, gy: number) => (gx + 1e4) * 2e4 + (gy + 1e4);
+  for (let p = 0; p < passes; p++) {
+    const cells = new Map<number, number[]>();
+    for (let i = 0; i < count; i++) {
+      const k = key(Math.floor((pos[2 * i] ?? 0) / cell), Math.floor((pos[2 * i + 1] ?? 0) / cell));
+      const list = cells.get(k);
+      if (list) list.push(i);
+      else cells.set(k, [i]);
+    }
+    let moved = false;
+    for (let i = 0; i < count; i++) {
+      const gx = Math.floor((pos[2 * i] ?? 0) / cell);
+      const gy = Math.floor((pos[2 * i + 1] ?? 0) / cell);
+      for (let dx = -1; dx <= 1; dx++)
+        for (let dy = -1; dy <= 1; dy++)
+          for (const j of cells.get(key(gx + dx, gy + dy)) ?? []) {
+            if (j <= i) continue;
+            const ddx = (pos[2 * j] ?? 0) - (pos[2 * i] ?? 0);
+            const ddy = (pos[2 * j + 1] ?? 0) - (pos[2 * i + 1] ?? 0);
+            const gap = (half[i] ?? 0) + (half[j] ?? 0);
+            const ox = gap - Math.abs(ddx);
+            const oy = gap - Math.abs(ddy);
+            if (ox <= 0 || oy <= 0) continue;
+            moved = true;
+            // Move along the axis of smaller overlap; a grabbed note stays put, so the other takes all of it.
+            const axis = ox < oy ? 0 : 1;
+            const over = axis === 0 ? ox : oy;
+            const d = axis === 0 ? ddx : ddy;
+            const sign = d < 0 ? -1 : 1;
+            const shareI = i === grabbed ? 0 : j === grabbed ? 1 : 0.5;
+            const shareJ = 1 - shareI;
+            pos[2 * i + axis] = (pos[2 * i + axis] ?? 0) - sign * over * shareI;
+            pos[2 * j + axis] = (pos[2 * j + axis] ?? 0) + sign * over * shareJ;
+          }
+    }
+    if (!moved) break;
+  }
 }
 
 /** One simulation step. Returns false, and does nothing, once the heat has settled. */
@@ -173,7 +232,7 @@ export function tick(sim: Sim): boolean {
     const x = pos[2 * i] ?? 0;
     const y = pos[2 * i + 1] ?? 0;
     const grab = i === grabbed;
-    const pull = CENTER_STRENGTH * a * ((deg[i] ?? 0) === 0 ? LONELY_PULL : 1);
+    const pull = CENTER_STRENGTH * a * (sim.pull[i] ?? 1) * ((deg[i] ?? 0) === 0 ? LONELY_PULL : 1);
     const vx = grab ? 0 : ((vel[2 * i] ?? 0) + (cx - x) * pull) * VELOCITY_KEEP;
     const vy = grab ? 0 : ((vel[2 * i + 1] ?? 0) + (cy - y) * pull) * VELOCITY_KEEP;
     vel[2 * i] = vx;
@@ -183,6 +242,7 @@ export function tick(sim: Sim): boolean {
       pos[2 * i + 1] = y + vy;
     }
   }
+  separate(sim, 1);
   sim.alpha -= sim.alpha * ALPHA_DECAY;
   return true;
 }
@@ -206,10 +266,11 @@ export function layout(
 ): Float32Array<ArrayBuffer> {
   const sim = newSim(count, pairs, seed);
   settle(sim, preset.iterations);
+  separate(sim, 20);
   return sim.pos.slice(0, count * 2);
 }
 
-/** Label opacity at a zoom: hidden below LABEL_FADE_START, fully shown from LABEL_FADE_FULL. Obsidian's text fade threshold. */
+/** Label opacity at a zoom: hidden below LABEL_FADE_START, fully shown from LABEL_FADE_FULL. the notes app's text fade threshold. */
 export const LABEL_FADE_START = 0.5;
 export const LABEL_FADE_FULL = 1;
 export function labelAlpha(zoom: number): number {
@@ -338,16 +399,57 @@ export function tagCounts(nodes: readonly GraphNode[]): [string, number][] {
   return [...counts].sort(([a], [b]) => a.localeCompare(b));
 }
 
+/** Display-only hubs for lonely notes (the vault files are not changed): exactly this many, when there are enough notes. */
+export const LONELY_HUBS = 40;
+
+/**
+ * Up to LONELY_HUBS display hubs for lonely notes (no links). Lonely notes are sorted by their first tag (else first
+ * title word), then split into equal groups, so similar notes share a hub. Each hub links to its notes and to MAIN.
+ */
+export function lonelyHubs(
+  nodes: readonly GraphNode[],
+  edges: ReadonlyArray<readonly [string, string]>,
+): { nodes: GraphNode[]; edges: [string, string][] } {
+  const linked = new Set<string>();
+  for (const [a, b] of edges) {
+    linked.add(a);
+    linked.add(b);
+  }
+  const main = nodes.find((n) => n.title === "MAIN");
+  const topic = (n: GraphNode) =>
+    n.tags[0] ?? n.title.toLowerCase().split(/[^a-z0-9]+/).find((w) => w.length > 2) ?? "misc";
+  const lonely = nodes
+    .filter((n) => !linked.has(n.id) && n.id !== main?.id)
+    .sort((a, b) => topic(a).localeCompare(topic(b)) || a.id.localeCompare(b.id));
+  const groups = Math.min(LONELY_HUBS, lonely.length);
+  const hubNodes: GraphNode[] = [];
+  const hubEdges: [string, string][] = [];
+  for (let g = 0; g < groups; g++) {
+    const from = Math.floor((g * lonely.length) / groups);
+    const to = Math.floor(((g + 1) * lonely.length) / groups);
+    const members = lonely.slice(from, to);
+    const label = topic(members[0] as GraphNode);
+    const id = `hub:${g}`;
+    hubNodes.push({ id, title: label.charAt(0).toUpperCase() + label.slice(1), tags: [] });
+    for (const m of members) hubEdges.push([id, m.id]);
+    if (main) hubEdges.push([id, main.id]);
+  }
+  return { nodes: hubNodes, edges: hubEdges };
+}
+
 /** Node radius in px: 4 for a note with no links, growing with its link count up to 10. */
-export function nodeRadius(links: number, selected: boolean): number {
-  const size = 4 + Math.min(6, Math.sqrt(links) * 1.5);
+export function nodeRadius(_links: number, selected: boolean): number {
+  // Every note is the same small size (2026-11-07); only a selected note grows.
+  const size = 2.5;
   return selected ? Math.max(7, size) : size;
 }
 
-/** Node shapes, as the per-instance value the renderers read: a filled disk (the core), a hollow square, a hollow tall rectangle. */
+/** Node shapes, as the per-instance value the renderers read: a filled disk (the core), a hollow square, a hollow tall (vertical) rectangle, a hollow long rectangle, a hollow wide (horizontal) rectangle. */
 export const SHAPE_DISK = 0;
 export const SHAPE_SQUARE = 1;
 export const SHAPE_TALL = 2;
+export const SHAPE_LONG = 3;
+export const SHAPE_WIDE = 4;
 /** Hit-test reach in px: the largest node shape at the largest radius (a tall rectangle's top or bottom). */
 export const NODE_HIT_PX = 14;
 
@@ -357,9 +459,12 @@ function idHash(id: string): number {
   return h >>> 0;
 }
 
-/** A note's shape from a hash of its id, so it is the same on every draw and every launch. */
+/** 40% of notes are rectangles (20% vertical, 20% horizontal), the rest squares. Fixed per id, so it never changes. */
 export function nodeShape(id: string): number {
-  return idHash(id) & 1 ? SHAPE_SQUARE : SHAPE_TALL;
+  const pick = idHash(id) % 10;
+  if (pick < 2) return SHAPE_TALL;
+  if (pick < 4) return SHAPE_WIDE;
+  return SHAPE_SQUARE;
 }
 
 /** Outline tones a note can take: the accent, then two lighter tints of it. */

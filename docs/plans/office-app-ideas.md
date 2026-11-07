@@ -1,6 +1,6 @@
-# Next plan: ideas from Munder Difflin 0.5.7
+# Next plan: ideas from the office app 0.5.7
 
-Source: the app map in Obsidian, `Research/Munder Difflin app map.md`. Ideas only; nothing is copied from Munder Difflin. Status: proposed, not started.
+Source: the app map in notes app, `Research/the office app app map.md`. Ideas only; nothing is copied from the office app. Status: proposed, not started.
 
 ## Priority 1: safety and control (do first)
 1. **Per-direction network switch.** Off / Listen / Converse / Open for anything that reaches outside the vault (AI calls, sync, webhooks). Default Off.

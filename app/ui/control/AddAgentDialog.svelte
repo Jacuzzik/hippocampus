@@ -3,12 +3,12 @@
   import { onMount } from "svelte";
   import { addAgent } from "../owner/addedAgents.svelte";
   import {
-    AGENT_COLOURS,
     AGENT_MODELS,
     AGENT_PROVIDERS,
-    AGENT_STEPS,
     AGENT_TEMPLATES,
+    AGENT_STEPS,
     AVATARS,
+    CARD_FACES,
     agentCommand,
     agentStepError,
     engineStatus,
@@ -19,23 +19,15 @@
   // The Add agent dialog: four steps, then Spawn adds the agent to the agent bar.
   let { onclose }: { onclose: () => void } = $props();
 
-  const ISOLATION = [
-    { id: "shared", label: "Shared folder" },
-    { id: "own", label: "Its own git worktree" },
-  ] as const;
-
   function blankDraft(): AgentDraft {
     return {
       name: "",
-      character: AVATARS[0].id,
-      colour: AGENT_COLOURS[0],
+      character: CARD_FACES[0]?.id ?? AVATARS[0].id,
+      // Empty until the user picks or creates a folder inside the app's workspaces folder.
       folder: "",
-      isolation: "shared",
-      resume: true,
       provider: AGENT_PROVIDERS[0].id,
       model: "",
       command: "",
-      autonomy: "ask",
       description: "",
       goal: "",
     };
@@ -45,9 +37,15 @@
   let error = $state<string | null>(null);
   let savedKeys = $state<string[]>([]);
   let draft = $state<AgentDraft>(blankDraft());
+  // "brain" uses the brain folder; "other" picks one of the folders inside the app's workspaces folder.
+  let folderChoice = $state<"brain" | "other">("other");
+  let workspaces = $state<{ root: string; folders: string[] }>({ root: "", folders: [] });
+  let newFolder = $state("");
+  let workspaceError = $state<string | null>(null);
 
   let clis = $state<CliState[]>([]);
-  const engine = $derived(engineStatus(draft.provider, savedKeys, clis));
+  let servers = $state<{ provider: string; running: boolean }[]>([]);
+  const engine = $derived(engineStatus(draft.provider, savedKeys, clis, servers));
   const command = $derived(
     draft.model.trim() === "" ? "" : agentCommand(draft),
   );
@@ -66,6 +64,11 @@
     } catch (cause) {
       console.error("Could not check the CLI logins", cause);
     }
+    try {
+      servers = (await invoke<{ servers: { provider: string; running: boolean }[] }>("sidecar_call", { method: "local_status" })).servers;
+    } catch (cause) {
+      console.error("Could not check the local model servers", cause);
+    }
   }
 
   function next(): void {
@@ -73,11 +76,33 @@
     if (!error) step += 1;
   }
 
-  function useTemplate(id: string): void {
-    const template = AGENT_TEMPLATES.find((t) => t.id === id);
-    if (!template) return;
-    draft.description = template.description;
-    draft.goal = template.goal;
+  async function loadWorkspaces(): Promise<void> {
+    try {
+      workspaces = await invoke<{ root: string; folders: string[] }>("sidecar_call", { method: "workspaces" });
+    } catch (cause) {
+      console.error("Could not list the workspaces", cause);
+    }
+  }
+
+  async function createWorkspace(): Promise<void> {
+    const name = newFolder.trim();
+    workspaceError = null;
+    try {
+      workspaces = await invoke<{ root: string; folders: string[] }>("sidecar_call", {
+        method: "create_workspace",
+        params: { name },
+      });
+      newFolder = "";
+      chooseFolder("other", name);
+    } catch (cause) {
+      workspaceError = String(cause);
+    }
+  }
+
+  function chooseFolder(choice: "brain" | "other", name?: string): void {
+    folderChoice = choice;
+    if (choice === "brain") draft.folder = ".";
+    else draft.folder = name ? `${workspaces.root}/${name}` : "";
     error = null;
   }
 
@@ -102,7 +127,10 @@
     }
   }
 
-  onMount(() => void loadKeys());
+  onMount(() => {
+    void loadKeys();
+    void loadWorkspaces();
+  });
 </script>
 
 <div class="scrim" role="presentation" onmousedown={onclose}>
@@ -125,83 +153,65 @@
       >
     </header>
 
-    <ol class="steps" aria-label="Steps">
+    <div class="progress" aria-hidden="true">
       {#each AGENT_STEPS as label, i (label)}
-        <li
-          aria-current={i === step ? "step" : undefined}
-          class:done={i < step}
-        >
-          {i + 1}. {label}
-        </li>
+        <span class:done={i <= step}></span>
       {/each}
-    </ol>
+    </div>
+    <p class="stepname" role="status">
+      Step {step + 1} of {AGENT_STEPS.length} · {AGENT_STEPS[step]}
+    </p>
 
     {#if step === 0}
       <label>Name <input type="text" bind:value={draft.name} /></label>
       <fieldset class="picker">
-        <legend>Character</legend>
-        {#each AVATARS as avatar (avatar.id)}
+        <legend>Avatar</legend>
+        <div class="faces">
+        {#each CARD_FACES as face (face.id)}
           <button
             type="button"
-            class="avatar"
-            aria-label={avatar.name}
-            aria-pressed={draft.character === avatar.id}
-            onclick={() => (draft.character = avatar.id)}
+            class="face-pick"
+            aria-label={face.id}
+            aria-pressed={draft.character === face.id}
+            class:on={draft.character === face.id}
+            onclick={() => (draft.character = face.id)}
           >
-            <svg
-              viewBox="0 0 8 8"
-              width="32"
-              height="32"
-              shape-rendering="crispEdges"
-              aria-hidden="true"
-            >
-              {#each avatar.rows as row, y (y)}
-                {#each [...row] as cell, x (x)}
-                  {#if cell === "#"}<rect
-                      {x}
-                      {y}
-                      width="1"
-                      height="1"
-                      fill="currentColor"
-                    />{/if}
-                {/each}
-              {/each}
-            </svg>
+            <img src={face.url} alt="" />
           </button>
         {/each}
-      </fieldset>
-      <fieldset class="picker">
-        <legend>Colour</legend>
-        {#each AGENT_COLOURS as colour (colour)}
-          <button
-            type="button"
-            class="swatch"
-            aria-label={colour}
-            aria-pressed={draft.colour === colour}
-            style:background={`var(--color-${colour})`}
-            onclick={() => (draft.colour = colour)}
-          ></button>
-        {/each}
+        </div>
       </fieldset>
     {:else if step === 1}
-      <label
-        >Folder <input
-          type="text"
-          bind:value={draft.folder}
-          placeholder="/path/to/folder"
-        /></label
-      >
-      <label>
-        Isolation
-        <select bind:value={draft.isolation}>
-          {#each ISOLATION as option (option.id)}
-            <option value={option.id}>{option.label}</option>
-          {/each}
-        </select>
-      </label>
-      <label class="check"
-        ><input type="checkbox" bind:checked={draft.resume} /> Resume the last session</label
-      >
+      <div class="choice" role="radiogroup" aria-label="Folder">
+        <button
+          type="button"
+          role="radio"
+          aria-checked={folderChoice === "other"}
+          class:on={folderChoice === "other"}
+          onclick={() => chooseFolder("other")}>Workspaces folder</button
+        >
+      </div>
+      {#if folderChoice === "other"}
+        {#if workspaces.folders.length > 0}
+          <label
+            >Folder in workspaces
+            <select onchange={(e) => chooseFolder("other", e.currentTarget.value)}>
+              <option value="">Choose a folder</option>
+              {#each workspaces.folders as name (name)}
+                <option value={name} selected={draft.folder === `${workspaces.root}/${name}`}
+                  >{name}</option
+                >
+              {/each}
+            </select>
+          </label>
+        {/if}
+        <label>
+          New folder inside workspaces
+          <input type="text" bind:value={newFolder} placeholder="Folder name" />
+        </label>
+        <button type="button" disabled={!newFolder.trim()} onclick={createWorkspace}>Create folder</button>
+        {#if workspaceError}<p class="error" role="alert">{workspaceError}</p>{/if}
+      {/if}
     {:else if step === 2}
       <label>
         Provider
@@ -211,39 +221,56 @@
           {/each}
         </select>
       </label>
-      <label>Model <input type="text" list="model-suggestions" bind:value={draft.model} /></label>
-      <datalist id="model-suggestions">
+      <label>Model <input type="text" readonly value={draft.model} placeholder="Pick a model below" /></label>
+      <div class="choice" aria-label="Suggested models">
         {#each AGENT_MODELS[draft.provider] ?? [] as m (m)}
-          <option value={m}></option>
+          <button
+            type="button"
+            class:on={draft.model === m}
+            onclick={() => (draft.model = m)}>{m}</button
+          >
         {/each}
-      </datalist>
-      <label>
-        Autonomy
-        <select bind:value={draft.autonomy}>
-          <option value="ask">Ask before acting</option>
-          <option value="auto">Act on its own within its goal</option>
-        </select>
-      </label>
+      </div>
       <p class="command">
         <span class="muted">Command</span>
-        <code>{command || "Type a model to see the command."}</code>
+        <code>{command || "Pick a model to see the command."}</code>
       </p>
       <p class={engine.ready ? "muted" : "error"} role="status">
         {engine.text}
       </p>
     {:else}
-      <div class="templates" role="group" aria-label="Templates">
+      <div class="choice" aria-label="Job">
         {#each AGENT_TEMPLATES as t (t.id)}
-          <button type="button" onclick={() => useTemplate(t.id)}
-            >{t.label}</button
+          <button
+            type="button"
+            class:on={draft.description === t.description}
+            onclick={() => {
+              draft.description = t.description;
+              draft.goal = t.goal;
+            }}>{t.label}</button
           >
         {/each}
       </div>
       <label
-        >Description <textarea rows="2" bind:value={draft.description}
-        ></textarea></label
-      >
-      <label>Goal <textarea rows="2" bind:value={draft.goal}></textarea></label>
+        >Description
+        <textarea
+          rows="3"
+          maxlength="100"
+          bind:value={draft.description}
+          placeholder="What should this agent do? Pick a premade above or write your own."
+        ></textarea>
+      </label>
+      <p class="muted count">{draft.description.length} / 100</p>
+      <label
+        >Goal
+        <textarea
+          rows="3"
+          maxlength="4000"
+          bind:value={draft.goal}
+          placeholder="The outcome this agent is working toward."
+        ></textarea>
+      </label>
+      <p class="muted count">{draft.goal.length} / 4000</p>
     {/if}
 
     {#if error}<p class="error" role="alert">{error}</p>{/if}
@@ -295,24 +322,101 @@
     font-size: var(--font-size-md);
   }
 
-  .steps {
+  .close {
+    font: inherit;
+    font-size: var(--font-size-md);
+    line-height: 1;
+    width: 1.75rem;
+    height: 1.75rem;
+    color: var(--color-text-muted);
+    background: none;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+  }
+
+  .close:hover {
+    color: var(--color-text);
+    border-color: var(--color-border);
+    background: var(--color-bg-0);
+  }
+
+  .face-pick {
+    padding: 0;
+    background: none;
+    border: 0;
+    cursor: pointer;
+  }
+
+  .face-pick img {
+    display: block;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+  }
+
+  /* The selected avatar gets a square ring with a gap between it and the picture. */
+  .face-pick.on {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 3px;
+  }
+
+  .choice {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--space-2);
-    margin: var(--space-2) 0;
-    padding: 0;
-    list-style: none;
+    gap: var(--space-1);
+    margin-top: var(--space-2);
+  }
+
+  .choice button {
+    font: inherit;
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
+    background: var(--color-bg-0);
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    padding: var(--space-1) var(--space-2);
+    cursor: pointer;
+  }
+
+  .choice button.on,
+  .choice button[aria-checked="true"] {
+    color: var(--color-text);
+    border-color: var(--color-accent);
+  }
+
+  .muted {
     color: var(--color-text-muted);
     font-size: var(--font-size-xs);
   }
 
-  .steps li[aria-current="step"] {
-    color: var(--color-text);
-    font-weight: 600;
+  .count {
+    text-align: right;
+    margin: 0;
   }
 
-  .steps li.done {
-    color: var(--color-text-subtle);
+
+  .progress {
+    display: flex;
+    gap: var(--space-1);
+    margin: var(--space-2) 0 0;
+  }
+
+  .progress span {
+    flex: 1;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--color-border);
+  }
+
+  .progress span.done {
+    background: var(--color-accent);
+  }
+
+  .stepname {
+    margin: var(--space-1) 0 0;
+    color: var(--color-text-muted);
+    font-size: var(--font-size-xs);
   }
 
   label,
@@ -327,6 +431,14 @@
     padding: 0;
   }
 
+  .faces {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    margin-top: var(--space-2);
+    padding: var(--space-1);
+  }
+
   .picker legend {
     padding: 0;
   }
@@ -338,38 +450,25 @@
     width: 100%;
     margin-top: var(--space-1);
     box-sizing: border-box;
+    padding: var(--space-1) var(--space-2);
+    color: var(--color-text);
+    background: var(--color-bg-0);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    font: inherit;
+    color-scheme: dark;
   }
 
-  label.check input {
-    margin-right: var(--space-2);
+  label input[type="text"]:focus,
+  label select:focus,
+  label textarea:focus {
+    outline: none;
+    border-color: var(--color-accent);
   }
 
-  label select {
-    padding: var(--space-1);
+  label select option {
     color: var(--color-text);
     background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-  }
-
-  .avatar,
-  .swatch {
-    margin: var(--space-1) var(--space-1) 0 0;
-    padding: var(--space-1);
-    color: var(--color-text);
-    background: transparent;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-  }
-
-  .avatar[aria-pressed="true"],
-  .swatch[aria-pressed="true"] {
-    border-color: var(--color-text);
-  }
-
-  .swatch {
-    width: 2rem;
-    height: 2rem;
   }
 
   .command {
@@ -381,17 +480,36 @@
     overflow-wrap: anywhere;
   }
 
-  .templates {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-1);
-    margin-top: var(--space-2);
-  }
-
   .row {
     display: flex;
     justify-content: flex-end;
     gap: var(--space-2);
     margin-top: var(--space-4);
+  }
+
+  .row button {
+    font: inherit;
+    font-size: var(--font-size-sm);
+    color: var(--color-text);
+    background: var(--color-bg-0);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: var(--space-1) var(--space-3);
+    cursor: pointer;
+  }
+
+  .row button:hover:not(:disabled) {
+    border-color: var(--color-accent);
+  }
+
+  .row button:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+
+  .row button.primary {
+    color: var(--color-accent-on);
+    background: var(--color-accent);
+    border-color: var(--color-accent);
   }
 </style>

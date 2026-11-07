@@ -14,7 +14,7 @@
     selection,
     startEdit,
   } from "./addedAgents.svelte";
-  import { AGENT_PROVIDERS, AVATARS, CARD_FACES } from "../control/model";
+  import { AGENT_PROVIDERS, CARD_FACES, providerLogo } from "../control/model";
   import { ORB_LABELS } from "../assistant/model";
   import { assistant } from "../assistant/session.svelte";
 
@@ -41,8 +41,6 @@
       provider: labelOf(agent.provider),
       model: agent.model,
       folder: agent.folder,
-      face: faceOf(agent.character),
-      boss: NO_DATA,
       status: NO_DATA,
       ctx: NO_DATA,
     };
@@ -72,17 +70,56 @@
     provider: string;
     model: string;
     folder: string;
-    face: string;
-    boss: string;
     status: string;
     ctx: string;
   } | null>(null);
   const NO_DATA = "—";
-  // The HIPPO card's context bar has eight segments; none are filled until the app reports context use.
-  const CTX_SEGMENTS = Array.from({ length: 8 }, (_, i) => i);
-  // An added agent keeps its character id; show the avatar's name.
-  const faceOf = (id: string): string =>
-    AVATARS.find((a) => a.id === id)?.name ?? NO_DATA;
+  // What each added agent's terminal is running and its context use; read every few seconds.
+  let live = $state<Record<string, { command: string | null; status: string | null; percent: number | null; running?: string[]; last?: string | null; model?: string | null }>>({});
+  // CMD shows what is running now, else the last command the agent ran.
+  const cmdOf = (id: string): string => {
+    const info = live[id];
+    const shown = info?.running?.length ? info.running : info?.last ? [info.last] : [];
+    return shown.join("  ·  ") || NO_DATA;
+  };
+  // The provider a card's terminal runs (its CLI name), else the agent's own provider: its name and logo.
+  const providerOf = (id: string, fallback: string): { name: string; logo?: string } => {
+    const word = (live[id]?.command ?? "").split(" ")[0] ?? "";
+    return { name: CLI_LABEL[word] ?? labelOf(fallback), logo: providerLogo(CLI_ID[word] ?? fallback) };
+  };
+  // The provider HIPPO's terminal actually runs, from its CLI name; the account's provider until a terminal runs.
+  const CLI_LABEL: Record<string, string> = { claude: "Claude Code", codex: "Codex", ollama: "Ollama", agy: "Antigravity" };
+  const CLI_ID: Record<string, string> = { claude: "claude", codex: "codex", ollama: "ollama", agy: "antigravity" };
+  const cliWord = $derived((live.hippo?.command ?? "").split(" ")[0] ?? "");
+  const runningProvider = $derived(CLI_LABEL[cliWord] ?? provider);
+  const runningId = $derived(CLI_ID[cliWord] ?? (account?.claude ? "claude" : "ollama"));
+  const runningLogo = $derived(providerLogo(runningId));
+  async function refreshLive(): Promise<void> {
+    for (const id of ["hippo", ...added.map((a) => a.id)]) {
+      try {
+        const info = await invoke<{ command: string | null; status: string | null; running?: string[]; last?: string | null; model?: string | null }>("sidecar_call", {
+          method: "terminal_command",
+          params: { agent: id },
+        });
+        const percent = info.command
+          ? (
+              await invoke<{ percent: number }>("sidecar_call", {
+                method: "terminal_context",
+                params: { agent: id },
+              })
+            ).percent
+          : null;
+        live[id] = { command: info.command, status: info.status, percent, running: info.running, last: info.last, model: info.model };
+      } catch {
+        live[id] = { command: null, status: null, percent: null };
+      }
+    }
+  }
+  onMount(() => {
+    void refreshLive();
+    const timer = setInterval(() => void refreshLive(), 3000);
+    return () => clearInterval(timer);
+  });
 
 </script>
 
@@ -205,10 +242,6 @@
           <dt>FOLDER</dt>
           <dd>{info.folder}</dd>
         {/if}
-        <dt>FACE</dt>
-        <dd>{info.face}</dd>
-        <dt>BOSS</dt>
-        <dd>{info.boss}</dd>
         <dt>STATUS</dt>
         <dd>{info.status}</dd>
         <dt>CTX</dt>
@@ -219,31 +252,42 @@
 {/if}
 
 <div class="agent-bar" aria-label="Agents">
-  <div class="chip main">
+  <!-- Selecting HIPPO's card highlights it; the Control Room stays in the right panel. Its buttons do their own job. -->
+  <div
+    class="chip main"
+    class:selected={selection.id === "hippo"}
+    role="button"
+    tabindex="0"
+    aria-pressed={selection.id === "hippo"}
+    onclick={(e) => {
+      if ((e.target as HTMLElement).closest("button")) return;
+      selectAgent("hippo");
+    }}
+    onkeydown={(e) => {
+      if (e.key === "Enter" || e.key === " ") selectAgent("hippo");
+    }}
+  >
     <img src={CARD_FACES.find((f) => f.id === "card-face-17")?.url ?? logo} alt="" class="face" />
     <div class="text">
       <span class="head">
-        <b>HIPPO</b>
-        <span class="badge">BOSS</span>
-      </span>
-      <span class="online">
-        <span class="dot" class:on={account !== null}></span>
-        {account ? "ONLINE" : NO_DATA}
+        <b>Hippoherman</b>
+        <span class="badge">MAIN</span>
       </span>
       <span class="row">
-        <span class="key">MODEL</span>
-        <span class="val">{account?.model ?? NO_DATA}</span>
-      </span>
-      <span class="row">
-        <span class="key">CMD</span>
-        <span class="val">{NO_DATA}</span>
-      </span>
-      <span class="row" aria-label="Context {NO_DATA}">
-        <span class="key">CTX</span>
-        <span class="segs" aria-hidden="true">
-          {#each CTX_SEGMENTS as seg (seg)}<span class="seg"></span>{/each}
+        <span class="val provider-line">
+          {#if runningLogo}<span class="provider-logo" style='--logo: url("{runningLogo}")'></span>{/if}
+          <span class="provider-name">{runningProvider}</span>
         </span>
-        <span class="pct">{NO_DATA}</span>
+      </span>
+      <span class="row">
+        <span class="val model">{live.hippo?.model ?? account?.model ?? NO_DATA}</span>
+      </span>
+      <span class="row wide">
+        <span class="val cmd">{cmdOf("hippo")}</span>
+      </span>
+      <span class="row wide" aria-label="Context {live.hippo?.percent ?? NO_DATA}">
+        <span class="ctx-bar" aria-hidden="true"><span class="ctx-fill" style="width: {live.hippo?.percent ?? 0}%"></span></span>
+        <span class="pct">{live.hippo?.percent != null ? `${live.hippo?.percent}%` : NO_DATA}</span>
       </span>
     </div>
     <div class="side">
@@ -256,18 +300,16 @@
         aria-label="Info"
         onclick={() =>
           (info = {
-            name: "HIPPO",
+            name: "Hippoherman",
             role: "Main · fixed",
             provider,
             model: account?.model ?? "Loading model",
             folder: "",
-            face: NO_DATA,
-            boss: NO_DATA,
             status: ORB_LABELS[assistant.chat.orb],
             ctx: NO_DATA,
           })}>INFO</button
       >
-      <span class="status">{ORB_LABELS[assistant.chat.orb]}</span>
+      <span class="status">{assistant.chat.orb === "thinking" ? "Working" : "Idle"}</span>
     </div>
   </div>
   {#each added as agent (agent.id)}
@@ -286,22 +328,21 @@
       >
         <img src={CARD_FACES.find((f) => f.id === agent.character)?.url ?? logo} alt="" class="face" />
         <span class="text">
-          <span class="head"><b>{agent.name}</b><span class="badge spacer" aria-hidden="true">BOSS</span></span>
-          <span class="online"><span class="dot"></span>{NO_DATA}</span>
-          <span class="row">
-            <span class="key">MODEL</span>
-            <span class="val">{agent.model || "No model set"}</span>
-          </span>
-          <span class="row">
-            <span class="key">CMD</span>
-            <span class="val">{NO_DATA}</span>
-          </span>
-          <span class="row" aria-label="Context {NO_DATA}">
-            <span class="key">CTX</span>
-            <span class="segs" aria-hidden="true">
-              {#each CTX_SEGMENTS as seg (seg)}<span class="seg"></span>{/each}
+          <span class="head"><b>{agent.name}</b>
+            <span class="val provider-line">
+              {#if providerOf(agent.id, agent.provider).logo}<span class="provider-logo" style='--logo: url("{providerOf(agent.id, agent.provider).logo}")'></span>{/if}
+              <span class="provider-name">{providerOf(agent.id, agent.provider).name}</span>
             </span>
-            <span class="pct">{NO_DATA}</span>
+          </span>
+          <span class="row">
+            <span class="val">{live[agent.id]?.model || agent.model || "No model set"}</span>
+          </span>
+          <span class="row wide">
+            <span class="val cmd">{cmdOf(agent.id)}</span>
+          </span>
+          <span class="row wide" aria-label="Context {live[agent.id]?.percent ?? NO_DATA}">
+            <span class="ctx-bar" aria-hidden="true"><span class="ctx-fill" style="width: {live[agent.id]?.percent ?? 0}%"></span></span>
+            <span class="pct">{live[agent.id]?.percent != null ? `${live[agent.id]?.percent}%` : NO_DATA}</span>
           </span>
         </span>
       </button>
@@ -315,7 +356,7 @@
           aria-label="Info"
           onclick={() => showInfo(agent)}>INFO</button
         >
-        <span class="status">{ORB_LABELS[assistant.chat.orb]}</span>
+        <span class="status">{live[agent.id]?.status === "Working" ? "Working" : "Idle"}</span>
       </div>
     </div>
   {/each}
@@ -441,15 +482,41 @@
     font-weight: 700;
   }
 
-  .chip.main .online {
-    margin: 2px 0 4px;
-    font-size: 10px;
-    opacity: 1;
-    color: var(--color-md-card-text);
+  /* The logo is drawn in the brand colour: a mask shows the logo's shape, filled with the colour or gradient. */
+  .chip.main .provider-line {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
   }
 
-  .chip.main .dot.on {
-    background: #149c6a;
+  .chip.main .provider-logo {
+    width: 12px;
+    height: 12px;
+    flex: none;
+    background: currentColor;
+    -webkit-mask-image: var(--logo);
+    mask-image: var(--logo);
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+  }
+
+
+  /* Normal cards lost their provider row; this holds the space it used so they keep their height. */
+  .chip.main.added .head {
+    margin-bottom: 22px;
+    position: relative;
+  }
+
+  /* Sits in the 22px gap under the name, so the card keeps its height. */
+  .chip.main.added .head .provider-line {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 3px;
   }
 
   .chip.main .row {
@@ -460,29 +527,49 @@
     line-height: 1.6;
   }
 
-  .chip.main .key {
-    width: 44px;
-    flex: none;
-    font-size: 8px;
-    color: var(--color-md-card-muted);
-  }
 
   .chip.main .val {
     overflow: hidden;
     text-overflow: ellipsis;
   }
 
-  .chip.main .segs {
-    display: inline-flex;
-    gap: 3px;
+  /* The model name sits a touch higher than the rows around it. */
+  .chip.main .model {
+    position: relative;
+    top: -2px;
   }
 
-  .chip.main .seg {
-    width: 12px;
-    height: 5px;
+  /* The CMD text is highlighted like the MAIN badge. */
+  .chip.main .cmd {
+    align-self: flex-start;
+    padding: 1px 4px;
+    line-height: 1.4;
     border-radius: 3px;
     background: var(--hippo-purple);
-    opacity: 0.2;
+    color: var(--color-md-card);
+    font-weight: 700;
+  }
+
+  /* CMD and CTX rows start under the face and run out to the card's right edge. */
+  .chip.main .row.wide {
+    margin-left: calc(-52px - var(--space-2));
+    margin-right: -12px;
+  }
+
+  /* One continuous loading-style bar: the fill's width is the context percentage. */
+  .chip.main .ctx-bar {
+    flex: 1;
+    min-width: 140px;
+    height: 5px;
+    border-radius: 3px;
+    background: rgba(106, 88, 224, 0.2);
+    overflow: hidden;
+  }
+
+  .chip.main .ctx-fill {
+    display: block;
+    height: 100%;
+    background: var(--hippo-purple);
   }
 
   .chip.main .pct {
@@ -538,14 +625,9 @@
   }
 
   /* The card whose panel is open in the right panel. */
-  .chip.main.added.selected {
+  .chip.main.selected {
     outline: 2px solid var(--hippo-purple);
     outline-offset: 2px;
-  }
-
-  /* Hidden BOSS-tag slot: keeps the name on HIPPO's line without showing the tag. */
-  .chip.main.added .badge.spacer {
-    visibility: hidden;
   }
 
   /* The card-open button wraps the text, so it takes HIPPO's font and column layout. */
@@ -676,25 +758,6 @@
     font-size: 6px;
   }
 
-  .online {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 10px;
-    opacity: 0.8;
-  }
-
-  .dot {
-    width: 8px;
-    height: 8px;
-    flex: none;
-    border-radius: 50%;
-    background: var(--color-md-text-subtle);
-  }
-
-  .dot.on {
-    background: var(--color-md-confirm);
-  }
 
   .bar {
     display: inline-block;

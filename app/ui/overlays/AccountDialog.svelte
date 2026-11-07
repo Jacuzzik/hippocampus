@@ -1,100 +1,12 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
-  import { open } from "@tauri-apps/plugin-dialog";
-  import { onMount, tick } from "svelte";
 
-  // Setup and account, as in Munder Difflin's onboarding: open the brain folder, then sign in to
-  // Claude with an API key kept in the OS keychain. Sign out forgets the key and needs a second press.
-  let { onclose, onopened }: { onclose: () => void; onopened: () => void } =
-    $props();
+  // Setup: the brain is the default vault the app creates on first start. Removing data keeps the notes.
+  let { onclose }: { onclose: () => void; onopened?: () => void } = $props();
 
-  let signedIn = $state<boolean | null>(null);
-  let vault = $state("");
-  let key = $state("");
   let error = $state<string | null>(null);
-  let confirmSignOut = $state(false);
   let confirmRemove = $state(false);
   let notice = $state<string | null>(null);
-  let vaultInput: HTMLInputElement | null = $state(null);
-
-  onMount(async () => {
-    try {
-      signedIn = (
-        await invoke<{ claude: boolean }>("sidecar_call", { method: "account" })
-      ).claude;
-    } catch (cause) {
-      error = String(cause);
-    }
-    await tick();
-    vaultInput?.focus();
-  });
-
-  // Saves the folder as the brain folder (settings file) and opens it.
-  async function setVault(folder: string): Promise<void> {
-    error = null;
-    try {
-      await invoke("sidecar_call", {
-        method: "set_vault",
-        params: { vault: folder },
-      });
-      onopened();
-      onclose();
-    } catch (cause) {
-      error = String(cause);
-    }
-  }
-
-  async function openBrain(e: SubmitEvent): Promise<void> {
-    e.preventDefault();
-    await setVault(vault.trim());
-  }
-
-  async function chooseFolder(): Promise<void> {
-    error = null;
-    try {
-      const picked = await open({
-        directory: true,
-        multiple: false,
-        title: "Choose the brain folder",
-      });
-      if (typeof picked === "string") await setVault(picked);
-    } catch (cause) {
-      error = String(cause);
-    }
-  }
-
-  async function signIn(e: SubmitEvent): Promise<void> {
-    e.preventDefault();
-    error = null;
-    try {
-      const result = await invoke<{ claude: boolean }>("sidecar_call", {
-        method: "sign_in",
-        params: { key: key.trim() },
-      });
-      signedIn = result.claude;
-      key = "";
-    } catch (cause) {
-      error = String(cause);
-    }
-  }
-
-  async function signOut(): Promise<void> {
-    if (!confirmSignOut) {
-      confirmSignOut = true;
-      return;
-    }
-    confirmSignOut = false;
-    error = null;
-    try {
-      signedIn = (
-        await invoke<{ claude: boolean }>("sidecar_call", {
-          method: "sign_out",
-        })
-      ).claude;
-    } catch (cause) {
-      error = String(cause);
-    }
-  }
 
   async function removeData(): Promise<void> {
     if (!confirmRemove) {
@@ -105,13 +17,8 @@
     error = null;
     notice = null;
     try {
-      signedIn = (
-        await invoke<{ claude: boolean }>("sidecar_call", {
-          method: "remove_data",
-        })
-      ).claude;
-      notice =
-        "Removed the index cache and the Claude key. Your notes are untouched.";
+      await invoke("sidecar_call", { method: "remove_data" });
+      notice = "Removed the index cache. Your notes are untouched.";
     } catch (cause) {
       error = String(cause);
     }
@@ -131,62 +38,17 @@
     class="box"
     role="dialog"
     aria-modal="true"
-    aria-label="Setup and account"
+    aria-label="Setup"
     tabindex="-1"
     onkeydown={onKey}
     onmousedown={(e) => e.stopPropagation()}
   >
-    <h2>Setup and account</h2>
-
-    <form class="section" onsubmit={openBrain}>
-      <h3>Brain folder</h3>
-      <p class="muted">The folder of Markdown notes Hippocampus shows.</p>
-      <div class="row">
-        <input
-          bind:this={vaultInput}
-          bind:value={vault}
-          aria-label="Brain folder path"
-          placeholder="/path/to/brain"
-          autocomplete="off"
-          required
-        />
-        <button type="button" onclick={chooseFolder}>Choose folder…</button>
-        <button type="submit" class="primary">Open brain</button>
-      </div>
-    </form>
-
-    <div class="section">
-      <h3>Claude</h3>
-      {#if signedIn === null}
-        <p class="muted">Checking sign-in…</p>
-      {:else if signedIn}
-        <p>Signed in to Claude. The assistant uses Claude first.</p>
-        <button type="button" onclick={signOut}>
-          {confirmSignOut ? "Press again to sign out" : "Sign out"}
-        </button>
-      {:else}
-        <p class="muted">
-          Not signed in. The assistant uses Ollama on this machine.
-        </p>
-        <form class="row" onsubmit={signIn}>
-          <input
-            bind:value={key}
-            type="password"
-            aria-label="Claude API key"
-            placeholder="sk-ant-…"
-            autocomplete="off"
-            required
-          />
-          <button type="submit" class="primary">Sign in</button>
-        </form>
-      {/if}
-    </div>
+    <h2>Setup</h2>
 
     <div class="section">
       <h3>Your data</h3>
       <p class="muted">
-        Removes the index cache and the Claude key. Your notes are never
-        deleted.
+        Removes the index cache. Your notes are never deleted.
       </p>
       <div>
         <button type="button" onclick={removeData}>
@@ -249,22 +111,6 @@
     gap: var(--space-1);
   }
 
-  .row {
-    display: flex;
-    gap: var(--space-2);
-  }
-
-  input {
-    flex: 1;
-    min-width: 0;
-    font: inherit;
-    color: var(--color-text);
-    background: var(--color-bg-0);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    padding: var(--space-1) var(--space-2);
-  }
-
   button {
     font: inherit;
     color: var(--color-text);
@@ -273,12 +119,6 @@
     border-radius: var(--radius-sm);
     padding: var(--space-1) var(--space-3);
     cursor: pointer;
-  }
-
-  button.primary {
-    color: var(--color-accent-on);
-    background: var(--color-accent);
-    border-color: var(--color-accent);
   }
 
   .muted {

@@ -20,7 +20,7 @@ class NoteFile:
 
 
 def is_ignored(rel: PurePosixPath) -> bool:
-    """Hidden files and anything under a hidden folder (.obsidian, .git, .trash)."""
+    """Hidden files and anything under a hidden folder (.git, .trash, .settings)."""
     return any(part.startswith(".") for part in rel.parts)
 
 

@@ -112,7 +112,7 @@ def test_write_needs_confirm_through_the_protocol(
     assert chat["result"]["reply"] == "I created the note"
     assert (vault / "new" / "idea.md").read_text(
         encoding="utf-8"
-    ) == "---\ncreated_by: assistant\n---\n# Idea\n"
+    ) == "---\ncreated_by: assistant\ntags: [new]\n---\n# Idea\n"
 
 
 def test_stop_halts_a_running_chat(storage: Path, monkeypatch: pytest.MonkeyPatch) -> None:

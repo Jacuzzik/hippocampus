@@ -18,9 +18,10 @@ flat out float v_shape;
 out vec4 v_color;
 void main() {
   // Tall rectangles are 0.6 wide and 1.4 high, times the radius (see SHAPE_TALL in model.ts).
-  vec2 ext = shape > 1.5 ? vec2(0.6, 1.4) : vec2(1.0);
-  vec2 hs = radius * ext * dpr;
-  vec2 px = center * cam.x + cam.yz + corner * hs;
+  vec2 ext = shape > 3.5 ? vec2(2.0, 1.2) : shape > 2.5 ? vec2(0.6, 2.4) : shape > 1.5 ? vec2(1.2, 2.0) : vec2(1.5);
+  // Whole device pixels for the box and its centre, so every outline is the same width on screen.
+  vec2 hs = round(radius * ext * dpr);
+  vec2 px = round(center * cam.x + cam.yz) + corner * hs;
   vec2 clip = px / viewport * 2.0 - 1.0;
   gl_Position = vec4(clip.x, -clip.y, 0.0, 1.0);
   v_corner = corner;
@@ -45,10 +46,10 @@ void main() {
     frag = vec4(v_color.rgb, v_color.a * smoothstep(1.0, 0.8, d));
     return;
   }
-  // Hollow: a 1.5 px outline just inside the box's edge, nothing inside.
+  // Hollow: a 2 px outline just inside the box's edge, nothing inside.
   vec2 p = v_corner * v_half;
   float edge = min(v_half.x - abs(p.x), v_half.y - abs(p.y));
-  float a = 1.0 - smoothstep(1.5 * dpr - 0.5, 1.5 * dpr + 0.5, edge);
+  float a = 1.0 - smoothstep(2.0 * dpr - 0.5, 2.0 * dpr + 0.5, edge);
   if (a <= 0.0) discard;
   frag = vec4(v_color.rgb, v_color.a * a);
 }`;

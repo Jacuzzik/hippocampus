@@ -3,13 +3,16 @@
   import { SvelteMap } from "svelte/reactivity";
   import { invoke } from "@tauri-apps/api/core";
   import { hexOf, parse, token } from "./colors";
+  import NoteActions, { type MenuTarget } from "./NoteActions.svelte";
   import { parseNote, type Block, type Inline } from "./markdown";
   import type { Rgba } from "./renderer";
   import { BrainRenderer } from "./renderer";
   import { Canvas2DRenderer } from "./renderer-canvas";
+  import { drawAscii, type AsciiColours } from "./renderer-ascii";
+  import { buildConstellation, type Constellation } from "./constellation-model";
+  import { drawConstellation } from "./renderer-constellation";
   import {
     centerOn,
-    groupsOf,
     hitTest,
     labelAlpha,
     LOW_POWER,
@@ -18,8 +21,6 @@
     NODE_HIT_PX,
     newSim,
     nodeRadius,
-    nodeShape,
-    nodeTone,
     SHAPE_DISK,
     tint,
     reheat,
@@ -39,12 +40,13 @@
 
   // The note list in the sidebar owns the search, tag and memory filters and selection; the graph draws them.
   let {
-    data,
+    data: source,
     query = "",
     tag = null,
     memory = false,
     selectedId = null,
     onselect,
+    onrefresh,
   }: {
     data: GraphData;
     query?: string;
@@ -52,20 +54,37 @@
     memory?: boolean;
     selectedId?: string | null;
     onselect: (id: string | null) => void;
+    onrefresh?: () => void;
   } = $props();
 
+  // The ASCII look is an added mode of this graph: the same notes and interactions, drawn as text (on, 2026-11-07).
+  // The vault's test<digits> notes are hidden (the files stay), and the test hubs are always added.
+  const ascii = false;
+  // The neural constellation: hybrid ASCII + holographic boxes, built from the real graph. Off (2026-11-07): Thalha asked
+  // for the Obsidian graph look (circles, links, fading names, hover, drag, zoom). The code stays until he says remove.
+  const constellation = false;
+  // Test hubs and test notes removed (2026-11-07): the graph shows only the vault's own notes. Nothing on disk was changed.
+  // Test hubs and test notes are not shown (2026-11-07). The graph shows the vault's own notes only, and no generated hubs.
+  const data = $derived(source);
+
   let canvas: HTMLCanvasElement | undefined = $state();
+  let menu = $state<MenuTarget | null>(null);
+  let asciiLayer: HTMLCanvasElement | undefined = $state();
   let labelLayer: HTMLDivElement | undefined = $state();
-  let labels = $state<{ text: string; x: number; y: number; a: number }[]>([]);
+  let labels = $state<{ text: string; x: number; y: number; a: number; hub: boolean }[]>([]);
   let hovered = -1;
   let error = $state<string | null>(null);
   let cam = $state<Camera>({ x: 0, y: 0, zoom: 1 });
 
   // Plain variables: they are rebuilt from `data` and read by the draw loop, not by the template.
   let renderer: BrainRenderer | Canvas2DRenderer | null = null;
+  let asciiColours: AsciiColours | null = null;
   // The live simulation. `pos` is its positions (the notes, then the core at the origin), which are what is drawn and hit-tested.
   let sim: Sim = newSim(0, []);
   let pos: Float32Array<ArrayBuffer> = new Float32Array(0);
+  // The note ids and positions from the last layout, so a refresh can keep the notes that did not change in place.
+  let lastIds: string[] = [];
+  let lastPos = new Float32Array(0);
   // The world-space segments drawn for the links.
   let lines: Float32Array = new Float32Array(0);
   // Hides notes with no links. Off by default, so every note shows.
@@ -89,32 +108,49 @@
   // The hovered (else selected) note, or -1; its links are drawn bright, the rest dim.
   let focusIdx = -1;
   let frame = 0;
-  // Group colours the viewer picked in the key; unset groups use the accent. Kept per viewer.
-  const PICKS_KEY = "graph-group-colours";
-  function loadPicks(): Record<string, string> {
+  // Link colour the viewer picked in the key; unset links use the design token. Kept per viewer.
+  const LINK_KEY = "graph-link-colour";
+  function loadLinkPick(): string | null {
     try {
-      return JSON.parse(localStorage.getItem(PICKS_KEY) ?? "{}");
+      return localStorage.getItem(LINK_KEY);
     } catch {
-      return {};
+      return null;
     }
   }
-  let picks = $state<Record<string, string>>(loadPicks());
-  function setPick(name: string, value: string | null): void {
-    if (value) picks[name] = value;
-    else delete picks[name];
-    try {
-      localStorage.setItem(PICKS_KEY, JSON.stringify(picks));
-    } catch {
-      // Storage can be blocked; the pick still applies for this session.
-    }
-    pushStyle();
+  let linkPick = $state<string | null>(loadLinkPick());
+  function linkBase(): Rgba {
+    return linkPick ? parse(linkPick) : token("link");
   }
 
   const index = $derived(new Map(data.nodes.map((n, i) => [n.id, i])));
   const selected = $derived(selectedId ? (index.get(selectedId) ?? -1) : -1);
   const matched = $derived(matchFilter(data.nodes, { query, tag, memory }));
   const degree = $derived(linkCounts(data.nodes, data.edges));
-  const groups = $derived(groupsOf(data.nodes));
+  // The six groups linked to MAIN: their names are bold and their icons are larger.
+  const GROUP_HUBS = new Set(["Projects", "Summaries", "Agent Lists", "Contacts", "Socials", "About User"]);
+  const HUB_COLOURS: Record<string, string> = { MAIN: "#FFFFFF" };
+  // Each note is also drawn as draw-only copies: 3 above and 3 below (vertical trail), and one shifted sideways (colour fringe).
+  // Hit tests never see these copies, they only read the notes in pos.
+  const GHOST_KINDS = 7;
+  const GHOST_ALPHA = [0.5, 0.3, 0.15, 0.5, 0.3, 0.15, 0.5];
+  const GHOST_STEP = 9;
+  let drawPos: Float32Array = new Float32Array(0);
+  // Copies are off for now: one accent square per note, as asked. Set GHOST_ON to bring them back.
+  const GHOST_ON = false;
+  function withGhosts(p: Float32Array, n: number): Float32Array {
+    if (!GHOST_ON) return p;
+    const core = p.length / 2;
+    const out = new Float32Array((core + n * GHOST_KINDS) * 2);
+    out.set(p);
+    for (let i = 0; i < n; i++)
+      for (let k = 0; k < GHOST_KINDS; k++) {
+        const g = core + i * GHOST_KINDS + k;
+        const dy = k < 3 ? -(k + 1) * GHOST_STEP : k < 6 ? (k - 2) * GHOST_STEP : 0;
+        out[2 * g] = (p[2 * i] ?? 0) + (k === 6 ? 1.5 : 0);
+        out[2 * g + 1] = (p[2 * i + 1] ?? 0) + dy;
+      }
+    return out;
+  }
   const visible = $derived(
     matched.map((m, i) => m && !(hideOrphans && degree[i] === 0)),
   );
@@ -141,7 +177,9 @@
   // Links are rebuilt from the node positions whenever those move, so each line follows its two notes.
   // shortcut: every link is rebuilt on each moving frame, which is fine to a few thousand links; upgrade to a dirty flag if more.
   function refreshLines(): void {
-    renderer?.setPositions(pos);
+    geoDirty = true;
+    drawPos = withGhosts(pos, data.nodes.length);
+    renderer?.setPositions(drawPos);
     lines = straightLines(pos, sim.edges);
     renderer?.setLines(lines);
     focusEdges();
@@ -177,7 +215,7 @@
     }
     const [w, h] = size();
     const fade = labelAlpha(cam.zoom);
-    const placed: { text: string; x: number; y: number; a: number }[] = [];
+    const placed: { text: string; x: number; y: number; a: number; hub: boolean }[] = [];
     const boxes: number[] = [];
     const place = (i: number, a: number) => {
       if (placed.length >= MAX_LABELS || !visible[i] || a <= 0) return;
@@ -198,9 +236,15 @@
           return;
       }
       boxes.push(x, y, x1, y + LABEL_H);
-      placed.push({ text, x, y, a });
+      placed.push({ text, x, y, a, hub: GROUP_HUBS.has(text) });
     };
     // The focused note and its links are always named; every other name fades in with zoom.
+    // The constellation has no permanent titles: only the note under the pointer (or selected) is named.
+    if (constellation) {
+      if (hovered >= 0 || selected >= 0) place(hovered >= 0 ? hovered : selected, 1);
+      labels = placed;
+      return;
+    }
     for (const i of near) place(i, 1);
     for (let i = 0; i < data.nodes.length; i++) if (!near.has(i)) place(i, fade);
     labels = placed;
@@ -209,11 +253,19 @@
   function draw(): void {
     frame = 0;
     // Live motion: one simulation step a frame while it is still hot. Reduced motion stays still.
-    if (!calm && tick(sim)) {
+    let moving = false;
+    if (!ascii && !calm && tick(sim)) {
+      moving = true;
       refreshLines();
       schedule();
     }
-    if (renderer && colours)
+    if (constellation) {
+      paintConstellation(!moving);
+    } else if (ascii) {
+      paintAscii();
+      // ASCII keeps moving (the orbit), unless reduced motion asks for stillness.
+      if (!calm) schedule();
+    } else if (renderer && colours)
       renderer.draw(
         cam,
         colours.bg,
@@ -223,6 +275,53 @@
     drawLabels();
     // Read by the e2e test: how many nodes the last frame placed inside the canvas.
     if (canvas) canvas.dataset.inView = String(countInView());
+  }
+
+  // The constellation on the overlay canvas. Its geometry is rebuilt after the layout settles, and every few
+  // frames while it still moves (building it is the costly part, drawing it is cheap).
+  let geo: Constellation | null = null;
+  let geoDirty = true;
+  let geoAge = 0;
+  function paintConstellation(settled: boolean): void {
+    const layer = asciiLayer;
+    const ctx = layer?.getContext("2d");
+    if (!layer || !ctx) return;
+    const [w, h] = size();
+    const dpr = Math.min(window.devicePixelRatio || 1, LOW_POWER.dprCap);
+    if (layer.width !== Math.round(w * dpr) || layer.height !== Math.round(h * dpr)) {
+      layer.width = Math.round(w * dpr);
+      layer.height = Math.round(h * dpr);
+    }
+    if (!geo || (geoDirty && (settled || ++geoAge % 6 === 0))) {
+      geo = buildConstellation(data, pos);
+      geoDirty = false;
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const focus = hovered >= 0 ? hovered : selected;
+    let lit: Uint8Array | null = null;
+    if (focus >= 0) {
+      lit = new Uint8Array(data.nodes.length);
+      lit[focus] = 1;
+      for (const j of near) lit[j] = 1;
+    }
+    drawConstellation(ctx, cam, geo, w, h, lit);
+  }
+
+  // The ASCII picture on its own canvas above the WebGL one, which is left unpainted while ASCII is on.
+  function paintAscii(): void {
+    const layer = asciiLayer;
+    const ctx = layer?.getContext("2d");
+    if (!layer || !ctx || !asciiColours) return;
+    const [w, h] = size();
+    const dpr = Math.min(window.devicePixelRatio || 1, LOW_POWER.dprCap);
+    // Resizing clears the canvas, so only resize when the box changed.
+    if (layer.width !== Math.round(w * dpr) || layer.height !== Math.round(h * dpr)) {
+      layer.width = Math.round(w * dpr);
+      layer.height = Math.round(h * dpr);
+    }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const focus = hovered >= 0 ? hovered : selected;
+    drawAscii(ctx, cam, pos, sim.edges, degree, asciiColours, w, h, calm ? 0 : performance.now() / 1000, focus);
   }
 
   function size(): [number, number] {
@@ -305,6 +404,83 @@
       stale = true;
     };
   });
+
+  // Edit in place in the drawer: the full text while editing, or null while the note is only read.
+  // Typing saves after a short pause, and leaving the text or the note saves at once. There are no Save or Cancel buttons.
+  let editText = $state<string | null>(null);
+  let editError = $state<string | null>(null);
+  // The note the right-click Edit asked for: the drawer opens straight into editing it.
+  let wantEdit = $state<string | null>(null);
+  // The text last read or written for the open note, so a save runs only when the text changed.
+  let savedText = "";
+  let saveTimer = 0;
+  // Writes go one at a time, so a late save cannot overtake an earlier one.
+  let writes: Promise<void> = Promise.resolve();
+  // Moving to another note drops an unsaved edit. A derived id keeps the 5-second graph poll from resetting it.
+  const nodeId = $derived(node?.id ?? null);
+  $effect(() => {
+    const id = nodeId;
+    const want = untrack(() => wantEdit);
+    editError = null;
+    if (id && want === id) {
+      wantEdit = null;
+      void startEdit(id);
+    } else {
+      editText = null;
+    }
+    // Leaving the note (or closing the drawer) saves what was typed.
+    return () => saveNow(id);
+  });
+
+  async function startEdit(id: string): Promise<void> {
+    editError = null;
+    try {
+      const answer = await invoke<{ text: string }>("sidecar_call", {
+        method: "note_text",
+        params: { path: id },
+      });
+      if (nodeId === id) {
+        savedText = answer.text;
+        editText = answer.text;
+      }
+    } catch (cause) {
+      if (nodeId === id) editError = String(cause);
+    }
+  }
+
+  // Right-click Edit: select the note and open its drawer straight into editing.
+  function edit(id: string): void {
+    if (nodeId === id) {
+      void startEdit(id);
+      return;
+    }
+    wantEdit = id;
+    onselect(id);
+  }
+
+  function onEditInput(text: string): void {
+    editText = text;
+    clearTimeout(saveTimer);
+    saveTimer = window.setTimeout(() => saveNow(nodeId), 600);
+  }
+
+  function saveNow(id: string | null): void {
+    clearTimeout(saveTimer);
+    const text = editText;
+    if (!id || text === null || text === savedText) return;
+    writes = writes
+      .then(() => invoke("sidecar_call", { method: "note_save", params: { path: id, text } }))
+      .then(() => {
+        if (nodeId === id) {
+          savedText = text;
+          body = { id, blocks: parseNote(text) };
+        }
+        window.dispatchEvent(new Event("graph-changed"));
+      })
+      .catch((cause: unknown) => {
+        if (nodeId === id) editError = String(cause);
+      });
+  }
   const shown = $derived(body && node && body.id === node.id ? body : null);
 
   // Bring a selected node into view, unless it is already on screen (a click on the canvas).
@@ -346,30 +522,44 @@
     if (!renderer || !colours) return;
     const n = data.nodes.length;
     // pos also holds the core and the group centres after the notes. They are not drawn (radius 0) and not hit (hit tests stop at the notes).
-    const total = pos.length / 2;
+    const core = pos.length / 2;
+    const total = Math.max(drawPos.length / 2, core);
     const colors = new Float32Array(total * 4);
     const radii = new Float32Array(total);
     const shapes = new Float32Array(total);
-    const picked = groups.names.map((name) => (picks[name] ? parse(picks[name]) : null));
+    // The MAIN hub notes keep their own colours, whatever folder they sit in.
+    const hubs = new Map(Object.entries(HUB_COLOURS).map(([title, hex]) => [title, parse(hex)]));
     // A hovered note (else the selected one) and its links stay bright; every other note dims.
     const focus = hovered >= 0 ? hovered : selected;
     near = neighbourhood(focus);
     focusIdx = focus;
     focusEdges();
-    for (let i = n; i < total; i++) {
+    for (let i = n; i < core; i++) {
       colors.set(colours.node, i * 4);
       radii[i] = 0;
       shapes[i] = SHAPE_DISK;
     }
     for (let i = 0; i < n; i++) {
       const isSel = i === selected;
-      const tone = colours.tones[nodeTone(data.nodes[i]?.id ?? "")] ?? colours.node;
-      const base = isSel ? colours.hot : (picked[groups.of[i] ?? 0] ?? tone);
+      const hub = hubs.get(data.nodes[i]?.title ?? "");
+      // Untagged notes take the accent or one of its two lighter tints, from the id (the old square look).
+      // Oldest look (first graph commit): every note is the accent, no status colours.
+      const base = isSel ? colours.hot : (hub ?? colours.node);
       const lit = focus < 0 || near.has(i) ? 1 : 0.2;
       const alpha = visible[i] ? base[3] * lit : base[3] * 0.15;
       colors.set([base[0], base[1], base[2], alpha], i * 4);
+      // Same size for every note (2026-11-07): no extra size for group hubs.
       radii[i] = nodeRadius(degree[i] ?? 0, isSel);
-      shapes[i] = nodeShape(data.nodes[i]?.id ?? "");
+      // Circles, as in Obsidian's graph view (2026-11-07). nodeShape keeps the old rectangle mix in model.ts.
+      shapes[i] = SHAPE_DISK;
+    }
+    // Draw-only copies take their note's colour, faded, and its radius and shape.
+    for (let g = core; g < total; g++) {
+      const k = (g - core) % GHOST_KINDS;
+      const note = Math.floor((g - core) / GHOST_KINDS);
+      colors.set([colors[4 * note] ?? 0, colors[4 * note + 1] ?? 0, colors[4 * note + 2] ?? 0, (colors[4 * note + 3] ?? 0) * (GHOST_ALPHA[k] ?? 0)], 4 * g);
+      radii[g] = radii[note] ?? 0;
+      shapes[g] = shapes[note] ?? SHAPE_DISK;
     }
     renderer.setColors(colors);
     renderer.setRadii(radii);
@@ -409,10 +599,16 @@
       // Note outlines: the accent, then two lighter tints of it (see nodeTone in model.ts).
       tones: [0, 0.3, 0.55].map((t) => tint(token("accent"), t) as Rgba),
       hot: token("confirm"),
-      edge: [...token("link").slice(0, 3), 0.16] as Rgba,
-      edgeDim: [...token("link").slice(0, 3), 0.04] as Rgba,
-      edgeFocus: [...token("link").slice(0, 3), 0.7] as Rgba,
+      edge: [...linkBase().slice(0, 3), 0.16] as Rgba,
+      edgeDim: [...linkBase().slice(0, 3), 0.04] as Rgba,
+      edgeFocus: [...linkBase().slice(0, 3), 0.7] as Rgba,
       bg: token("bg-0"),
+    };
+    asciiColours = {
+      bg: hexOf(token("ascii-bg")),
+      node: hexOf(token("ascii-node")),
+      link: hexOf(token("ascii-link")),
+      hub: hexOf(token("ascii-link-hub")),
     };
     // Refit on every size change, so opening the note drawer (which narrows the canvas) keeps the graph in view.
     const fit = () => {
@@ -431,7 +627,7 @@
       moved: boolean;
       node: number;
     } | null = null;
-    const local = (e: PointerEvent | WheelEvent) => {
+    const local = (e: MouseEvent) => {
       const rect = c.getBoundingClientRect();
       return [e.clientX - rect.left, e.clientY - rect.top] as const;
     };
@@ -456,6 +652,8 @@
         if (next !== hovered) {
           hovered = next;
           pushStyle();
+          // Reduced motion does not repaint on its own, so the ASCII focus needs a frame.
+          if (ascii) schedule();
         }
         return;
       }
@@ -501,9 +699,19 @@
     c.addEventListener("pointerup", onUp);
     c.addEventListener("pointercancel", endDrag);
     c.addEventListener("wheel", onWheel, { passive: false });
+    // Right-click on a visible note opens its actions menu (NoteActions); elsewhere it does nothing.
+    const onContext = (e: MouseEvent) => {
+      e.preventDefault();
+      const [x, y] = local(e);
+      const hit = hitTest(notes(), cam, x, y, NODE_HIT_PX);
+      const id = hit >= 0 && visible[hit] ? data.nodes[hit]?.id : undefined;
+      menu = id ? { x: e.clientX, y: e.clientY, id } : null;
+    };
+    c.addEventListener("contextmenu", onContext);
 
     return () => {
       observer.disconnect();
+      c.removeEventListener("contextmenu", onContext);
       c.removeEventListener("pointerdown", onDown);
       c.removeEventListener("pointermove", onMove);
       c.removeEventListener("pointerup", onUp);
@@ -518,9 +726,12 @@
   // Lay out the graph again whenever the notes change.
   $effect(() => {
     void data;
+    void ascii;
     untrack(relayout);
   });
 
+  // The ASCII layout uses other units, so the camera must be refit when the mode flips.
+  let lastAscii = false;
   // A fresh simulation, settled before the first frame. Dragged notes go back to it too.
   function relayout(): void {
     const r = renderer;
@@ -532,12 +743,30 @@
       if (ia !== undefined && ib !== undefined && ia !== ib)
         pairs.push([ia, ib]);
     }
-    sim = newSim(data.nodes.length, pairs);
-    settle(sim, LOW_POWER.iterations);
+    // Plain force layout for every note, as Obsidian's graph does (2026-11-07). The old per-note centre pull is gone.
+    sim = newSim(data.nodes.length, pairs, 1);
+    // A change to the notes keeps every note that is still there where it was, and the camera stays put.
+    const before = new Map(lastIds.map((id, i) => [id, i]));
+    let kept = 0;
+    data.nodes.forEach((node, i) => {
+      const j = before.get(node.id);
+      if (j === undefined || 2 * j + 1 >= lastPos.length) return;
+      sim.pos[2 * i] = lastPos[2 * j] ?? 0;
+      sim.pos[2 * i + 1] = lastPos[2 * j + 1] ?? 0;
+      kept++;
+    });
+    const update = kept > 0;
+    settle(sim, update ? 20 : LOW_POWER.iterations);
     pos = sim.pos;
     lines = straightLines(pos, sim.edges);
-    r.setGraph(pos, lines);
-    fitAll();
+    drawPos = withGhosts(pos, data.nodes.length);
+    r.setGraph(drawPos, lines);
+    const modeChanged = ascii !== lastAscii;
+    lastAscii = ascii;
+    if (!update || modeChanged) fitAll();
+    lastIds = data.nodes.map((node) => node.id);
+    lastPos = new Float32Array(sim.pos);
+    geoDirty = true;
     pushStyle();
   }
 
@@ -550,9 +779,10 @@
     schedule();
   });
 
-  // Obsidian's keys: +/- zoom about the middle, arrows move the view (Shift for a bigger step). Not while typing.
+  // the notes app's keys: +/- zoom about the middle, arrows move the view (Shift for a bigger step). Not while typing.
   function onWindowKey(e: KeyboardEvent): void {
-    if (e.key === "Escape" && selected >= 0) return onselect(null);
+    // While an edit is open, Escape must not close the drawer and lose the text.
+    if (e.key === "Escape" && selected >= 0 && editText === null) return onselect(null);
     const target = e.target instanceof HTMLElement ? e.target : null;
     if (target?.closest("input, textarea, select, [contenteditable]")) return;
     const [w, h] = size();
@@ -582,6 +812,7 @@
     aria-label="Brain graph of {data.nodes.length} notes"
   >
     <canvas bind:this={canvas} class="canvas"></canvas>
+    <canvas bind:this={asciiLayer} class="ascii-layer" hidden={!ascii && !constellation} aria-hidden="true"></canvas>
     <div
       class="labels"
       aria-hidden="true"
@@ -589,7 +820,7 @@
       data-labels={labels.length}
     >
       {#each labels as l, k (k)}
-        <span class="label" style:opacity={l.a} style:transform="translate({l.x}px, {l.y}px)"
+        <span class="label" class:hub={l.hub} style:opacity={l.a} style:transform="translate({l.x}px, {l.y}px)"
           >{l.text}</span
         >
       {/each}
@@ -598,6 +829,9 @@
 
   <div class="tools">
     <button type="button" class="fit" onclick={fitAll}>Fit graph</button>
+    {#if onrefresh}
+      <button type="button" class="fit" onclick={onrefresh}>Refresh vault</button>
+    {/if}
     <label class="toggle">
       <input type="checkbox" bind:checked={hideOrphans} /> Hide orphans
     </label>
@@ -606,47 +840,47 @@
     </label>
   </div>
 
-  {#if groups.names.length}
-    <ul class="key" aria-label="Key: group colours">
-      <li class="key-title">Key</li>
-      {#each groups.names as name (name)}
-        <li>
-          <input
-            type="color"
-            class="pick"
-            aria-label="Colour for {name}"
-            value={picks[name] ?? hexOf(colours?.node ?? [0, 0, 0, 1])}
-            onchange={(e) => setPick(name, e.currentTarget.value)}
-          />{name}
-          {#if picks[name]}
-            <button class="reset" type="button" onclick={() => setPick(name, null)}>reset</button>
-          {/if}
-        </li>
-      {/each}
-    </ul>
-  {/if}
-
   {#if error}
     <p class="notice" role="alert">The graph cannot be drawn: {error}</p>
   {:else if data.nodes.length === 0}
     <p class="notice">This vault has no notes yet.</p>
   {/if}
 
+  <NoteActions {menu} {data} onclose={() => (menu = null)} onedit={edit} />
+
   {#if node}
     <aside class="drawer" aria-label="Note details">
       <header>
         <h2>{node.title}</h2>
-        <button
-          type="button"
-          class="close"
-          aria-label="Close note details"
-          onclick={() => onselect(null)}>×</button
-        >
+        <div class="head-actions">
+          {#if editText === null}
+            <button type="button" onclick={() => nodeId && startEdit(nodeId)}>Edit</button>
+          {/if}
+          <button
+            type="button"
+            class="close"
+            aria-label="Close note details"
+            onclick={() => onselect(null)}>×</button
+          >
+        </div>
       </header>
       <p class="path">{node.id}</p>
       {#if node.tags.length}
         <p class="tags">{node.tags.map((t) => `#${t}`).join(" ")}</p>
       {/if}
+      {#if editText !== null}
+        <section class="body" aria-label="Edit note">
+          <textarea
+            rows="20"
+            aria-label="Note text"
+            value={editText}
+            oninput={(e) => onEditInput(e.currentTarget.value)}
+            onblur={() => saveNow(nodeId)}
+          ></textarea>
+          {#if editError}<p class="muted" role="alert">{editError}</p>{/if}
+        </section>
+      {:else}
+      {#if editError}<p class="muted" role="alert">{editError}</p>{/if}
       <section class="body" aria-label="Note text">
         {#if shown && "error" in shown}
           <p class="muted" role="alert">
@@ -677,6 +911,7 @@
           <p class="muted">Loading the note…</p>
         {/if}
       </section>
+      {/if}
       <h3>Links to</h3>
       {#if outgoing.length}
         <ul>
@@ -756,6 +991,15 @@
     cursor: grabbing;
   }
 
+  /* Sits over the WebGL canvas; clicks pass through to it, so every graph interaction still works. */
+  .ascii-layer {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+
   /* Labels are DOM text over the canvas; they never take pointer events, so clicks reach the graph. */
   .labels {
     position: absolute;
@@ -763,6 +1007,10 @@
     overflow: hidden;
     pointer-events: none;
     font-size: var(--font-size-xs);
+  }
+
+  .label.hub {
+    color: var(--color-text);
   }
 
   .label {
@@ -790,28 +1038,6 @@
     color: var(--color-text-muted);
   }
 
-  /* The arc layout's group key, under the tools, top left. */
-  .key {
-    position: absolute;
-    top: calc(var(--space-2) + 40px);
-    left: var(--space-2);
-    z-index: 1;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    max-height: 60%;
-    overflow-y: auto;
-    font-size: var(--font-size-xs);
-    line-height: 16px;
-    color: var(--color-text-muted);
-    pointer-events: none;
-  }
-
-  .key-title {
-    color: var(--color-text);
-    margin-bottom: var(--space-1);
-  }
-
   /* 44px touch target; the padding keeps the visible swatch at 12px, and the negative margin keeps the row height. */
   .pick {
     box-sizing: border-box;
@@ -825,6 +1051,15 @@
     vertical-align: middle;
     pointer-events: auto;
     cursor: pointer;
+  }
+
+  .swatch {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    margin-right: var(--space-2);
+    border-radius: 50%;
+    vertical-align: middle;
   }
 
   .reset {
@@ -867,7 +1102,7 @@
     color: var(--color-text-muted);
   }
 
-  /* Beside the canvas, as Obsidian's side panels are, so it never covers the graph. */
+  /* Beside the canvas, as the notes app's side panels are, so it never covers the graph. */
   .drawer {
     flex: none;
     width: min(320px, 45%);
@@ -882,6 +1117,24 @@
     justify-content: space-between;
     align-items: start;
     gap: var(--space-2);
+  }
+
+  .head-actions {
+    display: flex;
+    gap: var(--space-2);
+  }
+
+  textarea {
+    width: 100%;
+    box-sizing: border-box;
+    background: var(--color-bg-0);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: var(--space-2);
+    font: inherit;
+    font-size: var(--font-size-sm);
+    resize: vertical;
   }
 
   h2,

@@ -5,6 +5,7 @@
     "lib": ["es2022", "dom", "dom.iterable"],
     "types": ["vite/client"],
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "allowJs": true,
     "checkJs": true,
     "isolatedModules": true,

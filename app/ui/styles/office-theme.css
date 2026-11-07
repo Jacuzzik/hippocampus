@@ -1,5 +1,5 @@
-/* Munder Difflin look for the agent panels (right sidebar and bottom owner panel).
-   Colours are the md-* semantic tokens in design/tokens.json (from the Munder Difflin
+/* the office app look for the agent panels (right sidebar and bottom owner panel).
+   Colours are the md-* semantic tokens in design/tokens.json (from the the office app
    app's dark theme). Scoped to .md-theme so the rest of the app keeps its own tokens. */
 
 @font-face {
@@ -25,7 +25,7 @@
   --color-face-disc: var(--color-md-card);
 }
 
-/* The main agent card is a light card, like Munder Difflin's agent cards. */
+/* The main agent card is a light card, like the office app's agent cards. */
 .md-theme .agent-card {
   --color-text-muted: var(--color-md-card-text);
   --color-text: var(--color-md-card-text);

@@ -109,7 +109,7 @@ def test_apply_changes_for_files(
     removed = vault / "archive/Index.md"
     removed.unlink()
 
-    stats = indexer.apply_changes([new, edited, removed, vault / ".obsidian/app.json"])
+    stats = indexer.apply_changes([new, edited, removed, vault / ".settings/app.json"])
     assert (stats.added, stats.updated, stats.removed) == (1, 1, 1)
     assert store.outgoing("areas/New.md") == [("Index", "projects/Index.md")]
     assert store.note_title("projects/Index.md") == "Index"

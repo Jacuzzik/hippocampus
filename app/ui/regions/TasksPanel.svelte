@@ -1,4 +1,4 @@
-<!-- The office task board, read only: tasks grouped by status, as in Munder Difflin's Tasks page. -->
+<!-- The office task board, read only: tasks grouped by status, as in the office app's Tasks page. -->
 <script lang="ts">
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";

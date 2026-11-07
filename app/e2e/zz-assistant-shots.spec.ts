@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
 import { mockSidecar } from "./tauri-mock";
 
-const SHOTS = "/tmp/claude-1000/-home-thalha-Documents-Obsidian-Munder-Difflin-worktrees-worker-assistant-files-voice/a3481773-169d-4205-b563-da95244b79d5/scratchpad/shots";
-const INPUT = "/tmp/claude-1000/-home-thalha-Documents-Obsidian-Munder-Difflin-worktrees-worker-assistant-files-voice/a3481773-169d-4205-b563-da95244b79d5/scratchpad/input";
+const SHOTS = "/tmp/claude-1000/-home-thalha-Hippocampus-worktrees-worker-assistant-files-voice/a3481773-169d-4205-b563-da95244b79d5/scratchpad/shots";
+const INPUT = "/tmp/claude-1000/-home-thalha-Hippocampus-worktrees-worker-assistant-files-voice/a3481773-169d-4205-b563-da95244b79d5/scratchpad/input";
 
 test("assistant files and voice shots", async ({ page }) => {
   await mockSidecar(page);

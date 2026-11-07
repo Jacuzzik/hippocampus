@@ -6,10 +6,12 @@ shortcut: no tool calls via the CLI, add a tool bridge later if the assistant ne
 
 import asyncio
 import json
+import os
 import shutil
 from typing import Any
 
 from ai import cli_sessions, network
+from tools.vault_mcp import VAULT_TOOLS, mcp_config
 from ai.providers.base import NetworkBlocked, ProviderError, Reply, ToolSpec
 
 CLI = "claude"
@@ -31,10 +33,11 @@ def _newest(messages: list[dict[str, Any]]) -> str:
 class ClaudeCliProvider:
     name = "claude-cli"
 
-    def __init__(self, model: str, agent: str = "hippo", timeout: float = 120.0) -> None:
+    def __init__(self, model: str, agent: str = "hippo", timeout: float = 120.0, vault: str | None = None) -> None:
         self.model = model
         self.agent = agent
         self.timeout = timeout
+        self.vault = vault
 
     async def chat(self, messages: list[dict[str, Any]], tools: list[ToolSpec]) -> Reply:
         if not network.allows_model_calls():
@@ -48,6 +51,32 @@ class ClaudeCliProvider:
         args = [binary, "-p", _newest(messages), "--output-format", "json", *resume]
         if self.model:
             args += ["--model", self.model]
+        if self.vault:
+            # The main chat answers from the vault notes, not the web: it can read the vault, and web search is off.
+            # The notes are reached only through the app's vault tools (tools/vault_mcp.py): no shell, no web.
+            args += [
+                "--mcp-config",
+                mcp_config(self.vault),
+                "--strict-mcp-config",
+                "--allowedTools",
+                *[f"mcp__vault__{name}" for name in VAULT_TOOLS],
+                # No built-in tools (no shell, no file browsing, no web): only the vault server's tools.
+                "--tools",
+                "",
+                "--append-system-prompt",
+                f"You are Hippoherman, the main agent (Boss) of the Hippocampus app. Questions about our plans, past decisions, "
+                f"projects or the user: use search_notes and read_note on the vault, starting with MAIN, then Projects, Summaries "
+                "and the other group notes, and answer from them only. The vault is the memory: do not answer from earlier chat history "
+                "or the session transcript. If the notes do not say, say so. You have no shell and no web. "
+                "Only touch notes; never scan hidden folders (names starting with a dot). When the user asks you to organise folders, "
+                "call list_folders to see them, then move_note for each note the user agrees to move, and say what you moved. "
+                "Keep answers short: do not list the files or folders you searched. "
+                "To save something the user names a note for, find that note with search_notes and change it with edit_note; "
+                "do not create a new note unless the user asks for one, and ask which note if it is unclear. "
+                "A new note goes under its group: add a [[link]] to it in the matching group hub (Projects, Summaries, Agent Lists, "
+                "Contacts, Socials or About User) so it is organized and takes that group's colour. If no group fits, ask. "
+                "To delete a note the user asks you to delete, call delete_note; if it is protected, say so.",
+            ]
         try:
             proc = await asyncio.create_subprocess_exec(
                 *args,
@@ -55,6 +84,8 @@ class ClaudeCliProvider:
                 stdin=asyncio.subprocess.DEVNULL,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
+                # CLAUDE_CODE_CHILD_SESSION turns off transcript saving, so the chat's session could not be resumed.
+                env={k: v for k, v in os.environ.items() if k != "CLAUDE_CODE_CHILD_SESSION"},
             )
             out, err = await asyncio.wait_for(proc.communicate(), timeout=self.timeout)
         except TimeoutError as exc:

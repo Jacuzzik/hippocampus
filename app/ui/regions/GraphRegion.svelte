@@ -31,6 +31,7 @@
     fullscreen = false,
     onselect,
     onfullscreen,
+    onrefresh,
   }: {
     data?: GraphData | null;
     error?: string | null;
@@ -42,6 +43,7 @@
     fullscreen?: boolean;
     onselect: (id: string | null) => void;
     onfullscreen: () => void;
+    onrefresh?: () => void;
   } = $props();
 </script>
 
@@ -66,21 +68,6 @@
           <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
         </svg>
       </button>
-      <!-- Dummy placeholders: not wired yet. -->
-      <button type="button" aria-label="Dark or light theme" title="Theme (not wired yet)">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <circle cx="12" cy="12" r="8" />
-          <path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" />
-        </svg>
-      </button>
-      <button type="button" aria-label="Personal board" title="Personal board (not wired yet)">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <rect x="4" y="4" width="7" height="7" rx="1" />
-          <rect x="13" y="4" width="7" height="7" rx="1" />
-          <rect x="4" y="13" width="7" height="7" rx="1" />
-          <rect x="13" y="13" width="7" height="7" rx="1" />
-        </svg>
-      </button>
     </div>
   </header>
   {#if !fullscreen}
@@ -88,7 +75,7 @@
     <div class="body">
       {#if data}
         {#key viewKey}
-          <BrainGraph {data} {query} {tag} {memory} {selectedId} {onselect} />
+          <BrainGraph {data} {query} {tag} {memory} {selectedId} {onselect} {onrefresh} />
         {/key}
       {:else if error}
         <p role="alert">Could not load the vault: {error}</p>
@@ -109,20 +96,6 @@
     position: relative;
     background: var(--color-bg-0);
     color: var(--color-text-muted);
-  }
-
-  /* Dot grid, as in the mockup. Sits over the WebGL canvas, which clears to a solid colour. */
-  .graph::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    z-index: 1;
-    pointer-events: none;
-    background-image: radial-gradient(
-      color-mix(in srgb, var(--color-accent) 35%, transparent) 1.5px,
-      transparent 2px
-    );
-    background-size: 34px 34px;
   }
 
   .graph > .topbar {

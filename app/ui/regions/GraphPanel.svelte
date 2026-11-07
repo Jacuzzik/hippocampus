@@ -9,13 +9,20 @@
   let graph = $state<GraphData | null>(null);
   let failed = $state(false);
 
-  onMount(async () => {
+  // Reloads every few seconds so notes the agents add or change show up without a restart.
+  async function load(): Promise<void> {
     try {
       graph = await invoke<GraphData>("sidecar_call", { method: "graph" });
+      failed = false;
     } catch (cause) {
       failed = true;
       console.error("Could not read the brain graph", cause);
     }
+  }
+  onMount(() => {
+    void load();
+    const timer = setInterval(() => void load(), 5000);
+    return () => clearInterval(timer);
   });
 
   const linked = $derived.by(() => {

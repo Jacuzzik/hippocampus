@@ -1,6 +1,6 @@
 # Hippocampus
 
-Hippocampus is an open-source desktop "second brain." Your notes live as Markdown files in a local folder, called a brain. You get an Obsidian-style graph of how they link, an AI assistant that can read and write notes (with your confirmation), and an orb that shows what the assistant is doing.
+Hippocampus is an open-source desktop "second brain." Your notes live as Markdown files in a local folder, called a brain. You get an graph-style graph of how they link, an AI assistant that can read and write notes (with your confirmation), and an orb that shows what the assistant is doing.
 
 It is local first: your notes stay on your machine. The only network calls go to the model provider you configure.
 
@@ -71,7 +71,7 @@ npm ci
 npm run tauri dev
 ```
 
-The first run compiles the Rust shell, which takes a few minutes. The app opens the vault named in `config/settings.toml` (`brains/sample` by default), so create it first with the sample commands below.
+The first run compiles the Rust shell, which takes a few minutes. The app opens the vault named in `config/settings.toml` (`brains/Hippocampus` by default; the first run creates it with a starter note). To try the sample vault instead, create it with the commands below.
 
 ## Explore your notes
 

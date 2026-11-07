@@ -44,7 +44,7 @@ def test_create_note_writes_and_indexes(tools: dict, vault: Path, indexer: Index
         "created notes/fresh.md"
     )
     assert (vault / "notes" / "fresh.md").read_text(encoding="utf-8") == (
-        "---\ncreated_by: assistant\n---\n# Fresh\n"
+        "---\ncreated_by: assistant\ntags: [notes]\n---\n# Fresh\n"
     )
     assert indexer.store.search("fresh") == [("notes/fresh.md", "Fresh")]
 
@@ -57,5 +57,56 @@ def test_create_note_never_overwrites(tools: dict, vault: Path) -> None:
 
 def test_memory_content_merges_into_existing_frontmatter() -> None:
     assert memory_content("---\ntitle: T\n---\nBody\n") == (
-        "---\ncreated_by: assistant\ntitle: T\n---\nBody\n"
+        "---\ncreated_by: assistant\ntags: [assistant]\ntitle: T\n---\nBody\n"
     )
+
+
+def test_memory_content_keeps_existing_tags() -> None:
+    assert memory_content("---\ntags: [x]\n---\nBody\n", "Projects") == (
+        "---\ncreated_by: assistant\ntags: [x]\n---\nBody\n"
+    )
+
+
+def test_move_note_moves_and_lists_folders(tools: dict, vault: Path, indexer: Indexer) -> None:
+    assert tools["move_note"].run({"path": "beta.md", "to": "research/beta.md"}) == (
+        "moved beta.md to research/beta.md"
+    )
+    assert not (vault / "beta.md").exists() and (vault / "research" / "beta.md").exists()
+    assert "research" in tools["list_folders"].run({}).splitlines()
+
+
+def test_move_note_refuses_hubs_and_overwrites(tools: dict, vault: Path) -> None:
+    (vault / "Projects.md").write_text("# Projects\n", encoding="utf-8")
+    with pytest.raises(ValueError):
+        tools["move_note"].run({"path": "Projects.md", "to": "x/Projects.md"})
+    with pytest.raises(FileExistsError):
+        tools["move_note"].run({"path": "beta.md", "to": "projects/alpha.md"})
+    assert (vault / "beta.md").exists()
+
+
+def test_set_status_moves_the_tag_first_and_clears_it(tools: dict, vault: Path) -> None:
+    assert tools["set_note_status"].run({"path": "beta.md", "status": "important"}) == (
+        "set beta.md status to important"
+    )
+    assert (vault / "beta.md").read_text(encoding="utf-8") == (
+        "---\ntags:\n- important\n---\n# Beta\n"
+    )
+    assert tools["set_note_status"].run({"path": "beta.md", "status": ""}) == (
+        "cleared the status of beta.md"
+    )
+    assert (vault / "beta.md").read_text(encoding="utf-8") == "# Beta\n"
+    with pytest.raises(ValueError):
+        tools["set_note_status"].run({"path": "beta.md", "status": "urgent"})
+
+
+def test_delete_tools_refuse_main_and_its_linked_notes(
+    tools: dict, vault: Path, indexer: Indexer
+) -> None:
+    (vault / "MAIN.md").write_text("# Main\n\n[[beta]]\n", encoding="utf-8")
+    indexer.full_sync()
+    for path, message in (("MAIN.md", "MAIN cannot be deleted"), ("beta.md", "linked from MAIN")):
+        with pytest.raises(ValueError, match=message):
+            tools["delete_note"].run({"path": path})
+        with pytest.raises(ValueError, match=message):
+            tools["delete_note"].preview({"path": path})
+    assert (vault / "MAIN.md").exists() and (vault / "beta.md").exists()

@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Icon strip on the far left, as in Obsidian's ribbon. Each button shows or hides one pane.
+  // Icon strip on the far left, as in the notes app's ribbon. Each button shows or hides one pane.
   let {
     sidebarOpen = $bindable(true),
     panelOpen = $bindable(true),

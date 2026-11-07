@@ -41,7 +41,9 @@
     // Apply at most one width per animation frame, so the graph redraws once per frame, not per mouse move.
     const move = (e: PointerEvent): void => {
       const delta = side === "left" ? e.clientX - startX : startX - e.clientX;
-      width = Math.min(560, Math.max(160, startWidth + delta));
+      // The right panel never shrinks below its 500px default; the notes sidebar goes down to 160px.
+      const min = side === "left" ? 160 : 500;
+      width = Math.min(560, Math.max(min, startWidth + delta));
       frame ??= requestAnimationFrame(() => {
         frame = null;
         shell?.style.setProperty(column, `${width}px`);
@@ -159,18 +161,39 @@
     })),
   );
 
+  // Reloads every few seconds so notes the agents add or change show up. The data is swapped only when
+  // notes or links changed, so the graph layout does not reset on each poll.
   async function load(): Promise<void> {
     try {
-      data = await invoke<GraphData>("sidecar_call", { method: "graph" });
+      const next = await invoke<GraphData>("sidecar_call", { method: "graph" });
+      const changed =
+        !data ||
+        next.nodes.length !== data.nodes.length ||
+        next.edges.length !== data.edges.length ||
+        // Tags too: a colour change alters only the tags, and the colour is drawn from them.
+        next.nodes.some(
+          (node, i) =>
+            node.id !== data?.nodes[i]?.id ||
+            node.tags.join() !== data?.nodes[i]?.tags.join(),
+        );
+      if (changed) data = next;
       error = null;
     } catch (cause) {
-      // Without a brain the graph cannot load, so the setup opens to choose one.
       error = String(cause);
-      setupOpen = true;
     }
   }
 
-  onMount(load);
+  // The graph menu and sidebar fire this after a change, so it redraws at once rather than at the next poll.
+  onMount(() => {
+    void load();
+    const timer = setInterval(() => void load(), 5000);
+    const onChanged = () => void load();
+    window.addEventListener("graph-changed", onChanged);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("graph-changed", onChanged);
+    };
+  });
 </script>
 
 <svelte:window onkeydown={onKey} />
@@ -257,6 +280,7 @@
     fullscreen={terminalOnly}
     onfullscreen={() => (terminalOnly = !terminalOnly)}
     onselect={(id) => (selectedId = id)}
+    onrefresh={load}
   />
   <RightPanel open={panelOpen || terminalOnly} />
   {#if sidebarOpen && data && !terminalOnly}
@@ -298,7 +322,7 @@
   .shell {
     position: relative;
     --sidebar-col: var(--layout-sidebar-width);
-    --panel-col: var(--layout-right-panel-width);
+    --panel-col: 500px; /* the right panel's default width */
     --layout-status-bar-height: 136px;
     display: grid;
     grid-template-columns:
@@ -316,7 +340,7 @@
   @media (max-width: 1100px) {
     .shell {
       --sidebar-col: 200px;
-      --panel-col: min(var(--layout-right-panel-width), 34vw);
+      --panel-col: min(400px, 34vw);
     }
   }
 

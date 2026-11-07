@@ -25,7 +25,7 @@ def test_finds_markdown_recursively_in_sorted_order(tmp_path: Path) -> None:
 
 
 def test_skips_hidden_files_and_folders(tmp_path: Path) -> None:
-    for rel in (".obsidian/workspace.md", ".git/x.md", ".trash/old.md", "a/.hidden.md", "ok.md"):
+    for rel in (".settings/workspace.md", ".git/x.md", ".trash/old.md", "a/.hidden.md", "ok.md"):
         write(tmp_path, rel)
     assert paths(tmp_path) == ["ok.md"]
 
@@ -63,10 +63,10 @@ def test_size_limit(
 
 def test_stat_note_rejects_paths_outside_and_ignored(tmp_path: Path) -> None:
     vault = tmp_path / "vault"
-    write(vault, ".obsidian/x.md")
+    write(vault, ".settings/x.md")
     other = write(tmp_path, "other.md")
     assert stat_note(vault, other) is None
-    assert stat_note(vault, vault / ".obsidian/x.md") is None
+    assert stat_note(vault, vault / ".settings/x.md") is None
     assert stat_note(vault, vault / "missing.md") is None
     (vault / "folder.md").mkdir()
     assert stat_note(vault, vault / "folder.md") is None

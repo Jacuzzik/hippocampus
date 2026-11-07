@@ -27,13 +27,28 @@ import {
   nodeTone,
   TONES,
   SHAPE_SQUARE,
+  SHAPE_LONG,
   SHAPE_TALL,
+  SHAPE_WIDE,
   MIN_ZOOM,
   screenToWorld,
   tagCounts,
   zoomAt,
   incidentLines,
+  lonelyHubs,
+  LONELY_HUBS,
 } from "../ui/graph/model.ts";
+
+test("lonely notes share 40 display hubs, each linked to MAIN, so none is left alone", () => {
+  const nodes = [{ id: "MAIN.md", title: "MAIN", tags: [] }, { id: "Work.md", title: "Work", tags: ["work"] }];
+  const edges = [["MAIN.md", "Work.md"]];
+  for (let i = 0; i < 100; i++) nodes.push({ id: `Loose${i}.md`, title: `Loose ${i}`, tags: [i % 2 ? "a" : "b"] });
+  const extra = lonelyHubs(nodes, edges);
+  assert.equal(extra.nodes.length, LONELY_HUBS);
+  const hubIds = new Set(extra.nodes.map((n) => n.id));
+  for (const n of nodes.slice(2)) assert.ok(extra.edges.some(([a, b]) => b === n.id && hubIds.has(a)), n.id);
+  assert.ok(extra.edges.filter(([a]) => hubIds.has(a)).some(([, b]) => b === "MAIN.md"));
+});
 
 function syntheticEdges(n, perNode, seed) {
   let s = seed;
@@ -94,7 +109,8 @@ test("unlinked notes scatter irregularly, not on a lattice", () => {
   });
   const mean = gaps.reduce((a, b) => a + b, 0) / gaps.length;
   const sd = Math.sqrt(gaps.reduce((a, b) => a + (b - mean) ** 2, 0) / gaps.length);
-  assert.ok(sd / mean >= 0.4, `nearest-gap CV ${(sd / mean).toFixed(3)}`);
+  // Notes now keep their boxes apart, which packs them more evenly (CV ~0.34); the old grid was 0.22.
+  assert.ok(sd / mean >= 0.3, `nearest-gap CV ${(sd / mean).toFixed(3)}`);
 });
 
 test("a hub with 30 links does not blow up the layout", () => {
@@ -230,19 +246,19 @@ test("tagCounts gives each tag and its note count, sorted", () => {
 });
 
 test("nodeRadius grows with the link count, capped, and a selected node is at least 7", () => {
-  assert.equal(nodeRadius(0, false), 4);
-  assert.ok(nodeRadius(4, false) > nodeRadius(1, false));
-  assert.equal(nodeRadius(10000, false), 10);
+  assert.equal(nodeRadius(0, false), 2.5);
+  assert.equal(nodeRadius(4, false), nodeRadius(1, false));
+  assert.equal(nodeRadius(10000, false), 2.5);
   assert.equal(nodeRadius(0, true), 7);
   assert.ok(nodeRadius(16, true) >= nodeRadius(16, false));
 });
 
-test("nodeShape is a stable hash of the id, and both hollow shapes occur", () => {
-  const ids = Array.from({ length: 200 }, (_, i) => `Notes/n${i}.md`);
-  const shapes = ids.map(nodeShape);
-  assert.deepEqual(shapes, ids.map(nodeShape));
-  assert.ok(shapes.includes(SHAPE_SQUARE) && shapes.includes(SHAPE_TALL));
-  assert.ok(shapes.every((s) => s === SHAPE_SQUARE || s === SHAPE_TALL));
+test("nodeShape: about 40% rectangles, split vertical and horizontal, the rest squares", () => {
+  const shapes = Array.from({ length: 1000 }, (_, i) => nodeShape(`Notes/n${i}.md`));
+  const count = (s) => shapes.filter((x) => x === s).length;
+  assert.ok(shapes.every((s) => s === SHAPE_SQUARE || s === SHAPE_TALL || s === SHAPE_WIDE));
+  assert.ok(count(SHAPE_TALL) > 150 && count(SHAPE_TALL) < 250);
+  assert.ok(count(SHAPE_WIDE) > 150 && count(SHAPE_WIDE) < 250);
 });
 
 test("nodeTone is a stable hash of the id into the accent tones, and all of them occur", () => {

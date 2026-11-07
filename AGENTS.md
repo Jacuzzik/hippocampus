@@ -4,7 +4,7 @@ Instructions for AI coding agents working in this repo. Read this before any cha
 
 ## What this is
 
-Hippocampus is an open-source (MIT) desktop "second brain" app. Notes live as Markdown in a local folder (a "brain" or vault), with an Obsidian-style graph, an AI assistant that can read and write notes, and an orb that shows assistant state. Targets: Linux first, then Windows, then macOS. Dark theme only for v1.
+Hippocampus is an open-source (MIT) desktop "second brain" app. Notes live as Markdown in a local folder (a "brain" or vault), with an graph-style graph, an AI assistant that can read and write notes, and an orb that shows assistant state. Targets: Linux first, then Windows, then macOS. Dark theme only for v1.
 
 Pro features, sync, and licensing live in a separate private repo (`hippocampus-pro`). Never put Pro code, secrets, or license logic in this repo.
 

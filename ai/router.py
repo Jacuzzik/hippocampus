@@ -37,6 +37,9 @@ def model_name(settings: Settings, api_key: str | None) -> str:
     """The model that answers now: the primary's, or Ollama's when no primary is ready."""
     if settings.provider == "claude":
         return settings.claude_model if (api_key or cli_ready()) else settings.ollama_model
+    # Terminal-only providers (Codex, Gemini CLI, Antigravity) have no API preset: their model is the saved one.
+    if settings.provider not in PRESETS:
+        return settings.provider_model or ""
     preset = PRESETS[settings.provider]
     if preset.needs_key and not get_key(settings.provider):
         return settings.ollama_model
@@ -53,7 +56,7 @@ def _primary(settings: Settings, api_key: str | None, agent: str = "hippo") -> P
     if settings.provider == "claude":
         # The Claude Code CLI with the user's own login comes first; an API key is the fallback.
         if cli_ready():
-            return ClaudeCliProvider(settings.claude_model, agent)
+            return ClaudeCliProvider(settings.claude_model, agent, vault=str(settings.vault) if settings.vault else None)
         return ClaudeProvider(api_key, settings.claude_model) if api_key else None
     preset = PRESETS[settings.provider]
     key = get_key(settings.provider)

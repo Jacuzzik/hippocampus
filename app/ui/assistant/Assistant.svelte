@@ -1,8 +1,10 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import Orb from "./Orb.svelte";
-  import { ORB_LABELS, type ToolStatus } from "./model";
+  import type { ToolStatus } from "./model";
   import { assistant } from "./session.svelte";
+
+  // When given, the message goes here (the Control Room sends it to the terminal) instead of the chat.
+  let { onsend, queued = [] }: { onsend?: (text: string) => void; queued?: string[] } = $props();
 
   const STATUS_TEXT: Record<ToolStatus, string> = {
     requested: "asked",
@@ -22,8 +24,6 @@
 
   // shortcut: text files up to 100 KB, read in the browser and sent inline with the next message.
   const MAX_FILE_BYTES = 100_000;
-  // No speech-to-text source exists in this build (no voice/ module), so voice input cannot transcribe yet.
-  const NO_STT = "No speech-to-text source is set up, so voice input is not available. Type your message instead.";
 
   let draft = $state("");
   let answers = $state<Record<string, string>>({});
@@ -51,6 +51,8 @@
 
   function submit(event: SubmitEvent): void {
     event.preventDefault();
+    // An empty press (no text, no attached file) sends nothing.
+    if (!draft.trim() && attached.length === 0) return;
     const files = attached.map(
       (file) => `Attached file: ${file.name}\n\`\`\`\n${file.text}\n\`\`\``,
     );
@@ -58,7 +60,8 @@
     draft = "";
     attached = [];
     notice = "";
-    void assistant.send(text);
+    if (onsend) onsend(text);
+    else void assistant.send(text);
   }
 
   function answer(event: SubmitEvent, call: string): void {
@@ -80,26 +83,8 @@
 
 <aside class="assistant md-theme" aria-label="Assistant">
 
-  <header class="head">
-    <Orb state={chat.orb} />
-    <span class="state">{ORB_LABELS[chat.orb]}</span>
-    <label class="session">
-      <span class="muted">Session</span>
-      <select
-        aria-label="Session"
-        value={assistant.viewing ?? assistant.sessions.length - 1}
-        onchange={(e) => assistant.showSession(Number(e.currentTarget.value))}
-      >
-        {#each assistant.sessions as _, i (i)}
-          <option value={i}>{i === assistant.sessions.length - 1 ? "Current" : `Past ${i + 1}`}</option>
-        {/each}
-      </select>
-    </label>
-    <button type="button" class="new-session" disabled={assistant.busy} onclick={() => assistant.newSession()}>
-      New session
-    </button>
-  </header>
 
+  {#if !onsend}
   <ol class="messages" aria-live="polite" aria-label="Conversation">
     {#each chat.messages as message, index (index)}
       <li class="message {message.role}">
@@ -161,8 +146,8 @@
       <p class="muted">No tools used yet.</p>
     {/if}
     <!-- Terminal lines, as in the mockup: the provider's session echoed as $ and > prompts. -->
+    {#if chat.tools.length > 0 || chat.activity.length > 0}
     <div class="term">
-      <div><span class="prompt">$</span> claude</div>
       {#each chat.activity as entry, index (index)}
         <div><span class="arrow">&gt;</span> <time>{entry.at}</time> {entry.text}</div>
       {/each}
@@ -172,8 +157,8 @@
           <span class="status">{STATUS_TEXT[tool.status]}</span>
         </div>
       {/each}
-      <div><span class="prompt">$</span> _</div>
     </div>
+    {/if}
     {#if chat.budgetPause !== null}
       <div class="budget-card" role="alert">
         <p>
@@ -198,9 +183,17 @@
       >
     {/if}
   </section>
+  {/if}
 
   <form class="composer" onsubmit={submit}>
     <span class="queue-label">Queue</span>
+    {#if queued.length > 0}
+      <div class="queued" aria-label="Queued messages">
+        {#each queued as text, index (index)}
+          <p>{index + 1}. {text}</p>
+        {/each}
+      </div>
+    {/if}
     <label class="visually-hidden" for="assistant-input"
       >Message the assistant</label
     >
@@ -223,7 +216,14 @@
       id="assistant-input"
       rows="2"
       bind:value={draft}
-      placeholder="Ask about your notes…"
+      placeholder="Message Hippo"
+      onkeydown={(e) => {
+        // Enter sends; Shift+Enter starts a new line.
+        if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
+          e.preventDefault();
+          e.currentTarget.form?.requestSubmit();
+        }
+      }}
       disabled={assistant.busy}></textarea>
     {#if notice}
       <p class="notice" role="status">{notice}</p>
@@ -238,32 +238,30 @@
       aria-hidden="true"
       onchange={pickFiles}
     />
-    <div class="actions">
+    <button
+      type="submit"
+      class="send"
+      disabled={assistant.busy || (!draft.trim() && attached.length === 0)}
+      >Send →</button
+    >
+    <div class="attach">
       <button
         type="button"
         disabled={assistant.busy}
         onclick={() => fileInput?.click()}>+ files</button
       >
-      <button
-        type="button"
-        disabled={assistant.busy}
-        onclick={() => (notice = NO_STT)}>voice</button
-      >
-      <button
-        type="submit"
-        disabled={assistant.busy || (!draft.trim() && attached.length === 0)}
-        >Send</button
-      >
+    </div>
+    {#if assistant.busy}
+      <!-- The kill switch: shown only while the assistant works, so the mockup's controls stay the same. -->
       <button
         type="button"
         class="stop"
         onclick={() => assistant.stop()}
-        disabled={!assistant.busy}
         aria-keyshortcuts="Escape"
       >
         Stop
       </button>
-    </div>
+    {/if}
   </form>
 </aside>
 
@@ -295,6 +293,15 @@
   }
 
   .state,
+  /* The tool log sits right under the block above, with a line break under "No tools used yet.". */
+  .tools {
+    margin-top: calc(var(--space-3) * -1);
+  }
+
+  .tools > .muted {
+    margin: 0 0 var(--space-2);
+  }
+
   .muted {
     font-size: var(--font-size-xs);
     color: var(--color-text-muted);
@@ -374,10 +381,25 @@
     font-size: var(--term-size, var(--font-size-xs));
   }
 
+  /* Only this box scrolls when several messages wait; the sidebar itself stays put. */
+  .queued {
+    max-height: 96px;
+    overflow-y: auto;
+    border: 1px solid var(--color-md-border);
+    border-radius: var(--radius-sm);
+    padding: var(--space-1) var(--space-2);
+    color: var(--color-md-text-muted);
+  }
+  .queued p {
+    margin: 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
   .queue-label {
     display: block;
-    font-family: "Press Start 2P", monospace;
-    font-size: 7px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    text-transform: uppercase;
     color: var(--color-md-text-muted);
     margin-bottom: var(--space-1);
   }
@@ -488,8 +510,7 @@
     cursor: pointer;
   }
 
-  button:focus-visible,
-  textarea:focus-visible {
+  button:focus-visible {
     outline: 2px solid var(--color-text);
     outline-offset: 2px;
   }

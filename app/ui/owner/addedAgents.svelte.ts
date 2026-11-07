@@ -65,6 +65,11 @@ export function setArchived(id: string, on: boolean): void {
   } catch (cause) {
     console.error("Could not save the archived agents", cause);
   }
+  // The sidecar keeps the archived ids too, so Agent Lists can show them as archived.
+  invoke("sidecar_call", {
+    method: "save_agents",
+    params: { agents: addedAgents.list, archived: archived.ids },
+  }).catch((cause) => console.error("Could not sync the archived agents", cause));
 }
 
 // Set once the user changes the list, so a slow load never overwrites a newer agent.
@@ -95,8 +100,16 @@ export function addAgent(draft: AgentDraft): SavedAgent {
   const agent = { ...draft, id: crypto.randomUUID() };
   setAddedAgents([...addedAgents.list, agent]);
   // Each agent gets its own Claude Code session at setup; the sidecar keeps it across restarts.
-  invoke("sidecar_call", { method: "agent_session", params: { agent: agent.id } }).catch((cause) =>
-    console.error("Could not create the agent's session", cause),
+  // The sidecar creates the folder and returns its full path; the agent is saved with that path.
+  invoke<{ session: string; folder: string | null }>("sidecar_call", {
+    method: "agent_session",
+    params: { agent: agent.id, folder: agent.folder },
+  }).then(
+    (result) => {
+      if (result.folder && result.folder !== agent.folder)
+        setAddedAgents(addedAgents.list.map((a) => (a.id === agent.id ? { ...a, folder: result.folder ?? a.folder } : a)));
+    },
+    (cause) => console.error("Could not create the agent's session or folder", cause),
   );
   return agent;
 }

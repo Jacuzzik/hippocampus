@@ -5,7 +5,7 @@ import { mockSidecar } from "./tauri-mock";
 const LABEL_DX = 8;
 const LABEL_DY = 7;
 
-// Dragging a node pulls the notes linked to it, like Obsidian's graph leash; an unlinked note stays put.
+// Dragging a node pulls the notes linked to it, like the notes app's graph leash; an unlinked note stays put.
 test("dragging a node pulls its linked node along and lets it settle", async ({
   page,
 }) => {

@@ -1,10 +1,30 @@
 <script lang="ts">
+  import { onMount } from "svelte";
+  import { invoke } from "@tauri-apps/api/core";
   import Assistant from "../assistant/Assistant.svelte";
+  import { createTerminalQueue } from "./terminalQueue.svelte";
+
+  // The main agent's terminal runs the provider saved in the engine switch (CLI name is the provider id).
+  let mainProvider = $state("claude");
+  // Bumped when the engine changes, so the terminal panel remounts and starts the new provider.
+  let terminalKey = $state(0);
+  function loadEngine(): void {
+    invoke<{ provider: string }>("sidecar_call", { method: "engine" })
+      .then((value) => {
+        mainProvider = value.provider;
+        terminalKey += 1;
+      })
+      .catch(() => (mainProvider = "claude"));
+  }
+  onMount(() => {
+    loadEngine();
+    window.addEventListener("engine-changed", loadEngine);
+    return () => window.removeEventListener("engine-changed", loadEngine);
+  });
   import TasksPanel from "./TasksPanel.svelte";
   import InboxPanel from "./InboxPanel.svelte";
   import MemoryPanel from "./MemoryPanel.svelte";
   import MonitorPanel from "./MonitorPanel.svelte";
-  import GraphPanel from "./GraphPanel.svelte";
   import AsksSection from "../control/AsksSection.svelte";
   import TriggersSection from "../control/TriggersSection.svelte";
   import ActivityPanel from "./ActivityPanel.svelte";
@@ -12,6 +32,7 @@
   import TempsPanel from "./TempsPanel.svelte";
   import HistoryPanel from "./HistoryPanel.svelte";
   import AgentPanel from "../owner/AgentPanel.svelte";
+  import LiveTerminal from "./LiveTerminal.svelte";
   import { addedAgents, archived, selection } from "../owner/addedAgents.svelte";
 
   // Kept mounted when hidden so the chat session and its tool log survive a toggle.
@@ -22,19 +43,31 @@
     addedAgents.list.find((a) => a.id === selection.id && !archived.ids.includes(a.id)) ?? null,
   );
 
+  // Each agent's panel is mounted once it is first selected, then kept (hidden when not shown),
+  // so its terminal is not disposed on a switch. Keying by id keeps one panel per agent.
+  let opened = $state<string[]>([]);
+  $effect(() => {
+    const id = selection.id;
+    if (id && !opened.includes(id)) opened = [...opened, id];
+  });
+
   // Only the terminal is built; the rest of the grid is shown and stays disabled.
-  // Names match Munder Difflin's Command Center tabs.
+  // Names match the office app's Command Center tabs.
   const TABS = [
     "terminal", "monitor", "tasks", "inbox", "ask me", "triggers",
-    "history", "memory", "graph", "activity", "skills", "temps",
+    "history", "memory", "activity", "skills", "temps",
   ];
-  // Tabs that have content so far; the rest stay disabled.
-  const LIVE = [
-    "terminal", "monitor", "tasks", "inbox", "ask me", "triggers", "memory", "graph",
-    "activity", "skills", "temps", "history",
-  ];
+  // The views sit in rows of four, each row its own pill, as in the picture.
+  const TAB_ROWS = [TABS.slice(0, 4), TABS.slice(4, 8), TABS.slice(8)];
   let tab = $state("terminal");
   let fontSize = $state(12);
+
+  // The Control Room message box sends into Hippo's terminal, through a queue (see terminalQueue).
+  const queue = createTerminalQueue("hippo");
+  $effect(() => {
+    const timer = setInterval(queue.tick, 1000);
+    return () => clearInterval(timer);
+  });
 
   // Selecting a card opens its tab; deselecting (or archiving or deleting it) returns to the terminal.
   $effect(() => {
@@ -44,32 +77,40 @@
 </script>
 
 <div class="right-panel" hidden={!open}>
-  <div class="column" style="--term-size: {fontSize}px">
+  <div class="column">
     {#if !(tab === "agent" && agent)}
-      <div class="tabs" role="tablist" aria-label="Panels">
-        {#each TABS as name (name)}
-          <button
-            type="button"
-            class="tab"
-            role="tab"
-            aria-selected={tab === name}
-            class:on={tab === name}
-            disabled={!LIVE.includes(name)}
-            title={LIVE.includes(name) ? undefined : "Not built yet"}
-            onclick={() => (tab = name)}>{name}</button
-          >
+      <div class="title"><b>Control Room</b><span class="pill">■ Live</span></div>
+      <div class="card">
+      <div class="tab-rows">
+        {#each TAB_ROWS as row (row[0])}
+          <div class="tabs" role="tablist" aria-label="Panels">
+            {#each row as name (name)}
+              <button
+                type="button"
+                class="tab"
+                role="tab"
+                aria-selected={tab === name}
+                class:on={tab === name}
+                onclick={() => (tab = name)}>{name}</button
+              >
+            {/each}
+          </div>
         {/each}
         {#if agent}
-          <button
-            type="button"
-            class="tab"
-            role="tab"
-            aria-selected={tab === "agent"}
-            class:on={tab === "agent"}
-            onclick={() => (tab = "agent")}>{agent.name}</button
-          >
+          <div class="tabs" role="tablist" aria-label="Panels">
+            <button
+              type="button"
+              class="tab"
+              role="tab"
+              aria-selected={tab === "agent"}
+              class:on={tab === "agent"}
+              onclick={() => (tab = "agent")}>{agent.name}</button
+            >
+          </div>
         {/if}
       </div>
+      </div>
+      <div class="card">
       <div class="live">
         <span class="dot" aria-hidden="true"></span>
         <span>live · pty hippo</span>
@@ -79,13 +120,23 @@
           <button type="button" aria-label="Larger text" onclick={() => (fontSize = Math.min(18, fontSize + 1))}>+</button>
         </span>
       </div>
+      </div>
     {/if}
     <div class="pane" hidden={tab !== "terminal"}>
-      <Assistant />
+      <div class="live-wrap">
+        {#key terminalKey}
+          <LiveTerminal agentId="hippo" provider={mainProvider} {fontSize} onoutput={queue.output} />
+        {/key}
+      </div>
+      <Assistant onsend={queue.send} queued={queue.items} />
     </div>
-    {#if tab === "agent" && agent}
-      <AgentPanel {agent} />
-    {:else if tab === "tasks"}
+    <!-- Kept mounted while other tabs are open, so its terminal and listeners survive a tab switch. -->
+    {#each addedAgents.list.filter((a) => opened.includes(a.id) && !archived.ids.includes(a.id)) as item (item.id)}
+      <div class="pane" hidden={tab !== "agent" || selection.id !== item.id}>
+        <AgentPanel agent={item} />
+      </div>
+    {/each}
+    {#if tab === "tasks"}
       <TasksPanel />
     {:else if tab === "inbox"}
       <InboxPanel />
@@ -97,8 +148,6 @@
       <AsksSection />
     {:else if tab === "triggers"}
       <TriggersSection />
-    {:else if tab === "graph"}
-      <GraphPanel />
     {:else if tab === "activity"}
       <ActivityPanel />
     {:else if tab === "skills"}
@@ -138,23 +187,31 @@
     font-family: var(--font-mono);
   }
 
+  .tab-rows {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  /* One segmented pill group per row of views, as in the picture. */
   .tabs {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
-    gap: var(--space-1);
-    padding-bottom: var(--space-2);
-    border-bottom: 1px solid var(--color-border);
+    display: flex;
+    flex-wrap: wrap;
+    border: 1px solid var(--color-md-border);
+    border-radius: 999px;
+    overflow: hidden;
   }
 
   .tab {
-    min-height: 44px;
-    font-family: "Press Start 2P", monospace;
-    font-size: 7px;
-    text-transform: uppercase;
-    padding: var(--space-1);
-    border: 1px solid var(--color-md-border);
-    border-radius: var(--radius-sm);
-    background: var(--color-md-surface);
+    flex: 1 1 0;
+    min-height: 32px;
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
+    padding: 0 var(--space-2);
+    border: none;
+    border-right: 1px solid var(--color-md-border);
+    border-radius: 0;
+    background: transparent;
     color: var(--color-md-text-muted);
     cursor: pointer;
   }
@@ -173,8 +230,7 @@
   .live {
     display: flex;
     align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-2) 0;
+    gap: var(--space-1);
     font-size: var(--font-size-xs);
     color: var(--color-md-text-muted);
   }
@@ -193,19 +249,31 @@
     gap: var(--space-1);
   }
 
-  .size button {
-    min-width: 44px;
-    min-height: 44px;
+  /* The size control is one segmented pill: − | 12px | +. */
+  .size {
     border: 1px solid var(--color-md-border);
-    border-radius: var(--radius-sm);
-    background: var(--color-md-surface);
-    color: var(--color-md-text);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+
+  .size button {
+    min-width: 36px;
+    min-height: 32px;
+    font: inherit;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    color: var(--color-md-text-muted);
     cursor: pointer;
   }
 
   .size output {
-    min-width: 40px;
+    min-width: 48px;
     text-align: center;
+    border-left: 1px solid var(--color-md-border);
+    border-right: 1px solid var(--color-md-border);
+    color: var(--color-md-text-muted);
   }
 
   /* The orb status shows as a pill at the top of the panel, as in the mockup. */
@@ -229,15 +297,157 @@
     min-height: 0;
   }
 
+  /* Same note box, steer pill and stats row as the normal agent panel. */
+  .note-box {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    font-size: var(--font-size-xs);
+    min-height: 36px;
+    padding: 0 var(--space-2);
+    margin-bottom: var(--space-2);
+    border: 1px solid var(--color-md-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-md-surface);
+    color: var(--color-md-text-muted);
+  }
+  .note-box .placeholder {
+    flex: 1;
+    min-width: 0;
+  }
+  .pill-on {
+    border: none;
+    border-radius: 999px;
+    padding: 0 var(--space-2);
+    min-height: 26px;
+    background: var(--color-md-accent);
+    color: var(--color-md-accent-on);
+  }
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-1);
+    margin: 0 0 var(--space-2);
+    padding-top: var(--space-2);
+    border-top: 1px solid var(--color-md-border);
+  }
+  .stats dt {
+    color: var(--color-md-text-muted);
+    font-size: 10px;
+  }
+  .stats dd {
+    margin: 0;
+    font-size: 14px;
+  }
+
+  /* The real terminal takes a fixed slice above the chat. */
+  .live-wrap {
+    flex: 1 1 0;
+    min-height: 300px;
+    display: flex;
+    flex-direction: column;
+    margin-bottom: var(--space-2);
+  }
+
   .pane[hidden] {
     display: none;
   }
 
+  /* Control Room cards: views, session and terminal status, and the queue, each in its own bordered card. */
+  .title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: var(--space-2);
+  }
+  .title b {
+    font-size: 14px;
+    letter-spacing: 0.04em;
+  }
+  .pill {
+    padding: 2px var(--space-2);
+    border: 1px solid var(--color-md-border);
+    border-radius: 999px;
+    color: var(--color-md-text-muted);
+    font-size: 10px;
+  }
+  /* No box around the title, views and live row: the mockup has bare rows. */
+  .card {
+    margin-bottom: var(--space-2);
+  }
+  /* Mockup match: the terminal sits in a bordered black box, the queue label is capitals, the buttons stay on one row. */
+  .pane > :global(.assistant) :global(.term) {
+    border: 1px solid var(--color-md-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-md-bg-0);
+  }
+  /* Message box: same tokens, radius and size as the normal agent's. */
+  .pane > :global(.assistant) :global(textarea) {
+    min-height: 64px;
+    border: 1px solid var(--color-md-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-md-surface);
+    color: var(--color-md-text);
+    font-size: var(--font-size-xs);
+  }
+  .pane > :global(.assistant) :global(.queue-label) {
+    text-transform: uppercase;
+  }
+  .pane > :global(.assistant) :global(.composer .actions) {
+    flex-wrap: nowrap;
+    white-space: nowrap;
+  }
+  /* Queue, message box, Send bar and attachment pills: as in the mockup, no card around them. */
+  .pane > :global(.assistant) > :global(.composer) {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    padding: 0;
+    border: none;
+    background: none;
+  }
+  .pane > :global(.assistant) :global(.composer .send) {
+    width: 100%;
+    min-height: 32px;
+    border: 1px solid var(--color-md-accent);
+    border-radius: 999px;
+    background: var(--color-md-accent);
+    color: var(--color-md-accent-on);
+  }
+  .pane > :global(.assistant) :global(.composer .attach) {
+    display: flex;
+    border: 1px solid var(--color-md-border);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .pane > :global(.assistant) :global(.composer .attach > button) {
+    flex: 1;
+    min-height: 32px;
+    border: none;
+    border-right: 1px solid var(--color-md-border);
+    border-radius: 0;
+    background: transparent;
+    color: var(--color-md-text-muted);
+  }
+  .pane > :global(.assistant) :global(.composer .attach > button:last-child) {
+    border-right: none;
+  }
+  /* Send and attachment buttons: same font and padding as the normal agent's. */
+  .pane > :global(.assistant) :global(.composer button) {
+    font: inherit;
+    font-size: var(--font-size-xs);
+    padding: 0 var(--space-2);
+  }
+  .pane > :global(.assistant) :global(.composer .stop) {
+    border-radius: 999px;
+  }
+
+  /* The chat takes only the space it needs, so the terminal above gets the rest, as on the normal agent. */
   .pane > :global(.assistant) {
     background: transparent;
     border-left: none;
-    padding: var(--space-2);
-    flex: 1;
+    padding: 0;
+    flex: 0 1 auto;
     min-height: 0;
     min-width: 0;
   }

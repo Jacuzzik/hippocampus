@@ -244,6 +244,7 @@ fn read_answers(stdout: BufReader<ChildStdout>, app: AppHandle, waiting: Waiting
 fn sidecar_command(app: &AppHandle) -> Result<Command, String> {
     if tauri::is_dev() {
         let root = project_root();
+        prepare_vault(&root)?;
         let mut command = Command::new(python_for(&root));
         command.args(["-m", "core", "serve"]).current_dir(&root);
         return Ok(command);
@@ -273,8 +274,113 @@ fn prepare_data(data: &Path) -> Result<(), String> {
         fs::create_dir_all(data.join("config")).map_err(|e| e.to_string())?;
         fs::write(&settings, DEFAULT_SETTINGS).map_err(|e| e.to_string())?;
     }
-    fs::create_dir_all(data.join("brains/sample")).map_err(|e| e.to_string())
+    prepare_vault(data)
 }
+
+/// Makes the default vault brains/Hippocampus under `base` (recreated if deleted) and its daily backup.
+fn prepare_vault(base: &Path) -> Result<(), String> {
+    let vault = base.join("brains/Hippocampus");
+    fs::create_dir_all(&vault).map_err(|e| e.to_string())?;
+    let welcome = vault.join("Welcome.md");
+    if !welcome.exists() {
+        fs::write(&welcome, WELCOME_NOTE).map_err(|e| e.to_string())?;
+    }
+    write_hubs(&vault)?;
+    backup_daily(&vault, &base.join("backups"))
+}
+
+/// The MAIN hub and its six groups. Missing notes are re-created on every start; edits are kept.
+fn write_hubs(vault: &Path) -> Result<(), String> {
+    // (name, colour as an RGB number). MAIN is white.
+    const GROUPS: [(&str, u32); 6] = [
+        ("Projects", 0xA855F7),
+        ("Summaries", 0xEF4444),
+        ("Agent Lists", 0x84CC16),
+        ("Contacts", 0x7DD3FC),
+        ("Socials", 0xF97316),
+        ("About User", 0xFACC15),
+    ];
+    const MAIN: (&str, u32) = ("MAIN", 0xFFFFFF);
+    let links: String = GROUPS.iter().map(|(name, _)| format!("- [[{name}]]\n")).collect();
+    let main = format!(
+        "# MAIN\n\nInstructions for all agents. Read this first.\n\n- Work in your own folder and the vault. Do not change other agents' notes.\n- Before you compact, save your notes and a summary to your own note.\n- If you do not know something, search the vault before you ask.\n- Only the user deletes a note linked to a group.\n\nGroups:\n\n{links}"
+    );
+    let mut notes = vec![(MAIN.0.to_string(), main)];
+    for (name, _) in GROUPS {
+        let body = match name {
+            "Projects" => "Active projects: the goal, the status, and links to the notes for it. One note per project, linked here.",
+            "Summaries" => "Daily summaries that each agent saves before it compacts: what it did, what it decided, what is still open. One note per day, linked here.",
+            "Agent Lists" => "Every agent in the app: what it does, its status (active, archived or deleted) and where its memory is kept. One note per agent, linked here. Only the user can edit, delete or remove these notes.",
+            "Contacts" => "People the user works with. Each contact has a name, a phone number (if they have one), an optional label, and a line on who they are. A phone number always needs a name: if you do not have one, ask the user for it. One note per person, linked here.",
+            "Socials" => "The user's accounts on every platform: platform, account name or handle, profile link, and purpose. Never store passwords, logins or keys here.",
+            _ => "Facts about the user that agents need: role, preferences and how they like replies. Change it only when the user says so.",
+        };
+        notes.push((name.to_string(), format!("# {name}\n\n{body}\n")));
+    }
+    for (name, body) in notes {
+        let path = vault.join(format!("{name}.md"));
+        if !path.exists() {
+            fs::write(&path, body).map_err(|e| e.to_string())?;
+        }
+    }
+    Ok(())
+}
+
+/// Copies the vault into backups/YYYY-MM-DD once per day, keeping the newest 30 copies.
+fn backup_daily(vault: &Path, backups: &Path) -> Result<(), String> {
+    let secs = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_err(|e| e.to_string())?
+        .as_secs() as i64;
+    let (y, m, d) = civil_date(secs.div_euclid(86_400));
+    let target = backups.join(format!("{y:04}-{m:02}-{d:02}"));
+    if target.exists() {
+        return Ok(());
+    }
+    fs::create_dir_all(backups).map_err(|e| e.to_string())?;
+    copy_dir(vault, &target)?;
+    let mut days: Vec<PathBuf> = fs::read_dir(backups)
+        .map_err(|e| e.to_string())?
+        .filter_map(|e| e.ok().map(|e| e.path()))
+        .filter(|p| p.is_dir())
+        .collect();
+    days.sort();
+    let extra = days.len().saturating_sub(30);
+    for old in &days[..extra] {
+        fs::remove_dir_all(old).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+fn copy_dir(from: &Path, to: &Path) -> Result<(), String> {
+    fs::create_dir_all(to).map_err(|e| e.to_string())?;
+    for entry in fs::read_dir(from).map_err(|e| e.to_string())? {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let target = to.join(entry.file_name());
+        if entry.path().is_dir() {
+            copy_dir(&entry.path(), &target)?;
+        } else {
+            fs::copy(entry.path(), &target).map_err(|e| e.to_string())?;
+        }
+    }
+    Ok(())
+}
+
+/// Calendar date (year, month, day) for a count of days since 1970-01-01 (Howard Hinnant's algorithm).
+fn civil_date(days: i64) -> (i64, u32, u32) {
+    let z = days + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z - era * 146_097;
+    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = (doy - (153 * mp + 2) / 5 + 1) as u32;
+    let m = (if mp < 10 { mp + 3 } else { mp - 9 }) as u32;
+    (yoe + era * 400 + i64::from(m <= 2), m, d)
+}
+
+/// The starter note in a new default vault. Any folder of Markdown can be opened as a vault instead.
+const WELCOME_NOTE: &str = "# Welcome to Hippocampus\n\nThis is your default vault: a folder of Markdown notes.\nLink notes with [[double brackets]]. To use another folder, open it in Settings.\n";
 
 /// Repo root, found at build time. Dev only: a packaged app never reads it.
 fn project_root() -> PathBuf {

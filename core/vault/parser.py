@@ -158,7 +158,7 @@ def _make_tag(raw: str, source: TagSource) -> Tag | None:
     if not body or not _VALID_TAG.fullmatch(body):
         return None
     if body.replace("/", "").isdigit():
-        return None  # all-number tags are not tags, as in Obsidian
+        return None  # all-number tags are not tags, as in notes app
     return Tag(tag=body, tag_key=body.casefold(), source=source)
 
 

@@ -29,14 +29,14 @@ h3 {
   font-weight: 600;
 }
 
-/* Code and paths use the monospace face, as Obsidian does. */
+/* Code and paths use the monospace face, as notes app does. */
 code,
 kbd,
 pre {
   font-family: var(--font-mono);
 }
 
-/* Thin scrollbars and selection colour, as in Obsidian. */
+/* Thin scrollbars and selection colour, as in notes app. */
 html {
   scrollbar-width: thin;
   scrollbar-color: var(--color-border) transparent;
@@ -50,6 +50,11 @@ html {
 :focus-visible {
   outline: 2px solid var(--color-focus-ring);
   outline-offset: 2px;
+}
+
+/* Message and note boxes show no outline when selected. */
+textarea:focus-visible {
+  outline: none;
 }
 
 /* Tablets and touch screens: controls grow to the 44px touch minimum. Wide desktop keeps its sizes. */

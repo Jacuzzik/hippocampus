@@ -5,7 +5,6 @@ import {
   emptyChat,
   failChat,
   finishChat,
-  logActivity,
   receiveEvent,
   removeAsk,
   removeConfirm,
@@ -75,7 +74,6 @@ export const assistant = {
     await listen<SidecarEvent>("sidecar-event", (event) => {
       chat = receiveEvent(chat, event.payload);
     });
-    chat = logActivity(chat, "App started");
     try {
       const saved = await invoke<{ sessions: SavedSession[] }>("sidecar_call", {
         method: "chat_history",
@@ -83,8 +81,9 @@ export const assistant = {
       });
       sessions = saved.sessions;
       if (sessions.length === 0) {
+        // Keep the agent's existing Claude session. A new one is made only when the user asks for it.
         const id = await invoke<{ session: string }>("sidecar_call", {
-          method: "new_session",
+          method: "current_session",
           params: { agent: AGENT },
         });
         sessions = [{ session: id.session, messages: [] }];

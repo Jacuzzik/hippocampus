@@ -243,7 +243,7 @@ export async function mockSidecar(
             };
           case "settings":
             return {
-              general: { vault: "/home/thalha/Documents/Obsidian/Munder-Difflin", network: "off" },
+              general: { vault: "brains/Hippocampus", network: "off" },
               agents: { provider: "claude", model: "claude-sonnet-5-5", ollama: "qwen2.5:1.5b" },
               budgets: {
                 app: { five_hour: 0, daily: 0, weekly: 0, monthly: 0 },
@@ -277,6 +277,16 @@ export async function mockSidecar(
             if (!(path in texts)) throw new Error(`mock: no note ${path}`);
             return { id: path, text: texts[path] };
           }
+          // The graph's right-click actions, as core/__main__.py answers them.
+          case "note_text":
+            return { id: args.params?.path, text: texts[String(args.params?.path)] };
+          case "note_save":
+            texts[String(args.params?.path)] = String(args.params?.text);
+            return { saved: `edited ${args.params?.path}` };
+          case "note_colour":
+            return { changed: [args.params?.path] };
+          case "note_delete":
+            return { deleted: [args.params?.path] };
           case "chat":
             return chat(
               args as unknown as { params: { chat: number; text: string } },

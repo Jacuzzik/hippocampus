@@ -1,0 +1,290 @@
+hippo-card-faces-kelly-match/
+├── .gitattributes
+├── .github/
+│   └── workflows/
+│       └── ci.yml
+├── .gitignore
+├── .python-version
+├── AGENTS.md
+├── CONTRIBUTING.md
+├── LICENSE
+├── README.md
+├── TRADEMARKS.md
+├── ai/
+│   ├── __init__.py
+│   ├── agent.py
+│   ├── chat_history.py
+│   ├── cli_sessions.py
+│   ├── keys.py
+│   ├── network.py
+│   ├── providers/
+│   │   ├── __init__.py
+│   │   ├── base.py
+│   │   ├── claude.py
+│   │   ├── claude_cli.py
+│   │   ├── ollama.py
+│   │   └── openai_compat.py
+│   └── router.py
+├── app/
+│   ├── .npmrc
+│   ├── .prettierignore
+│   ├── .prettierrc
+│   ├── e2e/
+│   │   ├── account.spec.ts
+│   │   ├── control.spec.ts
+│   │   ├── critical-paths.spec.ts
+│   │   ├── graph-drag.spec.ts
+│   │   ├── graph-fallback.spec.ts
+│   │   ├── note-drawer.spec.ts
+│   │   ├── notes-features.spec.ts
+│   │   ├── orphans.spec.ts
+│   │   ├── owner-panel.spec.ts
+│   │   ├── responsive.spec.ts
+│   │   ├── right-panel-tabs.spec.ts
+│   │   ├── settings.spec.ts
+│   │   ├── tauri-mock.ts
+│   │   ├── tools.spec.ts
+│   │   └── zz-assistant-shots.spec.ts
+│   ├── eslint.config.js
+│   ├── index.html
+│   ├── node_modules
+│   ├── package-lock.json
+│   ├── package.json
+│   ├── playwright.config.ts
+│   ├── playwright.tmp-rp.config.ts
+│   ├── scripts/
+│   │   ├── agent-card.test.mjs
+│   │   ├── allowlist.test.mjs
+│   │   ├── assistant-model.test.mjs
+│   │   ├── build-tokens.mjs
+│   │   ├── check-tokens.mjs
+│   │   ├── contrast.test.mjs
+│   │   ├── control.test.mjs
+│   │   ├── graph-model.test.mjs
+│   │   └── markdown.test.mjs
+│   ├── src-tauri/
+│   │   ├── .gitignore
+│   │   ├── Cargo.lock
+│   │   ├── Cargo.toml
+│   │   ├── build.rs
+│   │   ├── capabilities/
+│   │   │   └── default.json
+│   │   ├── icons/
+│   │   │   ├── 128x128.png
+│   │   │   ├── 128x128@2x.png
+│   │   │   ├── 32x32.png
+│   │   │   ├── icon-source.svg
+│   │   │   ├── icon.icns
+│   │   │   ├── icon.ico
+│   │   │   └── icon.png
+│   │   ├── src/
+│   │   │   ├── lib.rs
+│   │   │   ├── main.rs
+│   │   │   └── sidecar.rs
+│   │   └── tauri.conf.json
+│   ├── svelte.config.js
+│   ├── tsconfig.json
+│   ├── ui/
+│   │   ├── App.svelte
+│   │   ├── assets/
+│   │   │   ├── brand/
+│   │   │   │   ├── hippocampus-logo.png
+│   │   │   │   └── hippocampus-mark-purple.png
+│   │   │   ├── faces-new/
+│   │   │   │   ├── avatar-01.svg
+│   │   │   │   ├── avatar-02.svg
+│   │   │   │   ├── avatar-03.svg
+│   │   │   │   ├── avatar-04.svg
+│   │   │   │   ├── avatar-05.svg
+│   │   │   │   ├── avatar-06.svg
+│   │   │   │   ├── avatar-07.svg
+│   │   │   │   ├── avatar-08.svg
+│   │   │   │   ├── avatar-09.svg
+│   │   │   │   ├── avatar-10.svg
+│   │   │   │   ├── avatar-11.svg
+│   │   │   │   ├── avatar-12.svg
+│   │   │   │   ├── avatar-13.svg
+│   │   │   │   ├── avatar-14.svg
+│   │   │   │   ├── avatar-15.svg
+│   │   │   │   ├── avatar-16.svg
+│   │   │   │   ├── card-face-01.svg
+│   │   │   │   ├── card-face-02.svg
+│   │   │   │   ├── card-face-03.svg
+│   │   │   │   ├── card-face-04.svg
+│   │   │   │   ├── card-face-05.svg
+│   │   │   │   ├── card-face-06.svg
+│   │   │   │   ├── card-face-07.svg
+│   │   │   │   ├── card-face-08.svg
+│   │   │   │   ├── card-face-09.svg
+│   │   │   │   ├── card-face-10.svg
+│   │   │   │   ├── card-face-11.svg
+│   │   │   │   ├── card-face-12.svg
+│   │   │   │   ├── card-face-13.svg
+│   │   │   │   ├── card-face-14.svg
+│   │   │   │   ├── card-face-15.svg
+│   │   │   │   ├── card-face-16.svg
+│   │   │   │   └── card-face-17.svg
+│   │   │   ├── fonts/
+│   │   │   │   └── press-start-2p-latin-400.woff2
+│   │   │   └── status/
+│   │   │       ├── happy-error.svg
+│   │   │       ├── happy-neutral.svg
+│   │   │       ├── happy-pending.svg
+│   │   │       ├── happy-success.svg
+│   │   │       ├── neutral-error.svg
+│   │   │       ├── neutral-neutral.svg
+│   │   │       ├── neutral-pending.svg
+│   │   │       ├── neutral-success.svg
+│   │   │       ├── pending-error.svg
+│   │   │       ├── pending-neutral.svg
+│   │   │       ├── pending-pending.svg
+│   │   │       ├── pending-success.svg
+│   │   │       ├── sad-error.svg
+│   │   │       ├── sad-neutral.svg
+│   │   │       ├── sad-pending.svg
+│   │   │       └── sad-success.svg
+│   │   ├── assistant/
+│   │   │   ├── AgentCard.svelte
+│   │   │   ├── Assistant.svelte
+│   │   │   ├── Orb.svelte
+│   │   │   ├── agentCard.ts
+│   │   │   ├── model.ts
+│   │   │   └── session.svelte.ts
+│   │   ├── control/
+│   │   │   ├── ActivitySection.svelte
+│   │   │   ├── AddAgentDialog.svelte
+│   │   │   ├── ArchivedAgentsSection.svelte
+│   │   │   ├── AsksSection.svelte
+│   │   │   ├── BudgetSection.svelte
+│   │   │   ├── CapabilitiesSection.svelte
+│   │   │   ├── ControlDialog.svelte
+│   │   │   ├── DispatchSection.svelte
+│   │   │   ├── HelpersSection.svelte
+│   │   │   ├── JobsSection.svelte
+│   │   │   ├── KeysSection.svelte
+│   │   │   ├── MemorySection.svelte
+│   │   │   ├── NetworkSection.svelte
+│   │   │   ├── SettingsDialog.svelte
+│   │   │   ├── ShareSection.svelte
+│   │   │   ├── SkillsSection.svelte
+│   │   │   ├── TeamsSection.svelte
+│   │   │   ├── TriggersSection.svelte
+│   │   │   ├── control.css
+│   │   │   └── model.ts
+│   │   ├── fuzzy.ts
+│   │   ├── graph/
+│   │   │   ├── BrainGraph.svelte
+│   │   │   ├── colors.ts
+│   │   │   ├── markdown.ts
+│   │   │   ├── model.ts
+│   │   │   ├── renderer-canvas.ts
+│   │   │   └── renderer.ts
+│   │   ├── main.ts
+│   │   ├── overlays/
+│   │   │   ├── AccountDialog.svelte
+│   │   │   ├── CommandBox.svelte
+│   │   │   ├── ToolsDialog.svelte
+│   │   │   └── allowlist.ts
+│   │   ├── owner/
+│   │   │   ├── AgentBar.svelte
+│   │   │   ├── AgentPanel.svelte
+│   │   │   ├── AgentStatus.svelte
+│   │   │   ├── OwnerPanel.svelte
+│   │   │   └── addedAgents.svelte.ts
+│   │   ├── regions/
+│   │   │   ├── ActivityPanel.svelte
+│   │   │   ├── GraphPanel.svelte
+│   │   │   ├── GraphRegion.svelte
+│   │   │   ├── HistoryPanel.svelte
+│   │   │   ├── InboxPanel.svelte
+│   │   │   ├── MemoryPanel.svelte
+│   │   │   ├── MonitorPanel.svelte
+│   │   │   ├── NoteSidebar.svelte
+│   │   │   ├── Ribbon.svelte
+│   │   │   ├── RightPanel.svelte
+│   │   │   ├── SettingsFloat.svelte
+│   │   │   ├── SettingsPanel.svelte
+│   │   │   ├── SkillsPanel.svelte
+│   │   │   ├── StatusBar.svelte
+│   │   │   ├── TasksPanel.svelte
+│   │   │   └── TempsPanel.svelte
+│   │   ├── styles/
+│   │   │   ├── global.css
+│   │   │   └── office-theme.css
+│   │   └── vite-env.d.ts
+│   └── vite.config.ts
+├── config/
+│   └── settings.toml
+├── core/
+│   ├── __init__.py
+│   ├── __main__.py
+│   ├── activity.py
+│   ├── added_agents.py
+│   ├── budget.py
+│   ├── cards.py
+│   ├── helpers.py
+│   ├── jobs.py
+│   ├── memory.py
+│   ├── settings.py
+│   ├── share.py
+│   ├── skills.py
+│   ├── system_stats.py
+│   ├── terminal.py
+│   ├── vault/
+│   │   ├── __init__.py
+│   │   ├── indexer.py
+│   │   ├── parser.py
+│   │   ├── scanner.py
+│   │   ├── store.py
+│   │   └── watcher.py
+│   └── webhooks.py
+├── design/
+│   └── tokens.json
+├── docs/
+│   └── plans/
+│       └── office-app-ideas.md
+├── pyproject.toml
+├── scripts/
+│   ├── build-sidecar.sh
+│   └── sidecar_entry.py
+├── tests/
+│   ├── ai/
+│   │   ├── test_openai_compat.py
+│   │   ├── test_providers.py
+│   │   └── test_router_and_keys.py
+│   ├── conftest.py
+│   ├── core/
+│   │   ├── test_account.py
+│   │   ├── test_added_agents.py
+│   │   ├── test_cache_safety.py
+│   │   ├── test_cards.py
+│   │   ├── test_chat_history_provider.py
+│   │   ├── test_cli.py
+│   │   ├── test_control.py
+│   │   ├── test_inbox.py
+│   │   ├── test_indexer.py
+│   │   ├── test_parser.py
+│   │   ├── test_read.py
+│   │   ├── test_scanner.py
+│   │   ├── test_serve_chat.py
+│   │   ├── test_settings.py
+│   │   ├── test_sidecar.py
+│   │   ├── test_store.py
+│   │   ├── test_system_stats.py
+│   │   ├── test_tool_allowlist.py
+│   │   ├── test_tool_limit.py
+│   │   ├── test_watcher.py
+│   │   └── test_webhooks.py
+│   ├── fixtures/
+│   │   ├── __init__.py
+│   │   └── make_sample_vault.py
+│   └── tools/
+│       ├── conftest.py
+│       ├── test_agent.py
+│       └── test_vault_tools.py
+├── tools/
+│   ├── __init__.py
+│   ├── gate.py
+│   ├── registry.py
+│   └── vault_tools.py
+└── uv.lock

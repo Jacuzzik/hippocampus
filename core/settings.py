@@ -72,9 +72,16 @@ def _allowed_tools(value: object) -> tuple[str, ...] | None:
     return tuple(value)
 
 
+# Every provider the Monitor's engine switch offers (app/ui/control/model.ts AGENT_PROVIDERS).
+ENGINE_PROVIDERS = (
+    "claude", "codex", "gemini-cli", "antigravity", "ollama", "openai", "xai", "moonshot",
+    "gemini", "qwen", "deepseek", "mistral", "groq", "openrouter", "lmstudio", "vllm",
+)
+
+
 def _provider(value: object) -> str:
-    if value != "claude" and value not in PRESETS:
-        raise ValueError(f"ai.provider must be claude or one of: {', '.join(PRESETS)}")
+    if value not in ENGINE_PROVIDERS:
+        raise ValueError(f"ai.provider must be one of: {', '.join(ENGINE_PROVIDERS)}")
     return str(value)
 
 
@@ -176,6 +183,25 @@ def save_network_mode(mode: str, path: Path = SETTINGS_PATH) -> None:
     if mode not in NETWORK_MODES:
         raise ValueError(f"network mode must be one of: {', '.join(NETWORK_MODES)}")
     _write(path, _replace_sections(_read(path), ("[network]",), [f'[network]\nmode = "{mode}"']))
+
+
+def save_engine(provider: str, model: str, path: Path = SETTINGS_PATH) -> None:
+    """Set the main agent's provider and model, changing only those lines of [ai]."""
+    if not provider or not model:
+        raise ValueError("pick a provider and a model")
+    section, out = "", []
+    for line in _read(path).splitlines():
+        stripped = line.strip()
+        if stripped.startswith("["):
+            section = stripped
+        if section == "[ai]" and stripped.startswith("provider ="):
+            line = f'provider = "{provider}"'
+        elif section == "[ai]" and stripped.startswith("provider_model ="):
+            line = f'provider_model = "{model}"' if provider != "claude" else line
+        elif section == "[ai]" and stripped.startswith("claude_model =") and provider == "claude":
+            line = f'claude_model = "{model}"'
+        out.append(line)
+    _write(path, "\n".join(out) + "\n")
 
 
 def save_budget(app: Caps, assistant: Caps, path: Path = SETTINGS_PATH) -> None:

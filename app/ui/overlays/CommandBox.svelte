@@ -12,7 +12,7 @@
   import { onMount } from "svelte";
   import { fuzzyScore } from "../fuzzy";
 
-  // One box for both the quick switcher (notes) and the command palette (actions), as in Obsidian.
+  // One box for both the quick switcher (notes) and the command palette (actions), as in notes app.
 
   let {
     items,

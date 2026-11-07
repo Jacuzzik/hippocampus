@@ -1,4 +1,4 @@
-<!-- Every agent's inbox, read only: pending messages first, then handled ones, as in Munder Difflin's Inbox page. -->
+<!-- Every agent's inbox, read only: pending messages first, then handled ones, as in the office app's Inbox page. -->
 <script lang="ts">
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";

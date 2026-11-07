@@ -143,6 +143,7 @@ export const AGENT_PROVIDERS = [
   { id: "claude", label: "Claude (Anthropic)", needsKey: true, kind: "key" },
   { id: "codex", label: "Codex (OpenAI CLI)", needsKey: false, kind: "cli" },
   { id: "gemini-cli", label: "Gemini CLI (Google)", needsKey: false, kind: "cli" },
+  { id: "antigravity", label: "Antigravity (Google)", needsKey: false, kind: "cli" },
   { id: "ollama", label: "Ollama (on this computer)", needsKey: false, kind: "local" },
   { id: "openai", label: "OpenAI", needsKey: true, kind: "key" },
   { id: "xai", label: "xAI Grok", needsKey: true, kind: "key" },
@@ -157,12 +158,22 @@ export const AGENT_PROVIDERS = [
   { id: "vllm", label: "vLLM (local)", needsKey: false, kind: "local" },
 ] as const;
 
+// Provider logos, by provider id. Providers with no file here show no logo.
+const providerLogoFiles = import.meta.glob("../assets/provider-logos/*.svg", {
+  eager: true,
+  query: "?url",
+  import: "default",
+}) as Record<string, string>;
+export const providerLogo = (id: string): string | undefined => providerLogoFiles[`../assets/provider-logos/${id}.svg`];
+
 // Model names shown as suggestions; the model field still accepts any name typed in.
 // Claude: the project's Claude 5 list. Codex, Gemini, xAI, DeepSeek and Mistral: 2026 names from web sources, not checked against provider docs.
 // Moonshot, Qwen, Groq and OpenRouter names are older and unverified for 2026.
 export const AGENT_MODELS: Record<string, string[]> = {
   claude: ["claude-fable-5-1", "claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5"],
   codex: ["gpt-6.1-sol", "gpt-6.1-terra", "gpt-6-luna", "gpt-5.5", "gpt-5.4", "gpt-5.3-codex"],
+  // From `agy models` (Antigravity CLI), read 2026-11-07.
+  antigravity: ["gemini-3.8-flash-high", "gemini-3.8-flash-medium", "gemini-3.8-flash-low", "claude-sonnet-4-6", "claude-opus-4-6-thinking", "gpt-oss-120b-medium"],
   "gemini-cli": ["gemini-3.1-pro-preview", "gemini-3-flash-preview", "gemini-2.5-pro", "gemini-2.5-flash"],
   ollama: ["qwen2.5:1.5b"],
   openai: ["gpt-6.1-sol", "gpt-6.1-terra", "gpt-6-luna", "gpt-5.5", "gpt-5.4", "gpt-5.4-mini", "gpt-5.4-nano"],
@@ -249,56 +260,39 @@ export const AVATARS = [
   },
 ] as const;
 
-export const AGENT_COLOURS = ["accent", "think", "confirm", "danger"] as const;
 
-/** Briefing starters. They fill the description and goal; the name stays the user's. */
+/** Jobs for the briefing step. Clicking one fills the description and the goal. */
 export const AGENT_TEMPLATES = [
-  {
-    id: "janitor",
-    label: "Repo janitor",
-    description:
-      "Keeps the repository tidy: stale branches, dead code and clutter.",
-    goal: "Find clutter each week and list it with a proposed fix. Delete nothing without a yes.",
-  },
-  {
-    id: "docs",
-    label: "Docs writer",
-    description: "Keeps the docs in step with the code.",
-    goal: "Update docs for any code change and flag the pages that no longer match.",
-  },
-  {
-    id: "triage",
-    label: "Bug triager",
-    description: "Reads new bug reports and sorts them.",
-    goal: "Label each new bug by area and severity, and ask for a repro when one is missing.",
-  },
-  {
-    id: "research",
-    label: "Research assistant",
-    description: "Finds and summarises sources on a question.",
-    goal: "Collect the best sources on the topic and write a short summary with links.",
-  },
-  {
-    id: "release",
-    label: "Release manager",
-    description: "Prepares each release.",
-    goal: "Draft the changelog, check the release checklist, and report anything blocking.",
-  },
+  { id: "janitor", label: "Repo janitor", description: "Keeps the repository tidy: stale branches, dead code and clutter.", goal: "Keep the repo lean so the team can find things fast. Remove stale branches, dead code and stray files each week and list what was removed." },
+  { id: "docs", label: "Docs writer", description: "Keeps the docs in step with the code.", goal: "Make sure every doc matches the code it describes. Update or flag any page whose content no longer matches the current behaviour." },
+  { id: "triage", label: "Bug triager", description: "Reads new bug reports and sorts them.", goal: "Get every new bug report into the right queue within a day. Read each one and file it under the correct area." },
+  { id: "research", label: "Research assistant", description: "Finds and summarises sources on a question.", goal: "Answer one question with the best sources available. Find credible sources and summarise what each says about it." },
+  { id: "release", label: "Release manager", description: "Prepares each release.", goal: "Ship each release on time with nothing missing. Run the checklist from freeze to publish and report any open item." },
+  { id: "tests", label: "Test writer", description: "Writes tests for untested code and keeps the suite green.", goal: "Raise confidence in the codebase. Find code without tests, write focused tests for it and make sure the full suite passes." },
+  { id: "deps", label: "Dependency updater", description: "Keeps packages current and flags breaking upgrades.", goal: "Stay secure and current. Update packages with patch and minor releases, and report major upgrades with the changes they need." },
+  { id: "security", label: "Security auditor", description: "Scans code and config for common security holes.", goal: "Find and report security problems before attackers do. Check for injection, exposed secrets and unsafe defaults, ranked by risk." },
+  { id: "review", label: "Code reviewer", description: "Reviews each change for bugs, clarity and risk.", goal: "Catch problems before merge. Review each change for correctness and clarity, and leave specific, actionable comments." },
+  { id: "perf", label: "Performance tuner", description: "Finds slow code paths and measures the fixes.", goal: "Make the app faster where it matters. Profile the slowest paths, propose fixes, and measure before and after each change." },
+  { id: "a11y", label: "Accessibility checker", description: "Checks screens for contrast, labels and keyboard use.", goal: "Make the app usable for everyone. Check each screen for colour contrast, labels and keyboard navigation, and list each fix." },
+  { id: "i18n", label: "Translator", description: "Translates UI text and keeps language files in sync.", goal: "Make the app available in more languages. Translate new strings, keep every language file in step and flag missing keys." },
+  { id: "support", label: "Support drafter", description: "Drafts replies to customer questions for review.", goal: "Answer customers faster without losing the human touch. Draft a clear, polite reply to each question for a person to approve." },
+  { id: "inbox", label: "Inbox sorter", description: "Sorts incoming messages into folders and flags urgent ones.", goal: "Keep the inbox workable. Label each new message, flag urgent ones and draft replies for routine questions." },
+  { id: "notes", label: "Meeting summariser", description: "Turns meeting notes into decisions and action items.", goal: "Make sure nothing agreed in a meeting gets lost. Write the decisions, then each action item with its owner and due date." },
+  { id: "planner", label: "Sprint planner", description: "Breaks big tasks into small ones and estimates them.", goal: "Make the next sprint realistic. Split large tasks into small ones with estimates, and flag work too vague to start." },
+  { id: "metrics", label: "Metrics reporter", description: "Builds a short weekly report from the key numbers.", goal: "Give the team a weekly read on how things are going. Pull the key numbers, note what changed and why it matters." },
+  { id: "seo", label: "SEO checker", description: "Checks pages for titles, descriptions and broken links.", goal: "Help people find the site. Check each page's title, meta description and headings, and list fixes in priority order." },
+  { id: "onboard", label: "Onboarding guide", description: "Walks new team members through setup and first tasks.", goal: "Get new team members productive quickly. Give each newcomer the setup steps and a first task that teaches the codebase." },
+  { id: "data", label: "Data cleaner", description: "Finds and fixes duplicate, missing or malformed records.", goal: "Keep the data trustworthy. Find duplicate, empty or malformed records, fix the safe ones and list the rest for review." },
 ] as const;
 
 /** What the add-agent form collects. Empty strings are not yet answered. */
 export interface AgentDraft {
   name: string;
   character: string;
-  colour: string;
   folder: string;
-  isolation: "shared" | "own";
-  resume: boolean;
   provider: string;
   model: string;
   command: string;
-  /** "ask": it asks before acting; "auto": it acts on its own within its goal. */
-  autonomy: "ask" | "auto";
   description: string;
   goal: string;
 }
@@ -313,8 +307,6 @@ export function agentStepError(step: number, draft: AgentDraft): string | null {
       return "Pick a provider.";
     if (draft.model.trim() === "") return "Name the model.";
   }
-  if (step === 3 && draft.goal.trim() === "")
-    return "Say what the agent is for.";
   return null;
 }
 
@@ -332,11 +324,17 @@ export function engineStatus(
   provider: string,
   savedKeys: string[],
   clis: CliState[] = [],
+  servers: { provider: string; running: boolean }[] = [],
 ): { ready: boolean; text: string } {
   const row = AGENT_PROVIDERS.find((p) => p.id === provider);
   if (!row) return { ready: false, text: "Not set up: pick a provider." };
-  if (row.kind === "local")
-    return { ready: true, text: "Ready: runs on this computer." };
+  if (row.kind === "local") {
+    const server = servers.find((s) => s.provider === provider);
+    if (!server) return { ready: false, text: `Checking ${row.label}…` };
+    return server.running
+      ? { ready: true, text: `Ready: ${row.label} is running.` }
+      : { ready: false, text: `Not running: start ${row.label} first.` };
+  }
   if (row.kind === "cli") {
     const cli = clis.find((c) => c.provider === provider);
     if (!cli) return { ready: false, text: `Checking ${row.label}…` };
@@ -349,18 +347,18 @@ export function engineStatus(
     : { ready: false, text: `Not set up: no ${row.label} key saved.` };
 }
 
-/** The command line the choice builds, e.g. "claude --model m --permission-mode bypassPermissions". */
+/** The command line the choice builds, e.g. "claude --model m". */
 export function agentCommand(
-  draft: Pick<AgentDraft, "provider" | "model" | "autonomy">,
+  draft: Pick<AgentDraft, "provider" | "model">,
 ): string {
   const model = draft.model.trim();
   if (draft.provider === "ollama") return `ollama run ${model}`;
   if (draft.provider === "codex") return `codex --model ${model}`;
   if (draft.provider === "gemini-cli") return `gemini --model ${model}`;
+  if (draft.provider === "antigravity") return `agy --model ${model}`;
   // API providers have no command line: the app calls them directly with the saved key.
   if (draft.provider !== "claude") return "";
-  const mode = draft.autonomy === "auto" ? "bypassPermissions" : "default";
-  return `claude --model ${model} --permission-mode ${mode}`;
+  return `claude --model ${model}`;
 }
 
 /** A dispatched task needs words in it. The agent is picked from the list the panel shows. */
