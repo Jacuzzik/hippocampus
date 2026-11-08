@@ -399,13 +399,6 @@
     font-size: var(--font-size-xs);
   }
 
-  .chip i {
-    font-style: normal;
-    font-size: 10px;
-    color: var(--color-md-card-text);
-    opacity: 0.7;
-  }
-
   .add {
     flex: none;
     min-height: 44px;
@@ -417,11 +410,6 @@
     font-family: "Press Start 2P", monospace;
     font-size: 8px;
     cursor: pointer;
-  }
-
-  .tokens {
-    font-family: var(--font-mono);
-    font-size: 10px;
   }
 
   .chip button {
@@ -737,12 +725,6 @@
     display: block;
   }
 
-  .line {
-    display: block;
-    font-size: 10px;
-    opacity: 0.8;
-  }
-
   .head {
     display: flex;
     align-items: center;
@@ -758,23 +740,6 @@
     font-size: 6px;
   }
 
-
-  .bar {
-    display: inline-block;
-    width: 60px;
-    height: 6px;
-    overflow: hidden;
-    border-radius: 3px;
-    background: var(--color-md-border);
-    vertical-align: middle;
-  }
-
-  .fill {
-    display: block;
-    width: 0;
-    height: 100%;
-    background: var(--color-md-accent);
-  }
 
   .pct {
     margin-left: 4px;

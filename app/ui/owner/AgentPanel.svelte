@@ -31,7 +31,7 @@
   );
 
   // Messages wait here while the CLI is printing, then go into its terminal in order.
-  const queue = createTerminalQueue(agent.id);
+  const queue = createTerminalQueue(() => agent.id);
   $effect(() => {
     const timer = setInterval(queue.tick, 1000);
     return () => clearInterval(timer);
@@ -270,13 +270,6 @@
     border-radius: 50%;
     background: var(--color-md-accent);
   }
-  .status {
-    margin-left: var(--space-1);
-    padding: 0 var(--space-1);
-    border: 1px solid var(--color-md-border);
-    border-radius: 999px;
-    color: var(--color-md-text-muted);
-  }
   .desc,
   .note-box {
     display: flex;
@@ -297,10 +290,6 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-  }
-  .note-box .placeholder {
-    flex: 1;
-    min-width: 0;
   }
   /* The note is a one-line field inside its box; the shared textarea height would make the row too tall. */
   .note-box textarea {
@@ -380,9 +369,6 @@
     background: var(--color-danger);
     color: var(--color-md-accent-on);
   }
-  .seg .danger {
-    color: var(--color-danger);
-  }
   /* The text-size pill, as on the main agent: − | 12px | +. */
   .size {
     margin-left: auto;
@@ -434,9 +420,6 @@
   button {
     cursor: pointer;
   }
-  .close {
-    color: var(--color-danger);
-  }
   textarea {
     width: 100%;
     min-height: 64px;
@@ -453,10 +436,6 @@
   .composer textarea {
     padding-top: var(--space-1);
   }
-  /* The attach row sits under Send at the main agent's gap (space-1), not the panel's space-2. */
-  .composer + .seg {
-    margin-top: calc(var(--space-1) - var(--space-2));
-  }
   /* Dimmed until there is a message, as on the main agent. */
   .send:disabled {
     opacity: 0.5;
@@ -469,22 +448,6 @@
     background: var(--color-md-accent);
     color: var(--color-md-accent-on);
     border-color: var(--color-md-accent);
-  }
-  .stats {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: var(--space-1);
-    margin: 0;
-    padding-top: var(--space-2);
-    border-top: 1px solid var(--color-md-border);
-  }
-  .stats dt {
-    color: var(--color-md-text-muted);
-    font-size: 10px;
-  }
-  .stats dd {
-    margin: 0;
-    font-size: 14px;
   }
   /* Only this box scrolls when several messages wait; the sidebar itself stays put. */
   .queued {

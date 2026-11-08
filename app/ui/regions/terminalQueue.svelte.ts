@@ -15,7 +15,8 @@ function compactPrompt(agentId: string): string {
   return `/compact Keep the current task, recent decisions, open questions, and file paths in play. Drop resolved tangents. Read ${agentId}-PriorityNotes.`;
 }
 
-export function createTerminalQueue(agentId: string) {
+// agentId is read each time it is used, so the queue follows the agent the panel shows now.
+export function createTerminalQueue(agentId: () => string) {
   let busyUntil = 0;
   let ticks = 0;
   let percent = 0;
@@ -26,13 +27,13 @@ export function createTerminalQueue(agentId: string) {
     const [next, ...rest] = items;
     items = rest;
     busyUntil = Date.now() + BUSY_MS;
-    invoke("sidecar_call", { method: "terminal_input", params: { agent: agentId, data: `${next}\r` } }).catch((cause) =>
+    invoke("sidecar_call", { method: "terminal_input", params: { agent: agentId(), data: `${next}\r` } }).catch((cause) =>
       console.error("Could not send to the terminal", cause),
     );
   }
 
   function checkContext(): void {
-    invoke<{ percent: number }>("sidecar_call", { method: "terminal_context", params: { agent: agentId } })
+    invoke<{ percent: number }>("sidecar_call", { method: "terminal_context", params: { agent: agentId() } })
       .then((result) => (percent = result.percent))
       .catch((cause) => console.error("Could not read the context size", cause));
   }
@@ -57,7 +58,7 @@ export function createTerminalQueue(agentId: string) {
       if (items.length === 0 && percent >= COMPACT_AT_PERCENT && Date.now() >= busyUntil) {
         // Reset until the next check, so the same full context is not compacted twice.
         percent = 0;
-        items = [compactPrompt(agentId)];
+        items = [compactPrompt(agentId())];
       }
       flush();
     },

@@ -1037,41 +1037,6 @@
     color: var(--color-text-muted);
   }
 
-  /* 44px touch target; the padding keeps the visible swatch at 12px, and the negative margin keeps the row height. */
-  .pick {
-    box-sizing: border-box;
-    box-sizing: border-box;
-    width: 44px;
-    height: 44px;
-    padding: 16px;
-    margin: -16px var(--space-2) -16px -16px;
-    border: none;
-    background: none;
-    vertical-align: middle;
-    pointer-events: auto;
-    cursor: pointer;
-  }
-
-  .swatch {
-    display: inline-block;
-    width: 12px;
-    height: 12px;
-    margin-right: var(--space-2);
-    border-radius: 50%;
-    vertical-align: middle;
-  }
-
-  .reset {
-    margin-left: var(--space-2);
-    padding: 0;
-    border: none;
-    background: none;
-    color: var(--color-link);
-    font: inherit;
-    pointer-events: auto;
-    cursor: pointer;
-  }
-
   .fit {
     font: inherit;
     font-size: var(--font-size-xs);

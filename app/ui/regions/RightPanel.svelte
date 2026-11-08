@@ -63,7 +63,7 @@
   let fontSize = $state(12);
 
   // The Control Room message box sends into Hippo's terminal, through a queue (see terminalQueue).
-  const queue = createTerminalQueue("hippo");
+  const queue = createTerminalQueue(() => "hippo");
   $effect(() => {
     const timer = setInterval(queue.tick, 1000);
     return () => clearInterval(timer);
@@ -295,49 +295,6 @@
     display: flex;
     flex-direction: column;
     min-height: 0;
-  }
-
-  /* Same note box, steer pill and stats row as the normal agent panel. */
-  .note-box {
-    display: flex;
-    align-items: center;
-    gap: var(--space-1);
-    font-size: var(--font-size-xs);
-    min-height: 36px;
-    padding: 0 var(--space-2);
-    margin-bottom: var(--space-2);
-    border: 1px solid var(--color-md-border);
-    border-radius: var(--radius-sm);
-    background: var(--color-md-surface);
-    color: var(--color-md-text-muted);
-  }
-  .note-box .placeholder {
-    flex: 1;
-    min-width: 0;
-  }
-  .pill-on {
-    border: none;
-    border-radius: 999px;
-    padding: 0 var(--space-2);
-    min-height: 26px;
-    background: var(--color-md-accent);
-    color: var(--color-md-accent-on);
-  }
-  .stats {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: var(--space-1);
-    margin: 0 0 var(--space-2);
-    padding-top: var(--space-2);
-    border-top: 1px solid var(--color-md-border);
-  }
-  .stats dt {
-    color: var(--color-md-text-muted);
-    font-size: 10px;
-  }
-  .stats dd {
-    margin: 0;
-    font-size: 14px;
   }
 
   /* The real terminal takes a fixed slice above the chat. */

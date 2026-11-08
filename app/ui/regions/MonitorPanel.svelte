@@ -397,11 +397,6 @@
     letter-spacing: -0.5px;
   }
 
-  .hero small {
-    color: var(--color-md-text-muted);
-    font-size: 10px;
-  }
-
   .split {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -415,15 +410,6 @@
     display: flex;
     flex-direction: column;
     gap: 3px;
-  }
-
-  .mini span {
-    font-size: 9px;
-    color: var(--color-md-text-muted);
-  }
-
-  .mini b {
-    font-weight: 400;
   }
 
   h3 em {
@@ -575,25 +561,6 @@
     margin: 0;
   }
 
-  .stats div {
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-    min-width: 0;
-  }
-
-  .stats dt {
-    font-size: 8px;
-    letter-spacing: 0.5px;
-    opacity: 0.6;
-  }
-
-  .stats dd {
-    margin: 0;
-    font-size: 11px;
-    font-weight: 700;
-    overflow-wrap: anywhere;
-  }
 
   h4 {
     margin: 0;
