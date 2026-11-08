@@ -167,18 +167,18 @@
       <fieldset class="picker">
         <legend>Avatar</legend>
         <div class="faces">
-        {#each CARD_FACES as face (face.id)}
-          <button
-            type="button"
-            class="face-pick"
-            aria-label={face.id}
-            aria-pressed={draft.character === face.id}
-            class:on={draft.character === face.id}
-            onclick={() => (draft.character = face.id)}
-          >
-            <img src={face.url} alt="" />
-          </button>
-        {/each}
+          {#each CARD_FACES as face (face.id)}
+            <button
+              type="button"
+              class="face-pick"
+              aria-label={face.id}
+              aria-pressed={draft.character === face.id}
+              class:on={draft.character === face.id}
+              onclick={() => (draft.character = face.id)}
+            >
+              <img src={face.url} alt="" />
+            </button>
+          {/each}
         </div>
       </fieldset>
     {:else if step === 1}
@@ -209,13 +209,15 @@
           New folder inside workspaces
           <input type="text" bind:value={newFolder} placeholder="Folder name" />
         </label>
-        <button type="button" disabled={!newFolder.trim()} onclick={createWorkspace}>Create folder</button>
+        <div class="choice">
+          <button type="button" disabled={!newFolder.trim()} onclick={createWorkspace}>Create folder</button>
+        </div>
         {#if workspaceError}<p class="error" role="alert">{workspaceError}</p>{/if}
       {/if}
     {:else if step === 2}
       <label>
         Provider
-        <select bind:value={draft.provider}>
+        <select bind:value={draft.provider} onchange={() => (draft.model = "")}>
           {#each AGENT_PROVIDERS as p (p.id)}
             <option value={p.id}>{p.label}</option>
           {/each}
@@ -307,6 +309,7 @@
     color: var(--color-text);
     background: var(--color-surface);
     border: 1px solid var(--color-border);
+    border-left: 3px solid var(--color-accent);
     border-radius: var(--radius-sm);
     box-sizing: border-box;
   }
@@ -374,7 +377,7 @@
     color: var(--color-text-muted);
     background: var(--color-bg-0);
     border: 1px solid var(--color-border);
-    border-radius: 999px;
+    border-radius: var(--radius-sm);
     padding: var(--space-1) var(--space-2);
     cursor: pointer;
   }
@@ -394,7 +397,6 @@
     text-align: right;
     margin: 0;
   }
-
 
   .progress {
     display: flex;

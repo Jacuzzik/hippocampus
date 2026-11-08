@@ -2,12 +2,11 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
-  import { addedAgents, archived, setArchived } from "../owner/addedAgents.svelte";
+  import { addedAgents, archived, removeAgent, setArchived } from "../owner/addedAgents.svelte";
   import { AGENT_MODELS, AGENT_PROVIDERS, CARD_FACES, type Caps } from "../control/model";
+  import Dropdown from "../controls/Dropdown.svelte";
 
   type Budget = { caps: { app: Caps; assistant: Caps }; used: { app: Caps; assistant: Caps } };
-
-  type System = { cpu: number; ram: number; swap: number; disk: number; disk_free: number };
 
   // Only the agents the user added (addedAgents store); archived ones show a REOPEN button.
   const active = $derived(addedAgents.list.filter((a) => !archived.ids.includes(a.id)));
@@ -27,6 +26,18 @@
   let engine = $state<Engine | null>(null);
   // The main agent's folder is included, so its card gets its own token count.
   const directories = $derived([...new Set([engine?.folder, ...addedAgents.list.map((a) => a.folder)].filter(Boolean))] as string[]);
+  // Second step of delete: the card asks again before it removes the agent.
+  let confirmDelete = $state<string | null>(null);
+
+  function providerLabel(id: string): string {
+    return AGENT_PROVIDERS.find((p) => p.id === id)?.label ?? id;
+  }
+
+  // Stops the agent's running terminal; the card stays.
+  async function stopAgent(id: string): Promise<void> {
+    await invoke("sidecar_call", { method: "terminal_stop", params: { agent: id } }).catch(() => undefined);
+  }
+
   let engineProvider = $state("");
   let engineModel = $state("");
   let engineError = $state("");
@@ -41,6 +52,20 @@
   let confirmOpen = $state(false);
   const engineChanged = $derived(!!engine && (engineProvider !== engine.provider || engineModel !== engine.model));
 
+  // Checked before the confirm dialog: a provider or model this app does not offer shows its reason at once.
+  const engineIssue = $derived.by(() => {
+    if (!AGENT_PROVIDERS.some((p) => p.id === engineProvider)) return `${engineProvider || "This provider"} is not a provider in this app.`;
+    const list = AGENT_MODELS[engineProvider] ?? [];
+    if (!list.length) return `${engineProvider} has no models in this app to pick from.`;
+    if (!list.includes(engineModel)) return `${engineModel || "No model"} is not a model ${engineProvider} offers in this app.`;
+    return "";
+  });
+  function askApply(): void {
+    engineDone = "";
+    engineError = engineIssue;
+    if (!engineIssue) confirmOpen = true;
+  }
+
   async function applyEngine(): Promise<void> {
     engineError = "";
     engineDone = "";
@@ -51,13 +76,13 @@
         params: { provider: engineProvider, model: engineModel },
       });
       if (!result.ok) {
-        engineError = result.error ?? "The engine was not changed.";
+        engineError = result.error ?? "The model was not changed.";
         return;
       }
       engine = await invoke<Engine>("sidecar_call", { method: "engine" });
       // Stop the main terminal so the next start runs the new provider; the open panel restarts it.
       await invoke("sidecar_call", { method: "terminal_stop", params: { agent: "hippo" } }).catch(() => undefined);
-      window.dispatchEvent(new Event("engine-changed"));
+      window.dispatchEvent(new CustomEvent("engine-changed", { detail: { provider: engineProvider, model: engineModel } }));
       engineDone = result.message ?? "Saved.";
     } catch (cause) {
       engineError = String(cause);
@@ -81,16 +106,7 @@
     }
   }
 
-  type Watcher = {
-    name: string;
-    kind: string;
-    status: "running" | "stopped" | "error";
-    last_event: string | null;
-  };
-
   let budget = $state<Budget | null>(null);
-  let watchers = $state<Watcher[]>([]);
-  let system = $state<System | null>(null);
   let failed = $state(false);
   // Tokens per agent folder this month, from each agent's Claude Code sessions (real transcripts).
   let folderTokens = $state<Record<string, number>>({});
@@ -115,18 +131,8 @@
   });
 
   onMount(() => {
-    const read = () =>
-      invoke<System>("sidecar_call", { method: "system" }).then(
-        (value) => (system = value),
-        (cause) => console.error("Could not read system stats", cause),
-      );
-    void read();
-    const timer = setInterval(read, 5000);
     const tokenTimer = setInterval(() => loadTokens(directories), 60000);
-    return () => {
-      clearInterval(timer);
-      clearInterval(tokenTimer);
-    };
+    return () => clearInterval(tokenTimer);
   });
 
   onMount(async () => {
@@ -141,7 +147,6 @@
         },
         (cause) => console.error("Could not read the engine", cause),
       );
-      watchers = (await invoke<{ watchers: Watcher[] }>("sidecar_call", { method: "watchers" })).watchers;
     } catch (cause) {
       failed = true;
       console.error("Could not read the monitor", cause);
@@ -162,36 +167,42 @@
       {/if}
       <div class="cards">
         <div class="card main">
-          <div class="head">
-            <img src={CARD_FACES.find((f) => f.id === "card-face-17")?.url} alt="" class="pic" />
-            <span class="name">Hippoherman</span>
-            <span class="badge">MAIN</span>
-            <span class="count">{(folderTokens[engine?.folder ?? ""] ?? 0).toLocaleString("en-US")} tok</span>
+          <div class="title-row">
+            <img src={CARD_FACES.find((f) => f.id === "card-face-17")?.url} alt="" class="pic big" />
+            <div class="title-text">
+              <div class="title-line">
+                <span class="title">Hippoherman</span>
+                <span class="badge">MAIN</span>
+              </div>
+              {#if engine}<span class="subtitle">{providerLabel(engine.provider)}</span>
+              <span class="subtitle">{engine.model}</span>{/if}
+            </div>
           </div>
           {#if engine}
             <div class="dir">{engine.folder}</div>
             <div class="picker">
-              <span class="k">engine</span>
-              <select bind:value={engineProvider} onchange={() => (engineModel = modelOptions[0] ?? "")} aria-label="AI provider">
-                {#each AGENT_PROVIDERS as p (p.id)}
-                  <option value={p.id}>{p.label}</option>
-                {/each}
-              </select>
-              <select bind:value={engineModel} disabled={!modelOptions.length} aria-label="AI model">
-                {#each modelOptions as m (m)}
-                  <option value={m}>{m}</option>
-                {/each}
-              </select>
-              <button type="button" class="btn" disabled={!engineChanged} onclick={() => (confirmOpen = true)}>apply</button>
+              <Dropdown
+                bind:value={engineProvider}
+                options={AGENT_PROVIDERS.map((p) => ({ value: p.id, label: p.label }))}
+                label="AI provider"
+                onchange={() => (engineModel = modelOptions[0] ?? "")}
+              />
+              <Dropdown
+                bind:value={engineModel}
+                options={modelOptions.map((m) => ({ value: m, label: m }))}
+                label="AI model"
+                disabled={!modelOptions.length}
+              />
+              <button type="button" class="btn" disabled={!engineChanged} onclick={askApply}>apply</button>
             </div>
             {#if confirmOpen}
               <div class="scrim" role="presentation" onclick={() => (confirmOpen = false)}>
                 <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="engine-confirm-title" tabindex="-1" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.key === "Escape" && (confirmOpen = false)}>
-                  <h3 id="engine-confirm-title">Change the AI engine?</h3>
+                  <h3 id="engine-confirm-title">Change the AI model?</h3>
                   <p>Changing to <strong>{engineProvider}</strong> / <strong>{engineModel}</strong> resets the terminal and starts a new session. The current session cannot be resumed.</p>
                   <div class="actions">
                     <button type="button" class="btn" onclick={() => (confirmOpen = false)}>cancel</button>
-                    <button type="button" class="btn" onclick={() => { confirmOpen = false; applyEngine(); }}>apply and reset</button>
+                    <button type="button" class="btn solid" onclick={() => { confirmOpen = false; applyEngine(); }}>apply and reset</button>
                   </div>
                 </div>
               </div>
@@ -199,44 +210,56 @@
             {#if engineError}<p class="status error">{engineError}</p>{/if}
             {#if engineDone}<p class="status">{engineDone}</p>{/if}
             <div class="meta">
-              <span class="k">last tool</span>
-              <span>{activity[engine.folder]?.last_tool ?? "none this month"}</span>
+              <span class="lastran">{activity[engine.folder]?.last_tool ? `${activity[engine.folder]?.last_tool} - last ran` : "none this month"}</span>
+            </div>
+            <div class="row">
+              <span class="zone-tag">DANGER ZONE</span>
+              <button type="button" class="btn danger" onclick={() => stopAgent("hippo")}>stop</button>
             </div>
           {/if}
         </div>
         {#each active as agent (agent.id)}
           <div class="card">
-            <div class="head">
+            <div class="title-row">
               {#if CARD_FACES.find((f) => f.id === agent.character)}
-                <img src={CARD_FACES.find((f) => f.id === agent.character)?.url} alt="" class="pic" />
+                <img src={CARD_FACES.find((f) => f.id === agent.character)?.url} alt="" class="pic big" />
               {:else}
-                <div class="pic letter">{agent.name.slice(0, 1).toUpperCase()}</div>
+                <div class="pic big letter">{agent.name.slice(0, 1).toUpperCase()}</div>
               {/if}
-              <span class="name">{agent.name}</span>
+              <div class="title-text">
+                <div class="title-line">
+                  <span class="title">{agent.name}</span>
+                  <span class="tok">{(folderTokens[agent.folder] ?? 0).toLocaleString("en-US")} tok</span>
+                </div>
+                <span class="subtitle">{providerLabel(agent.provider)}</span>
+                <span class="subtitle">{agent.model || "default"}</span>
+              </div>
             </div>
             <div class="dir">{agent.folder}</div>
             <div class="meta">
-              <span class="k">last tool</span>
-              <span>{activity[agent.folder]?.last_tool ?? "none this month"}</span>
-              <span class="tok">{(folderTokens[agent.folder] ?? 0).toLocaleString("en-US")} tok</span>
+              <span class="lastran">{activity[agent.folder]?.last_tool ? `${activity[agent.folder]?.last_tool} - last ran` : "none this month"}</span>
             </div>
-            <div class="meta">
-              <span class="k">last reply</span>
-              <span>{activity[agent.folder]?.last_reply ? new Date(activity[agent.folder]?.last_reply ?? "").toLocaleString() : "none this month"}</span>
-            </div>
-            <div class="meta"><span class="k">model</span><span class="model">{agent.model || "default"}</span></div>
             <div class="row">
-              <button type="button" class="btn" onclick={() => setArchived(agent.id, true)}>archive</button>
+              <span class="zone-tag">DANGER ZONE</span>
+              <div class="row-btns">
+              <button type="button" class="btn danger" onclick={() => stopAgent(agent.id)}>stop</button>
+              {#if confirmDelete === agent.id}
+                <button type="button" class="btn confirm" onclick={() => { removeAgent(agent.id); confirmDelete = null; }}>confirm delete</button>
+              {:else}
+                <button type="button" class="btn danger" onclick={() => (confirmDelete = agent.id)}>delete</button>
+              {/if}
+              <button type="button" class="btn danger" onclick={() => setArchived(agent.id, true)}>archive</button>
+              </div>
             </div>
           </div>
         {/each}
-        <p class="sigma">Σ {(budget.used.app.monthly + agentTokens).toLocaleString("en-US")} tok <span>this month · all agents and the app</span></p>
+        <p class="sigma">Σ {(budget.used.app.monthly + agentTokens).toLocaleString("en-US")} tok <span>burned this month</span></p>
       </div>
     </div>
 
     {#if hidden.length > 0}
-      <div class="sec">
-        <h3>ARCHIVED <em>{hidden.length}</em></h3>
+      <details class="sec fold">
+        <summary><h3>ARCHIVED <em>{hidden.length}</em></h3></summary>
         {#each hidden as agent (agent.id)}
           <div class="arch">
             {#if CARD_FACES.find((f) => f.id === agent.character)}
@@ -251,11 +274,11 @@
             <button type="button" class="btn solid" onclick={() => setArchived(agent.id, false)}>REOPEN</button>
           </div>
         {/each}
-      </div>
+      </details>
     {/if}
 
     <div class="sec">
-      <h3>DIRECTORIES</h3>
+      <h3>DIRECTORIES & ISSUES</h3>
       {#if directories.length === 0}
         <p class="muted">No agent folders yet.</p>
       {:else}
@@ -264,23 +287,10 @@
             <li class="folder">{folder}</li>
           {/each}
         </ul>
-      {/if}
-    </div>
-
-    <div class="sec">
-      <h3>ISSUES</h3>
-      {#if directories.length === 0}
-        <p class="muted">Add an agent to pick a folder.</p>
-      {:else}
         <div class="picker">
-          <select bind:value={selectedFolder} aria-label="Folder">
-            {#each directories as folder (folder)}
-              <option value={folder}>{folder}</option>
-            {/each}
-          </select>
+          <Dropdown bind:value={selectedFolder} options={directories.map((f) => ({ value: f, label: f }))} label="Folder" />
           <button type="button" class="btn solid" onclick={() => fetchIssues(selectedFolder)}>Fetch issues</button>
         </div>
-        <h4>ISSUES FETCHED</h4>
         {#if current?.error}
           <p class="status error">{current.error}</p>
         {:else if current?.list && current.list.length > 0}
@@ -289,48 +299,25 @@
               <li>#{issue.number} {issue.title}</li>
             {/each}
           </ul>
+        {:else if current?.list}
+          <p class="status error">No issues were fetched for this folder. It may have no open issues, or gh could not reach its GitHub repo.</p>
         {:else}
-          <p class="muted">No issues fetched yet</p>
+          <p class="muted">Pick a folder and press Fetch issues.</p>
         {/if}
       {/if}
     </div>
 
-    <div class="sec">
-      <h3>WATCHERS</h3>
-      {#if watchers.length === 0}
-        <p class="muted">No background watchers are set up.</p>
-      {:else}
-        {#each watchers as watcher, i (i)}
-          <div class="watch">
-            <i class="dot {watcher.status}"></i>
-            <span>{watcher.name}</span>
-            <small class="status {watcher.status}">{watcher.status}{watcher.last_event ? `, last ${watcher.last_event}` : ""}</small>
-          </div>
-        {/each}
-      {/if}
-    </div>
-
-    <div class="sec">
-      <h3>SYSTEM</h3>
-      <div class="tiles">
-        <div class="tile"><span>CPU</span><b>{system ? `${system.cpu}%` : "…"}</b></div>
-        <div class="tile"><span>RAM</span><b>{system ? `${system.ram}%` : "…"}</b></div>
-        <div class="tile"><span>SWAP</span><b>{system ? `${system.swap}%` : "…"}</b></div>
-        <div class="tile"><span>DISK</span><b>{system ? `${system.disk}%` : "…"}</b></div>
-        <div class="tile"><span>FREE</span><b>{system ? `${system.disk_free} GB` : "…"}</b></div>
-      </div>
-    </div>
   {/if}
 </section>
 
 <style>
   .monitor {
-    --hippo-purple: #6a58e0;
+    --hippo-purple: var(--color-accent);
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
     padding: var(--space-3);
-    font-family: var(--font-mono);
+    font-family: var(--font-ui);
     font-size: var(--font-size-xs);
     color: var(--color-md-text);
     overflow-y: auto;
@@ -349,8 +336,8 @@
     display: flex;
     align-items: center;
     gap: var(--space-2);
-    font-family: "Press Start 2P", monospace;
-    font-size: 8px;
+    font-family: var(--font-ui);
+    font-size: var(--font-size-tag);
     font-weight: 400;
     color: var(--hippo-purple);
   }
@@ -358,7 +345,7 @@
   h3 em {
     margin-left: auto;
     font-style: normal;
-    font-family: var(--font-mono);
+    font-family: var(--font-ui);
     font-size: var(--font-size-xs);
     color: var(--color-md-text-muted);
   }
@@ -383,16 +370,17 @@
 
   .hero {
     border: 1px solid var(--hippo-purple);
-    border-radius: 8px;
+    border-radius: var(--radius-sm);
     padding: var(--space-3);
     display: flex;
     flex-direction: column;
     gap: var(--space-1);
-    background: linear-gradient(135deg, rgba(106, 88, 224, 0.22), rgba(106, 88, 224, 0.04));
+    background: var(--color-accent);
+    color: var(--color-accent-on);
   }
 
   .big {
-    font-size: 26px;
+    font-size: var(--font-size-xl);
     font-weight: 700;
     letter-spacing: -0.5px;
   }
@@ -405,7 +393,7 @@
 
   .mini {
     border: 1px solid var(--color-md-text-muted);
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
     padding: var(--space-2);
     display: flex;
     flex-direction: column;
@@ -414,30 +402,6 @@
 
   h3 em {
     margin-left: auto;
-  }
-
-  .tile {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    border: 1px solid var(--color-md-text-muted);
-    border-radius: 4px;
-    padding: var(--space-2);
-  }
-
-  .tile span {
-    font-size: 9px;
-    color: var(--color-md-text-muted);
-  }
-
-  .tile b {
-    font-weight: 400;
-  }
-
-  .tiles {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--space-1);
   }
 
   .cards {
@@ -450,15 +414,15 @@
   .card {
     background: var(--color-md-card);
     color: var(--color-md-card-text);
-    border: 2px solid var(--hippo-purple);
-    border-top-width: 2px;
-    border-radius: 0 0 8px 8px;
-    padding: 6px 8px;
-    box-shadow: 2px 2px 0 var(--color-md-shadow);
+    border: 2px solid var(--color-accent);
+    border-top-width: 8px;
+    border-radius: 0 0 2px 2px;
+    padding: 16px 18px;
+    box-shadow: none;
     display: flex;
     flex-direction: column;
-    gap: 3px;
-    font-size: 10px;
+    gap: var(--space-2);
+    font-size: var(--font-size-tag);
   }
 
   .head {
@@ -467,14 +431,11 @@
     gap: 6px;
   }
 
-  .head .name {
-    font-size: 11px;
-    font-weight: 700;
-  }
-
-  .head .count,
-  .meta .tok {
+  /* Token count sits on the name line, at the right edge. */
+  .title-line .tok {
     margin-left: auto;
+    flex: none;
+    font-size: var(--font-size-tag);
   }
 
   .dir {
@@ -484,21 +445,21 @@
 
   .meta {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 6px;
+    gap: var(--space-1) var(--space-2);
   }
 
-  .meta .k,
-  .picker .k {
-    opacity: 0.6;
-  }
-
+  /* The "tokens this month" line: no background or border, centred, a bit bigger. */
   .sigma {
     margin: 0;
-    padding: 4px 8px;
-    border: 1px solid var(--color-md-text-muted);
-    border-radius: 6px;
-    font-size: 10px;
+    text-align: center;
+    padding: 8px 12px;
+    background: transparent;
+    color: var(--color-md-text);
+    border: 0;
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-sm);
   }
 
   .sigma span {
@@ -518,7 +479,7 @@
   .face {
     width: 36px;
     height: 36px;
-    border-radius: 50%;
+    border-radius: 0;
     background: var(--color-md-card);
     border: 2px solid var(--hippo-purple);
     display: flex;
@@ -550,7 +511,7 @@
   }
 
   .note {
-    font-size: 9px;
+    font-size: var(--font-size-tag);
     color: var(--color-md-text-muted);
   }
 
@@ -562,13 +523,6 @@
   }
 
 
-  h4 {
-    margin: 0;
-    font-family: "Press Start 2P", monospace;
-    font-size: 7px;
-    font-weight: 400;
-    color: var(--hippo-purple);
-  }
 
   .pic.letter {
     display: flex;
@@ -589,60 +543,114 @@
   }
 
   .name {
-    font-size: 13px;
+    font-size: var(--font-size-sm);
     font-weight: 700;
   }
 
   .sub {
-    font-size: 10px;
+    font-size: var(--font-size-tag);
     color: var(--color-md-card-text);
     opacity: 0.7;
   }
 
   .row {
     display: flex;
+    justify-content: space-between;
     gap: var(--space-2);
     align-items: center;
   }
 
   .k {
     width: 56px;
-    font-size: 9px;
+    font-size: var(--font-size-tag);
     opacity: 0.7;
   }
 
   .badge {
-    margin-left: auto;
+    flex: none;
     background: var(--hippo-purple);
     color: var(--color-md-card);
-    font-size: 8px;
+    font-size: var(--font-size-tag);
     padding: 3px 6px;
-    border-radius: 3px;
+    border-radius: var(--radius-sm);
   }
 
+  /* Directory names wrap onto more lines by default, never cut off. */
   .folder {
+    white-space: normal;
     overflow-wrap: anywhere;
   }
 
   .desc {
-    font-size: 10px;
+    font-size: var(--font-size-tag);
     opacity: 0.85;
   }
 
   .btn {
-    border: 2px solid var(--hippo-purple);
-    border-radius: 4px;
-    padding: 4px 9px;
+    height: var(--layout-control-h);
+    padding: 0 var(--space-3);
+    border: 1px solid var(--color-md-border);
+    border-radius: var(--radius-sm);
     background: var(--color-md-card);
     color: var(--color-md-card-text);
     font: inherit;
-    font-size: 10px;
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    white-space: nowrap;
+    box-shadow: none;
     cursor: pointer;
   }
 
+  .btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
   .btn.solid {
-    background: var(--hippo-purple);
-    color: var(--color-md-card);
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+    color: var(--color-accent-on);
+  }
+
+  /* Card buttons (stop, delete, archive): solid red, white text. */
+  .btn.danger {
+    background: var(--color-md-danger);
+    border-color: var(--color-md-danger);
+    color: #ffffff;
+  }
+
+  /* Confirm delete: solid orange, white text. */
+  .btn.confirm {
+    background: var(--color-pending);
+    border-color: var(--color-pending);
+    color: #ffffff;
+  }
+
+  .row-btns {
+    display: flex;
+    gap: var(--space-2);
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  /* The bottom strip of a card is red (the danger colour). */
+  .row {
+    background: var(--color-md-danger);
+    padding: 10px 18px;
+    /* Reaches past the card's 2px accent border so the red covers it at the sides and bottom. */
+    margin: 0 -20px -18px;
+  }
+
+  /* DANGER ZONE as a white badge with bold red text. */
+  .zone-tag {
+    background: #ffffff;
+    color: var(--color-md-danger);
+    border: 1px solid #ffffff;
+    font-size: var(--font-size-tag);
+    font-weight: 700;
+    padding: 3px 6px;
+    border-radius: var(--radius-sm);
   }
 
   .arch {
@@ -650,7 +658,7 @@
     gap: var(--space-2);
     align-items: center;
     border: 1px dashed var(--color-md-text-muted);
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
     padding: var(--space-2);
   }
 
@@ -659,8 +667,59 @@
     min-width: 0;
   }
 
-  .card.main {
-    border-top-width: 6px;
+  /* Title block: face and name big, provider and model in smaller lines under them. */
+  .title-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .title-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+  }
+
+  /* Name and MAIN badge on one line, the badge right after the name. */
+  .title-line {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 0;
+  }
+
+  .title {
+    min-width: 0;
+    font-size: var(--font-size-md);
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .subtitle {
+    font-size: var(--font-size-xs);
+    color: var(--color-md-text-subtle);
+  }
+
+  .pic.big {
+    width: 40px;
+    height: 40px;
+  }
+
+  /* The last command sits in an accent pill, as in the bottom-bar cards. */
+  .lastran {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    background: var(--color-accent);
+    color: var(--color-md-card);
+    padding: 4px 6px;
+    border-radius: var(--radius-sm);
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .pic {
@@ -673,65 +732,32 @@
     gap: var(--space-2);
   }
 
-  .picker select {
-    flex: 1;
-    min-width: 0;
-    font: inherit;
-    padding: 5px;
-    background: var(--color-md-card);
-    color: var(--color-md-card-text);
-    border: 2px solid var(--hippo-purple);
-    border-radius: 4px;
-  }
 
   .net {
     border: 1px solid var(--color-md-text-muted);
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
     padding: var(--space-2);
   }
 
-  .watch {
-    display: flex;
-    gap: var(--space-2);
-    align-items: center;
-    padding: var(--space-1) 0;
-    border-bottom: 1px solid var(--color-md-text-muted);
+  /* Collapsible groups (archived): click the heading to open or close. No colour or border. */
+  .fold > summary {
+    cursor: pointer;
+    list-style: revert;
   }
 
-  .watch small {
-    margin-left: auto;
-    font-size: 9px;
+  .fold > summary h3 {
+    display: inline;
   }
 
-  .dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--color-md-text-muted);
-    flex: none;
-  }
-
-  .dot.running,
-  .status.running {
-    color: var(--hippo-purple);
-    background-color: var(--hippo-purple);
-  }
-
-  .status {
-    color: var(--color-md-text-muted);
-  }
-
-  .status.error,
-  .dot.error {
+  .status.error {
     color: var(--color-md-danger);
   }
-
-  .dot.error {
-    background: var(--color-md-danger);
-  }
-  .scrim { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.45); display: grid; place-items: center; z-index: 1000; }
-  .dialog { background: var(--surface, #fff); color: inherit; border-radius: 10px; padding: 20px; max-width: 420px; width: calc(100% - 32px); box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35); }
-  .dialog h3 { margin: 0 0 8px; font-size: 16px; }
-  .dialog p { margin: 0 0 16px; line-height: 1.45; }
-  .dialog .actions { display: flex; justify-content: flex-end; gap: 8px; }
+  .scrim { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); display: grid; place-items: center; z-index: 1000; }
+  /* Dark confirm box, the app's dark palette, with a warning bar on its left edge. */
+  .dialog { background: var(--color-md-surface); color: var(--color-md-text); border: 1px solid var(--color-md-border); border-left: 3px solid var(--color-accent); border-radius: var(--radius-sm); padding: var(--space-4); max-width: 420px; width: calc(100% - 32px); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); }
+  .dialog h3 { margin: 0 0 var(--space-2); font-size: var(--font-size-md); font-weight: 600; color: var(--color-md-text); }
+  .dialog p { margin: 0 0 var(--space-4); font-size: var(--font-size-sm); line-height: 1.45; color: var(--color-md-text-muted); }
+  .dialog p strong { color: var(--color-md-text); font-weight: 600; }
+  .dialog .actions { display: flex; justify-content: flex-end; gap: var(--space-2); }
+  .dialog .btn.solid { background: var(--color-md-accent); color: var(--color-md-accent-on); border-color: var(--color-md-accent); }
 </style>
