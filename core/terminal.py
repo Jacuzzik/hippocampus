@@ -200,6 +200,13 @@ class Terminals:
         if proc.poll() is not None or self.procs.get(agent, (None, None))[1] != master:
             self._log_event(agent, "remote control skipped: CLI stopped before it was sent")
             return
+        # A busy Claude queues typed text without submitting it, so wait until the terminal is Idle (no output for 10 seconds).
+        idle_deadline = time.time() + REMOTE_CONTROL_IDLE_MAX_S
+        while time.time() < idle_deadline and self.info(agent)["status"] == "Working":
+            if proc.poll() is not None or self.procs.get(agent, (None, None))[1] != master:
+                self._log_event(agent, "remote control skipped: CLI stopped before it was sent")
+                return
+            time.sleep(2)
         try:
             self.send_line(agent, f"/remote-control hipcmps-{agent}")
             self._log_event(agent, "remote control sent")
@@ -409,6 +416,8 @@ BRIEFING_WAIT_MAX_S = 60.0
 SUBMIT_DELAY_S = 0.5
 # A Claude terminal gets /remote-control this long after it first draws.
 REMOTE_CONTROL_DELAY_S = 15.0
+# How long to wait for an idle Claude terminal before typing /remote-control anyway.
+REMOTE_CONTROL_IDLE_MAX_S = 900.0
 
 
 def _command(agent: str, provider: str, model: str = "", briefing: str = "", vault: str | None = None, block_tools: bool = False, resume: bool = False) -> list[str]:
