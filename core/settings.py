@@ -79,6 +79,28 @@ ENGINE_PROVIDERS = (
 )
 
 
+# The models each provider offers in the Monitor's engine switch. Mirrors AGENT_MODELS in app/ui/control/model.ts;
+# tests/core/test_settings.py fails if the two drift apart. An empty list means the provider offers no model to pick.
+ENGINE_MODELS: dict[str, tuple[str, ...]] = {
+    "claude": ("claude-fable-5-1", "claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5"),
+    "codex": ("gpt-6.1-sol", "gpt-6.1-terra", "gpt-6-luna", "gpt-5.5", "gpt-5.4", "gpt-5.3-codex"),
+    "antigravity": ("gemini-3.8-flash-high", "gemini-3.8-flash-medium", "gemini-3.8-flash-low", "claude-sonnet-4-6", "claude-opus-4-6-thinking", "gpt-oss-120b-medium"),
+    "gemini-cli": ("gemini-3.1-pro-preview", "gemini-3-flash-preview", "gemini-2.5-pro", "gemini-2.5-flash"),
+    "ollama": ("qwen2.5:1.5b",),
+    "openai": ("gpt-6.1-sol", "gpt-6.1-terra", "gpt-6-luna", "gpt-5.5", "gpt-5.4", "gpt-5.4-mini", "gpt-5.4-nano"),
+    "xai": ("grok-4.6", "grok-4.5", "grok-4.3", "grok-latest"),
+    "moonshot": ("kimi-k3", "kimi-k2.6", "moonshot-v1-8k"),
+    "gemini": ("gemini-3.1-pro-preview", "gemini-3.1-flash-lite", "gemini-3-flash-preview", "gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite"),
+    "qwen": ("qwen3.8-max", "qwen3.7-plus", "qwen3.8-flash"),
+    "deepseek": ("deepseek-v4-pro", "deepseek-flash"),
+    "mistral": ("mistral-large-3", "mistral-small-4", "codestral-latest"),
+    "groq": ("llama-3.3-70b-versatile", "llama-3.1-8b-instant", "openai/gpt-oss-120b"),
+    "openrouter": ("anthropic/claude-sonnet-4.5", "openai/gpt-4o", "google/gemini-2.5-pro"),
+    "lmstudio": (),
+    "vllm": (),
+}
+
+
 def _provider(value: object) -> str:
     if value not in ENGINE_PROVIDERS:
         raise ValueError(f"ai.provider must be one of: {', '.join(ENGINE_PROVIDERS)}")
@@ -194,6 +216,11 @@ def save_engine(provider: str, model: str, path: Path = SETTINGS_PATH) -> None:
         raise ValueError(f"{provider} is not a provider in this app. Pick one of: {', '.join(ENGINE_PROVIDERS)}")
     if any(ch in model for ch in '"\\\n\r'):
         raise ValueError(f"{model!r} is not a valid model name")
+    offered = ENGINE_MODELS.get(provider, ())
+    if model not in offered:
+        if not offered:
+            raise ValueError(f"{provider} has no models in this app to pick from")
+        raise ValueError(f"{model} is not a model {provider} offers here. Pick one of: {', '.join(offered)}")
     section, out = "", []
     for line in _read(path).splitlines():
         stripped = line.strip()

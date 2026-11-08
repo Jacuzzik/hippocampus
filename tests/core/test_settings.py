@@ -69,3 +69,33 @@ def test_save_vault_writes_the_path_and_keeps_other_sections(tmp_path: Path) -> 
     assert data["vault"] == {"path": str(folder)}
     assert data["ai"] == {"provider": "claude"}
     assert load_settings(path).vault == folder.resolve()
+
+
+def test_engine_switch_refuses_unknown_provider_and_model(tmp_path: Path) -> None:
+    from core.settings import save_engine
+
+    path = tmp_path / "settings.toml"
+    path.write_text('[ai]\nprovider = "claude"\nclaude_model = "claude-sonnet-5-5"\n', encoding="utf-8")
+    before = path.read_text(encoding="utf-8")
+    with pytest.raises(ValueError, match="not a provider"):
+        save_engine("nope", "x", path)
+    with pytest.raises(ValueError, match="not a model"):
+        save_engine("claude", "made-up-model", path)
+    with pytest.raises(ValueError, match="no models"):
+        save_engine("vllm", "anything", path)
+    assert path.read_text(encoding="utf-8") == before
+    save_engine("claude", "claude-haiku-5-5", path)
+    assert tomllib.loads(path.read_text(encoding="utf-8"))["ai"]["claude_model"] == "claude-haiku-5-5"
+
+
+def test_engine_models_match_the_app_list() -> None:
+    import re
+
+    from core.settings import ENGINE_MODELS
+
+    source = (Path(__file__).resolve().parents[2] / "app" / "ui" / "control" / "model.ts").read_text(encoding="utf-8")
+    block = source.split("export const AGENT_MODELS", 1)[1].split("\n};", 1)[0]
+    listed: dict[str, tuple[str, ...]] = {}
+    for key, items in re.findall(r'^\s*"?([\w.-]+)"?:\s*\[(.*?)\],?\s*$', block, re.M):
+        listed[key] = tuple(re.findall(r'"([^"]*)"', items))
+    assert listed == ENGINE_MODELS
