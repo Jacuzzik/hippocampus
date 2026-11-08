@@ -335,7 +335,7 @@
             </span>
           </span>
           <span class="row">
-            <span class="val">{live[agent.id]?.model || agent.model || "No model set"}</span>
+            <span class="val">{agent.model || live[agent.id]?.model || "No model set"}</span>
           </span>
           <span class="row wide">
             <span class="val cmd">{cmdOf(agent.id)}</span>
