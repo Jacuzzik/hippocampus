@@ -5,6 +5,7 @@ Claude uses the agent's Claude Code session (ai/cli_sessions.py), so the termina
 
 import codecs
 import fcntl
+import json
 import os
 import pty
 import shutil
@@ -17,7 +18,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from ai import cli_sessions
-from core.settings import ROOT
+from core.settings import HIVE_DIR, ROOT
 from tools.vault_mcp import VAULT_TOOLS, mcp_config
 
 # How much recent output a terminal keeps for replay on reopen.
@@ -49,6 +50,22 @@ class Terminals:
         self.lock = threading.Lock()
         # Agents whose terminal the app stopped on purpose (no error line for those).
         self.stopping: set[str] = set()
+        # Agents whose old CLI was replaced by a new start, so its late exit is not shown.
+        self.replaced: set[str] = set()
+        # The last start or stop of each agent's terminal: (time, "started" or "stopped"), shown on the Monitor tab.
+        self.events: dict[str, tuple[float, str]] = {}
+
+    def _log_event(self, agent: str, what: str) -> None:
+        """Remember and append one start or stop of an agent's terminal, to agent-events.jsonl beside the screens."""
+        now = time.time()
+        self.events[agent] = (now, what)
+        if self.screen_dir is None:
+            return
+        try:
+            with (self.screen_dir.parent / "agent-events.jsonl").open("a", encoding="utf-8") as log:
+                log.write(json.dumps({"ts": now, "agent": agent, "event": what}) + "\n")
+        except OSError:
+            pass
 
     def start(
         self,
@@ -60,6 +77,7 @@ class Terminals:
         folder: str | None = None,
         briefing: str = "",
         vault: str | None = None,
+        block_tools: bool = False,
     ) -> dict[str, Any]:
         with self.lock:
             running = self.procs.get(agent)
@@ -69,12 +87,14 @@ class Terminals:
                 if changed:
                     # The provider or model was changed: stop the old CLI so the new one starts in its place.
                     self.stopping.add(agent)
+                    # The old CLI's exit is not the new session's: its pump must not report it.
+                    self.replaced.add(agent)
                     running[0].terminate()
                     try:
-                        running[0].wait(timeout=5)
+                        running[0].wait(timeout=1)
                     except subprocess.TimeoutExpired:
                         running[0].kill()
-                    os.close(running[1])
+                    # Its pump closes the pty when the old CLI exits; closing it here too reused a number for the new one.
                     self.procs.pop(agent, None)
                     running = None
             if running is not None and running[0].poll() is None:
@@ -82,11 +102,20 @@ class Terminals:
                 self._resize(running[1], rows + 1, cols)
                 self._resize(running[1], rows, cols)
                 return {"running": True, "replay": self._replay(agent)}
+            previous = self.specs.get(agent)
+            if previous and (previous[0] != provider or (model and previous[1] != model)):
+                # A new engine starts a new session: its screen starts blank, not with the old session's output.
+                self.screens.pop(agent, None)
+                if self.screen_dir is not None:
+                    (self.screen_dir / f"{agent}.bin").unlink(missing_ok=True)
             # A changed provider or model starts a new session; the same one keeps its history.
             # A start with no model (the main terminal) does not count as a change.
             if model:
                 cli_sessions.set_engine_for(agent, f"{provider} {model}")
-            argv = _command(agent, provider, model, self._write_briefing(agent, briefing), vault)
+            # An agent that has started on this engine before resumes its session in every CLI, not only Claude Code.
+            resume = bool(cli_sessions.get(agent).get("started"))
+            brief_path = self._write_briefing(agent, briefing)
+            argv = _command(agent, provider, model, brief_path, vault, block_tools, resume)
             master, slave = pty.openpty()
             self._resize(slave, rows, cols)
             try:
@@ -111,19 +140,71 @@ class Terminals:
                 raise RuntimeError(f"Could not start {argv[0]}: {cause}") from cause
             finally:
                 os.close(slave)
-            if argv[1:2] == ["--session-id"] or argv[1:2] == ["--resume"]:
+            if provider != "claude" or argv[1:2] == ["--session-id"] or argv[1:2] == ["--resume"]:
                 cli_sessions.mark_started(agent)
             self.procs[agent] = (proc, master)
-            self.specs[agent] = (provider, model or (self.specs.get(agent, ("", ""))[1] if self.specs.get(agent, ("", ""))[0] == provider else ""))
+            # Only Claude Code takes the briefing as a flag. Every other CLI gets a short first message pointing at the briefing file.
+            if brief_path and provider != "claude" and provider not in OPENCODE_FOR:
+                threading.Thread(target=self._send_briefing, args=(agent, proc, master, brief_path), daemon=True).start()
+            # Claude terminals start Remote Control, so the agent can be reached from the Claude apps.
+            if provider == "claude":
+                threading.Thread(target=self._send_remote_control, args=(agent, proc, master), daemon=True).start()
+            self.specs[agent] =(provider, model or (self.specs.get(agent, ("", ""))[1] if self.specs.get(agent, ("", ""))[0] == provider else ""))
             # The briefing is kept out of the shown command: it is long, and it is text, not a flag to read.
             self.argvs[agent] = argv[: argv.index("--append-system-prompt-file")] if "--append-system-prompt-file" in argv else argv
             self.folders[agent] = folder or ""
             self.started_at[agent] = time.time()
             self.last_output.pop(agent, None)
+            self._log_event(agent, "started")
             # The earlier screen (kept across restarts) is shown first; the new output follows it.
             replay = self._replay(agent)
         threading.Thread(target=self._pump, args=(agent, proc, master), daemon=True).start()
         return {"running": True, "replay": replay}
+
+    def _send_briefing(self, agent: str, proc: subprocess.Popen, master: int, brief_path: str) -> None:
+        """Types the briefing pointer into the CLI once its screen has drawn and gone quiet, so the input is not lost in a half-started screen. Skipped if that terminal has stopped or been replaced."""
+        started = time.time()
+        deadline = started + BRIEFING_WAIT_MAX_S
+        while time.time() < deadline:
+            if proc.poll() is not None or self.procs.get(agent, (None, None))[1] != master:
+                self._log_event(agent, "briefing pointer skipped: CLI stopped before it was sent")
+                return
+            first = self.last_output.get(agent)
+            if first is not None and time.time() - started >= BRIEFING_DELAY_S:
+                break
+            time.sleep(0.5)
+        # Past the deadline the pointer is still sent if the CLI is running, rather than dropped without a trace.
+        if proc.poll() is not None or self.procs.get(agent, (None, None))[1] != master:
+            self._log_event(agent, "briefing pointer skipped: CLI stopped before it was sent")
+            return
+        message = f"Your briefing is in {brief_path}. Read it now and follow it for this session."
+        try:
+            os.write(master, message.encode("utf-8"))
+            time.sleep(SUBMIT_DELAY_S)
+            os.write(master, b"\r")
+            self._log_event(agent, "briefing pointer sent")
+        except OSError as cause:
+            self._log_event(agent, f"briefing pointer failed: {cause}")
+
+    def _send_remote_control(self, agent: str, proc: subprocess.Popen, master: int) -> None:
+        """Types /remote-control hipcmps-<agent> into a Claude terminal once it has drawn. Skipped if that terminal has stopped or been replaced."""
+        started = time.time()
+        deadline = started + BRIEFING_WAIT_MAX_S
+        while time.time() < deadline:
+            if proc.poll() is not None or self.procs.get(agent, (None, None))[1] != master:
+                self._log_event(agent, "remote control skipped: CLI stopped before it was sent")
+                return
+            if self.last_output.get(agent) is not None and time.time() - started >= REMOTE_CONTROL_DELAY_S:
+                break
+            time.sleep(0.5)
+        if proc.poll() is not None or self.procs.get(agent, (None, None))[1] != master:
+            self._log_event(agent, "remote control skipped: CLI stopped before it was sent")
+            return
+        try:
+            self.send_line(agent, f"/remote-control hipcmps-{agent}")
+            self._log_event(agent, "remote control sent")
+        except (OSError, RuntimeError) as cause:
+            self._log_event(agent, f"remote control failed: {cause}")
 
     def _write_briefing(self, agent: str, text: str) -> str:
         """The briefing is written to a file and passed by path, so its text is not on the command line or in the shown command."""
@@ -139,6 +220,12 @@ class Terminals:
         if running is None or running[0].poll() is not None:
             raise RuntimeError("The terminal is not running. Open it again.")
         os.write(running[1], data.encode("utf-8"))
+
+    def send_line(self, agent: str, text: str) -> None:
+        """Types the text, then presses Enter as its own write. A TUI such as Claude Code reads text and a trailing Enter in one write as a paste, so the Enter is ignored and the text sits in the input bar unsent."""
+        self.write(agent, text)
+        time.sleep(SUBMIT_DELAY_S)
+        self.write(agent, "\r")
 
     def resize(self, agent: str, rows: int, cols: int) -> None:
         running = self.procs.get(agent)
@@ -178,6 +265,8 @@ class Terminals:
         folder = self.folders.get(agent)
         if found is None and folder:
             found = cli_sessions.codex_last_tool(folder)
+        if found is None and folder:
+            found = cli_sessions.opencode_last_tool(folder)
         self.last_cmd_cache[agent] = (time.time(), found)
         return found
 
@@ -214,6 +303,11 @@ class Terminals:
                     break
                 if not chunk:
                     break
+                with self.lock:
+                    stale = self.procs.get(agent, (None, None))[0] is not proc
+                if stale:
+                    # The CLI this output came from was replaced by a model switch: its output must not reach the new screen.
+                    continue
                 self.last_output[agent] = time.time()
                 screen = self.screens.setdefault(agent, bytearray())
                 screen += chunk
@@ -228,12 +322,20 @@ class Terminals:
             with self.lock:
                 if self.procs.get(agent, (None, None))[0] is proc:
                     del self.procs[agent]
+                    self._log_event(agent, "stopped")
             stopped_by_us = agent in self.stopping
             self.stopping.discard(agent)
+            with self.lock:
+                superseded = agent in self.replaced and self.procs.get(agent, (None, None))[0] is not proc
+                if superseded:
+                    self.replaced.discard(agent)
+            if superseded:
+                return
             if code != 0 and not stopped_by_us:
                 # Says what a failed exit usually means, so the terminal shows an error message, not just a code.
                 self.emit({"event": "terminal", "agent": agent, "data": f"\r\nError: the CLI stopped with code {code}. Check that it is installed and signed in, then open it again.\r\n"})
-            self.emit({"event": "terminal", "agent": agent, "exit": code})
+            # A stop we asked for is reported as stopped, not as a failed exit code.
+            self.emit({"event": "terminal", "agent": agent, "exit": code, "stopped": stopped_by_us})
 
 
 # API providers run in OpenCode's terminal UI: its provider id, and the environment variable it reads the key from.
@@ -296,14 +398,30 @@ def provider_env(provider: str) -> dict[str, str]:
     return {env_name: key} if key else {}
 
 
-def _command(agent: str, provider: str, model: str = "", briefing: str = "", vault: str | None = None) -> list[str]:
+# Tools a blocked agent may not use in Claude Code: no shell, no file writes, no web.
+BLOCKED_CLAUDE_TOOLS = ("Bash", "Write", "Edit", "NotebookEdit", "WebFetch", "WebSearch", "mcp__vault")
+
+
+# The briefing pointer is typed in once a CLI has printed and had BRIEFING_DELAY_S to draw its screen. It does not wait for quiet: TUIs such as OpenCode keep redrawing, so quiet never came and the pointer was dropped.
+BRIEFING_DELAY_S = 6.0
+BRIEFING_WAIT_MAX_S = 60.0
+# Gap between typing a message and pressing Enter, so the CLI reads them as typing and not as one paste.
+SUBMIT_DELAY_S = 0.5
+# A Claude terminal gets /remote-control this long after it first draws.
+REMOTE_CONTROL_DELAY_S = 15.0
+
+
+def _command(agent: str, provider: str, model: str = "", briefing: str = "", vault: str | None = None, block_tools: bool = False, resume: bool = False) -> list[str]:
+    # resume: the agent already ran on this engine, so its CLI continues the last session in its folder (each CLI scopes "last" to the working folder).
     if provider in OPENCODE_FOR:
         binary = shutil.which("opencode")
         if binary is None:
             raise RuntimeError("opencode is not installed. Install OpenCode, then open this terminal again.")
         if not model:
             raise RuntimeError(f"Pick a model for {provider} first.")
-        return [binary, "-m", f"{OPENCODE_FOR[provider][0]}/{model}"]
+        # OpenCode takes the briefing pointer as its first prompt: typed input sent to its screen was not taken.
+        pointer = ["--prompt", f"Your briefing is in {briefing}. Read it now and follow it for this session."] if briefing else []
+        return [binary, *(["--continue"] if resume else []), "-m", f"{OPENCODE_FOR[provider][0]}/{model}", *pointer]
     name = CLI_FOR.get(provider)
     if name is None:
         raise RuntimeError(f'The terminal does not run "{provider}" yet.')
@@ -311,10 +429,21 @@ def _command(agent: str, provider: str, model: str = "", briefing: str = "", vau
     if binary is None:
         raise RuntimeError(f"{name} is not installed. Install it, then sign in with `{name}` in a terminal.")
     if name == "ollama":
+        # Ollama's run command keeps no session between starts, so there is nothing to resume.
         return [binary, "run", model]
     if name == "agy":
         # Antigravity takes the model as a flag (`agy --model <name>`).
-        return [binary, "--model", model] if model else [binary]
+        args = [binary, "--continue"] if resume else [binary]
+        return args + (["--model", model] if model else [])
+    if name == "codex":
+        # Codex takes the model as `--model <name>`; a blocked agent runs in Codex's read-only sandbox.
+        args = [binary, "resume", "--last"] if resume else [binary]
+        args += ["--model", model] if model else []
+        return args + (["--sandbox", "read-only"] if block_tools else [])
+    if name == "gemini":
+        # Gemini CLI takes the model as `--model <name>`, so a model change reaches it.
+        args = [binary, "--resume", "latest"] if resume else [binary]
+        return args + (["--model", model] if model else [])
     if name != "claude":
         return [binary]
     entry = cli_sessions.get(agent)
@@ -322,14 +451,19 @@ def _command(agent: str, provider: str, model: str = "", briefing: str = "", vau
     flag = "--resume" if cli_sessions.has_transcript(entry["id"]) else "--session-id"
     # Added agents get no access to the app's own code: Read, Edit and Write under the app folder are denied.
     # Claude Code reads a single leading slash as project-relative, so an absolute path needs a double slash to match.
-    rules = [f"{tool}(/{ROOT}/**)" for tool in ("Read", "Edit", "Write")]
+    # Claude Code rejects a Write rule here ("never matches"); an Edit rule covers writes too.
+    rules = [f"{tool}(/{ROOT}/**)" for tool in ("Read", "Edit")]
+    if block_tools:
+        # "Block tools": the agent may not run a shell, write files or use the web.
+        rules += list(BLOCKED_CLAUDE_TOOLS)
     # The briefing applies to every start, resumed or new: it sets the rules (e.g. answer from the vault) for this run.
     brief = ["--append-system-prompt-file", briefing] if briefing else []
     # The vault is open to read and search; agents cannot run rm. Hub notes are protected from deletion in the app's tools.
     vault_dir = ["--add-dir", vault] if vault else []
     # The terminal gets the same vault tools as the chat, so its deletes go through the app's checks, not a shell.
+    # A blocked agent gets no vault tools either: "block tools" means no shell and no MCP tools.
     vault_tools = (
-        ["--mcp-config", mcp_config(vault), "--allowedTools", *[f"mcp__vault__{name}" for name in VAULT_TOOLS]] if vault else []
+        ["--mcp-config", mcp_config(vault), "--allowedTools", *[f"mcp__vault__{name}" for name in VAULT_TOOLS]] if vault and not block_tools else []
     )
     return [
         binary,
@@ -338,6 +472,9 @@ def _command(agent: str, provider: str, model: str = "", briefing: str = "", vau
         *(["--model", model] if model else []),
         *vault_dir,
         *vault_tools,
+        # The hive is where the agent writes its outbox, so it is a folder the agent may write to.
+        "--add-dir",
+        str(HIVE_DIR),
         "--disallowedTools",
         *rules,
         # The main agent gets a fenced shell: no delete, move, git, network or privilege commands, and none that names the app folder.
@@ -345,7 +482,7 @@ def _command(agent: str, provider: str, model: str = "", briefing: str = "", vau
         *(
             [f"Bash({cmd}:*)" for cmd in ("rm", "rmdir", "mv", "cp", "git", "sudo", "chmod", "chown", "curl", "wget", "dd", "kill", "pkill", "ps", "pgrep", "top", "htop", "lsof", "ss", "netstat", "pidof", "claude")]
             + [f"Bash(* {ROOT}*)"]
-            if agent == "hippo"
+            if agent == "hippoherman"
             else ["Bash"]
         ),
         *brief,

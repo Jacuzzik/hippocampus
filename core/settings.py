@@ -12,6 +12,8 @@ from ai.providers.openai_compat import PRESETS
 
 ROOT = Path(__file__).resolve().parent.parent
 SETTINGS_PATH = ROOT / "config" / "settings.toml"
+# The hive (agent inboxes and outboxes) lives outside the app folder, so agents' Edit denial for the app folder does not block their outbox.
+HIVE_DIR = Path.home() / ".hippocampus" / "hive"
 
 
 # Token cap windows, shortest first. five_hour is a rolling 5 hours back from now.
@@ -75,7 +77,7 @@ def _allowed_tools(value: object) -> tuple[str, ...] | None:
 # Every provider the Monitor's engine switch offers (app/ui/control/model.ts AGENT_PROVIDERS).
 ENGINE_PROVIDERS = (
     "claude", "codex", "gemini-cli", "antigravity", "ollama", "openai", "xai", "moonshot",
-    "gemini", "qwen", "deepseek", "mistral", "groq", "openrouter", "lmstudio", "vllm",
+    "gemini", "qwen", "deepseek", "mistral", "groq", "openrouter",
 )
 
 
@@ -96,8 +98,6 @@ ENGINE_MODELS: dict[str, tuple[str, ...]] = {
     "mistral": ("mistral-large-3", "mistral-small-4", "codestral-latest"),
     "groq": ("llama-3.3-70b-versatile", "llama-3.1-8b-instant", "openai/gpt-oss-120b"),
     "openrouter": ("anthropic/claude-sonnet-4.5", "openai/gpt-4o", "google/gemini-2.5-pro"),
-    "lmstudio": (),
-    "vllm": (),
 }
 
 
