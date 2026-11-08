@@ -189,6 +189,11 @@ def save_engine(provider: str, model: str, path: Path = SETTINGS_PATH) -> None:
     """Set the main agent's provider and model, changing only those lines of [ai]."""
     if not provider or not model:
         raise ValueError("pick a provider and a model")
+    # Checked before anything is written, so a refused choice never leaves the settings file half changed.
+    if provider not in ENGINE_PROVIDERS:
+        raise ValueError(f"{provider} is not a provider in this app. Pick one of: {', '.join(ENGINE_PROVIDERS)}")
+    if any(ch in model for ch in '"\\\n\r'):
+        raise ValueError(f"{model!r} is not a valid model name")
     section, out = "", []
     for line in _read(path).splitlines():
         stripped = line.strip()
