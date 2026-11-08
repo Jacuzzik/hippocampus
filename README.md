@@ -71,7 +71,7 @@ npm ci
 npm run tauri dev
 ```
 
-The first run compiles the Rust shell, which takes a few minutes. The app opens the vault named in `config/settings.toml` (`brains/Hippocampus` by default; the first run creates it with a starter note). To try the sample vault instead, create it with the commands below.
+The first run compiles the Rust shell, which takes a few minutes. The app opens the vault named in `config/settings.toml` (`data/brains/Hippocampus` by default; the first run creates it with a starter note). To try the sample vault instead, create it with the commands below.
 
 ## Explore your notes
 
@@ -112,22 +112,22 @@ cd app && npm run format:check && npm run lint && npm run check && npm test && n
 
 ### Index a vault
 
-The sidecar can index a folder of Markdown notes, including `[[links]]`, `#tags` and frontmatter `tags:`, into a SQLite file under `storage/index/`. The index is only a cache, so you can delete it at any time and it gets rebuilt. It needs SQLite 3.35.0 or newer. The Python 3.12 that uv installs already includes a newer one, and CI also runs the tests against 3.35.0.
+The sidecar can index a folder of Markdown notes, including `[[links]]`, `#tags` and frontmatter `tags:`, into a SQLite file under `data/storage/index/`. The index is only a cache, so you can delete it at any time and it gets rebuilt. It needs SQLite 3.35.0 or newer. The Python 3.12 that uv installs already includes a newer one, and CI also runs the tests against 3.35.0.
 
 Make a sample vault of 200 generated notes and index it:
 
 ```bash
-uv run python tests/fixtures/make_sample_vault.py brains/sample
-uv run python -m core index brains/sample
+uv run python tests/fixtures/make_sample_vault.py data/brains/sample
+uv run python -m core index data/brains/sample
 ```
 
 Keep the index current while you edit notes. Stop with Ctrl+C:
 
 ```bash
-uv run python -m core watch brains/sample
+uv run python -m core watch data/brains/sample
 ```
 
-Both commands take `--storage DIR` to keep the index somewhere other than `storage/`. To include the 2,000-note timing check, run `uv run pytest -m slow`.
+Both commands take `--storage DIR` to keep the index somewhere other than `data/storage/`. To include the 2,000-note timing check, run `uv run pytest -m slow`.
 
 ### Troubleshooting: blank window on Linux under Wayland
 

@@ -30,8 +30,8 @@ voice/        STT (faster-whisper), TTS (Kokoro default), wake word later
 tools/        jarvis-tools MCP server, confirm gate, kill switch, logs
 design/       tokens.json, reference notes
 config/       settings.toml (no secrets)
-brains/       default vault location (user-owned, git-ignored in dev)
-storage/      SQLite index, logs, audio cache (git-ignored)
+data/brains/ default vault location (user-owned, git-ignored in dev)
+data/storage/ SQLite index, logs, audio cache (git-ignored)
 tests/        unit and Playwright end-to-end tests
 ```
 

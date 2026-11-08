@@ -14,9 +14,9 @@ target/
 # Generated from design/tokens.json
 app/ui/styles/tokens.css
 
-# User data (dev)
-storage/
-brains/
+# User data (dev): data/ holds the real folders; the old root paths stay ignored until the app restarts
+data/storage/
+data/brains/
 
 # Playwright
 test-results/
@@ -25,3 +25,6 @@ playwright-report/
 # Packaged build (build/ holds the PyInstaller venv and output; binaries/ the bundled sidecar)
 build/
 app/src-tauri/binaries/
+data/backups/
+storage/
+brains/
