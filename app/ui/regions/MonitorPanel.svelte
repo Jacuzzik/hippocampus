@@ -81,7 +81,7 @@
       }
       engine = await invoke<Engine>("sidecar_call", { method: "engine" });
       // Stop the main terminal so the next start runs the new provider; the open panel restarts it.
-      await invoke("sidecar_call", { method: "terminal_stop", params: { agent: "hippo" } }).catch(() => undefined);
+      await invoke("sidecar_call", { method: "terminal_stop", params: { agent: "hippoherman" } }).catch(() => undefined);
       window.dispatchEvent(new CustomEvent("engine-changed", { detail: { provider: engineProvider, model: engineModel } }));
       engineDone = result.message ?? "Saved.";
     } catch (cause) {
@@ -214,7 +214,7 @@
             </div>
             <div class="row">
               <span class="zone-tag">DANGER ZONE</span>
-              <button type="button" class="btn danger" onclick={() => stopAgent("hippo")}>stop</button>
+              <button type="button" class="btn danger" onclick={() => stopAgent("hippoherman")}>stop</button>
             </div>
           {/if}
         </div>
@@ -368,36 +368,10 @@
     color: var(--color-md-text-muted);
   }
 
-  .hero {
-    border: 1px solid var(--hippo-purple);
-    border-radius: var(--radius-sm);
-    padding: var(--space-3);
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-    background: var(--color-accent);
-    color: var(--color-accent-on);
-  }
-
   .big {
     font-size: var(--font-size-xl);
     font-weight: 700;
     letter-spacing: -0.5px;
-  }
-
-  .split {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--space-2);
-  }
-
-  .mini {
-    border: 1px solid var(--color-md-text-muted);
-    border-radius: var(--radius-sm);
-    padding: var(--space-2);
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
   }
 
   h3 em {
@@ -423,12 +397,6 @@
     flex-direction: column;
     gap: var(--space-2);
     font-size: var(--font-size-tag);
-  }
-
-  .head {
-    display: flex;
-    align-items: center;
-    gap: 6px;
   }
 
   /* Token count sits on the name line, at the right edge. */
@@ -466,30 +434,6 @@
     color: var(--color-md-text-muted);
   }
 
-  .model {
-    font-weight: 700;
-  }
-
-  .top {
-    display: flex;
-    gap: var(--space-2);
-    align-items: center;
-  }
-
-  .face {
-    width: 36px;
-    height: 36px;
-    border-radius: 0;
-    background: var(--color-md-card);
-    border: 2px solid var(--hippo-purple);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    color: var(--hippo-purple);
-    flex: none;
-  }
-
   /* Agent picture: the card face image, square, no circle. */
   .pic {
     width: 32px;
@@ -505,23 +449,6 @@
     height: 32px;
   }
 
-  .na {
-    color: var(--color-md-card-text);
-    opacity: 0.5;
-  }
-
-  .note {
-    font-size: var(--font-size-tag);
-    color: var(--color-md-text-muted);
-  }
-
-  .stats {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--space-1) var(--space-3);
-    margin: 0;
-  }
-
 
 
   .pic.letter {
@@ -532,14 +459,6 @@
     border: 2px solid var(--hippo-purple);
     color: var(--hippo-purple);
     font-weight: 700;
-  }
-
-  .face.small {
-    width: 28px;
-    height: 28px;
-    border-color: var(--color-md-text-muted);
-    color: var(--color-md-text-muted);
-    background: transparent;
   }
 
   .name {
@@ -560,12 +479,6 @@
     align-items: center;
   }
 
-  .k {
-    width: 56px;
-    font-size: var(--font-size-tag);
-    opacity: 0.7;
-  }
-
   .badge {
     flex: none;
     background: var(--hippo-purple);
@@ -579,11 +492,6 @@
   .folder {
     white-space: normal;
     overflow-wrap: anywhere;
-  }
-
-  .desc {
-    font-size: var(--font-size-tag);
-    opacity: 0.85;
   }
 
   .btn {
@@ -732,12 +640,6 @@
     gap: var(--space-2);
   }
 
-
-  .net {
-    border: 1px solid var(--color-md-text-muted);
-    border-radius: var(--radius-sm);
-    padding: var(--space-2);
-  }
 
   /* Collapsible groups (archived): click the heading to open or close. No colour or border. */
   .fold > summary {
