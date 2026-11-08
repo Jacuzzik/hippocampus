@@ -253,6 +253,38 @@ OPENCODE_FOR = {
 }
 
 
+def _ollama_running() -> bool:
+    """True when the Ollama server answers on this computer. Waits at most one second."""
+    import urllib.request
+
+    try:
+        with urllib.request.urlopen("http://127.0.0.1:11434/api/tags", timeout=1):
+            return True
+    except OSError:
+        return False
+
+
+def engine_problem(provider: str) -> str | None:
+    """Why the provider cannot run on this computer, or None when it can. Checked before the Monitor switches engine."""
+    from ai.keys import get_key
+
+    if provider in OPENCODE_FOR:
+        if shutil.which("opencode") is None:
+            return "OpenCode is not installed. Install OpenCode, then apply again."
+        env_name = OPENCODE_FOR[provider][1]
+        if env_name and not get_key(provider):
+            return f"No {provider} key is saved. Add it under Keys, then apply again."
+        return None
+    name = CLI_FOR.get(provider)
+    if name is None:
+        return f'The terminal does not run "{provider}" yet.'
+    if shutil.which(name) is None:
+        return f"{name} is not installed. Install it, then apply again."
+    if name == "ollama" and not _ollama_running():
+        return "Ollama is not running. Start it, then apply again."
+    return None
+
+
 def provider_env(provider: str) -> dict[str, str]:
     """The API key an OpenCode provider needs, read from the app's key store; empty when none is saved."""
     if provider not in OPENCODE_FOR:
