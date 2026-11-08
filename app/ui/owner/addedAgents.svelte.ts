@@ -96,8 +96,18 @@ async function load(): Promise<void> {
 }
 void load();
 
+/** A readable, unique id: the agent's name and a 4-digit number, e.g. "Brooke#9716". Its notes are "<id>-PriorityNotes". */
+function newAgentId(name: string, taken: Set<string>): string {
+  const base = name.trim() || "Agent";
+  for (;;) {
+    const id = `${base}#${1000 + Math.floor(Math.random() * 9000)}`;
+    if (!taken.has(id)) return id;
+  }
+}
+
 export function addAgent(draft: AgentDraft): SavedAgent {
-  const agent = { ...draft, id: crypto.randomUUID() };
+  const taken = new Set(addedAgents.list.map((a) => a.id));
+  const agent = { ...draft, id: newAgentId(draft.name, taken) };
   setAddedAgents([...addedAgents.list, agent]);
   // Each agent gets its own Claude Code session at setup; the sidecar keeps it across restarts.
   // The sidecar creates the folder and returns its full path; the agent is saved with that path.
