@@ -49,12 +49,18 @@
   // Opens the Add agent dialog (identity, workspace, engine, briefing).
   let { onadd }: { onadd: () => void } = $props();
 
-  onMount(async () => {
+  // Reads the provider and model in use. Runs at start and again when the Monitor tab changes the engine.
+  async function loadAccount(): Promise<void> {
     try {
       account = await invoke<Account>("sidecar_call", { method: "account" });
     } catch (cause) {
       console.error("Could not read the provider in use", cause);
     }
+  }
+  onMount(() => {
+    void loadAccount();
+    window.addEventListener("engine-changed", loadAccount);
+    return () => window.removeEventListener("engine-changed", loadAccount);
   });
 
   const provider = $derived(
