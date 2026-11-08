@@ -296,11 +296,12 @@ def open_tool_calls(agent: str) -> list[str]:
     return [name for call, name in started.items() if call not in done]
 
 
-def last_tool_call(agent: str) -> str | None:
-    """The newest tool call the agent made, finished or not, as "name: detail"; None before any."""
-    found = _transcript(agent)
-    if found is None:
-        return None
+# Sessions an agent ran before its project folder moved. Read only: used for the card's last command when the
+# current session has no tool calls yet. Session files are never changed.
+PREVIOUS_SESSIONS: dict[str, str] = {"hippo": "2978bcce-b4de-4727-bd98-f0adc3a4c96f"}
+
+
+def _newest_tool_call(found: Path) -> str | None:
     try:
         lines = found.read_text(encoding="utf-8").splitlines()[-400:]
     except OSError:
@@ -316,6 +317,16 @@ def last_tool_call(agent: str) -> str | None:
                 detail = inputs.get("command") or inputs.get("description") or ""
                 return f"{block.get('name')}: {detail}" if detail else str(block.get("name"))
     return None
+
+
+def last_tool_call(agent: str) -> str | None:
+    """The newest tool call the agent made, finished or not, as "name: detail"; None before any."""
+    found = _transcript(agent)
+    newest = _newest_tool_call(found) if found is not None else None
+    if newest is None and agent in PREVIOUS_SESSIONS:
+        previous = next((Path.home() / ".claude" / "projects").glob(f"*/{PREVIOUS_SESSIONS[agent]}.jsonl"), None)
+        newest = _newest_tool_call(previous) if previous is not None else None
+    return newest
 
 
 def last_model(agent: str) -> str | None:
