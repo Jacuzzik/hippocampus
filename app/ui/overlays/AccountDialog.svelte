@@ -84,9 +84,10 @@
     flex-direction: column;
     gap: var(--space-3);
     width: min(560px, 90vw);
-    padding: var(--space-3);
+    padding: var(--space-4);
     background: var(--color-bg-1);
     border: 1px solid var(--color-border);
+    border-left: 3px solid var(--color-accent);
     border-radius: var(--radius-sm);
     color: var(--color-text);
   }

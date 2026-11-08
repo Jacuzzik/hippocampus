@@ -46,13 +46,13 @@ def model_name(settings: Settings, api_key: str | None) -> str:
     return settings.provider_model or (preset.models[0] if preset.models else "")
 
 
-def build_router(settings: Settings, api_key: str | None, agent: str = "hippo") -> Router:
+def build_router(settings: Settings, api_key: str | None, agent: str = "hippoherman") -> Router:
     return Router(
         _primary(settings, api_key, agent), OllamaProvider(settings.ollama_model, settings.ollama_host)
     )
 
 
-def _primary(settings: Settings, api_key: str | None, agent: str = "hippo") -> Provider | None:
+def _primary(settings: Settings, api_key: str | None, agent: str = "hippoherman") -> Provider | None:
     if settings.provider == "claude":
         # The Claude Code CLI with the user's own login comes first; an API key is the fallback.
         if cli_ready():

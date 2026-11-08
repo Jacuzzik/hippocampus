@@ -154,8 +154,6 @@ export const AGENT_PROVIDERS = [
   { id: "mistral", label: "Mistral", needsKey: true, kind: "key" },
   { id: "groq", label: "Groq", needsKey: true, kind: "key" },
   { id: "openrouter", label: "OpenRouter", needsKey: true, kind: "key" },
-  { id: "lmstudio", label: "LM Studio (local)", needsKey: false, kind: "local" },
-  { id: "vllm", label: "vLLM (local)", needsKey: false, kind: "local" },
 ] as const;
 
 // Provider logos, by provider id. Providers with no file here show no logo.
@@ -187,8 +185,6 @@ export const AGENT_MODELS: Record<string, string[]> = {
   mistral: ["mistral-large-3", "mistral-small-4", "codestral-latest"],
   groq: ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "openai/gpt-oss-120b"],
   openrouter: ["anthropic/claude-sonnet-4.5", "openai/gpt-4o", "google/gemini-2.5-pro"],
-  lmstudio: [],
-  vllm: [],
 };
 
 /** Card faces: one per card-face-XX.svg in ui/assets/faces-new. The id is the file name. */

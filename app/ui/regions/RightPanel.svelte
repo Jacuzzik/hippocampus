@@ -8,11 +8,13 @@
   let mainProvider = $state("claude");
   // Bumped when the engine changes, so the terminal panel remounts and starts the new provider.
   let terminalKey = $state(0);
-  function loadEngine(): void {
+  // remount: only the first load remounts the terminal. A model switch already restarts it inside LiveTerminal,
+  // so a remount here would destroy the switch popup and start a second session.
+  function loadEngine(remount = false): void {
     invoke<{ provider: string }>("sidecar_call", { method: "engine" })
       .then((value) => {
         mainProvider = value.provider;
-        terminalKey += 1;
+        if (remount) terminalKey += 1;
       })
       .catch(() => (mainProvider = "claude"));
   }
@@ -22,19 +24,20 @@
   function readHippo(): void {
     invoke<{ command: string | null; status: string | null }>("sidecar_call", {
       method: "terminal_command",
-      params: { agent: "hippo" },
+      params: { agent: "hippoherman" },
     })
       .then((value) => (hippoInfo = { command: value.command, status: value.status }))
       .catch(() => (hippoInfo = { command: null, status: null }));
   }
   onMount(() => {
-    loadEngine();
+    loadEngine(true);
     readHippo();
     const timer = setInterval(readHippo, 3000);
-    window.addEventListener("engine-changed", loadEngine);
+    const onEngineChanged = () => loadEngine(false);
+    window.addEventListener("engine-changed", onEngineChanged);
     return () => {
       clearInterval(timer);
-      window.removeEventListener("engine-changed", loadEngine);
+      window.removeEventListener("engine-changed", onEngineChanged);
     };
   });
   import TasksPanel from "./TasksPanel.svelte";
@@ -79,7 +82,7 @@
   let fontSize = $state(12);
 
   // The Control Room message box sends into Hippo's terminal, through a queue (see terminalQueue).
-  const queue = createTerminalQueue(() => "hippo");
+  const queue = createTerminalQueue(() => "hippoherman");
   $effect(() => {
     const timer = setInterval(queue.tick, 1000);
     return () => clearInterval(timer);
@@ -139,7 +142,7 @@
       </div>
       <div class="live-wrap">
         {#key terminalKey}
-          <LiveTerminal agentId="hippo" provider={mainProvider} {fontSize} onoutput={queue.output} />
+          <LiveTerminal agentId="hippoherman" provider={mainProvider} {fontSize} onoutput={queue.output} />
         {/key}
       </div>
       <Assistant onsend={queue.send} queued={queue.items} />
@@ -198,7 +201,7 @@
     padding: var(--space-2);
     background: var(--color-bg-0);
     border-radius: var(--radius-md);
-    font-family: var(--font-mono);
+    font-family: var(--font-ui);
   }
 
   .tab-rows {
@@ -212,14 +215,14 @@
     display: flex;
     flex-wrap: wrap;
     border: 1px solid var(--color-md-border);
-    border-radius: 999px;
+    border-radius: var(--radius-sm);
     overflow: hidden;
   }
 
   .tab {
     flex: 1 1 0;
     min-height: 32px;
-    font-family: var(--font-mono);
+    font-family: var(--font-ui);
     font-size: var(--font-size-xs);
     padding: 0 var(--space-2);
     border: none;
@@ -266,7 +269,7 @@
   /* The size control is one segmented pill: − | 12px | +. */
   .size {
     border: 1px solid var(--color-md-border);
-    border-radius: 999px;
+    border-radius: var(--radius-sm);
     overflow: hidden;
   }
 
@@ -298,10 +301,10 @@
     gap: var(--space-1);
     padding: 2px var(--space-2);
     border: 1px solid var(--color-md-border);
-    border-radius: 999px;
+    border-radius: var(--radius-sm);
     background: var(--color-md-surface);
     color: var(--color-md-text);
-    font-size: 9px;
+    font-size: var(--font-size-tag);
   }
 
   .pane {
@@ -332,15 +335,15 @@
     padding-bottom: var(--space-2);
   }
   .title b {
-    font-size: 14px;
+    font-size: var(--font-size-md);
     letter-spacing: 0.04em;
   }
   .pill {
     padding: 2px var(--space-2);
     border: 1px solid var(--color-md-border);
-    border-radius: 999px;
+    border-radius: var(--radius-sm);
     color: var(--color-md-text-muted);
-    font-size: 10px;
+    font-size: var(--font-size-tag);
   }
   /* No box around the title, views and live row: the mockup has bare rows. */
   .card {
@@ -381,14 +384,14 @@
     width: 100%;
     min-height: 32px;
     border: 1px solid var(--color-md-accent);
-    border-radius: 999px;
+    border-radius: var(--radius-sm);
     background: var(--color-md-accent);
     color: var(--color-md-accent-on);
   }
   .pane > :global(.assistant) :global(.composer .attach) {
     display: flex;
     border: 1px solid var(--color-md-border);
-    border-radius: 999px;
+    border-radius: var(--radius-sm);
     overflow: hidden;
   }
   .pane > :global(.assistant) :global(.composer .attach > button) {
@@ -410,7 +413,7 @@
     padding: 0 var(--space-2);
   }
   .pane > :global(.assistant) :global(.composer .stop) {
-    border-radius: 999px;
+    border-radius: var(--radius-sm);
   }
 
   /* The chat takes only the space it needs, so the terminal above gets the rest, as on the normal agent. */

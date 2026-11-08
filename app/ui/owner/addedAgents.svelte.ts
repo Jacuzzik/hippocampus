@@ -1,6 +1,7 @@
 // Agents the user created in the add-agent form. The sidecar keeps them in data/storage/agents.json;
 // localStorage mirrors the list and is what loads when the sidecar cannot answer.
 import { invoke } from "@tauri-apps/api/core";
+import { SvelteSet } from "svelte/reactivity";
 import type { AgentDraft } from "../control/model";
 
 // The note is private to the user: it is shown only in the card's menu dialog.
@@ -106,7 +107,7 @@ function newAgentId(name: string, taken: Set<string>): string {
 }
 
 export function addAgent(draft: AgentDraft): SavedAgent {
-  const taken = new Set(addedAgents.list.map((a) => a.id));
+  const taken = new SvelteSet(addedAgents.list.map((a) => a.id));
   const agent = { ...draft, id: newAgentId(draft.name, taken) };
   setAddedAgents([...addedAgents.list, agent]);
   // Each agent gets its own Claude Code session at setup; the sidecar keeps it across restarts.

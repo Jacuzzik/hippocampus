@@ -3,7 +3,7 @@
    app's dark theme). Scoped to .md-theme so the rest of the app keeps its own tokens. */
 
 @font-face {
-  font-family: "Press Start 2P";
+  font-family: var(--font-ui);
   font-style: normal;
   font-weight: 400;
   font-display: swap;
@@ -40,7 +40,7 @@
 .md-theme.owner-panel .empty {
   margin: var(--space-2) 0 0;
   align-self: flex-start;
-  font-size: 10px;
+  font-size: var(--font-size-tag);
 }
 
 .md-theme .card-row {
@@ -67,21 +67,21 @@
 .md-theme .agents-btn {
   flex: none;
   align-self: center;
-  font-size: 10px;
+  font-size: var(--font-size-tag);
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--color-md-border);
   border-radius: var(--radius-md);
   background: var(--color-md-surface);
   color: var(--color-md-text);
   cursor: pointer;
-  font-family: "Press Start 2P", monospace;
-  font-size: 8px;
+  font-family: var(--font-ui);
+  font-size: var(--font-size-tag);
   text-transform: uppercase;
 }
 
 .md-theme h3 {
-  font-family: "Press Start 2P", monospace;
-  font-size: 8px;
+  font-family: var(--font-ui);
+  font-size: var(--font-size-tag);
   font-weight: 400;
   letter-spacing: 0.04em;
   text-transform: uppercase;

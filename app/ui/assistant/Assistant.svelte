@@ -398,7 +398,7 @@
   .queue-label {
     display: block;
     font-family: var(--font-mono);
-    font-size: 10px;
+    font-size: var(--font-size-tag);
     text-transform: uppercase;
     color: var(--color-md-text-muted);
     margin-bottom: var(--space-1);

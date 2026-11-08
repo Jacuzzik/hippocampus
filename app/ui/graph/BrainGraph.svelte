@@ -1,6 +1,6 @@
 <script lang="ts">
   import { untrack } from "svelte";
-  import { SvelteMap } from "svelte/reactivity";
+  import { SvelteMap, SvelteSet } from "svelte/reactivity";
   import { invoke } from "@tauri-apps/api/core";
   import { hexOf, parse, token } from "./colors";
   import NoteActions, { type MenuTarget } from "./NoteActions.svelte";
@@ -46,7 +46,6 @@
     memory = false,
     selectedId = null,
     onselect,
-    onrefresh,
   }: {
     data: GraphData;
     query?: string;
@@ -54,7 +53,6 @@
     memory?: boolean;
     selectedId?: string | null;
     onselect: (id: string | null) => void;
-    onrefresh?: () => void;
   } = $props();
 
   // The ASCII look is an added mode of this graph: the same notes and interactions, drawn as text (on, 2026-11-07).
@@ -506,7 +504,7 @@
   // The notes linked to `i`, and `i` itself. Empty for -1.
   let near = new Set<number>();
   function neighbourhood(i: number): Set<number> {
-    const out = new Set<number>();
+    const out = new SvelteSet<number>();
     if (i < 0) return out;
     out.add(i);
     for (let e = 0; e < sim.edges.length; e += 2) {
@@ -828,14 +826,15 @@
 
   <div class="tools">
     <button type="button" class="fit" onclick={fitAll}>Fit graph</button>
-    {#if onrefresh}
-      <button type="button" class="fit" onclick={onrefresh}>Refresh vault</button>
-    {/if}
     <label class="toggle">
-      <input type="checkbox" bind:checked={hideOrphans} /> Hide orphans
+      <input type="checkbox" bind:checked={hideOrphans} />
+      <span class="toggle-track"></span>
+      <span>Hide orphans</span>
     </label>
     <label class="toggle">
-      <input type="checkbox" bind:checked={hideNames} /> Hide names
+      <input type="checkbox" bind:checked={hideNames} />
+      <span class="toggle-track"></span>
+      <span>Hide names</span>
     </label>
   </div>
 
@@ -1048,11 +1047,59 @@
     cursor: pointer;
   }
 
+  /* Switch, as in the design system: a 36x18 track with a knob; accent when on. */
+  .toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    cursor: pointer;
+    font-size: var(--font-size-xs);
+  }
+
+  .toggle input {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+  }
+
+  .toggle-track {
+    position: relative;
+    width: 36px;
+    height: 18px;
+    border-radius: var(--radius-sm);
+    background: var(--color-border);
+    transition: background 120ms ease-out;
+  }
+
+  .toggle-track::after {
+    content: "";
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 12px;
+    height: 12px;
+    border-radius: var(--radius-sm);
+    background: var(--color-bg-0);
+    transition: transform 120ms ease-out;
+  }
+
+  .toggle input:checked + .toggle-track {
+    background: var(--color-accent);
+  }
+
+  .toggle input:checked + .toggle-track::after {
+    transform: translateX(18px);
+  }
+
+  .toggle input:focus-visible + .toggle-track {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
   /* Tablets and touch screens: the toggle labels are the touch target, so they take the minimum height. */
   @media (max-width: 1100px), (pointer: coarse) {
     .toggle {
-      display: inline-flex;
-      align-items: center;
       min-height: var(--layout-touch-target);
     }
   }

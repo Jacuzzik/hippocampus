@@ -47,7 +47,7 @@
 
 <style>
   .inbox {
-    font-family: var(--font-mono);
+    font-family: var(--font-ui);
     font-size: var(--font-size-xs);
     color: var(--color-md-text);
     overflow-y: auto;

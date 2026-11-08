@@ -6,7 +6,7 @@
   import { Terminal } from "@xterm/xterm";
   import { FitAddon } from "@xterm/addon-fit";
   import "@xterm/xterm/css/xterm.css";
-  import { startEdit, type SavedAgent } from "./addedAgents.svelte";
+  import type { SavedAgent } from "./addedAgents.svelte";
   import { createTerminalQueue } from "../regions/terminalQueue.svelte";
 
   let { agent }: { agent: SavedAgent } = $props();
@@ -18,11 +18,13 @@
   let error = $state<string | null>(null);
   let fontSize = $state(12);
   // Real state from the sidecar: set when the CLI starts, and when it exits.
-  let runState = $state<"starting" | "running" | "exited" | "failed">("starting");
+  let runState = $state<"starting" | "running" | "exited" | "stopped" | "failed">("starting");
   let exitCode = $state<number | null>(null);
   const stateLabel = $derived(
     runState === "running"
-      ? `running · pty ${agent.id.slice(0, 8)}`
+      ? "running"
+      : runState === "stopped"
+        ? "stopped"
       : runState === "exited"
         ? `exited · code ${exitCode}`
         : runState === "failed"
@@ -53,13 +55,41 @@
     }).catch(() => {});
   }
 
+  // "Block tools": on, the CLI runs without shell, file writes or web (Claude Code and Codex only).
+  let blocked = $state(false);
+  let fileInput: HTMLInputElement | undefined = $state();
+  // A block change is a new session: stop the running CLI, then start it again with the new setting.
+  async function toggleBlock(): Promise<void> {
+    blocked = !blocked;
+    await invoke("sidecar_call", { method: "terminal_stop", params: { agent: agent.id } }).catch(() => undefined);
+    // Drop the old screen and listeners first, or the output would be drawn twice.
+    unlisten?.();
+    observer?.disconnect();
+    term?.dispose();
+    await startTerminal();
+  }
+
+  // "+ files": a text file (up to 100 KB) goes into the agent's queue, as the Assistant does.
+  async function attachFile(event: Event): Promise<void> {
+    const input = event.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = "";
+    if (!file) return;
+    if (file.size > 100 * 1024) {
+      error = `${file.name} is larger than 100 KB, so it was not attached.`;
+      return;
+    }
+    queue.send(`Attached file: ${file.name}\n\`\`\`\n${await file.text()}\n\`\`\``);
+  }
+
   async function startTerminal(): Promise<void> {
+    const fgColour = getComputedStyle(document.documentElement).getPropertyValue("--color-fg").trim() || "#DADADA";
     term = new Terminal({
       fontFamily: "JetBrains Mono, monospace",
       fontSize: 12,
       cursorBlink: true,
       convertEol: true,
-      theme: { background: getComputedStyle(document.documentElement).getPropertyValue("--color-md-bg-0").trim() || "#222229", foreground: "#e8e8e8", cursor: "#e8e8e8" },
+      theme: { background: getComputedStyle(document.documentElement).getPropertyValue("--color-md-bg-0").trim() || "#222229", foreground: fgColour, cursor: fgColour },
     });
     fit = new FitAddon();
     term.loadAddon(fit);
@@ -69,15 +99,15 @@
         console.error("Could not send to the terminal", cause),
       );
     });
-    unlisten = await listen<{ event?: string; agent?: string; data?: string; exit?: number }>("sidecar-event", (event) => {
+    unlisten = await listen<{ event?: string; agent?: string; data?: string; exit?: number; stopped?: boolean }>("sidecar-event", (event) => {
       if (event.payload.event !== "terminal" || event.payload.agent !== agent.id || !term) return;
       if (event.payload.data !== undefined) {
         term.write(event.payload.data);
         queue.output(event.payload.data);
       }
       if (event.payload.exit !== undefined) {
-        term.write(`\r\n[the terminal closed, exit ${event.payload.exit}]\r\n`);
-        runState = "exited";
+        term.write(event.payload.stopped ? "\r\n[the terminal was stopped]\r\n" : `\r\n[the terminal closed, exit ${event.payload.exit}]\r\n`);
+        runState = event.payload.stopped ? "stopped" : "exited";
         exitCode = event.payload.exit;
       }
     });
@@ -92,7 +122,7 @@
     try {
       const started = await invoke<{ replay?: string }>("sidecar_call", {
         method: "terminal_start",
-        params: { agent: agent.id, provider: agent.provider, model: agent.model, folder: agent.folder, rows: term.rows, cols: term.cols },
+        params: { agent: agent.id, provider: agent.provider, model: agent.model, folder: agent.folder, rows: term.rows, cols: term.cols, block_tools: blocked },
       });
       // A reopened terminal shows the output it had on screen.
       if (started?.replay) term.write(started.replay);
@@ -112,16 +142,7 @@
   });
 
   let view = $state<"terminal" | "git" | "messages" | "traces">("terminal");
-  let note = $state("");
   let gitText = $state("");
-
-  // Steer sends the note into the agent's terminal, as if typed there.
-  function steer(): void {
-    const text = note.trim();
-    if (!text) return;
-    queue.send(text);
-    note = "";
-  }
 
   function showGit(): void {
     view = "git";
@@ -166,13 +187,22 @@
   <div class="desc">{agent.description || NO_DATA}</div>
 
   <div class="seg" role="group" aria-label="Agent actions">
-    <button type="button" onclick={() => startEdit(agent.id, "rename")}>Edit</button>
-    <button type="button" onclick={() => openFolder("file")} disabled={!agent.folder}>Open</button>
     <button type="button" onclick={() => openFolder("ide")} disabled={!agent.folder}>IDE</button>
   </div>
   <div class="seg" role="group" aria-label="Run controls">
-    <button type="button" class="stop" onclick={() => invoke("sidecar_call", { method: "terminal_stop", params: { agent: agent.id } }).catch(() => {})}>Stop</button>
+    <button type="button" class="stop" title="Interrupts the current run" disabled={runState !== "running"} onclick={() => invoke("sidecar_call", { method: "terminal_input", params: { agent: agent.id, data: "\x1b" } }).catch(() => {})}>Stop</button>
+    <button type="button" aria-pressed={blocked} class:on={blocked} onclick={toggleBlock}>block tools</button>
   </div>
+
+
+  {#if view !== "git"}
+    <div class="seg" role="tablist" aria-label="Agent views">
+      <button type="button" role="tab" aria-selected={view === "terminal"} class:on={view === "terminal"} onclick={() => (view = "terminal")}>Terminal</button>
+      <button type="button" role="tab" aria-selected="false" disabled={!agent.folder} onclick={() => showGit()}>Git</button>
+      <button type="button" role="tab" aria-selected={view === "messages"} class:on={view === "messages"} onclick={() => (view = "messages")}>Messages</button>
+      <button type="button" role="tab" aria-selected={view === "traces"} class:on={view === "traces"} onclick={() => (view = "traces")}>Traces</button>
+    </div>
+  {/if}
 
   <div class="live">
     <span class="dot" aria-hidden="true"></span>
@@ -180,15 +210,9 @@
     <span class="size"><button type="button" aria-label="Smaller text" onclick={() => (fontSize = Math.max(9, fontSize - 1))}>−</button><output>{fontSize}px</output><button type="button" aria-label="Larger text" onclick={() => (fontSize = Math.min(18, fontSize + 1))}>+</button></span>
   </div>
 
-  <div class="seg" role="tablist" aria-label="Agent views">
-    <button type="button" role="tab" aria-selected={view === "terminal"} class:on={view === "terminal"} onclick={() => (view = "terminal")}>Terminal</button>
-    <button type="button" role="tab" aria-selected={view === "git"} class:on={view === "git"} onclick={() => showGit()}>Git</button>
-    <button type="button" role="tab" aria-selected={view === "messages"} class:on={view === "messages"} onclick={() => (view = "messages")}>Messages</button>
-    <button type="button" role="tab" aria-selected={view === "traces"} class:on={view === "traces"} onclick={() => (view = "traces")}>Traces</button>
-  </div>
-
   <div class="screen" bind:this={screen} aria-label="Terminal for {agent.name}" hidden={view !== "terminal"}></div>
   {#if view === "git"}
+    <button type="button" class="back" onclick={() => (view = "terminal")}>← back to terminal</button>
     <pre class="git" aria-label="Git status">{gitText}</pre>
   {/if}
   {#if view === "messages"}
@@ -206,21 +230,18 @@
     </div>
   {/if}
 
-  <div class="note-box">
-    <textarea rows="2" bind:value={note} placeholder={`Note for ${agent.name}`} aria-label="Note for {agent.name}"></textarea>
-    <button type="button" class="pill-on" disabled={!note.trim()} onclick={steer}>steer</button>
-  </div>
 
-  <p class="queue-label">Queue</p>
-  {#if queue.items.length > 0}
-    <div class="queued" aria-label="Queued messages">
-      {#each queue.items as item, index (index)}
-        <p>{index + 1}. {item}</p>
-      {/each}
-    </div>
-  {/if}
+  <!-- Queue, message box, Send and + files sit in one composer, as on the main agent, so they share its gaps. -->
   <form class="composer" onsubmit={send}>
-    <textarea rows="3" bind:value={text} placeholder={`Message ${agent.name}`} aria-label={`Message ${agent.name}`}
+    <p class="queue-label">Queue</p>
+    {#if queue.items.length > 0}
+      <div class="queued" aria-label="Queued messages">
+        {#each queue.items as item, index (index)}
+          <p>{index + 1}. {item}</p>
+        {/each}
+      </div>
+    {/if}
+    <textarea rows="2" bind:value={text} placeholder={`Message ${agent.name}`} aria-label={`Message ${agent.name}`}
       onkeydown={(e) => {
         // Enter sends; Shift+Enter starts a new line.
         if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
@@ -229,15 +250,12 @@
         }
       }}></textarea>
     <button type="submit" class="send" disabled={!text.trim()}>Send →</button>
+    <div class="attach">
+      <button type="button" onclick={() => fileInput?.click()}>+ files</button>
+      <input bind:this={fileInput} type="file" accept=".txt,.md,.csv,.json,.ts,.js,.py,.svelte,.css,.html" onchange={attachFile} hidden />
+    </div>
   </form>
   {#if error}<p class="error" role="alert">{error}</p>{/if}
-  <ul class="todo-list" aria-label="Coming next">
-    <li>Block tools</li>
-    <li>1:1 run</li>
-    <li>voice</li>
-    <li>+ files</li>
-    <li>+ folder</li>
-  </ul>
 
 </div>
 
@@ -250,7 +268,7 @@
     gap: var(--space-2);
     padding: 0;
     color: var(--color-md-text);
-    font-family: var(--font-mono);
+    font-family: var(--font-ui);
     font-size: var(--font-size-xs);
   }
   header,
@@ -261,7 +279,7 @@
     gap: var(--space-1);
   }
   header b {
-    font-size: 14px;
+    font-size: var(--font-size-md);
     letter-spacing: 0.04em;
   }
   .dot {
@@ -271,17 +289,6 @@
     background: var(--color-md-accent);
   }
   .desc,
-  .note-box {
-    display: flex;
-    align-items: center;
-    gap: var(--space-1);
-    min-height: 36px;
-    padding: 0 var(--space-2);
-    border: 1px solid var(--color-md-border);
-    border-radius: var(--radius-sm);
-    background: var(--color-md-surface);
-    color: var(--color-md-text-muted);
-  }
   /* A long description stays on one line and ends in "…" instead of wrapping. */
   .desc {
     display: block;
@@ -292,25 +299,13 @@
     text-overflow: ellipsis;
   }
   /* The note is a one-line field inside its box; the shared textarea height would make the row too tall. */
-  .note-box textarea {
-    flex: 1;
-    min-width: 0;
-    min-height: 0;
-    height: 36px;
-    /* One line of text, centred vertically by matching the line height to the field height. */
-    line-height: 36px;
-    padding: 0;
-    border: none;
-    background: transparent;
-    resize: none;
-  }
   /* Segmented pill groups: one bordered pill, the selected segment in accent. */
   /* Placeholder rows, styled like the bottom-bar cards (AgentBar .chip.main .row). */
   .placeholder-list {
     display: grid;
     gap: 2px;
     padding: var(--space-2) 0;
-    font-size: 11px;
+    font-size: var(--font-size-xs);
     line-height: 1.6;
   }
   .placeholder-list .row {
@@ -321,31 +316,27 @@
   .placeholder-list .key {
     width: 44px;
     flex: none;
-    font-size: 8px;
+    font-size: var(--font-size-tag);
     color: var(--color-md-card-muted);
   }
   .placeholder-list .val {
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .todo-list {
-    margin: 0;
-    padding: var(--space-2) 0 var(--space-2) var(--space-4);
-    font-size: 11px;
-    line-height: 1.6;
-    color: var(--color-md-text-muted);
-  }
   .seg {
     display: flex;
+    flex-wrap: wrap;
     align-items: stretch;
     border: 1px solid var(--color-md-border);
-    border-radius: 999px;
+    border-radius: var(--radius-sm);
     overflow: hidden;
   }
+  /* Tab and action buttons: the main agent's sizes (32px tall, 8px side padding, 1px dividers). */
   .seg > * {
-    flex: 1;
+    flex: 1 1 0;
     min-height: 32px;
-    font-family: var(--font-mono);
+    cursor: pointer;
+    font-family: var(--font-ui);
     font-size: var(--font-size-xs);
     padding: 0 var(--space-2);
     border: none;
@@ -365,9 +356,18 @@
     background: var(--color-md-accent);
     color: var(--color-md-accent-on);
   }
+  .seg > *:disabled {
+    cursor: default;
+    opacity: 0.6;
+  }
+  /* Stop: transparent, with a red outline and red text while it can be pressed (as on the main agent). */
   .seg .stop {
-    background: var(--color-danger);
-    color: var(--color-md-accent-on);
+    background: transparent;
+    color: var(--color-md-text);
+  }
+  .stop:not(:disabled) {
+    color: var(--color-danger);
+    box-shadow: inset 0 0 0 1px var(--color-danger);
   }
   /* The text-size pill, as on the main agent: − | 12px | +. */
   .size {
@@ -376,7 +376,7 @@
     align-items: center;
     gap: var(--space-1);
     border: 1px solid var(--color-md-border);
-    border-radius: 999px;
+    border-radius: var(--radius-sm);
     overflow: hidden;
   }
   .size button {
@@ -395,14 +395,6 @@
     border-right: 1px solid var(--color-md-border);
     color: var(--color-md-text-muted);
   }
-  .pill-on {
-    border: none;
-    border-radius: 999px;
-    padding: 0 var(--space-2);
-    min-height: 26px;
-    background: var(--color-md-accent);
-    color: var(--color-md-accent-on);
-  }
   .live {
     justify-content: flex-start;
     color: var(--color-md-text-muted);
@@ -412,7 +404,7 @@
     min-height: 32px;
     padding: 0 var(--space-2);
     border: 1px solid var(--color-md-border);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
     background: var(--color-md-surface);
     color: var(--color-md-text);
     font: inherit;
@@ -432,19 +424,33 @@
     flex-direction: column;
     gap: var(--space-1);
   }
-  /* The message text sits a little higher, as in the picture. */
-  .composer textarea {
-    padding-top: var(--space-1);
+  /* Disabled buttons look the same as on the main agent: dimmed, no pointer. */
+  button:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+  /* Stop is red while it can be pressed, as on the main agent. */
+  .stop:not(:disabled) {
+    border-color: var(--color-danger);
+    color: var(--color-danger);
   }
   /* Dimmed until there is a message, as on the main agent. */
   .send:disabled {
     opacity: 0.5;
     cursor: default;
   }
+  /* + files sits full width under Send, centred, as on the main agent. */
+  .attach {
+    display: flex;
+    justify-content: center;
+  }
+  .attach button {
+    width: 100%;
+    text-align: center;
+  }
   .send {
     width: 100%;
-    min-height: 32px;
-    border-radius: 999px;
+    border-radius: var(--radius-md);
     background: var(--color-md-accent);
     color: var(--color-md-accent-on);
     border-color: var(--color-md-accent);
@@ -465,13 +471,29 @@
   }
   .queue-label {
     margin: 0 0 var(--space-1);
+    font-family: var(--font-mono);
     color: var(--color-md-text-muted);
-    font-size: 10px;
+    font-size: var(--font-size-tag);
     text-transform: uppercase;
+  }
+  /* Git status sits in the same box as the terminal: fixed size, scrolls inside itself, so the tabs stay put. */
+  .git {
+    flex: 1 1 0;
+    min-height: 0;
+    margin: 0;
+    overflow: auto;
+    padding: var(--space-1);
+    border: 1px solid var(--color-md-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-md-bg-0);
+    color: var(--color-md-text);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-tag);
+    white-space: pre;
   }
   .screen {
     flex: 1 1 0;
-    min-height: 300px;
+    min-height: 0;
     overflow: hidden;
     padding: var(--space-1);
     border: 1px solid var(--color-md-border);

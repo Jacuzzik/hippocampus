@@ -113,7 +113,7 @@ def folder_tokens(folder: str) -> int:
                 continue
             seen.add(key)
             total += sum(int(usage.get(k) or 0) for k in TOKEN_KEYS)
-    return total + codex_tokens(folder)
+    return total + codex_tokens(folder) + opencode_tokens(folder)
 
 
 def folder_activity(folder: str) -> dict[str, Any]:
@@ -200,7 +200,7 @@ def codex_last_tool(folder: str) -> str | None:
                 if payload.get("name") == "exec" and inputs.get("command"):
                     return inputs["command"]
                 return _tool_text(payload.get("name"), inputs)
-        return None
+        # This session has no tool call yet: keep looking in older sessions in the same folder.
     return None
 
 
@@ -298,7 +298,7 @@ def open_tool_calls(agent: str) -> list[str]:
 
 # Sessions an agent ran before its project folder moved. Read only: used for the card's last command when the
 # current session has no tool calls yet. Session files are never changed.
-PREVIOUS_SESSIONS: dict[str, str] = {"hippo": "2978bcce-b4de-4727-bd98-f0adc3a4c96f"}
+PREVIOUS_SESSIONS: dict[str, str] = {"hippoherman": "2978bcce-b4de-4727-bd98-f0adc3a4c96f"}
 
 
 def _newest_tool_call(found: Path) -> str | None:
@@ -354,3 +354,60 @@ def _write(path: Path, data: dict[str, Any]) -> None:
     tmp = path.with_name(f"{path.name}.{uuid.uuid4().hex}.tmp")
     tmp.write_text(json.dumps(data, indent=2), encoding="utf-8")
     tmp.replace(path)
+
+
+OPENCODE_DB = Path.home() / ".local" / "share" / "opencode" / "opencode.db"
+
+
+def _opencode(query: str, params: tuple[Any, ...]) -> list[tuple[Any, ...]]:
+    """Rows from OpenCode's database, read-only; none when the database is missing or unreadable."""
+    import sqlite3
+
+    if not OPENCODE_DB.is_file():
+        return []
+    try:
+        with sqlite3.connect(f"file:{OPENCODE_DB}?mode=ro", uri=True) as db:
+            return db.execute(query, params).fetchall()
+    except sqlite3.Error:
+        return []
+
+
+def opencode_last_tool(folder: str) -> str | None:
+    """The newest OpenCode tool call run in `folder`, as "name: command"; None when there is none."""
+    rows = _opencode(
+        "select p.data from part p join session s on s.id = p.session_id "
+        "where s.directory = ? and json_extract(p.data, '$.type') = 'tool' order by p.time_created desc limit 1",
+        (folder,),
+    )
+    if not rows:
+        return None
+    try:
+        part = json.loads(rows[0][0])
+    except (ValueError, TypeError):
+        return None
+    state = part.get("state") if isinstance(part.get("state"), dict) else {}
+    inputs = dict(state.get("input")) if isinstance(state.get("input"), dict) else {}
+    # File tools name their target differently; show it where the other tools show a command.
+    if not inputs.get("command"):
+        inputs["command"] = inputs.get("filePath") or inputs.get("path") or inputs.get("pattern") or ""
+    return _tool_text(part.get("tool"), inputs)
+
+
+def opencode_tokens(folder: str) -> int:
+    """Tokens this month across the OpenCode sessions run in `folder`, from each assistant reply's count."""
+    from datetime import datetime
+
+    start = datetime.now().astimezone().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    rows = _opencode(
+        "select m.data from message m join session s on s.id = m.session_id "
+        "where s.directory = ? and m.time_created >= ?",
+        (folder, int(start.timestamp() * 1000)),
+    )
+    total = 0
+    for (data,) in rows:
+        try:
+            tokens = json.loads(data).get("tokens") or {}
+        except (ValueError, TypeError, AttributeError):
+            continue
+        total += int(tokens.get("total") or 0)
+    return total

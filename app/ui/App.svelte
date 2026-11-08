@@ -284,7 +284,6 @@
     fullscreen={terminalOnly}
     onfullscreen={() => (terminalOnly = !terminalOnly)}
     onselect={(id) => (selectedId = id)}
-    onrefresh={load}
   />
   <RightPanel open={panelOpen || terminalOnly} />
   {#if sidebarOpen && data && !terminalOnly}

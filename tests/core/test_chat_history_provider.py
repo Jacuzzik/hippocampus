@@ -28,7 +28,7 @@ def test_saved_chat_turns_reach_a_non_claude_provider(
 ) -> None:
     recorder = Recorder()
     monkeypatch.setattr(
-        sidecar, "build_router", lambda settings, key, agent="hippo": Router(None, recorder)
+        sidecar, "build_router", lambda settings, key, agent="hippoherman": Router(None, recorder)
     )
     monkeypatch.setattr(sidecar, "get_api_key", lambda: None)
     session = sidecar.Session(
@@ -47,7 +47,7 @@ def test_saved_chat_turns_reach_a_non_claude_provider(
             {
                 "id": 1,
                 "method": "chat_history_save",
-                "agent": "hippo",
+                "agent": "hippoherman",
                 "sessions": [{"session": "s1", "messages": turns}],
             }
         ),
@@ -55,7 +55,7 @@ def test_saved_chat_turns_reach_a_non_claude_provider(
     assert saved == {"id": 1, "result": {"saved": True}}
 
     answer = sidecar.handle(
-        session, json.dumps({"id": 2, "method": "chat", "agent": "hippo", "text": "third question"})
+        session, json.dumps({"id": 2, "method": "chat", "agent": "hippoherman", "text": "third question"})
     )
     assert answer["result"]["reply"] == "ok"
 

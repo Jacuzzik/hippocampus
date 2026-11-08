@@ -196,7 +196,7 @@ export async function mockSidecar(
         {
           name: "tidy-notes",
           description: "Keeps the note list tidy",
-          path: "/home/thalha/hippocampus/skills/tidy-notes",
+          path: "skills/tidy-notes",
         },
       ];
       const keyRows = () => [
@@ -230,7 +230,7 @@ export async function mockSidecar(
           case "tasks":
             return {
               tasks: [
-                { id: "MDF-1", title: "Ship the Tasks page", status: "doing", assignee: "hippo", updatedAt: null },
+                { id: "MDF-1", title: "Ship the Tasks page", status: "doing", assignee: "hippoherman", updatedAt: null },
                 { id: "MDF-2", title: "Check the Inbox feed", status: "todo", assignee: null, updatedAt: null },
               ],
             };

@@ -12,7 +12,7 @@ const NOTE_RADII = [5, 10, 7, 9, 14];
 /** Drops the vault's test<digits> notes (data/brains/Hippocampus/test*.md) from the graph view. The files stay. */
 export function hideTestNotes(data: GraphData): GraphData {
   const gone = new Set(
-    data.nodes.filter((n) => /^test\d+$/.test(n.id.split("/").pop()!.replace(/\.md$/i, ""))).map((n) => n.id),
+    data.nodes.filter((n) => /^test\d+$/.test((n.id.split("/").pop() ?? "").replace(/\.md$/i, ""))).map((n) => n.id),
   );
   if (gone.size === 0) return data;
   return {
@@ -89,7 +89,7 @@ export function cellOf(i: number, x: number, y: number, t: number): [number, num
 }
 
 /** A ball of glyphs: a bold "%" core, then "+" body that fades to the edge. Radius grows with links. */
-export function ballCells(deg: number, _seed = 0): [number, number, string][] {
+export function ballCells(deg: number): [number, number, string][] {
   const r = Math.min(deg >= HUB_DEG ? 3 : 2, 1 + Math.floor(deg / 3));
   // Rows are about twice as tall as columns, so hubs stretch the row distance to look round on screen.
   // Rows are 9px and columns 6px, so 2.25 (= (9/6)^2) makes the ball round on screen.

@@ -31,7 +31,6 @@
     fullscreen = false,
     onselect,
     onfullscreen,
-    onrefresh,
   }: {
     data?: GraphData | null;
     error?: string | null;
@@ -43,7 +42,6 @@
     fullscreen?: boolean;
     onselect: (id: string | null) => void;
     onfullscreen: () => void;
-    onrefresh?: () => void;
   } = $props();
 </script>
 
@@ -75,7 +73,7 @@
     <div class="body">
       {#if data}
         {#key viewKey}
-          <BrainGraph {data} {query} {tag} {memory} {selectedId} {onselect} {onrefresh} />
+          <BrainGraph {data} {query} {tag} {memory} {selectedId} {onselect} />
         {/key}
       {:else if error}
         <p role="alert">Could not load the vault: {error}</p>
@@ -110,8 +108,8 @@
     bottom: var(--space-2);
     z-index: 2;
     pointer-events: none;
-    font-family: "Press Start 2P", monospace;
-    font-size: 9px;
+    font-family: var(--font-ui);
+    font-size: var(--font-size-tag);
     color: var(--color-md-text-muted);
   }
 

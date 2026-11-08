@@ -64,6 +64,6 @@ export function drawAscii(
   for (let i = 0; i < deg.length; i++) {
     ctx.globalAlpha = focus < 0 || i === focus ? 1 : DIM;
     const [c, r] = cell(i);
-    for (const [dx, dy, ch] of ballCells(deg[i] ?? 0, i)) ctx.fillText(ch, sx(c + dx), sy(r + dy));
+    for (const [dx, dy, ch] of ballCells(deg[i] ?? 0)) ctx.fillText(ch, sx(c + dx), sy(r + dy));
   }
 }

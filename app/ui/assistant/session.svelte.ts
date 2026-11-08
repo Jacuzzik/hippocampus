@@ -19,7 +19,7 @@ import {
 /** How long the orb shows "speaking" after a reply. */
 const SPEAKING_MS = 1500;
 /** The agent this window talks to. Its Claude Code session is kept by the sidecar. */
-const AGENT = "hippo";
+const AGENT = "hippoherman";
 
 /** One Claude Code session and the messages shown for it. */
 export interface SavedSession {

@@ -27,9 +27,12 @@ export function createTerminalQueue(agentId: () => string) {
     const [next, ...rest] = items;
     items = rest;
     busyUntil = Date.now() + BUSY_MS;
-    invoke("sidecar_call", { method: "terminal_input", params: { agent: agentId(), data: `${next}\r` } }).catch((cause) =>
-      console.error("Could not send to the terminal", cause),
-    );
+    const agent = agentId();
+    // The text and the Enter key go in separate writes: a CLI treats text and Enter in one write as a paste, so Enter did not submit.
+    invoke("sidecar_call", { method: "terminal_input", params: { agent, data: next } })
+      .then(() => new Promise((done) => setTimeout(done, 150)))
+      .then(() => invoke("sidecar_call", { method: "terminal_input", params: { agent, data: "\r" } }))
+      .catch((cause) => console.error("Could not send to the terminal", cause));
   }
 
   function checkContext(): void {

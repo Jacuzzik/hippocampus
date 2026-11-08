@@ -57,7 +57,7 @@
 
 <style>
   .tasks {
-    font-family: var(--font-mono);
+    font-family: var(--font-ui);
     font-size: var(--font-size-xs);
     color: var(--color-md-text);
     overflow-y: auto;
@@ -65,8 +65,8 @@
 
   h3 {
     margin: var(--space-2) 0 var(--space-1);
-    font-family: "Press Start 2P", monospace;
-    font-size: 8px;
+    font-family: var(--font-ui);
+    font-size: var(--font-size-tag);
     color: var(--color-md-accent);
   }
 

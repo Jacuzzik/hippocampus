@@ -7,7 +7,7 @@ settings_version = 1
 # "claude", or a preset such as "openai", "xai", "gemini", "groq", "lmstudio" (see ai/providers/openai_compat.py)
 provider = "claude"
 # Optional: a model ID for the chosen preset. Empty uses the preset's first model.
-provider_model = "gpt-6.1-sol"
+provider_model = "gpt-6-luna"
 claude_model = "claude-haiku-5-5"
 ollama_host = "http://127.0.0.1:11434"
 ollama_model = "qwen2.5:1.5b"

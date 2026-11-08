@@ -18,7 +18,7 @@
   import { ORB_LABELS } from "../assistant/model";
   import { assistant } from "../assistant/session.svelte";
 
-  type Account = { claude: boolean; model: string };
+  type Account = { claude: boolean; model: string; provider: string };
 
   let account = $state<Account | null>(null);
   // Added agents only, minus archived ones; the main agent is not in this list, so it cannot be moved.
@@ -64,7 +64,7 @@
   });
 
   const provider = $derived(
-    account ? (account.claude ? "Claude Code" : "Ollama") : "...",
+    account ? (AGENT_PROVIDERS.find((p) => p.id === account?.provider)?.label ?? account?.provider) : "...",
   );
   const labelOf = (id: string): string =>
     AGENT_PROVIDERS.find((p) => p.id === id)?.label ?? id;
@@ -86,22 +86,25 @@
   const cmdOf = (id: string): string => {
     const info = live[id];
     const shown = info?.running?.length ? info.running : info?.last ? [info.last] : [];
-    return shown.join("  ·  ") || NO_DATA;
+    // Drop the tool word the terminal puts in front ("Bash: ls ...", "exec ...").
+    return shown.map((c) => c.replace(/^\s*(bash|exec|sh|shell|cmd)\b\s*:?\s*/i, "")).join("  ·  ") || NO_DATA;
   };
   // The provider a card's terminal runs (its CLI name), else the agent's own provider: its name and logo.
   const providerOf = (id: string, fallback: string): { name: string; logo?: string } => {
     const word = (live[id]?.command ?? "").split(" ")[0] ?? "";
-    return { name: CLI_LABEL[word] ?? labelOf(fallback), logo: providerLogo(CLI_ID[word] ?? fallback) };
+    return { name: CLI_ID[word] ? labelFor(CLI_ID[word]) : labelOf(fallback), logo: providerLogo(CLI_ID[word] ?? fallback) };
   };
   // The provider HIPPO's terminal actually runs, from its CLI name; the account's provider until a terminal runs.
-  const CLI_LABEL: Record<string, string> = { claude: "Claude Code", codex: "Codex", ollama: "Ollama", agy: "Antigravity" };
+  // Names come from the Monitor picker list (AGENT_PROVIDERS), so one provider has one name everywhere.
+  const labelFor = (id: string): string => AGENT_PROVIDERS.find((p) => p.id === id)?.label ?? id;
   const CLI_ID: Record<string, string> = { claude: "claude", codex: "codex", ollama: "ollama", agy: "antigravity" };
-  const cliWord = $derived((live.hippo?.command ?? "").split(" ")[0] ?? "");
-  const runningProvider = $derived(CLI_LABEL[cliWord] ?? provider);
-  const runningId = $derived(CLI_ID[cliWord] ?? (account?.claude ? "claude" : "ollama"));
+  const cliWord = $derived((live.hippoherman?.command ?? "").split(" ")[0] ?? "");
+  const runningProvider = $derived(CLI_ID[cliWord] ? labelFor(CLI_ID[cliWord]) : provider);
+  // Fallback is the account's own provider, not a guess: a Codex account with no running CLI must not show Ollama.
+  const runningId = $derived(CLI_ID[cliWord] ?? account?.provider ?? "");
   const runningLogo = $derived(providerLogo(runningId));
   async function refreshLive(): Promise<void> {
-    for (const id of ["hippo", ...added.map((a) => a.id)]) {
+    for (const id of ["hippoherman", ...added.map((a) => a.id)]) {
       try {
         const info = await invoke<{ command: string | null; status: string | null; running?: string[]; last?: string | null; model?: string | null }>("sidecar_call", {
           method: "terminal_command",
@@ -261,16 +264,16 @@
   <!-- Selecting HIPPO's card highlights it; the Control Room stays in the right panel. Its buttons do their own job. -->
   <div
     class="chip main"
-    class:selected={selection.id === "hippo"}
+    class:selected={selection.id === "hippoherman"}
     role="button"
     tabindex="0"
-    aria-pressed={selection.id === "hippo"}
+    aria-pressed={selection.id === "hippoherman"}
     onclick={(e) => {
       if ((e.target as HTMLElement).closest("button")) return;
-      selectAgent("hippo");
+      selectAgent("hippoherman");
     }}
     onkeydown={(e) => {
-      if (e.key === "Enter" || e.key === " ") selectAgent("hippo");
+      if (e.key === "Enter" || e.key === " ") selectAgent("hippoherman");
     }}
   >
     <img src={CARD_FACES.find((f) => f.id === "card-face-17")?.url ?? logo} alt="" class="face" />
@@ -286,14 +289,14 @@
         </span>
       </span>
       <span class="row">
-        <span class="val model">{live.hippo?.model ?? account?.model ?? NO_DATA}</span>
+        <span class="val model">{live.hippoherman?.model ?? account?.model ?? NO_DATA}</span>
       </span>
-      <span class="row wide">
-        <span class="val cmd">{cmdOf("hippo")}</span>
+      <span class="row wide cmd-row">
+        <span class="val cmd">{cmdOf("hippoherman")}</span>
       </span>
-      <span class="row wide" aria-label="Context {live.hippo?.percent ?? NO_DATA}">
-        <span class="ctx-bar" aria-hidden="true"><span class="ctx-fill" style="width: {live.hippo?.percent ?? 0}%"></span></span>
-        <span class="pct">{live.hippo?.percent != null ? `${live.hippo?.percent}%` : NO_DATA}</span>
+      <span class="row wide" aria-label="Context {live.hippoherman?.percent ?? NO_DATA}">
+        <span class="ctx-bar" aria-hidden="true"><span class="ctx-fill" style="width: {live.hippoherman?.percent ?? 0}%"></span></span>
+        <span class="pct">{live.hippoherman?.percent != null ? `${live.hippoherman?.percent}%` : NO_DATA}</span>
       </span>
     </div>
     <div class="side">
@@ -334,16 +337,17 @@
       >
         <img src={CARD_FACES.find((f) => f.id === agent.character)?.url ?? logo} alt="" class="face" />
         <span class="text">
-          <span class="head"><b>{agent.name}</b>
+          <span class="head"><b>{agent.name}</b></span>
+          <span class="row">
             <span class="val provider-line">
               {#if providerOf(agent.id, agent.provider).logo}<span class="provider-logo" style='--logo: url("{providerOf(agent.id, agent.provider).logo}")'></span>{/if}
               <span class="provider-name">{providerOf(agent.id, agent.provider).name}</span>
             </span>
           </span>
           <span class="row">
-            <span class="val">{agent.model || live[agent.id]?.model || "No model set"}</span>
+            <span class="val model">{agent.model || live[agent.id]?.model || "No model set"}</span>
           </span>
-          <span class="row wide">
+          <span class="row wide cmd-row">
             <span class="val cmd">{cmdOf(agent.id)}</span>
           </span>
           <span class="row wide" aria-label="Context {live[agent.id]?.percent ?? NO_DATA}">
@@ -406,6 +410,7 @@
   }
 
   .add {
+    box-shadow: none;
     flex: none;
     min-height: 44px;
     padding: 0 var(--space-3);
@@ -413,8 +418,8 @@
     border-radius: var(--radius-md);
     background: none;
     color: var(--color-text-muted);
-    font-family: "Press Start 2P", monospace;
-    font-size: 8px;
+    font-family: var(--font-ui);
+    font-size: var(--font-size-tag);
     cursor: pointer;
   }
 
@@ -424,66 +429,67 @@
     border-radius: var(--radius-sm);
     background: var(--color-md-surface);
     color: var(--color-md-text);
+    box-shadow: none;
     cursor: pointer;
   }
 
   .chip .info {
-    font-family: "Press Start 2P", monospace;
-    font-size: 8px;
+    font-family: var(--font-ui);
+    font-size: var(--font-size-tag);
   }
 
   /* HIPPO main card, per the mockup: white body, purple top bar and outline.
-     shortcut: the purple is hardcoded because .md-theme remaps --color-accent to lilac and no token holds #6A58E0; move it to design/tokens.json. */
-  .chip.main {
-    --hippo-purple: #6a58e0;
+     --hippo-purple is the light accent (--color-accent). */
+  .chip {
+    --hippo-purple: var(--color-accent);
     align-items: flex-start;
     width: 320px;
     min-height: 0;
     padding: 8px 12px 8px;
-    background: #ffffff;
+    background: var(--color-md-card);
     color: var(--color-md-card-text);
     border: 2px solid var(--hippo-purple);
     border-top-width: 8px;
-    border-radius: 0 0 10px 10px;
+    border-radius: 0 0 2px 2px;
     box-shadow: none;
-    font-family: var(--font-mono);
+    font-family: var(--font-ui);
   }
 
-  .chip.main img.face {
+  .chip img.face {
     width: 52px;
     height: 52px;
     margin-top: 4px;
   }
 
-  .chip.main .text {
+  .chip .text {
     flex: 1;
     min-width: 0;
   }
 
-  .chip.main b {
-    font-size: 16px;
+  .chip b {
+    font-size: var(--font-size-lg);
     font-weight: 700;
     line-height: 1.2;
   }
 
-  .chip.main .badge {
+  .chip .badge {
     padding: 3px 6px;
-    border-radius: 3px;
+    border-radius: var(--radius-sm);
     background: var(--hippo-purple);
     color: var(--color-md-card);
-    font-family: var(--font-mono);
-    font-size: 9px;
+    font-family: var(--font-ui);
+    font-size: var(--font-size-tag);
     font-weight: 700;
   }
 
   /* The logo is drawn in the brand colour: a mask shows the logo's shape, filled with the colour or gradient. */
-  .chip.main .provider-line {
+  .chip .provider-line {
     display: inline-flex;
     align-items: center;
     gap: 4px;
   }
 
-  .chip.main .provider-logo {
+  .chip .provider-logo {
     width: 12px;
     height: 12px;
     flex: none;
@@ -499,79 +505,76 @@
   }
 
 
-  /* Normal cards lost their provider row; this holds the space it used so they keep their height. */
-  .chip.main.added .head {
-    margin-bottom: 22px;
-    position: relative;
-  }
 
-  /* Sits in the 22px gap under the name, so the card keeps its height. */
-  .chip.main.added .head .provider-line {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    margin-top: 3px;
-  }
-
-  .chip.main .row {
+  .chip .row {
     display: flex;
     align-items: center;
     gap: 8px;
-    font-size: 11px;
+    font-size: var(--font-size-xs);
     line-height: 1.6;
   }
 
 
-  .chip.main .val {
+  .chip .val {
     overflow: hidden;
     text-overflow: ellipsis;
   }
 
   /* The model name sits a touch higher than the rows around it. */
-  .chip.main .model {
+  .chip .model {
     position: relative;
     top: -2px;
   }
 
   /* The CMD text is highlighted like the MAIN badge. */
-  .chip.main .cmd {
+  /* The command stops short of the TALK and INFO column and ends in "…". */
+  .chip .row.wide.cmd-row {
+    margin-right: 0;
+  }
+
+  .chip .cmd {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     align-self: flex-start;
     padding: 1px 4px;
     line-height: 1.4;
-    border-radius: 3px;
+    border-radius: var(--radius-sm);
     background: var(--hippo-purple);
     color: var(--color-md-card);
     font-weight: 700;
   }
 
   /* CMD and CTX rows start under the face and run out to the card's right edge. */
-  .chip.main .row.wide {
+  .chip .row.wide {
     margin-left: calc(-52px - var(--space-2));
     margin-right: -12px;
   }
 
   /* One continuous loading-style bar: the fill's width is the context percentage. */
-  .chip.main .ctx-bar {
+  .chip .ctx-bar {
     flex: 1;
     min-width: 140px;
     height: 5px;
-    border-radius: 3px;
-    background: rgba(106, 88, 224, 0.2);
+    border-radius: var(--radius-sm);
+    background: var(--color-ctx-track);
     overflow: hidden;
   }
 
-  .chip.main .ctx-fill {
+  .chip .ctx-fill {
     display: block;
     height: 100%;
     background: var(--hippo-purple);
   }
 
-  .chip.main .pct {
-    font-size: 10px;
+  .chip .pct {
+    font-size: var(--font-size-tag);
     color: var(--color-md-card-muted);
   }
 
-  .chip.main .side {
+  .chip .side {
     display: flex;
     flex: none;
     flex-direction: column;
@@ -580,30 +583,30 @@
     align-self: stretch;
   }
 
-  .chip.main .talk,
-  .chip.main .info {
+  .chip .talk,
+  .chip .info {
     width: 100%;
     height: 26px;
     padding: 0;
-    border-radius: 4px;
-    font-family: var(--font-mono);
-    font-size: 10px;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-ui);
+    font-size: var(--font-size-tag);
     font-weight: 700;
     cursor: pointer;
   }
 
-  .chip.main .talk {
+  .chip .talk {
     border: none;
     background: var(--hippo-purple);
     color: var(--color-md-card);
   }
 
-  .chip.main .talk:disabled {
+  .chip .talk:disabled {
     opacity: 1;
     cursor: not-allowed;
   }
 
-  .chip.main .info {
+  .chip .info {
     border: 1px solid var(--hippo-purple);
     background: var(--color-md-card);
     color: var(--hippo-purple);
@@ -638,7 +641,7 @@
   .chip.main .status {
     margin-top: auto;
     align-self: flex-end;
-    font-size: 9px;
+    font-size: var(--font-size-tag);
     font-weight: 700;
     letter-spacing: 0.06em;
     color: var(--hippo-purple);
@@ -656,10 +659,11 @@
   .info-box {
     width: min(340px, calc(100vw - 32px));
     padding: var(--space-4);
-    background: var(--color-md-card);
-    color: var(--color-md-card-text);
-    border: 2px solid var(--color-accent);
-    border-radius: var(--radius-md);
+    background: var(--color-bg-1);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+    border-left: 3px solid var(--color-accent);
+    border-radius: var(--radius-sm);
   }
 
   .info-box header {
@@ -692,7 +696,7 @@
     background: none;
     border: none;
     color: var(--color-md-card-muted);
-    font-size: 18px;
+    font-size: var(--font-size-xl);
     cursor: pointer;
   }
 
@@ -706,7 +710,7 @@
 
   .info-box dt {
     color: var(--color-md-card-muted);
-    font-size: 10px;
+    font-size: var(--font-size-tag);
   }
 
   .info-box dd {
@@ -742,8 +746,8 @@
     border-radius: var(--radius-sm);
     background: var(--color-accent);
     color: var(--color-accent-on);
-    font-family: "Press Start 2P", monospace;
-    font-size: 6px;
+    font-family: var(--font-ui);
+    font-size: var(--font-size-tag);
   }
 
 
@@ -756,8 +760,8 @@
   }
 
   .talk {
-    font-family: "Press Start 2P", monospace;
-    font-size: 8px;
+    font-family: var(--font-ui);
+    font-size: var(--font-size-tag);
   }
 
   .talk:disabled {

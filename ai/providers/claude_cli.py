@@ -33,7 +33,7 @@ def _newest(messages: list[dict[str, Any]]) -> str:
 class ClaudeCliProvider:
     name = "claude-cli"
 
-    def __init__(self, model: str, agent: str = "hippo", timeout: float = 120.0, vault: str | None = None) -> None:
+    def __init__(self, model: str, agent: str = "hippoherman", timeout: float = 120.0, vault: str | None = None) -> None:
         self.model = model
         self.agent = agent
         self.timeout = timeout

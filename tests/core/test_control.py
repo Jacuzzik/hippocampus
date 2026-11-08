@@ -86,7 +86,7 @@ def test_a_tiny_cap_pauses_the_next_request_and_allowance_lets_one_through(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     provider = Scripted(Reply("first", tokens=50), Reply("second", tokens=50))
-    monkeypatch.setattr(sidecar, "build_router", lambda settings, key, agent="hippo": Router(None, provider))
+    monkeypatch.setattr(sidecar, "build_router", lambda settings, key, agent="hippoherman": Router(None, provider))
     session = sidecar.Session(tmp_path, Settings(assistant_budget=Caps(daily=10)))
     assert chat(session, "one") == {"reply": "first", "stopped": False}
 
@@ -508,7 +508,7 @@ def test_a_saved_key_is_used_by_the_next_request_without_a_restart(
     monkeypatch.setattr("ai.keys.keyring", keychain)
     keys_used: list[str | None] = []
 
-    def router_for(settings: Settings, key: str | None, agent: str = "hippo") -> Router:
+    def router_for(settings: Settings, key: str | None, agent: str = "hippoherman") -> Router:
         keys_used.append(key)
         return Router(None, Scripted(Reply("one", tokens=1), Reply("two", tokens=1)))
 

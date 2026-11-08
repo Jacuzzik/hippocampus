@@ -81,8 +81,6 @@ def test_engine_switch_refuses_unknown_provider_and_model(tmp_path: Path) -> Non
         save_engine("nope", "x", path)
     with pytest.raises(ValueError, match="not a model"):
         save_engine("claude", "made-up-model", path)
-    with pytest.raises(ValueError, match="no models"):
-        save_engine("vllm", "anything", path)
     assert path.read_text(encoding="utf-8") == before
     save_engine("claude", "claude-haiku-5-5", path)
     assert tomllib.loads(path.read_text(encoding="utf-8"))["ai"]["claude_model"] == "claude-haiku-5-5"

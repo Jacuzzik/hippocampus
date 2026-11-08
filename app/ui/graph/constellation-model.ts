@@ -45,11 +45,11 @@ export function withTestGraph(data: GraphData): GraphData {
   const edges: [string, string][] = [...data.edges];
   const hubs = Array.from({ length: 12 }, (_, i) => "test-hub-" + i);
   hubs.forEach((id) => nodes.push({ id, title: id, tags: [] }));
-  hubs.forEach((h, i) => edges.push([h, hubs[(i + 1) % hubs.length]!]));
+  hubs.forEach((h, i) => edges.push([h, (hubs[(i + 1) % hubs.length] ?? h)]));
   for (let i = 0; i < 60; i++) {
     const id = "test-note-" + i;
     nodes.push({ id, title: id, tags: [] });
-    edges.push([id, hubs[i % hubs.length]!]);
+    edges.push([id, (hubs[i % hubs.length] ?? hubs[0] ?? id)]);
   }
   for (let i = 0; i < 140; i++) nodes.push({ id: "test-lonely-" + i, title: "test-lonely-" + i, tags: [] });
   return { nodes, edges };
@@ -69,7 +69,7 @@ export function buildConstellation(data: GraphData, pos: ArrayLike<number>): Con
   // Each note takes the colour of a hub it links to; a hub takes one from its id.
   const colour = new Int32Array(n).fill(CYAN);
   const ownerHub = new Int32Array(n).fill(-1);
-  for (let i = 0; i < n; i++) if (isHub[i]) colour[i] = HUB_COLOURS[Math.floor(rng(data.nodes[i]!.id)() * HUB_COLOURS.length)]!;
+  for (let i = 0; i < n; i++) if (isHub[i]) colour[i] = HUB_COLOURS[Math.floor(rng(data.nodes[i]?.id ?? "")() * HUB_COLOURS.length)] ?? CYAN;
   const ends = new Int32Array(2 * data.edges.length);
   data.edges.forEach(([a, b], e) => {
     const ia = index.get(a);
@@ -94,8 +94,8 @@ export function buildConstellation(data: GraphData, pos: ArrayLike<number>): Con
 
   // Connections first, so the formations sit on top of their trails.
   data.edges.forEach(([a, b], e) => {
-    const ia = ends[2 * e]!;
-    const ib = ends[2 * e + 1]!;
+    const ia = ends[2 * e] ?? -1;
+    const ib = ends[2 * e + 1] ?? -1;
     if (ia < 0 || ib < 0 || ia === ib) return;
     const x0 = pos[2 * ia] ?? 0;
     const y0 = pos[2 * ia + 1] ?? 0;
@@ -120,13 +120,13 @@ export function buildConstellation(data: GraphData, pos: ArrayLike<number>): Con
       const u = 1 - t;
       const x = u * u * x0 + 2 * u * t * cx + t * t * x1;
       const y = u * u * y0 + 2 * u * t * cy + t * t * y1;
-      if (hubPair && k % 9 === 0) box(x, y, 3, 2, colour[ia]!, 0.5, owner);
+      if (hubPair && k % 9 === 0) box(x, y, 3, 2, (colour[ia] ?? CYAN), 0.5, owner);
       else glyph(x, y, r() < 0.7 ? 0 : 1, WHITE, 0.28 + 0.2 * r(), owner);
     }
   });
 
   for (let i = 0; i < n; i++) {
-    const r = rng(data.nodes[i]!.id);
+    const r = rng(data.nodes[i]?.id ?? "");
     const x = pos[2 * i] ?? 0;
     const y = pos[2 * i + 1] ?? 0;
     const own = i * 2;
@@ -140,7 +140,7 @@ export function buildConstellation(data: GraphData, pos: ArrayLike<number>): Con
         const rad = R * r() * r();
         const a = r() * Math.PI * 2;
         const bright = k % 7 === 0;
-        glyph(x + Math.cos(a) * rad, y + Math.sin(a) * rad, rad < R * 0.3 ? 2 : 1, bright ? WHITE : colour[i]!, 1 - (0.7 * rad) / R, own);
+        glyph(x + Math.cos(a) * rad, y + Math.sin(a) * rad, rad < R * 0.3 ? 2 : 1, bright ? WHITE : (colour[i] ?? CYAN), 1 - (0.7 * rad) / R, own);
       }
       // Nested towers: tall or wide outlined boxes around the core, with a white crossing at the corner.
       const towers = 2 + Math.min(4, Math.floor(d / 3));
@@ -149,7 +149,7 @@ export function buildConstellation(data: GraphData, pos: ArrayLike<number>): Con
         const h = r() < 0.5 ? w * (1.6 + 0.8 * r()) : w * (0.5 + 0.4 * r());
         const bx = x + (r() - 0.5) * R * 0.6 - w / 2;
         const by = y + (r() - 0.5) * R * 0.6 - h / 2;
-        box(bx, by, w, h, colour[i]!, 0.55, own);
+        box(bx, by, w, h, (colour[i] ?? CYAN), 0.55, own);
         glyph(bx, by, 1, WHITE, 1, own);
       }
     } else if (d === 0) {
@@ -160,13 +160,13 @@ export function buildConstellation(data: GraphData, pos: ArrayLike<number>): Con
       else box(x - 1.5, y - 2, 3, 4, WHITE, 0.35, own);
     } else {
       // Note with links: a small outlined box, or a few + marks, in its hub's colour.
-      if (r() < 0.35) box(x - 1.3, y - 2, 2.6, 4.2, colour[i]!, 0.6, own);
+      if (r() < 0.35) box(x - 1.3, y - 2, 2.6, 4.2, (colour[i] ?? CYAN), 0.6, own);
       else {
         const m = 3 + Math.floor(r() * 3);
         for (let k = 0; k < m; k++) {
           const a = r() * Math.PI * 2;
           const rad = 2.5 * r();
-          glyph(x + Math.cos(a) * rad, y + Math.sin(a) * rad, 1, r() < 0.2 ? WHITE : colour[i]!, 0.75, own);
+          glyph(x + Math.cos(a) * rad, y + Math.sin(a) * rad, 1, r() < 0.2 ? WHITE : (colour[i] ?? CYAN), 0.75, own);
         }
       }
     }

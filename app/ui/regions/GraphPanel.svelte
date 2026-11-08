@@ -2,6 +2,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
+  import { SvelteMap } from "svelte/reactivity";
 
   type GraphNode = { id: string; title: string; memory: boolean };
   type GraphData = { nodes: GraphNode[]; edges: [string, string][] };
@@ -27,7 +28,7 @@
 
   const linked = $derived.by(() => {
     if (!graph) return [];
-    const count = new Map<string, number>();
+    const count = new SvelteMap<string, number>();
     for (const [from, to] of graph.edges) {
       count.set(from, (count.get(from) ?? 0) + 1);
       count.set(to, (count.get(to) ?? 0) + 1);
@@ -97,8 +98,8 @@
 
   h3 {
     margin: var(--space-2) 0 var(--space-1);
-    font-family: "Press Start 2P", monospace;
-    font-size: 8px;
+    font-family: var(--font-ui);
+    font-size: var(--font-size-tag);
     color: var(--color-md-accent);
   }
 

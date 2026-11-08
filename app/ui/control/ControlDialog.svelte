@@ -89,11 +89,12 @@
     flex-direction: column;
     width: min(680px, calc(100vw - 2 * var(--space-4)));
     max-height: 85vh;
-    padding: var(--space-5);
+    padding: var(--space-4);
     color: var(--color-text);
     background: var(--color-bg-1);
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
+    border-left: 3px solid var(--color-accent);
+    border-radius: var(--radius-sm);
     box-shadow: var(--layout-drawer-shadow);
   }
 

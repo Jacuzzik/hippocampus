@@ -14,6 +14,8 @@
   let fit: FitAddon | null = null;
   let unlisten: (() => void) | null = null;
   let observer: ResizeObserver | null = null;
+  let restarting = false;
+  let onEngineChangedHandler: ((e: Event) => void) | null = null;
 
   function sendSize(): void {
     if (!term || !fit) return;
@@ -27,12 +29,13 @@
   async function startTerminal(): Promise<void> {
     // The background is read from the app's dark token, so the terminal matches the panels.
     const bg = getComputedStyle(document.documentElement).getPropertyValue("--color-md-bg-0").trim() || "#222229";
+    const fg = getComputedStyle(document.documentElement).getPropertyValue("--color-fg").trim() || "#DADADA";
     term = new Terminal({
       fontFamily: "JetBrains Mono, monospace",
       fontSize: 12,
       cursorBlink: true,
       convertEol: true,
-      theme: { background: bg, foreground: "#e8e8e8", cursor: "#e8e8e8" },
+      theme: { background: bg, foreground: fg, cursor: fg },
     });
     fit = new FitAddon();
     term.loadAddon(fit);
@@ -44,14 +47,29 @@
         console.error("Could not send to the terminal", cause),
       );
     });
-    unlisten = await listen<{ event?: string; agent?: string; data?: string; exit?: number }>("sidecar-event", (event) => {
+    unlisten = await listen<{ event?: string; agent?: string; data?: string; exit?: number; stopped?: boolean }>("sidecar-event", (event) => {
       if (event.payload.event !== "terminal" || event.payload.agent !== agentId || !term) return;
       if (event.payload.data !== undefined) {
         term.write(event.payload.data);
         onoutput?.(event.payload.data);
       }
-      if (event.payload.exit !== undefined) term.write(`\r\n[the terminal closed, exit ${event.payload.exit}]\r\n`);
+      // A model change stops the old process on purpose; the new session replaces it, so no "closed" line.
+      if (event.payload.exit !== undefined && !restarting) {
+        term.write(event.payload.stopped ? "\r\n[the terminal was stopped]\r\n" : `\r\n[the terminal closed, exit ${event.payload.exit}]\r\n`);
+      }
     });
+    // A model change in the Monitor tab starts a fresh session in this same terminal.
+    onEngineChangedHandler = (e: Event) => {
+      const detail = (e as CustomEvent<{ provider?: string; model?: string }>).detail;
+      const next = detail?.provider ?? provider;
+      restarting = true;
+      term?.reset();
+      // After the new CLI starts, resend the size so it redraws at the right dimensions (fixes garbled output).
+      startSession(next)
+        .then(() => setTimeout(sendSize, 300))
+        .finally(() => setTimeout(() => (restarting = false), 1500));
+    };
+    window.addEventListener("engine-changed", onEngineChangedHandler);
     // Wait until a drag settles before telling the CLI its new size.
     let settle: ReturnType<typeof setTimeout> | undefined;
     observer = new ResizeObserver(() => {
@@ -60,12 +78,17 @@
     });
     observer.observe(screen);
     fit.fit();
+    await startSession(provider);
+  }
+
+  // Starts the CLI for this provider. A reopened terminal shows the output it had on screen.
+  async function startSession(p: string): Promise<void> {
+    if (!term) return;
     try {
       const started = await invoke<{ replay?: string }>("sidecar_call", {
         method: "terminal_start",
-        params: { agent: agentId, provider, rows: term.rows, cols: term.cols },
+        params: { agent: agentId, provider: p, rows: term.rows, cols: term.cols },
       });
-      // A reopened terminal shows the output it had on screen.
       // reset() clears modes left by the old screen (alt buffer, cursor, colours) so the replay draws cleanly.
       if (started?.replay) {
         term.reset();
@@ -91,6 +114,7 @@
   onDestroy(() => {
     observer?.disconnect();
     unlisten?.();
+    if (onEngineChangedHandler) window.removeEventListener("engine-changed", onEngineChangedHandler);
     term?.dispose();
     // Leave the CLI running: stopping it here sent SIGTERM on every reload (exit 143). The next open reattaches to it.
   });
