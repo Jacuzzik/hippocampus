@@ -145,7 +145,7 @@ test("an engine is Not set up until its key is saved, and Ollama needs none", ()
     text: "Not set up: no Claude (Anthropic) key saved.",
   });
   assert.equal(engineStatus("claude", ["claude"]).ready, true);
-  assert.equal(engineStatus("ollama", []).ready, true);
+  assert.equal(engineStatus("ollama", [], [], [{ provider: "ollama", running: true }]).ready, true);
 });
 
 test("a dispatch needs an agent and a task", () => {
@@ -160,13 +160,11 @@ test("the command line follows the provider, model and autonomy", () => {
     model: "claude-sonnet-5-5",
     autonomy: "auto",
   };
-  assert.equal(
-    agentCommand(base),
-    "claude --model claude-sonnet-5-5 --permission-mode bypassPermissions",
-  );
+  // The command line carries provider and model only; autonomy is not passed as a flag.
+  assert.equal(agentCommand(base), "claude --model claude-sonnet-5-5");
   assert.equal(
     agentCommand({ ...base, autonomy: "ask" }),
-    "claude --model claude-sonnet-5-5 --permission-mode default",
+    "claude --model claude-sonnet-5-5",
   );
   assert.equal(
     agentCommand({ ...base, provider: "ollama", model: "qwen2.5" }),
