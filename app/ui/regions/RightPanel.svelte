@@ -16,10 +16,28 @@
       })
       .catch(() => (mainProvider = "claude"));
   }
+  // The main agent's real terminal state from the sidecar: Working or Idle, and the command it runs.
+  let hippoInfo = $state<{ command: string | null; status: string | null }>({ command: null, status: null });
+  const hippoState = $derived(
+    hippoInfo.command ? `${hippoInfo.status ?? "Idle"} · ${hippoInfo.command}` : "No terminal running",
+  );
+  function readHippo(): void {
+    invoke<{ command: string | null; status: string | null }>("sidecar_call", {
+      method: "terminal_command",
+      params: { agent: "hippo" },
+    })
+      .then((value) => (hippoInfo = { command: value.command, status: value.status }))
+      .catch(() => (hippoInfo = { command: null, status: null }));
+  }
   onMount(() => {
     loadEngine();
+    readHippo();
+    const timer = setInterval(readHippo, 3000);
     window.addEventListener("engine-changed", loadEngine);
-    return () => window.removeEventListener("engine-changed", loadEngine);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("engine-changed", loadEngine);
+    };
   });
   import TasksPanel from "./TasksPanel.svelte";
   import InboxPanel from "./InboxPanel.svelte";
@@ -110,19 +128,17 @@
         {/if}
       </div>
       </div>
-      <div class="card">
+    {/if}
+    <div class="pane" hidden={tab !== "terminal"}>
       <div class="live">
         <span class="dot" aria-hidden="true"></span>
-        <span>live · pty hippo</span>
+        <span>{hippoState}</span>
         <span class="size">
           <button type="button" aria-label="Smaller text" onclick={() => (fontSize = Math.max(9, fontSize - 1))}>−</button>
           <output>{fontSize}px</output>
           <button type="button" aria-label="Larger text" onclick={() => (fontSize = Math.min(18, fontSize + 1))}>+</button>
         </span>
       </div>
-      </div>
-    {/if}
-    <div class="pane" hidden={tab !== "terminal"}>
       <div class="live-wrap">
         {#key terminalKey}
           <LiveTerminal agentId="hippo" provider={mainProvider} {fontSize} onoutput={queue.output} />
