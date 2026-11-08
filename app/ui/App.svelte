@@ -189,7 +189,11 @@
     const timer = setInterval(() => void load(), 5000);
     const onChanged = () => void load();
     window.addEventListener("graph-changed", onChanged);
+    // The browser's own right-click menu is off everywhere; the app's own menus still open from their handlers.
+    const noNativeMenu = (e: MouseEvent) => e.preventDefault();
+    window.addEventListener("contextmenu", noNativeMenu);
     return () => {
+      window.removeEventListener("contextmenu", noNativeMenu);
       clearInterval(timer);
       window.removeEventListener("graph-changed", onChanged);
     };

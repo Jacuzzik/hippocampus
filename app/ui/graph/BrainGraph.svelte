@@ -540,16 +540,15 @@
       shapes[i] = SHAPE_DISK;
     }
     for (let i = 0; i < n; i++) {
-      const isSel = i === selected;
       const hub = hubs.get(data.nodes[i]?.title ?? "");
       // Untagged notes take the accent or one of its two lighter tints, from the id (the old square look).
       // Oldest look (first graph commit): every note is the accent, no status colours.
-      const base = isSel ? colours.hot : (hub ?? colours.node);
+      const base = hub ?? colours.node;
       const lit = focus < 0 || near.has(i) ? 1 : 0.2;
       const alpha = visible[i] ? base[3] * lit : base[3] * 0.15;
       colors.set([base[0], base[1], base[2], alpha], i * 4);
       // Same size for every note (2026-11-07): no extra size for group hubs.
-      radii[i] = nodeRadius(degree[i] ?? 0, isSel);
+      radii[i] = nodeRadius(degree[i] ?? 0, false);
       // Circles, as in Obsidian's graph view (2026-11-07). nodeShape keeps the old rectangle mix in model.ts.
       shapes[i] = SHAPE_DISK;
     }

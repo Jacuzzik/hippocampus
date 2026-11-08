@@ -92,8 +92,7 @@
     observer?.disconnect();
     unlisten?.();
     term?.dispose();
-    // The CLI's session is kept by the sidecar, so the next open resumes it.
-    invoke("sidecar_call", { method: "terminal_stop", params: { agent: agentId } }).catch(() => {});
+    // Leave the CLI running: stopping it here sent SIGTERM on every reload (exit 143). The next open reattaches to it.
   });
 </script>
 
