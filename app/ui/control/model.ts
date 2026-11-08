@@ -159,12 +159,13 @@ export const AGENT_PROVIDERS = [
 ] as const;
 
 // Provider logos, by provider id. Providers with no file here show no logo.
-// Guarded: plain Node (node --test) has no import.meta.glob, so the map is empty there.
-const providerLogoFiles = (
-  typeof import.meta.glob === "function"
-    ? import.meta.glob("../assets/provider-logos/*.svg", { eager: true, query: "?url", import: "default" })
-    : {}
-) as Record<string, string>;
+// Plain Node (node --test) has no import.meta.glob, so the call throws there and the map stays empty.
+let providerLogoFiles: Record<string, string> = {};
+try {
+  providerLogoFiles = import.meta.glob("../assets/provider-logos/*.svg", { eager: true, query: "?url", import: "default" }) as Record<string, string>;
+} catch {
+  /* no glob under node */
+}
 export const providerLogo = (id: string): string | undefined => providerLogoFiles[`../assets/provider-logos/${id}.svg`];
 
 // Model names shown as suggestions; the model field still accepts any name typed in.
@@ -191,11 +192,12 @@ export const AGENT_MODELS: Record<string, string[]> = {
 };
 
 /** Card faces: one per card-face-XX.svg in ui/assets/faces-new. The id is the file name. */
-const cardFaceUrls = (
-  typeof import.meta.glob === "function"
-    ? import.meta.glob("../assets/faces-new/card-face-*.svg", { eager: true, query: "?url", import: "default" })
-    : {}
-) as Record<string, string>;
+let cardFaceUrls: Record<string, string> = {};
+try {
+  cardFaceUrls = import.meta.glob("../assets/faces-new/card-face-*.svg", { eager: true, query: "?url", import: "default" }) as Record<string, string>;
+} catch {
+  /* no glob under node */
+}
 
 export const CARD_FACES = Object.entries(cardFaceUrls)
   .map(([path, url]) => ({ id: path.split("/").pop()?.replace(".svg", "") ?? path, url }))
