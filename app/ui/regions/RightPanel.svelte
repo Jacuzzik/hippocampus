@@ -16,11 +16,9 @@
       })
       .catch(() => (mainProvider = "claude"));
   }
-  // The main agent's real terminal state from the sidecar: Working or Idle, and the command it runs.
+  // The main agent's real terminal state from the sidecar: running while its CLI is up, otherwise idle.
   let hippoInfo = $state<{ command: string | null; status: string | null }>({ command: null, status: null });
-  const hippoState = $derived(
-    hippoInfo.command ? `${hippoInfo.status ?? "Idle"} · ${hippoInfo.command}` : "No terminal running",
-  );
+  const hippoState = $derived(hippoInfo.command ? "running" : "idle");
   function readHippo(): void {
     invoke<{ command: string | null; status: string | null }>("sidecar_call", {
       method: "terminal_command",
