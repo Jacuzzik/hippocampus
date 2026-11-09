@@ -226,7 +226,10 @@ class Terminals:
         running = self.procs.get(agent)
         if running is None or running[0].poll() is not None:
             raise RuntimeError("The terminal is not running. Open it again.")
-        os.write(running[1], data.encode("utf-8"))
+        # os.write can accept only part of a large paste, so keep writing until every byte is in.
+        view = memoryview(data.encode("utf-8"))
+        while view:
+            view = view[os.write(running[1], view):]
 
     def send_line(self, agent: str, text: str) -> None:
         """Types the text, then presses Enter as its own write. A TUI such as Claude Code reads text and a trailing Enter in one write as a paste, so the Enter is ignored and the text sits in the input bar unsent."""
@@ -318,7 +321,11 @@ class Terminals:
                 self.last_output[agent] = time.time()
                 screen = self.screens.setdefault(agent, bytearray())
                 screen += chunk
-                del screen[: max(0, len(screen) - SCREEN_BYTES)]
+                if len(screen) > SCREEN_BYTES:
+                    # Cut the oldest output at a line break, so the replay never starts mid-sequence (a half escape code or half UTF-8 character shows as garbage).
+                    cut = len(screen) - SCREEN_BYTES
+                    newline = screen.find(b"\n", cut, cut + 4096)
+                    del screen[: (newline + 1 if newline != -1 else cut)]
                 if time.time() - self.saved_at.get(agent, 0) >= 5:
                     self._save(agent)
                 self.emit({"event": "terminal", "agent": agent, "data": decoder.decode(chunk)})

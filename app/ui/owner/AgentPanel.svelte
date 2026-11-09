@@ -3,6 +3,7 @@
   import { invoke } from "@tauri-apps/api/core";
   import { listen } from "@tauri-apps/api/event";
   import { onDestroy, onMount } from "svelte";
+  import { bootTask } from "./bootTasks.svelte.ts";
   import { Terminal } from "@xterm/xterm";
   import { FitAddon } from "@xterm/addon-fit";
   import "@xterm/xterm/css/xterm.css";
@@ -45,9 +46,10 @@
   let fit: FitAddon | null = null;
   let unlisten: (() => void) | null = null;
   let observer: ResizeObserver | null = null;
-
   function sendSize(): void {
     if (!term || !fit) return;
+    // A hidden or mid-animation panel reports a tiny width; telling the CLI that makes it redraw one or two characters per line.
+    if (screen.clientWidth < 200 || screen.clientHeight < 80) return;
     fit.fit();
     invoke("sidecar_call", {
       method: "terminal_resize",
@@ -102,6 +104,7 @@
     unlisten = await listen<{ event?: string; agent?: string; data?: string; exit?: number; stopped?: boolean }>("sidecar-event", (event) => {
       if (event.payload.event !== "terminal" || event.payload.agent !== agent.id || !term) return;
       if (event.payload.data !== undefined) {
+        // While the saved screen is being written, live output waits behind it, so the replay is not drawn over the new output.
         term.write(event.payload.data);
         queue.output(event.payload.data);
       }
@@ -125,7 +128,11 @@
         params: { agent: agent.id, provider: agent.provider, model: agent.model, folder: agent.folder, rows: term.rows, cols: term.cols, block_tools: blocked },
       });
       // A reopened terminal shows the output it had on screen.
-      if (started?.replay) term.write(started.replay);
+      // reset() clears modes left by the old screen (alt buffer, cursor, colours) so the replay draws cleanly, as the main terminal does.
+      if (started?.replay) {
+        term.reset();
+        term.write(started.replay);
+      }
       runState = "running";
     } catch (cause) {
       runState = "failed";
@@ -159,7 +166,9 @@
   }
 
   onMount(() => {
-    startTerminal();
+    // Counted as start-up work so the loading screen waits for this terminal.
+    const done = bootTask();
+    startTerminal().finally(done);
   });
 
   onDestroy(() => {
@@ -491,12 +500,14 @@
     font-size: var(--font-size-tag);
     white-space: pre;
   }
+  /* The frame is an inset shadow, not a border: xterm's fit sizes the terminal from the box's height and width
+     and ignores borders, so a border made the last row and the right edge run out of the box. */
   .screen {
     flex: 1 1 0;
     min-height: 0;
     overflow: hidden;
     padding: var(--space-1);
-    border: 1px solid var(--color-md-border);
+    box-shadow: inset 0 0 0 1px var(--color-md-border);
     border-radius: var(--radius-sm);
     background: var(--color-md-bg-0);
   }
