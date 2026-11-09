@@ -123,16 +123,24 @@
     observer.observe(screen);
     fit.fit();
     try {
-      const started = await invoke<{ replay?: string }>("sidecar_call", {
+      await invoke("sidecar_call", {
         method: "terminal_start",
         params: { agent: agent.id, provider: agent.provider, model: agent.model, folder: agent.folder, rows: term.rows, cols: term.cols, block_tools: blocked },
       });
-      // A reopened terminal shows the output it had on screen.
-      // reset() clears modes left by the old screen (alt buffer, cursor, colours) so the replay draws cleanly, as the main terminal does.
-      if (started?.replay) {
-        term.reset();
-        term.write(started.replay);
-      }
+      // Do not replay the saved bytes: they were drawn at older sizes and garble at this one.
+      // Instead, start from a clean screen and nudge the CLI's size so it redraws the whole screen at the current size.
+      term.reset();
+      const rows = term.rows;
+      const cols = term.cols;
+      await invoke("sidecar_call", { method: "terminal_resize", params: { agent: agent.id, rows: rows + 1, cols } }).catch(() => {});
+      await invoke("sidecar_call", { method: "terminal_resize", params: { agent: agent.id, rows, cols } }).catch(() => {});
+      // The font and the layout can settle after the start. Fit once more and tell the CLI the final size, so the two agree.
+      await document.fonts?.ready;
+      // The terminal may have measured its character size while its panel was hidden. Changing the font size forces a fresh measure.
+      const size = term.options.fontSize ?? 12;
+      term.options.fontSize = size + 1;
+      term.options.fontSize = size;
+      sendSize();
       runState = "running";
     } catch (cause) {
       runState = "failed";
@@ -507,6 +515,8 @@
     min-height: 0;
     overflow: hidden;
     padding: var(--space-1);
+    /* One terminal row of space above the text, so the top line is not cut off. */
+    padding-top: calc(var(--space-1) + 15px);
     box-shadow: inset 0 0 0 1px var(--color-md-border);
     border-radius: var(--radius-sm);
     background: var(--color-md-bg-0);
