@@ -121,15 +121,20 @@ export function keyStatus(saved: boolean, hint: string | null): string {
   return hint ? `Saved, ends in …${hint}` : "Saved";
 }
 
-export const SETTINGS_TABS = [
-  "General",
-  "Prerequisites",
-  "Autonomy and budgets",
-  "Integrations",
-  "Dictation and meeting",
-  "Memory and knowledge",
+// The Settings pages, in rail order. "words" are extra terms the search box matches.
+export const SETTINGS_PAGES = [
+  { id: "General", words: "vault folder last tab settings file" },
+  { id: "Appearance", words: "motion animation terminal text size font theme light dark reset" },
+  { id: "Agents", words: "engine provider model tool calls network autonomy" },
+  { id: "Budgets", words: "tokens caps limits spend" },
+  { id: "Models and keys", words: "api key secret provider claude openai" },
+  { id: "Connectors", words: "integrations slack webhooks github notion calendar gmail drive mcp plugins ollama" },
+  { id: "Memory", words: "memory search notes size" },
+  { id: "Privacy and data", words: "error log telemetry remove data sign out" },
+  { id: "Advanced", words: "backend sidecar logs dictation meeting prerequisites" },
+  { id: "About", words: "version" },
 ] as const;
-export type SettingsTab = (typeof SETTINGS_TABS)[number];
+export type SettingsPage = (typeof SETTINGS_PAGES)[number]["id"];
 
 export const AGENT_STEPS = [
   "Identity",

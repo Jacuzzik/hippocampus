@@ -1,22 +1,56 @@
 <script lang="ts">
   import "./control.css";
   import { invoke } from "@tauri-apps/api/core";
+  import { getVersion } from "@tauri-apps/api/app";
   import { onMount } from "svelte";
   import BudgetSection from "./BudgetSection.svelte";
+  import ConnectorsSection from "./ConnectorsSection.svelte";
   import KeysSection from "./KeysSection.svelte";
   import MemorySection from "./MemorySection.svelte";
   import NetworkSection from "./NetworkSection.svelte";
-  import { SETTINGS_TABS, type SettingsTab } from "./model";
+  import Dropdown from "../controls/Dropdown.svelte";
+  import StatusCard from "../controls/StatusCard.svelte";
+  import Tabs from "../controls/Tabs.svelte";
+  import { crashLog } from "../crashLog.svelte.ts";
+  import { FONT_MAX, FONT_MIN, prefs, type Motion } from "../prefs.svelte.ts";
+  import { SETTINGS_PAGES, type SettingsPage } from "./model";
 
-  // Settings in six tabs. The panels reuse the control panel sections, so each setting has one home.
+  // Settings as pages: a list of categories on the left, one short page on the right.
+  // Each setting has one home. Day-to-day controls (dispatch, jobs, questions) stay in the Control panel.
   let { onclose }: { onclose: () => void } = $props();
 
-  let tab = $state<SettingsTab>("General");
-  let sidecar = $state<string>("Checking…");
+  type Saved = {
+    general: { vault: string | null; network: string };
+    agents: { provider: string; model: string; ollama: string };
+    budgets: { max_tool_calls: number };
+    memory: { max_bytes: number };
+  };
+
+  let page = $state<SettingsPage>("General");
+  let sidecar = $state("Checking…");
+  let saved = $state<Saved | null>(null);
+  let version = $state("");
+  let query = $state("");
+
+  const items = $derived(
+    SETTINGS_PAGES.filter((p) => !query.trim() || `${p.id} ${p.words}`.toLowerCase().includes(query.trim().toLowerCase())).map((p) => ({
+      id: p.id,
+      label: p.id,
+    })),
+  );
+  // Typing in the search box jumps to the first page that matches.
+  $effect(() => {
+    const first = items[0];
+    if (query.trim() && first && !items.some((i) => i.id === page)) page = first.id as SettingsPage;
+  });
 
   onMount(async () => {
+    getVersion().then(
+      (v) => (version = v),
+      () => (version = "unknown"),
+    );
     try {
-      await invoke("sidecar_call", { method: "network" });
+      saved = await invoke<Saved>("sidecar_call", { method: "settings" });
       sidecar = "Running";
     } catch (cause) {
       sidecar = `Not running: ${String(cause)}`;
@@ -32,88 +66,144 @@
 </script>
 
 <div class="scrim" role="presentation" onmousedown={onclose}>
-  <div
-    class="box"
-    role="dialog"
-    aria-modal="true"
-    aria-label="Settings"
-    tabindex="-1"
-    onkeydown={onKey}
-    onmousedown={(e) => e.stopPropagation()}
-  >
+  <div class="box" role="dialog" aria-modal="true" aria-label="Settings" tabindex="-1" onkeydown={onKey} onmousedown={(e) => e.stopPropagation()}>
     <header>
       <h2>Settings</h2>
-      <button
-        type="button"
-        class="close"
-        aria-label="Close settings"
-        onclick={onclose}>×</button
-      >
+      <input type="search" aria-label="Search settings" placeholder="Search settings" bind:value={query} />
+      <button type="button" class="close" aria-label="Close settings" onclick={onclose}>×</button>
     </header>
-    <div class="tabs" role="tablist" aria-label="Settings tabs">
-      {#each SETTINGS_TABS as name (name)}
-        <button
-          type="button"
-          role="tab"
-          id={`tab-${name.replace(/\W+/g, "-").toLowerCase()}`}
-          aria-selected={tab === name}
-          aria-controls="settings-panel"
-          tabindex={tab === name ? 0 : -1}
-          onclick={() => (tab = name)}>{name}</button
-        >
-      {/each}
-    </div>
-    <div
-      class="sections"
-      role="tabpanel"
-      id="settings-panel"
-      aria-labelledby={`tab-${tab.replace(/\W+/g, "-").toLowerCase()}`}
-    >
-      {#if tab === "General"}
-        <section class="control-section">
-          <h3>General</h3>
-          <dl class="facts">
-            <dt>Theme</dt>
-            <dd>Dark. The only theme in version 1.</dd>
-            <dt>Settings file</dt>
-            <dd>
-              config/settings.toml. Edit it by hand, or here. Both are the same
-              settings.
-            </dd>
-          </dl>
-        </section>
-      {:else if tab === "Prerequisites"}
-        <section class="control-section">
-          <h3>Prerequisites</h3>
-          <dl class="facts">
-            <dt>Python sidecar</dt>
-            <dd>{sidecar}</dd>
-            <dt>Local model (Ollama)</dt>
-            <dd>Not set up: this build does not check for it.</dd>
-          </dl>
-        </section>
-      {:else if tab === "Autonomy and budgets"}
-        <NetworkSection />
-        <BudgetSection />
-      {:else if tab === "Integrations"}
-        <KeysSection />
-        <section class="control-section">
-          <h3>Other integrations</h3>
-          <p class="muted">
-            Not set up: Slack, Notion and calendars are not connected in this
-            build.
-          </p>
-        </section>
-      {:else if tab === "Dictation and meeting"}
-        <section class="control-section">
-          <h3>Dictation and meeting</h3>
-          <p class="muted">
-            Not set up: dictation and meeting capture are not in this build.
-          </p>
-        </section>
-      {:else}
-        <MemorySection />
-      {/if}
+    <div class="body">
+      <nav class="rail">
+        {#if items.length}
+          <Tabs {items} bind:value={page} label="Settings pages" idBase="settings" vertical />
+        {:else}
+          <p class="muted">No page matches "{query}".</p>
+        {/if}
+      </nav>
+      <div class="page" role="tabpanel" id="settings-panel" aria-labelledby={`settings-tab-${page}`} tabindex="-1">
+        {#if page === "General"}
+          <section class="control-section">
+            <h3>General</h3>
+            <div class="setting">
+              <div><b>Vault folder</b><p>Where your notes live. Change it in Setup and account.</p></div>
+              <code>{saved ? (saved.general.vault ?? "Not chosen") : "…"}</code>
+            </div>
+            <div class="setting">
+              <div><b>Open on the last tab</b><p>The Control Room opens on the tab you used last.</p></div>
+              <label class="switch"><input type="checkbox" bind:checked={prefs.rememberTab} /><span>{prefs.rememberTab ? "On" : "Off"}</span></label>
+            </div>
+            <div class="setting">
+              <div><b>Settings file</b><p>Backend settings are also in this file. No keys are stored in it.</p></div>
+              <code>config/settings.toml</code>
+            </div>
+          </section>
+        {:else if page === "Appearance"}
+          <section class="control-section">
+            <h3>Appearance</h3>
+            <div class="setting">
+              <div><b>Motion</b><p>System follows your computer's reduced-motion setting.</p></div>
+              <Dropdown
+                label="Motion"
+                value={prefs.motion}
+                options={[
+                  { value: "system", label: "System" },
+                  { value: "on", label: "On" },
+                  { value: "off", label: "Off" },
+                ]}
+                onchange={(next) => (prefs.motion = next as Motion)}
+              />
+            </div>
+            <div class="setting">
+              <div><b>Terminal text size</b><p>Used by every agent terminal. {FONT_MIN} to {FONT_MAX} px.</p></div>
+              <span class="stepper">
+                <button type="button" aria-label="Smaller terminal text" disabled={prefs.terminalFontSize <= FONT_MIN} onclick={() => (prefs.terminalFontSize -= 1)}>−</button>
+                <output>{prefs.terminalFontSize}px</output>
+                <button type="button" aria-label="Larger terminal text" disabled={prefs.terminalFontSize >= FONT_MAX} onclick={() => (prefs.terminalFontSize += 1)}>+</button>
+              </span>
+            </div>
+            <div class="setting">
+              <div><b>Font</b><p>One monospace face everywhere, bundled with the app.</p></div>
+              <code>JetBrains Mono</code>
+            </div>
+            <div class="setting">
+              <div><b>Reset appearance</b><p>Back to 12 px text, system motion and remembering the last tab.</p></div>
+              <button type="button" onclick={() => prefs.reset()}>Reset</button>
+            </div>
+          </section>
+          <div class="cards">
+            <StatusCard name="Light theme" what="A light set of colours next to the dark one." status="Planned" reason="Every colour is a token now, so this needs a second token set and a contrast pass." />
+          </div>
+        {:else if page === "Agents"}
+          <section class="control-section">
+            <h3>Agents</h3>
+            <div class="setting">
+              <div><b>Main agent engine</b><p>Change it on the Monitor tab of the Control Room.</p></div>
+              <code>{saved ? `${saved.agents.provider} · ${saved.agents.model}` : "…"}</code>
+            </div>
+            <div class="setting">
+              <div><b>Tool calls per request</b><p>The most tools the assistant may call for one request.</p></div>
+              <code>{saved ? saved.budgets.max_tool_calls : "…"}</code>
+            </div>
+          </section>
+          <NetworkSection />
+        {:else if page === "Budgets"}
+          <BudgetSection />
+        {:else if page === "Models and keys"}
+          <KeysSection />
+        {:else if page === "Connectors"}
+          <ConnectorsSection />
+        {:else if page === "Memory"}
+          <section class="control-section">
+            <h3>Memory</h3>
+            <div class="setting">
+              <div><b>Memory size per agent</b><p>Notes past this size are condensed.</p></div>
+              <code>{saved ? `${saved.memory.max_bytes.toLocaleString()} bytes` : "…"}</code>
+            </div>
+          </section>
+          <MemorySection />
+        {:else if page === "Privacy and data"}
+          <section class="control-section">
+            <h3>Privacy and data</h3>
+            <div class="setting">
+              <div><b>Your data</b><p>Sign out or remove your data in Setup and account, on the left ribbon.</p></div>
+            </div>
+            <div class="setting">
+              <div><b>UI error log</b><p>Kept in this window only, never sent. Newest last, at most 50.</p></div>
+              <code>{crashLog.rows.length} recorded</code>
+            </div>
+            {#if crashLog.rows.length}
+              <ul class="log" aria-label="UI errors">
+                {#each crashLog.rows.slice(-10) as row (row.at + row.message)}
+                  <li><span class="muted">{row.at.slice(0, 19).replace("T", " ")}</span> <b>{row.source}</b> {row.message}</li>
+                {/each}
+              </ul>
+            {/if}
+          </section>
+          <div class="cards">
+            <StatusCard name="Telemetry" what="Anonymous usage numbers, off unless you turn them on." status="Planned" reason="Nothing is collected today." />
+          </div>
+        {:else if page === "Advanced"}
+          <section class="control-section">
+            <h3>Advanced</h3>
+            <div class="setting">
+              <div><b>Backend (Python sidecar)</b><p>Answers every request from this window.</p></div>
+              <code>{sidecar}</code>
+            </div>
+          </section>
+          <div class="cards">
+            <StatusCard name="Dictation and meeting capture" what="Speak into any field and capture meeting notes." status="Planned" reason="No speech-to-text source is set up in this build." />
+            <StatusCard name="Logs viewer" what="Read backend logs here instead of a terminal." status="Planned" reason="The backend does not write a rotating log file yet." />
+          </div>
+        {:else}
+          <section class="control-section">
+            <h3>About</h3>
+            <div class="setting">
+              <div><b>Hippocampus</b><p>A local notes vault with a graph and real command-line agents.</p></div>
+              <code>{version ? `v${version}` : "…"}</code>
+            </div>
+          </section>
+        {/if}
+      </div>
     </div>
   </div>
 </div>
@@ -131,8 +221,8 @@
   .box {
     display: flex;
     flex-direction: column;
-    width: min(680px, calc(100vw - 2 * var(--space-4)));
-    max-height: 85vh;
+    width: min(920px, calc(100vw - 2 * var(--space-4)));
+    height: min(640px, 85vh);
     padding: var(--space-4);
     color: var(--color-text);
     background: var(--color-bg-1);
@@ -144,13 +234,26 @@
 
   header {
     display: flex;
+    gap: var(--space-3);
     align-items: center;
-    justify-content: space-between;
   }
 
   h2 {
     margin: 0;
     font-size: var(--font-size-lg);
+  }
+
+  header input {
+    flex: 1;
+    min-width: 0;
+    max-width: 320px;
+    margin-left: auto;
+    padding: var(--space-1) var(--space-2);
+    color: var(--color-text);
+    font: inherit;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
   }
 
   .close {
@@ -162,45 +265,90 @@
     cursor: pointer;
   }
 
-  .tabs {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-1);
-    margin: var(--space-3) 0;
+  .body {
+    display: grid;
+    grid-template-columns: 200px minmax(0, 1fr);
+    gap: var(--space-4);
+    flex: 1;
+    min-height: 0;
+    margin-top: var(--space-3);
   }
 
-  .tabs button {
-    padding: var(--space-1) var(--space-3);
-    color: var(--color-text-muted);
-    font: inherit;
-    background: none;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    cursor: pointer;
+  .rail {
+    overflow-y: auto;
+    padding-right: var(--space-2);
+    border-right: 1px solid var(--color-border);
   }
 
-  .tabs button[aria-selected="true"] {
-    color: var(--color-text);
-    border-color: var(--color-text-subtle);
-  }
-
-  .sections {
+  .page {
+    min-width: 0;
     overflow-y: auto;
     padding-right: var(--space-2);
   }
 
-  .facts {
-    display: grid;
-    grid-template-columns: max-content 1fr;
-    gap: var(--space-1) var(--space-3);
-    margin: 0;
+  .setting {
+    display: flex;
+    gap: var(--space-4);
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-2) 0;
+    border-top: 1px solid var(--color-border);
   }
 
-  .facts dt {
+  .setting:first-of-type {
+    border-top: 0;
+  }
+
+  .setting p {
+    margin: 0;
+    color: var(--color-text-muted);
+    font-size: var(--font-size-xs);
+  }
+
+  .setting code {
+    max-width: 50%;
+    color: var(--color-text-muted);
+    overflow-wrap: anywhere;
+    text-align: right;
+  }
+
+  .switch,
+  .stepper {
+    display: inline-flex;
+    gap: var(--space-2);
+    align-items: center;
+  }
+
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: var(--space-2);
+    margin-top: var(--space-3);
+  }
+
+  .log {
+    margin: var(--space-2) 0 0;
+    padding: 0;
+    font-size: var(--font-size-xs);
+    list-style: none;
+  }
+
+  .log li {
+    overflow-wrap: anywhere;
+  }
+
+  .muted {
     color: var(--color-text-muted);
   }
 
-  .facts dd {
-    margin: 0;
+  @media (max-width: 700px) {
+    .body {
+      grid-template-columns: 1fr;
+      grid-template-rows: auto minmax(0, 1fr);
+    }
+
+    .rail {
+      border-right: 0;
+    }
   }
 </style>

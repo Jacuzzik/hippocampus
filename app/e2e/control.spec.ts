@@ -7,32 +7,40 @@ async function openControl(
   await page.getByRole("button", { name: "Control panel" }).click();
 }
 
-test("the control panel opens from the ribbon and lists every panel", async ({
+test("the control panel opens from the ribbon and each tab lists its panels", async ({
   page,
 }) => {
   await mockSidecar(page);
   await page.goto("/");
   await openControl(page);
   const dialog = page.getByRole("dialog", { name: "Control panel" });
-  for (const heading of [
-    "Network",
-    "Token budget",
-    "Ask me",
-    "Activity log",
-    "Memory search",
-    "Scheduled notes jobs",
-    "Helper jobs",
-    "Share a note by password link",
-    "Skills",
-    "Keys and secrets",
-    "Triggers",
-    "Add an agent",
-    "Dispatch",
-    "Capabilities",
-    "Teams",
-  ]) {
-    await expect(dialog.getByRole("heading", { name: heading })).toBeVisible();
+  const tabs: Record<string, string[]> = {
+    Overview: ["Network", "Activity log"],
+    Work: ["Dispatch", "Scheduled notes jobs", "Triggers"],
+    Questions: ["Ask me"],
+    "Helpers and skills": ["Helper jobs", "Capabilities", "Skills"],
+    "Team and sharing": ["Teams", "Share a note by password link"],
+  };
+  await expect(dialog.getByRole("tab")).toHaveText(Object.keys(tabs));
+  for (const [name, headings] of Object.entries(tabs)) {
+    await dialog.getByRole("tab", { name }).click();
+    for (const heading of headings) {
+      // Some headings carry a status badge, so match the start of the name.
+      await expect(dialog.getByRole("heading", { name: new RegExp(`^${heading}`) })).toBeVisible();
+    }
   }
+});
+
+test("arrow keys move between the control panel tabs", async ({ page }) => {
+  await mockSidecar(page);
+  await page.goto("/");
+  await openControl(page);
+  const dialog = page.getByRole("dialog", { name: "Control panel" });
+  await dialog.getByRole("tab", { name: "Overview" }).focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(dialog.getByRole("tab", { name: "Work" })).toHaveAttribute("aria-selected", "true");
+  await page.keyboard.press("End");
+  await expect(dialog.getByRole("tab", { name: "Team and sharing" })).toHaveAttribute("aria-selected", "true");
 });
 
 test("network starts Off and a chosen mode is kept", async ({ page }) => {
@@ -73,9 +81,11 @@ test("share says Not set up and a helper cannot be started empty", async ({
   await page.goto("/");
   await openControl(page);
   const dialog = page.getByRole("dialog", { name: "Control panel" });
+  await dialog.getByRole("tab", { name: "Helpers and skills" }).click();
   await expect(
     dialog.getByRole("button", { name: "Start helper" }),
   ).toBeDisabled();
+  await dialog.getByRole("tab", { name: "Team and sharing" }).click();
   await dialog.getByLabel("Link password").fill("long enough password");
   await dialog.getByRole("button", { name: "Make link" }).click();
   await expect(dialog.getByRole("alert")).toContainText("Not set up");
@@ -87,7 +97,12 @@ test("the budget has a 5-hour cap next to day, week and month", async ({
   await mockSidecar(page);
   await page.goto("/");
   await openControl(page);
-  const dialog = page.getByRole("dialog", { name: "Control panel" });
+  await page
+    .getByRole("dialog", { name: "Control panel" })
+    .getByRole("button", { name: "Open settings" })
+    .click();
+  const dialog = page.getByRole("dialog", { name: "Settings" });
+  await dialog.getByRole("tab", { name: "Budgets" }).click();
   await expect(dialog.getByLabel("Assistant 5 hours cap")).toHaveValue("20000");
   await expect(dialog.getByLabel("Whole app day cap")).toHaveValue("200000");
 });
@@ -99,11 +114,12 @@ test("triggers show the network, the job count and that compaction is Not set up
   await page.goto("/");
   await openControl(page);
   const dialog = page.getByRole("dialog", { name: "Control panel" });
+  await dialog.getByRole("tab", { name: "Work" }).click();
   await expect(dialog.getByText("1 set, 1 on")).toBeVisible();
   await expect(
     dialog.getByText("Not set up: the assistant does not shorten"),
   ).toBeVisible();
-  await expect(dialog.getByText("None. Webhooks are not set up")).toBeVisible();
+  await expect(dialog.getByText("None saved yet.")).toBeVisible();
 });
 
 test("scheduled jobs show how many are on", async ({ page }) => {
@@ -111,6 +127,7 @@ test("scheduled jobs show how many are on", async ({ page }) => {
   await page.goto("/");
   await openControl(page);
   const dialog = page.getByRole("dialog", { name: "Control panel" });
+  await dialog.getByRole("tab", { name: "Work" }).click();
   await expect(dialog.getByText("1 of 1 on.")).toBeVisible();
 });
 
@@ -174,6 +191,7 @@ test("a dispatch is sent only after the confirm card", async ({ page }) => {
   await page.goto("/");
   await openControl(page);
   const dialog = page.getByRole("dialog", { name: "Control panel" });
+  await dialog.getByRole("tab", { name: "Work" }).click();
   await dialog.getByRole("button", { name: "Review and send" }).click();
   await expect(dialog.getByRole("alert")).toHaveText("Write the task.");
   await dialog.getByLabel("Task").fill("Tidy the inbox notes");
@@ -197,6 +215,7 @@ test("teams say Not enrolled and cannot start a team here", async ({
   await page.goto("/");
   await openControl(page);
   const dialog = page.getByRole("dialog", { name: "Control panel" });
+  await dialog.getByRole("tab", { name: "Team and sharing" }).click();
   await expect(dialog.getByText("Status: Not enrolled")).toBeVisible();
   await dialog.getByRole("button", { name: "Start a team" }).click();
   await expect(dialog.getByRole("status")).toContainText("Not set up");
@@ -209,6 +228,7 @@ test("capabilities list the skills and show install as Not set up", async ({
   await page.goto("/");
   await openControl(page);
   const dialog = page.getByRole("dialog", { name: "Control panel" });
+  await dialog.getByRole("tab", { name: "Helpers and skills" }).click();
   const caps = dialog.locator("#control-capabilities").locator("..");
   await expect(caps.getByText("tidy-notes")).toBeVisible();
   await expect(

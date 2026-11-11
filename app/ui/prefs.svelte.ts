@@ -1,0 +1,77 @@
+// Settings that belong to this window, not to the backend: text size, motion, the last open tab.
+// Saved in the window's own storage, so they survive a restart and need no backend call.
+
+export type Motion = "system" | "on" | "off";
+type Prefs = { terminalFontSize: number; motion: Motion; rememberTab: boolean; lastTab: string };
+
+const KEY = "hippocampus.prefs";
+export const FONT_MIN = 10;
+export const FONT_MAX = 20;
+const DEFAULTS: Prefs = { terminalFontSize: 12, motion: "system", rememberTab: true, lastTab: "terminal" };
+
+function read(): Prefs {
+  try {
+    const saved = JSON.parse(localStorage.getItem(KEY) ?? "{}") as Partial<Prefs>;
+    const size = Number(saved.terminalFontSize);
+    return {
+      terminalFontSize: Number.isFinite(size) ? Math.min(FONT_MAX, Math.max(FONT_MIN, Math.round(size))) : DEFAULTS.terminalFontSize,
+      motion: saved.motion === "on" || saved.motion === "off" ? saved.motion : "system",
+      rememberTab: saved.rememberTab !== false,
+      lastTab: typeof saved.lastTab === "string" ? saved.lastTab : DEFAULTS.lastTab,
+    };
+  } catch {
+    return { ...DEFAULTS };
+  }
+}
+
+const state = $state<Prefs>(read());
+
+function save(): void {
+  try {
+    localStorage.setItem(KEY, JSON.stringify(state));
+  } catch {
+    /* storage blocked: the setting still holds until the window closes */
+  }
+}
+
+/** Puts the motion choice on the page, where global.css reads it. "system" follows the computer's setting. */
+export function applyMotion(): void {
+  document.documentElement.dataset.motion = state.motion;
+}
+
+export const prefs = {
+  get terminalFontSize(): number {
+    return state.terminalFontSize;
+  },
+  set terminalFontSize(size: number) {
+    state.terminalFontSize = Math.min(FONT_MAX, Math.max(FONT_MIN, Math.round(size)));
+    save();
+  },
+  get motion(): Motion {
+    return state.motion;
+  },
+  set motion(value: Motion) {
+    state.motion = value;
+    applyMotion();
+    save();
+  },
+  get rememberTab(): boolean {
+    return state.rememberTab;
+  },
+  set rememberTab(value: boolean) {
+    state.rememberTab = value;
+    save();
+  },
+  get lastTab(): string {
+    return state.lastTab;
+  },
+  set lastTab(value: string) {
+    state.lastTab = value;
+    save();
+  },
+  reset(): void {
+    Object.assign(state, DEFAULTS);
+    applyMotion();
+    save();
+  },
+};

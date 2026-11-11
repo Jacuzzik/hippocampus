@@ -3,23 +3,30 @@
   import ActivitySection from "./ActivitySection.svelte";
   import ArchivedAgentsSection from "./ArchivedAgentsSection.svelte";
   import AsksSection from "./AsksSection.svelte";
-  import BudgetSection from "./BudgetSection.svelte";
   import CapabilitiesSection from "./CapabilitiesSection.svelte";
   import DispatchSection from "./DispatchSection.svelte";
   import HelpersSection from "./HelpersSection.svelte";
   import JobsSection from "./JobsSection.svelte";
-  import KeysSection from "./KeysSection.svelte";
-  import MemorySection from "./MemorySection.svelte";
   import NetworkSection from "./NetworkSection.svelte";
   import ShareSection from "./ShareSection.svelte";
   import SkillsSection from "./SkillsSection.svelte";
   import TeamsSection from "./TeamsSection.svelte";
   import TriggersSection from "./TriggersSection.svelte";
+  import Tabs from "../controls/Tabs.svelte";
 
-  // The control panel: network, triggers, budgets, dispatch, the activity log, questions,
-  // memory, jobs, helpers, capabilities, teams, sharing, skills and keys, in one scrolling list.
+  // The control panel: day-to-day operations in five tabs. Budgets, memory and keys are settings,
+  // so they live in Settings (the button at the top), each in one place.
   let { onclose, onsettings }: { onclose: () => void; onsettings: () => void } =
     $props();
+
+  const TABS = [
+    { id: "overview", label: "Overview" },
+    { id: "work", label: "Work" },
+    { id: "questions", label: "Questions" },
+    { id: "skills", label: "Helpers and skills" },
+    { id: "team", label: "Team and sharing" },
+  ];
+  let tab = $state("overview");
 
   function onKey(e: KeyboardEvent): void {
     // Stops here so the graph's own Escape (which clears the selection) does not also run.
@@ -54,22 +61,26 @@
         >
       </div>
     </header>
-    <div class="sections">
-      <NetworkSection />
-      <TriggersSection />
-      <BudgetSection />
-      <DispatchSection />
-      <AsksSection />
-      <ActivitySection />
-      <MemorySection />
-      <JobsSection />
-      <HelpersSection />
-      <CapabilitiesSection />
-      <TeamsSection />
-      <ArchivedAgentsSection />
-      <ShareSection />
-      <SkillsSection />
-      <KeysSection />
+    <div class="tabbar"><Tabs items={TABS} bind:value={tab} label="Control panel tabs" idBase="control" /></div>
+    <div class="sections" role="tabpanel" id="control-panel" aria-labelledby={`control-tab-${tab}`} tabindex="-1">
+      {#if tab === "overview"}
+        <NetworkSection />
+        <ActivitySection />
+      {:else if tab === "work"}
+        <DispatchSection />
+        <JobsSection />
+        <TriggersSection />
+      {:else if tab === "questions"}
+        <AsksSection />
+      {:else if tab === "skills"}
+        <HelpersSection />
+        <CapabilitiesSection />
+        <SkillsSection />
+      {:else}
+        <TeamsSection />
+        <ArchivedAgentsSection />
+        <ShareSection />
+      {/if}
     </div>
   </div>
 </div>
@@ -88,7 +99,7 @@
     display: flex;
     flex-direction: column;
     width: min(680px, calc(100vw - 2 * var(--space-4)));
-    max-height: 85vh;
+    height: min(640px, 85vh);
     padding: var(--space-4);
     color: var(--color-text);
     background: var(--color-bg-1);
@@ -134,7 +145,13 @@
     cursor: pointer;
   }
 
+  .tabbar {
+    margin: var(--space-3) 0 var(--space-1);
+  }
+
   .sections {
+    flex: 1;
+    min-height: 0;
     overflow-y: auto;
     padding-right: var(--space-2);
   }

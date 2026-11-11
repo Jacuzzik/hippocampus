@@ -403,6 +403,8 @@ export async function mockSidecar(
           case "terminal_resize":
           case "terminal_stop":
             return { ok: true };
+          case "webhooks":
+            return { webhooks: [] };
           case "jobs":
             return { jobs: jobRows };
           case "set_job": {

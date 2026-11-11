@@ -5,6 +5,7 @@ import "./styles/office-theme.css";
 import { mount } from "svelte";
 import App from "./App.svelte";
 import { installGlobalHandlers } from "./crashLog.svelte.ts";
+import { applyMotion } from "./prefs.svelte.ts";
 import { mockSidecar } from "../e2e/tauri-mock";
 
 // Browser preview only (npm run dev in a normal browser): fake the desktop bridge with the test mock.
@@ -16,6 +17,7 @@ if (import.meta.env.DEV && !("__TAURI_INTERNALS__" in window)) {
 
 // First, so an error while the app starts is recorded too.
 installGlobalHandlers();
+applyMotion();
 
 const target = document.getElementById("app");
 if (!target) {

@@ -36,6 +36,23 @@ pre {
   font-family: var(--font-mono);
 }
 
+/* Motion can be turned off in Settings > Appearance; "system" follows the computer's own setting. */
+:root[data-motion="off"] *,
+:root[data-motion="off"] *::before,
+:root[data-motion="off"] *::after {
+  animation: none !important;
+  transition: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-motion="system"] *,
+  :root[data-motion="system"] *::before,
+  :root[data-motion="system"] *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 /* Thin scrollbars and selection colour, as in notes app. */
 html {
   scrollbar-width: thin;

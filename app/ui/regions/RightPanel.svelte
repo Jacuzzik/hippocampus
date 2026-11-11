@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { FONT_MAX, FONT_MIN, prefs } from "../prefs.svelte.ts";
   import { every } from "../poll.ts";
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
@@ -72,8 +73,12 @@
   ];
   // The views sit in rows of four, each row its own pill, as in the picture.
   const TAB_ROWS = [TABS.slice(0, 4), TABS.slice(4, 8), TABS.slice(8)];
-  let tab = $state("terminal");
-  let fontSize = $state(12);
+  // Opens on the tab used last, when that setting is on (Settings > General).
+  let tab = $state(prefs.rememberTab && TABS.includes(prefs.lastTab) ? prefs.lastTab : "terminal");
+  $effect(() => {
+    if (tab !== "agent") prefs.lastTab = tab;
+  });
+  const fontSize = $derived(prefs.terminalFontSize);
 
   // The Control Room message box sends into Hippo's terminal, through a queue (see terminalQueue).
   const queue = createTerminalQueue(() => "hippoherman");
@@ -129,9 +134,9 @@
         <span class="dot" aria-hidden="true"></span>
         <span>{hippoState}</span>
         <span class="size">
-          <button type="button" aria-label="Smaller text" onclick={() => (fontSize = Math.max(9, fontSize - 1))}>−</button>
+          <button type="button" aria-label="Smaller text" disabled={fontSize <= FONT_MIN} onclick={() => (prefs.terminalFontSize -= 1)}>−</button>
           <output>{fontSize}px</output>
-          <button type="button" aria-label="Larger text" onclick={() => (fontSize = Math.min(18, fontSize + 1))}>+</button>
+          <button type="button" aria-label="Larger text" disabled={fontSize >= FONT_MAX} onclick={() => (prefs.terminalFontSize += 1)}>+</button>
         </span>
       </div>
       <div class="live-wrap">

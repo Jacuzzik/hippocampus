@@ -1,5 +1,6 @@
 <!-- The right-panel tab for a selected added agent, laid out as in Thalha's picture: segmented pill groups, selected in accent. -->
 <script lang="ts">
+  import { FONT_MAX, FONT_MIN, prefs } from "../prefs.svelte.ts";
   import { cssToken } from "../cssToken.ts";
   import { invoke } from "@tauri-apps/api/core";
   import { listen } from "@tauri-apps/api/event";
@@ -18,7 +19,8 @@
 
   let text = $state("");
   let error = $state<string | null>(null);
-  let fontSize = $state(12);
+  // One text size for every agent terminal, set here or in Settings > Appearance.
+  const fontSize = $derived(prefs.terminalFontSize);
   // Real state from the sidecar: set when the CLI starts, and when it exits.
   let runState = $state<"starting" | "running" | "exited" | "stopped" | "failed">("starting");
   let exitCode = $state<number | null>(null);
@@ -104,7 +106,7 @@
     const fgColour = cssToken("md-text");
     term = new Terminal({
       fontFamily: "JetBrainsMono Nerd Font Mono, JetBrains Mono, monospace",
-      fontSize: 12,
+      fontSize: prefs.terminalFontSize,
       cursorBlink: true,
       convertEol: true,
       theme: { background: cssToken("md-bg-0"), foreground: fgColour, cursor: fgColour },
@@ -226,7 +228,7 @@
   {#if view !== "git"}
     <div class="seg" role="tablist" aria-label="Agent views">
       <button type="button" role="tab" aria-selected={view === "terminal"} class:on={view === "terminal"} onclick={() => (view = "terminal")}>Terminal</button>
-      <button type="button" role="tab" aria-selected="false" disabled={!agent.folder} onclick={() => showGit()}>Git</button>
+      <button type="button" role="tab" aria-selected="false" disabled={!agent.folder} title={agent.folder ? undefined : "This agent has no working folder"} onclick={() => showGit()}>Git</button>
       <button type="button" role="tab" aria-selected={view === "messages"} class:on={view === "messages"} onclick={() => (view = "messages")}>Messages</button>
       <button type="button" role="tab" aria-selected={view === "traces"} class:on={view === "traces"} onclick={() => (view = "traces")}>Traces</button>
     </div>
@@ -235,7 +237,7 @@
   <div class="live">
     <span class="dot" aria-hidden="true"></span>
     <span>{stateLabel}</span>
-    <span class="size"><button type="button" aria-label="Smaller text" onclick={() => (fontSize = Math.max(9, fontSize - 1))}>−</button><output>{fontSize}px</output><button type="button" aria-label="Larger text" onclick={() => (fontSize = Math.min(18, fontSize + 1))}>+</button></span>
+    <span class="size"><button type="button" aria-label="Smaller text" disabled={fontSize <= FONT_MIN} onclick={() => (prefs.terminalFontSize -= 1)}>−</button><output>{fontSize}px</output><button type="button" aria-label="Larger text" disabled={fontSize >= FONT_MAX} onclick={() => (prefs.terminalFontSize += 1)}>+</button></span>
   </div>
 
   <div class="screen" bind:this={screen} aria-label="Terminal for {agent.name}" hidden={view !== "terminal"}></div>
