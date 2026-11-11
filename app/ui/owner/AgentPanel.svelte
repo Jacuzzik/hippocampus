@@ -1,5 +1,6 @@
 <!-- The right-panel tab for a selected added agent, laid out as in Thalha's picture: segmented pill groups, selected in accent. -->
 <script lang="ts">
+  import { cssToken } from "../cssToken.ts";
   import { invoke } from "@tauri-apps/api/core";
   import { listen } from "@tauri-apps/api/event";
   import { onDestroy, onMount } from "svelte";
@@ -46,6 +47,12 @@
   let fit: FitAddon | null = null;
   let unlisten: (() => void) | null = null;
   let observer: ResizeObserver | null = null;
+  // False until the terminal has been fitted to a visible box. The panel is mounted hidden at launch, so the CLI
+  // starts at a default width and its first output is laid out for that width, not for the real box.
+  let sized = false;
+  function resizeCli(rows: number, cols: number): Promise<unknown> {
+    return invoke("sidecar_call", { method: "terminal_resize", params: { agent: agent.id, rows, cols } }).catch(() => {});
+  }
   function sendSize(): void {
     if (!term || !fit) return;
     // A hidden or mid-animation panel reports a tiny width; telling the CLI that makes it redraw one or two characters per line.
@@ -53,10 +60,17 @@
     fit.fit();
     // Give the bottom row one line back so the last line sits inside the box, not on its edge.
     if (term.rows > 1) term.resize(term.cols, term.rows - 1);
-    invoke("sidecar_call", {
-      method: "terminal_resize",
-      params: { agent: agent.id, rows: term.rows, cols: term.cols },
-    }).catch(() => {});
+    const { rows, cols } = term;
+    if (sized) {
+      void resizeCli(rows, cols);
+      return;
+    }
+    // First real size: what is on screen was drawn for the wrong width, and re-wrapping it leaves the CLI's
+    // cursor moves pointing at the wrong rows (overlapping and missing letters). Start from a blank screen
+    // and make the CLI draw everything again: one row off and back, the same nudge a reattach uses.
+    sized = true;
+    term.reset();
+    void resizeCli(rows + 1, cols).then(() => resizeCli(rows, cols));
   }
 
   // "Block tools": on, the CLI runs without shell, file writes or web (Claude Code and Codex only).
@@ -87,13 +101,13 @@
   }
 
   async function startTerminal(): Promise<void> {
-    const fgColour = getComputedStyle(document.documentElement).getPropertyValue("--color-fg").trim() || "#DADADA";
+    const fgColour = cssToken("md-text");
     term = new Terminal({
       fontFamily: "JetBrainsMono Nerd Font Mono, JetBrains Mono, monospace",
       fontSize: 12,
       cursorBlink: true,
       convertEol: true,
-      theme: { background: getComputedStyle(document.documentElement).getPropertyValue("--color-md-bg-0").trim() || "#222229", foreground: fgColour, cursor: fgColour },
+      theme: { background: cssToken("md-bg-0"), foreground: fgColour, cursor: fgColour },
     });
     fit = new FitAddon();
     term.loadAddon(fit);

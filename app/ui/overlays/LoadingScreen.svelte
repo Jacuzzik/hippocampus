@@ -70,7 +70,7 @@
     content: "";
     position: absolute;
     inset: 0;
-    background: rgba(20, 20, 26, 0.35);
+    background: var(--color-scrim-soft);
     -webkit-backdrop-filter: blur(48px);
     backdrop-filter: blur(48px);
     opacity: 1;
@@ -98,7 +98,7 @@
     font-size: 48px;
     font-weight: 700;
     letter-spacing: -0.01em;
-    color: #fff;
+    color: var(--color-on-strong);
     white-space: nowrap;
   }
   /* The mark is a mask, so it takes white and sits with no box of its own. */
@@ -107,7 +107,7 @@
     height: 90px;
     flex: none;
     max-width: 100%;
-    background: #fff;
+    background: var(--color-on-strong);
     -webkit-mask: var(--mark) center / contain no-repeat;
     mask: var(--mark) center / contain no-repeat;
   }

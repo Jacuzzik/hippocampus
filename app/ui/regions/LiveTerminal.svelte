@@ -1,5 +1,6 @@
 <!-- A real terminal: the agent's own CLI in a pseudo-terminal, drawn by xterm.js. -->
 <script lang="ts">
+  import { cssToken } from "../cssToken.ts";
   import { invoke } from "@tauri-apps/api/core";
   import { listen } from "@tauri-apps/api/event";
   import { onDestroy, onMount } from "svelte";
@@ -20,6 +21,8 @@
 
   function sendSize(): void {
     if (!term || !fit) return;
+    // A hidden panel reports no width; sending that would make the CLI redraw for a tiny screen.
+    if (screen.clientWidth < 200 || screen.clientHeight < 80) return;
     fit.fit();
     invoke("sidecar_call", {
       method: "terminal_resize",
@@ -29,8 +32,8 @@
 
   async function startTerminal(): Promise<void> {
     // The background is read from the app's dark token, so the terminal matches the panels.
-    const bg = getComputedStyle(document.documentElement).getPropertyValue("--color-md-bg-0").trim() || "#222229";
-    const fg = getComputedStyle(document.documentElement).getPropertyValue("--color-fg").trim() || "#DADADA";
+    const bg = cssToken("md-bg-0");
+    const fg = cssToken("md-text");
     term = new Terminal({
       fontFamily: "JetBrains Mono, monospace",
       fontSize: 12,

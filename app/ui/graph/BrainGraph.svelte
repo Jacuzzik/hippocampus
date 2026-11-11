@@ -126,7 +126,8 @@
   const degree = $derived(linkCounts(data.nodes, data.edges));
   // The six groups linked to MAIN: their names are bold and their icons are larger.
   const GROUP_HUBS = new Set(["Projects", "Summaries", "Agent Lists", "Contacts", "Socials", "About User"]);
-  const HUB_COLOURS: Record<string, string> = { MAIN: "#FFFFFF" };
+  // Hub title to colour token name.
+  const HUB_COLOURS: Record<string, string> = { MAIN: "on-strong" };
   // Each note is also drawn as draw-only copies: 3 above and 3 below (vertical trail), and one shifted sideways (colour fringe).
   // Hit tests never see these copies, they only read the notes in pos.
   const GHOST_KINDS = 7;
@@ -526,7 +527,7 @@
     const radii = new Float32Array(total);
     const shapes = new Float32Array(total);
     // The MAIN hub notes keep their own colours, whatever folder they sit in.
-    const hubs = new Map(Object.entries(HUB_COLOURS).map(([title, hex]) => [title, parse(hex)]));
+    const hubs = new Map(Object.entries(HUB_COLOURS).map(([title, name]) => [title, token(name)]));
     // A hovered note (else the selected one) and its links stay bright; every other note dims.
     const focus = hovered >= 0 ? hovered : selected;
     near = neighbourhood(focus);

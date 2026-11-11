@@ -9,6 +9,7 @@ import json
 import os
 import pty
 import shutil
+import signal
 import struct
 import subprocess
 import time
@@ -99,8 +100,8 @@ class Terminals:
                     running = None
             if running is not None and running[0].poll() is None:
                 # Reattaching: the new screen is blank, so resize one row off and back to make the CLI redraw.
-                self._resize(running[1], rows + 1, cols)
-                self._resize(running[1], rows, cols)
+                self._resize_running(running[0], running[1], rows + 1, cols)
+                self._resize_running(running[0], running[1], rows, cols)
                 return {"running": True, "replay": self._replay(agent)}
             previous = self.specs.get(agent)
             if previous and (previous[0] != provider or (model and previous[1] != model)):
@@ -240,7 +241,7 @@ class Terminals:
     def resize(self, agent: str, rows: int, cols: int) -> None:
         running = self.procs.get(agent)
         if running is not None and running[0].poll() is None:
-            self._resize(running[1], rows, cols)
+            self._resize_running(running[0], running[1], rows, cols)
 
     def stop(self, agent: str) -> None:
         running = self.procs.get(agent)
@@ -302,6 +303,21 @@ class Terminals:
     @staticmethod
     def _resize(fd: int, rows: int, cols: int) -> None:
         fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack("HHHH", max(rows, 1), max(cols, 1), 0, 0))
+
+    @classmethod
+    def _resize_running(cls, proc: subprocess.Popen, fd: int, rows: int, cols: int) -> None:
+        """Set a running CLI's terminal size and tell it the size changed.
+
+        The CLI runs in its own session with no controlling terminal, so the kernel does not send it
+        the window-change signal by itself. Without the signal the CLI keeps drawing for its old width,
+        which shows as overlapping and missing letters once the panel is a different width.
+        """
+        cls._resize(fd, rows, cols)
+        try:
+            # start_new_session makes the CLI its own group leader, so this reaches it and its children.
+            os.killpg(proc.pid, signal.SIGWINCH)
+        except (ProcessLookupError, PermissionError):
+            pass
 
     def _pump(self, agent: str, proc: subprocess.Popen, master: int) -> None:
         decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")

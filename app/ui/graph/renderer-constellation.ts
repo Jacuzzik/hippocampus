@@ -1,6 +1,14 @@
 // Paints the neural constellation on a 2D canvas: black void, dots and marks, outlined boxes. Culled to the view.
 import type { Camera } from "./model.ts";
-import { BOX_STRIDE, GLYPH_STRIDE, PALETTE, type Constellation } from "./constellation-model.ts";
+import { BOX_STRIDE, GLYPH_STRIDE, PALETTE_SIZE, type Constellation } from "./constellation-model.ts";
+import { cssToken } from "../cssToken.ts";
+
+// The palette is read from the colour tokens once, on the first draw.
+let palette: string[] | null = null;
+function colours(): string[] {
+  palette ??= Array.from({ length: PALETTE_SIZE }, (_, i) => cssToken(`holo-${i}`));
+  return palette;
+}
 
 /** Dims everything that is not lit (the focus and its links) to this alpha. */
 const DIM = 0.16;
@@ -17,7 +25,9 @@ export function drawConstellation(
   h: number,
   lit: Uint8Array | null,
 ): void {
-  ctx.fillStyle = "#000000";
+  const PALETTE = colours();
+  const white = PALETTE[0] ?? "";
+  ctx.fillStyle = cssToken("void");
   ctx.fillRect(0, 0, w, h);
   const z = cam.zoom;
   const isLit = (owner: number): boolean => {
@@ -40,7 +50,7 @@ export function drawConstellation(
     if (sx + sw < 0 || sy + sh < 0 || sx > w || sy > h) continue;
     const owner = boxes[k + 6] ?? 0;
     ctx.globalAlpha = (boxes[k + 5] ?? 0) * (isLit(owner) ? 1 : DIM);
-    ctx.strokeStyle = PALETTE[boxes[k + 4] ?? 0] ?? "#FFFFFF";
+    ctx.strokeStyle = PALETTE[boxes[k + 4] ?? 0] ?? white;
     ctx.strokeRect(sx, sy, Math.max(sw, 1), Math.max(sh, 1));
   }
 
@@ -55,7 +65,7 @@ export function drawConstellation(
     const owner = g[k + 5] ?? 0;
     const kind = g[k + 2] ?? 0;
     ctx.globalAlpha = (g[k + 4] ?? 0) * (isLit(owner) ? 1 : DIM);
-    ctx.fillStyle = PALETTE[g[k + 3] ?? 0] ?? "#FFFFFF";
+    ctx.fillStyle = PALETTE[g[k + 3] ?? 0] ?? white;
     ctx.strokeStyle = ctx.fillStyle;
     if (kind === 0) {
       ctx.beginPath();

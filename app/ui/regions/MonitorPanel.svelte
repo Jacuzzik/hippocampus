@@ -524,14 +524,14 @@
   .btn.danger {
     background: var(--color-md-danger);
     border-color: var(--color-md-danger);
-    color: #ffffff;
+    color: var(--color-on-strong);
   }
 
   /* Confirm delete: solid orange, white text. */
   .btn.confirm {
     background: var(--color-pending);
     border-color: var(--color-pending);
-    color: #ffffff;
+    color: var(--color-on-strong);
   }
 
   .row-btns {
@@ -552,9 +552,9 @@
 
   /* DANGER ZONE as a white badge with bold red text. */
   .zone-tag {
-    background: #ffffff;
+    background: var(--color-on-strong);
     color: var(--color-md-danger);
-    border: 1px solid #ffffff;
+    border: 1px solid var(--color-on-strong);
     font-size: var(--font-size-tag);
     font-weight: 700;
     padding: 3px 6px;
@@ -654,9 +654,9 @@
   .status.error {
     color: var(--color-md-danger);
   }
-  .scrim { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); display: grid; place-items: center; z-index: 1000; }
+  .scrim { position: fixed; inset: 0; background: var(--color-scrim); display: grid; place-items: center; z-index: 1000; }
   /* Dark confirm box, the app's dark palette, with a warning bar on its left edge. */
-  .dialog { background: var(--color-md-surface); color: var(--color-md-text); border: 1px solid var(--color-md-border); border-left: 3px solid var(--color-accent); border-radius: var(--radius-sm); padding: var(--space-4); max-width: 420px; width: calc(100% - 32px); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); }
+  .dialog { background: var(--color-md-surface); color: var(--color-md-text); border: 1px solid var(--color-md-border); border-left: 3px solid var(--color-accent); border-radius: var(--radius-sm); padding: var(--space-4); max-width: 420px; width: calc(100% - 32px); box-shadow: 0 8px 24px var(--color-shadow-strong); }
   .dialog h3 { margin: 0 0 var(--space-2); font-size: var(--font-size-md); font-weight: 600; color: var(--color-md-text); }
   .dialog p { margin: 0 0 var(--space-4); font-size: var(--font-size-sm); line-height: 1.45; color: var(--color-md-text-muted); }
   .dialog p strong { color: var(--color-md-text); font-weight: 600; }

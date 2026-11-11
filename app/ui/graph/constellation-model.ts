@@ -6,8 +6,8 @@ import { linkCounts, type GraphData } from "./model.ts";
 export const HUB_LINKS = 6;
 /** The glyphs: 0 "·" faint dot, 1 "+" mark, 2 "%" bold mark. */
 export const GLYPH_CHARS = ["·", "+", "%"] as const;
-/** Colours by index: 0 white, then the holographic palette from the brief. */
-export const PALETTE = ["#FFFFFF", "#8B5CF6", "#9D4DFF", "#FF2FD6", "#2F9BFF", "#426BFF", "#FF8A36", "#FFE66D"] as const;
+/** Colours are indexes into the holo-0 to holo-7 tokens in design/tokens.json: 0 white, then the holographic palette from the brief. */
+export const PALETTE_SIZE = 8;
 const WHITE = 0;
 const VIOLET = 1;
 const PURPLE = 2;

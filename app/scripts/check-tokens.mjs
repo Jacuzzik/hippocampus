@@ -11,7 +11,8 @@ const UI_DIR = fileURLToPath(new URL("../ui/", import.meta.url));
 const TAURI_CONF = fileURLToPath(
   new URL("../src-tauri/tauri.conf.json", import.meta.url),
 );
-const RAW_COLOR = /#[0-9a-f]{3,8}\b|\b(?:rgba?|hsla?)\(/i;
+// A "#" straight after a letter or digit is an id such as "Brooke#9716", not a colour.
+const RAW_COLOR = /(?<![\w&])#[0-9a-f]{3,8}\b|\b(?:rgba?|hsla?)\(/i;
 
 test("every token reference resolves", () => {
   const vars = buildVariables(loadTokens());

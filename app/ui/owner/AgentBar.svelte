@@ -653,7 +653,7 @@
     z-index: 30;
     display: grid;
     place-items: center;
-    background: rgb(0 0 0 / 0.5);
+    background: var(--color-shadow-strong);
   }
 
   .info-box {
