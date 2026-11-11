@@ -28,3 +28,8 @@ app/src-tauri/binaries/
 data/backups/
 storage/
 brains/
+
+# Local dev output
+app/.tauri-dev.log
+backups/
+graphify-out/

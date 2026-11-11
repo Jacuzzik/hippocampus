@@ -1,5 +1,6 @@
 <!-- The brain graph in numbers: note and link counts, and the most linked notes. Read only. -->
 <script lang="ts">
+  import { every } from "../poll.ts";
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { SvelteMap } from "svelte/reactivity";
@@ -22,8 +23,7 @@
   }
   onMount(() => {
     void load();
-    const timer = setInterval(() => void load(), 5000);
-    return () => clearInterval(timer);
+    return every(() => void load(), 5000);
   });
 
   const linked = $derived.by(() => {

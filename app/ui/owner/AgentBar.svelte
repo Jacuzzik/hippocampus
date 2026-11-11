@@ -1,5 +1,6 @@
 <!-- The bottom agent row: the main agent first (fixed), then added agents that can be moved. -->
 <script lang="ts">
+  import { every } from "../poll.ts";
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
   import logo from "../assets/brand/hippocampus-mark-purple.png";
@@ -126,8 +127,7 @@
   }
   onMount(() => {
     void refreshLive();
-    const timer = setInterval(() => void refreshLive(), 3000);
-    return () => clearInterval(timer);
+    return every(() => void refreshLive(), 3000);
   });
 
 </script>

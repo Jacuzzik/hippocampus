@@ -3,6 +3,7 @@
   import { invoke } from "@tauri-apps/api/core";
   import { listen } from "@tauri-apps/api/event";
   import { onDestroy, onMount } from "svelte";
+  import { bootTask } from "../owner/bootTasks.svelte.ts";
   import { Terminal } from "@xterm/xterm";
   import { FitAddon } from "@xterm/addon-fit";
   import "@xterm/xterm/css/xterm.css";
@@ -108,7 +109,9 @@
   });
 
   onMount(() => {
-    startTerminal();
+    // Counted as start-up work so the loading screen waits for this terminal.
+    const done = bootTask();
+    startTerminal().finally(done);
   });
 
   onDestroy(() => {

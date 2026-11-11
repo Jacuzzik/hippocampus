@@ -51,6 +51,8 @@
     // A hidden or mid-animation panel reports a tiny width; telling the CLI that makes it redraw one or two characters per line.
     if (screen.clientWidth < 200 || screen.clientHeight < 80) return;
     fit.fit();
+    // Give the bottom row one line back so the last line sits inside the box, not on its edge.
+    if (term.rows > 1) term.resize(term.cols, term.rows - 1);
     invoke("sidecar_call", {
       method: "terminal_resize",
       params: { agent: agent.id, rows: term.rows, cols: term.cols },
@@ -87,7 +89,7 @@
   async function startTerminal(): Promise<void> {
     const fgColour = getComputedStyle(document.documentElement).getPropertyValue("--color-fg").trim() || "#DADADA";
     term = new Terminal({
-      fontFamily: "JetBrains Mono, monospace",
+      fontFamily: "JetBrainsMono Nerd Font Mono, JetBrains Mono, monospace",
       fontSize: 12,
       cursorBlink: true,
       convertEol: true,
@@ -96,6 +98,14 @@
     fit = new FitAddon();
     term.loadAddon(fit);
     term.open(screen);
+    // Pass 1: xterm measures cell size once at open; nudge it after the font loads so cells match the drawn glyphs.
+    document.fonts?.ready.then(() => {
+      if (!term) return;
+      const fs = term.options.fontSize ?? 12;
+      term.options.fontSize = fs + 0.01;
+      term.options.fontSize = fs;
+      sendSize();
+    });
     term.onData((data) => {
       invoke("sidecar_call", { method: "terminal_input", params: { agent: agent.id, data } }).catch((cause) =>
         console.error("Could not send to the terminal", cause),
@@ -127,20 +137,7 @@
         method: "terminal_start",
         params: { agent: agent.id, provider: agent.provider, model: agent.model, folder: agent.folder, rows: term.rows, cols: term.cols, block_tools: blocked },
       });
-      // Do not replay the saved bytes: they were drawn at older sizes and garble at this one.
-      // Instead, start from a clean screen and nudge the CLI's size so it redraws the whole screen at the current size.
-      term.reset();
-      const rows = term.rows;
-      const cols = term.cols;
-      await invoke("sidecar_call", { method: "terminal_resize", params: { agent: agent.id, rows: rows + 1, cols } }).catch(() => {});
-      await invoke("sidecar_call", { method: "terminal_resize", params: { agent: agent.id, rows, cols } }).catch(() => {});
-      // The font and the layout can settle after the start. Fit once more and tell the CLI the final size, so the two agree.
-      await document.fonts?.ready;
-      // The terminal may have measured its character size while its panel was hidden. Changing the font size forces a fresh measure.
-      const size = term.options.fontSize ?? 12;
-      term.options.fontSize = size + 1;
-      term.options.fontSize = size;
-      sendSize();
+      // Same as the main agent terminal: no replay, no size nudge, no font bump after start.
       runState = "running";
     } catch (cause) {
       runState = "failed";
@@ -510,14 +507,13 @@
   }
   /* The frame is an inset shadow, not a border: xterm's fit sizes the terminal from the box's height and width
      and ignores borders, so a border made the last row and the right edge run out of the box. */
+  /* Same frame as the main agent terminal (LiveTerminal.svelte). */
   .screen {
     flex: 1 1 0;
     min-height: 0;
     overflow: hidden;
     padding: var(--space-1);
-    /* One terminal row of space above the text, so the top line is not cut off. */
-    padding-top: calc(var(--space-1) + 15px);
-    box-shadow: inset 0 0 0 1px var(--color-md-border);
+    border: 1px solid var(--color-md-border);
     border-radius: var(--radius-sm);
     background: var(--color-md-bg-0);
   }

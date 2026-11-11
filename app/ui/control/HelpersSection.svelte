@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { every } from "../poll.ts";
   import { invoke } from "@tauri-apps/api/core";
   import { onDestroy, onMount } from "svelte";
 
@@ -14,7 +15,7 @@
   let limit = $state(4);
   let prompt = $state("");
   let error = $state<string | null>(null);
-  let timer: ReturnType<typeof setInterval> | undefined;
+  let stopPoll: (() => void) | undefined;
   const running = $derived(
     helpers.filter((h) => h.status === "running").length,
   );
@@ -50,9 +51,9 @@
 
   onMount(() => {
     void load();
-    timer = setInterval(load, 2000);
+    stopPoll = every(load, 2000);
   });
-  onDestroy(() => clearInterval(timer));
+  onDestroy(() => stopPoll?.());
 </script>
 
 <section class="control-section" aria-labelledby="control-helpers">

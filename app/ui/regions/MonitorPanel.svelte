@@ -1,5 +1,6 @@
 <!-- What the assistant may reach right now and what it has used, read only. -->
 <script lang="ts">
+  import { every } from "../poll.ts";
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { addedAgents, archived, removeAgent, setArchived } from "../owner/addedAgents.svelte";
@@ -131,8 +132,7 @@
   });
 
   onMount(() => {
-    const tokenTimer = setInterval(() => loadTokens(directories), 60000);
-    return () => clearInterval(tokenTimer);
+    return every(() => loadTokens(directories), 60000);
   });
 
   onMount(async () => {

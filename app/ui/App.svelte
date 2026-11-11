@@ -8,6 +8,11 @@
   import RightPanel from "./regions/RightPanel.svelte";
   import StatusBar from "./regions/StatusBar.svelte";
   import AccountDialog from "./overlays/AccountDialog.svelte";
+  import LoadingScreen from "./overlays/LoadingScreen.svelte";
+  import HealthBar from "./overlays/HealthBar.svelte";
+  import PanelBoundary from "./controls/PanelBoundary.svelte";
+  import { every } from "./poll.ts";
+  import { bootTask, boot } from "./owner/bootTasks.svelte.ts";
   import ToolsDialog from "./overlays/ToolsDialog.svelte";
   import ControlDialog from "./control/ControlDialog.svelte";
   import AddAgentDialog from "./control/AddAgentDialog.svelte";
@@ -163,6 +168,9 @@
 
   // Reloads every few seconds so notes the agents add or change show up. The data is swapped only when
   // notes or links changed, so the graph layout does not reset on each poll.
+  // The loading screen lifts after the first attempt, whether it worked or not.
+  let booted = $state(false);
+
   async function load(): Promise<void> {
     try {
       const next = await invoke<GraphData>("sidecar_call", { method: "graph" });
@@ -180,13 +188,17 @@
       error = null;
     } catch (cause) {
       error = String(cause);
+    } finally {
+      booted = true;
     }
   }
 
   // The graph menu and sidebar fire this after a change, so it redraws at once rather than at the next poll.
   onMount(() => {
-    void load();
-    const timer = setInterval(() => void load(), 5000);
+    // The first graph load (the vault) counts as start-up work; later polls do not.
+    const doneVault = bootTask();
+    void load().finally(doneVault);
+    const stopPoll = every(() => void load(), 5000);
     const onChanged = () => void load();
     window.addEventListener("graph-changed", onChanged);
     // The browser's own right-click menu is off everywhere; the app's own menus still open from their handlers.
@@ -194,7 +206,7 @@
     window.addEventListener("contextmenu", noNativeMenu);
     return () => {
       window.removeEventListener("contextmenu", noNativeMenu);
-      clearInterval(timer);
+      stopPoll();
       window.removeEventListener("graph-changed", onChanged);
     };
   });
@@ -219,25 +231,27 @@
 {/if}
 
 {#if toolsOpen}
-  <ToolsDialog onclose={() => (toolsOpen = false)} />
+  <PanelBoundary name="Tools"><ToolsDialog onclose={() => (toolsOpen = false)} /></PanelBoundary>
 {/if}
 
 {#if controlOpen}
-  <ControlDialog
-    onclose={() => (controlOpen = false)}
-    onsettings={() => {
-      controlOpen = false;
-      settingsOpen = true;
-    }}
-  />
+  <PanelBoundary name="Control panel">
+    <ControlDialog
+      onclose={() => (controlOpen = false)}
+      onsettings={() => {
+        controlOpen = false;
+        settingsOpen = true;
+      }}
+    />
+  </PanelBoundary>
 {/if}
 
 {#if addOpen}
-  <AddAgentDialog onclose={() => (addOpen = false)} />
+  <PanelBoundary name="Add agent"><AddAgentDialog onclose={() => (addOpen = false)} /></PanelBoundary>
 {/if}
 
 {#if settingsOpen}
-  <SettingsDialog onclose={() => (settingsOpen = false)} />
+  <PanelBoundary name="Settings"><SettingsDialog onclose={() => (settingsOpen = false)} /></PanelBoundary>
 {/if}
 
 {#if setupOpen}
@@ -249,6 +263,9 @@
     }}
   />
 {/if}
+
+<LoadingScreen ready={booted && !boot.busy} />
+<HealthBar backendDown={booted && error !== null && /sidecar/i.test(error)} />
 
 <div
   class="shell"
@@ -264,15 +281,18 @@
     oncontrol={() => (controlOpen = true)}
   />
   {#if sidebarOpen && data && !terminalOnly}
-    <NoteSidebar
-      {data}
-      bind:query
-      bind:tag
-      bind:memory
-      bind:selectedId
-      bind:searchEl
-    />
+    <PanelBoundary name="Notes" area="sidebar">
+      <NoteSidebar
+        {data}
+        bind:query
+        bind:tag
+        bind:memory
+        bind:selectedId
+        bind:searchEl
+      />
+    </PanelBoundary>
   {/if}
+  <PanelBoundary name="Graph" area="graph">
   <GraphRegion
     {data}
     {error}
@@ -285,7 +305,10 @@
     onfullscreen={() => (terminalOnly = !terminalOnly)}
     onselect={(id) => (selectedId = id)}
   />
-  <RightPanel open={panelOpen || terminalOnly} />
+  </PanelBoundary>
+  <PanelBoundary name="Control Room" area="panel">
+    <RightPanel open={panelOpen || terminalOnly} />
+  </PanelBoundary>
   {#if sidebarOpen && data && !terminalOnly}
     <div
       class="resize-handle left"

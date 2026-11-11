@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { every } from "../poll.ts";
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
   import BrainGraph from "../graph/BrainGraph.svelte";
@@ -15,8 +16,7 @@
         (cause) => console.error("Could not read system stats", cause),
       );
     void read();
-    const timer = setInterval(read, 3000);
-    return () => clearInterval(timer);
+    return every(read, 3000);
   });
 
   // Loaded by App.svelte through the sidecar bridge; null while loading or after an error.

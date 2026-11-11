@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { every } from "../poll.ts";
   import { invoke } from "@tauri-apps/api/core";
   import { onDestroy, onMount } from "svelte";
   import type { AskCard } from "../assistant/model";
@@ -7,7 +8,7 @@
   let asks = $state<AskCard[]>([]);
   let answers = $state<Record<string, string>>({});
   let error = $state<string | null>(null);
-  let timer: ReturnType<typeof setInterval> | undefined;
+  let stopPoll: (() => void) | undefined;
 
   async function load(): Promise<void> {
     try {
@@ -38,9 +39,9 @@
 
   onMount(() => {
     void load();
-    timer = setInterval(load, 3000);
+    stopPoll = every(load, 3000);
   });
-  onDestroy(() => clearInterval(timer));
+  onDestroy(() => stopPoll?.());
 </script>
 
 <section class="control-section" aria-labelledby="control-asks">

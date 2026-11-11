@@ -3,7 +3,6 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   allTags,
-  ARC_ROW,
   ARC_SEGMENTS,
   arcHubs,
   arcLayout,
@@ -27,7 +26,6 @@ import {
   nodeTone,
   TONES,
   SHAPE_SQUARE,
-  SHAPE_LONG,
   SHAPE_TALL,
   SHAPE_WIDE,
   MIN_ZOOM,
@@ -96,7 +94,10 @@ test("unlinked notes scatter irregularly, not on a lattice", () => {
   const pairs = [];
   for (let i = 1; i < linked; i++) pairs.push([i, ((i * 7919) % 97) % i]);
   const deg = new Uint32Array(n);
-  for (const [a, b] of pairs) (deg[a]++, deg[b]++);
+  for (const [a, b] of pairs) {
+    deg[a]++;
+    deg[b]++;
+  }
   const pos = layout(n, pairs, undefined, 1);
   assert.ok(pos.every(Number.isFinite));
   const free = [];

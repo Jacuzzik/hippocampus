@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { every } from "../poll.ts";
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
   import Assistant from "../assistant/Assistant.svelte";
@@ -32,11 +33,11 @@
   onMount(() => {
     loadEngine(true);
     readHippo();
-    const timer = setInterval(readHippo, 3000);
+    const stopPoll = every(readHippo, 3000);
     const onEngineChanged = () => loadEngine(false);
     window.addEventListener("engine-changed", onEngineChanged);
     return () => {
-      clearInterval(timer);
+      stopPoll();
       window.removeEventListener("engine-changed", onEngineChanged);
     };
   });
@@ -62,13 +63,6 @@
     addedAgents.list.find((a) => a.id === selection.id && !archived.ids.includes(a.id)) ?? null,
   );
 
-  // Each agent's panel is mounted once it is first selected, then kept (hidden when not shown),
-  // so its terminal is not disposed on a switch. Keying by id keeps one panel per agent.
-  let opened = $state<string[]>([]);
-  $effect(() => {
-    const id = selection.id;
-    if (id && !opened.includes(id)) opened = [...opened, id];
-  });
 
   // Only the terminal is built; the rest of the grid is shown and stays disabled.
   // Names match the office app's Command Center tabs.
@@ -148,7 +142,8 @@
       <Assistant onsend={queue.send} queued={queue.items} />
     </div>
     <!-- Kept mounted while other tabs are open, so its terminal and listeners survive a tab switch. -->
-    {#each addedAgents.list.filter((a) => opened.includes(a.id) && !archived.ids.includes(a.id)) as item (item.id)}
+    <!-- Every agent's panel is mounted at launch so its terminal starts in the background (kept hidden when not shown). -->
+    {#each addedAgents.list.filter((a) => !archived.ids.includes(a.id)) as item (item.id)}
       <div class="pane" hidden={tab !== "agent" || selection.id !== item.id}>
         <AgentPanel agent={item} />
       </div>

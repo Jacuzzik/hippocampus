@@ -73,6 +73,8 @@ export function setArchived(id: string, on: boolean): void {
   }).catch((cause) => console.error("Could not sync the archived agents", cause));
 }
 
+import { bootTask } from "./bootTasks.svelte.ts";
+
 // Set once the user changes the list, so a slow load never overwrites a newer agent.
 let changed = false;
 
@@ -95,7 +97,9 @@ async function load(): Promise<void> {
     );
   }
 }
-void load();
+// The agent list is start-up work too: the loading screen waits for it, so every terminal can start.
+const doneAgents = bootTask();
+void load().finally(doneAgents);
 
 /** A readable, unique id: the agent's name and a 4-digit number, e.g. "Brooke#9716". Its notes are "<id>-PriorityNotes". */
 function newAgentId(name: string, taken: Set<string>): string {
