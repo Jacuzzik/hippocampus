@@ -119,3 +119,14 @@ test("Advanced shows the backend log and a switch hides the Connectors page", as
   const again = await openSettings(page);
   await expect(again.getByRole("tab", { name: "Connectors" })).toHaveCount(0);
 });
+
+test("the shell for every agent is a switch that shows the rules in force", async ({ page }) => {
+  await mockSidecar(page);
+  await page.goto("/");
+  const dialog = await openSettings(page);
+  await dialog.getByRole("tab", { name: "Agents" }).click();
+  const rules = dialog.getByRole("list", { name: "Other agents' rules" });
+  await expect(rules).toContainText("Shell: not available to this agent.");
+  await dialog.getByRole("checkbox", { name: "Shell for every agent" }).check();
+  await expect(rules).toContainText("Your program runs in a sandbox.");
+});

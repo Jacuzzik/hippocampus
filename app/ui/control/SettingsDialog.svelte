@@ -25,7 +25,20 @@
     agents: { provider: string; model: string; ollama: string };
     budgets: { max_tool_calls: number };
     memory: { max_bytes: number };
+    shell?: Shell;
   };
+  // Whether every agent has a shell, and the rules in force, in the backend's own words.
+  type Shell = { on: boolean; sandbox_available: boolean; main: string[]; agents: string[]; note: string };
+  let shellError = $state<string | null>(null);
+  async function setShell(on: boolean): Promise<void> {
+    shellError = null;
+    try {
+      const next = await invoke<Shell>("sidecar_call", { method: "set_agent_shell", params: { on } });
+      if (saved) saved.shell = next;
+    } catch (cause) {
+      shellError = String(cause);
+    }
+  }
 
   let page = $state<SettingsPage>("General");
   let sidecar = $state("Checking…");
@@ -224,6 +237,39 @@
               <div><b>Tool calls per request</b><p>The most tools the assistant may call for one request.</p></div>
               <code>{saved ? saved.budgets.max_tool_calls : "…"}</code>
             </div>
+          </section>
+          <section class="control-section">
+            <h3>Shell and sandbox</h3>
+            <div class="setting">
+              <div>
+                <b>Shell for every agent</b>
+                <p>
+                  On: each agent can run simple shell commands, and its program runs in a sandbox that keeps the app and the
+                  system read-only. Off: only the main agent has a shell. Applies the next time an agent starts.
+                </p>
+              </div>
+              <label class="switch"
+                ><input
+                  type="checkbox"
+                  aria-label="Shell for every agent"
+                  checked={saved?.shell?.on ?? false}
+                  disabled={!saved?.shell?.sandbox_available}
+                  onchange={(e) => void setShell(e.currentTarget.checked)}
+                /><span>{saved?.shell?.on ? "On" : "Off"}</span></label
+              >
+            </div>
+            {#if shellError}<p class="error" role="alert">{shellError}</p>{/if}
+            {#if saved?.shell}
+              <p class="hint">{saved.shell.note}</p>
+              <h4>Rules in force: main agent</h4>
+              <ul class="rules" aria-label="Main agent rules">
+                {#each saved.shell.main as line (line)}<li>{line}</li>{/each}
+              </ul>
+              <h4>Rules in force: other agents</h4>
+              <ul class="rules" aria-label="Other agents' rules">
+                {#each saved.shell.agents as line (line)}<li>{line}</li>{/each}
+              </ul>
+            {/if}
           </section>
           <NetworkSection />
         {:else if page === "Budgets"}
@@ -463,6 +509,13 @@
     .rail {
       border-right: 0;
     }
+  }
+
+  .rules {
+    margin: 0;
+    padding-left: var(--space-4);
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
   }
 
   .backend-log {

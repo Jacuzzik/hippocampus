@@ -125,7 +125,7 @@ export function keyStatus(saved: boolean, hint: string | null): string {
 export const SETTINGS_PAGES = [
   { id: "General", words: "vault folder last tab settings file" },
   { id: "Appearance", words: "motion animation terminal text size font theme light dark reset" },
-  { id: "Agents", words: "engine provider model tool calls network autonomy" },
+  { id: "Agents", words: "engine provider model tool calls network autonomy shell sandbox rules bash" },
   { id: "Budgets", words: "tokens caps limits spend" },
   { id: "Models and keys", words: "api key secret provider claude openai" },
   { id: "Connectors", words: "integrations slack webhooks github notion calendar gmail drive mcp plugins ollama" },

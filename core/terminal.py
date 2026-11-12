@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from ai import cli_sessions
+from core import sandbox
 from core.settings import HIVE_DIR, ROOT
 from tools.vault_mcp import VAULT_TOOLS, mcp_config
 
@@ -84,6 +85,7 @@ class Terminals:
         briefing: str = "",
         vault: str | None = None,
         block_tools: bool = False,
+        shell: bool = False,
     ) -> dict[str, Any]:
         with self.lock:
             running = self.procs.get(agent)
@@ -122,12 +124,15 @@ class Terminals:
             # An agent that has started on this engine before resumes its session in every CLI, not only Claude Code.
             resume = bool(cli_sessions.get(agent).get("started"))
             brief_path = self._write_briefing(agent, briefing)
-            argv = _command(agent, provider, model, brief_path, vault, block_tools, resume)
+            # The shell for every agent comes only with the sandbox: without it a normal agent gets no shell.
+            sandboxed = shell and sandbox_for(provider)
+            argv = _command(agent, provider, model, brief_path, vault, block_tools, resume, shell=sandboxed)
+            run_argv = _sandboxed(argv, agent, folder, vault) if sandboxed else argv
             master, slave = pty.openpty()
             self._resize(slave, rows, cols)
             try:
                 proc = subprocess.Popen(
-                    argv,
+                    run_argv,
                     stdin=slave,
                     stdout=slave,
                     stderr=slave,
@@ -144,7 +149,7 @@ class Terminals:
                 )
             except OSError as cause:
                 os.close(master)
-                raise RuntimeError(f"Could not start {argv[0]}: {cause}") from cause
+                raise RuntimeError(f"Could not start {run_argv[0]}: {cause}") from cause
             finally:
                 os.close(slave)
             if provider != "claude" or argv[1:2] == ["--session-id"] or argv[1:2] == ["--resume"]:
@@ -479,7 +484,32 @@ REMOTE_CONTROL_DELAY_S = 15.0
 REMOTE_CONTROL_IDLE_MAX_S = 900.0
 
 
-def _command(agent: str, provider: str, model: str = "", briefing: str = "", vault: str | None = None, block_tools: bool = False, resume: bool = False) -> list[str]:
+# The commands no agent's shell may run, and the rule that none may name the app folder.
+SHELL_DENIED = ("rm", "rmdir", "mv", "cp", "git", "sudo", "chmod", "chown", "curl", "wget", "dd", "kill", "pkill", "ps", "pgrep", "top", "htop", "lsof", "ss", "netstat", "pidof", "claude")
+
+
+def sandbox_for(provider: str) -> bool:
+    """True when this provider's CLI can run in the sandbox here. Only Claude Code has been tested inside it;
+    the other CLIs keep their own rules until each is tested."""
+    return provider == "claude" and sandbox.available()
+
+
+def _sandboxed(argv: list[str], agent: str, folder: str | None, vault: str | None) -> list[str]:
+    """The agent's command inside the sandbox: the app and the hive read-only, its own outbox and the note index writable."""
+    outbox = HIVE_DIR / agent / "outbox"
+    outbox.mkdir(parents=True, exist_ok=True)
+    index = ROOT / "data" / "storage" / "index"
+    return sandbox.wrap(
+        argv,
+        app_root=ROOT,
+        home=Path.home(),
+        readonly=[HIVE_DIR, HIVE_DIR.parent / "briefings"],
+        writable=[outbox, index, *([Path(vault)] if vault else []), *([Path(folder)] if folder else [])],
+        cwd=Path(folder) if folder else None,
+    )
+
+
+def _command(agent: str, provider: str, model: str = "", briefing: str = "", vault: str | None = None, block_tools: bool = False, resume: bool = False, shell: bool = False) -> list[str]:
     # resume: the agent already ran on this engine, so its CLI continues the last session in its folder (each CLI scopes "last" to the working folder).
     if provider in OPENCODE_FOR:
         binary = shutil.which("opencode")
@@ -545,12 +575,12 @@ def _command(agent: str, provider: str, model: str = "", briefing: str = "", vau
         str(HIVE_DIR),
         "--disallowedTools",
         *rules,
-        # The main agent gets a fenced shell: no delete, move, git, network or privilege commands, and none that names the app folder.
-        # Best effort only: a shell can still reach files that no pattern names. Normal agents get no shell.
+        # A fenced shell: no delete, move, git, network or privilege commands, and none that names the app folder.
+        # The patterns are best effort; the sandbox is the real fence. The main agent has the fenced shell
+        # either way. A normal agent has it only with `shell` (which also means it runs in the sandbox).
         *(
-            [f"Bash({cmd}:*)" for cmd in ("rm", "rmdir", "mv", "cp", "git", "sudo", "chmod", "chown", "curl", "wget", "dd", "kill", "pkill", "ps", "pgrep", "top", "htop", "lsof", "ss", "netstat", "pidof", "claude")]
-            + [f"Bash(* {ROOT}*)"]
-            if agent == "hippoherman"
+            [f"Bash({cmd}:*)" for cmd in SHELL_DENIED] + [f"Bash(* {ROOT}*)"]
+            if agent == "hippoherman" or shell
             else ["Bash"]
         ),
         *brief,

@@ -41,6 +41,14 @@ export async function mockSidecar(
         graph.nodes.push({ id: "delta.md", title: "Delta", tags: [] });
       let vaultOpen = !opts.noVault;
       // Every terminal start and stop, in order, for tests to read.
+      let shellOn = false;
+      const shellState = () => ({
+        on: shellOn,
+        sandbox_available: true,
+        main: ["Shell: allowed for simple tasks."],
+        agents: shellOn ? ["Shell: allowed for simple tasks.", "Your program runs in a sandbox."] : ["Shell: not available to this agent."],
+        note: "Applies to agents on Claude Code.",
+      });
       // Messages between agents, in the backend's schema; a sent message is added at the top.
       const inboxRows: Record<string, string>[] = [
         { id: "m-1", from: "hippoherman", to: "kevin", act: "request", subject: "Research the plan", body: "Read the audit and list the gaps.", work: "T-1", thread: "m-1", priority: "normal", created_at: "2026-10-29T12:30:00+00:00", state: "queued" },
@@ -280,7 +288,11 @@ export async function mockSidecar(
                 max_tool_calls: 20,
               },
               memory: { max_bytes: 32000 },
+              shell: shellState(),
             };
+          case "set_agent_shell":
+            shellOn = Boolean(args.params?.on);
+            return shellState();
           case "memory":
             return {
               notes: [

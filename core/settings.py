@@ -53,6 +53,9 @@ class Settings:
     assistant_budget: Caps = Caps()
     # A memory note longer than this (bytes) has its oldest sections moved to an archive note.
     memory_max_bytes: int = 32_000
+    # On: every agent gets a fenced shell and its program runs in the operating-system sandbox.
+    # Off: only the main agent has a (fenced) shell, as before.
+    agent_shell: bool = False
 
 
 _TOOL_NAME = re.compile(r"[a-z][a-z0-9_]*")
@@ -137,6 +140,9 @@ def load_settings(path: Path = SETTINGS_PATH) -> Settings:
     memory_limit = data.get("memory", {}).get("max_bytes", defaults.memory_max_bytes)
     if isinstance(memory_limit, bool) or not isinstance(memory_limit, int) or memory_limit < 1000:
         raise ValueError("memory.max_bytes must be a whole number of 1000 or more")
+    agent_shell = data.get("agents", {}).get("shell", defaults.agent_shell)
+    if not isinstance(agent_shell, bool):
+        raise ValueError("agents.shell must be true or false")
     return Settings(
         vault=(path.parent.parent / vault).resolve() if vault else None,
         provider=_provider(ai.get("provider", defaults.provider)),
@@ -150,6 +156,7 @@ def load_settings(path: Path = SETTINGS_PATH) -> Settings:
         budget=_caps(budget, "budget"),
         assistant_budget=_caps(budget.get("assistant"), "budget.assistant"),
         memory_max_bytes=memory_limit,
+        agent_shell=agent_shell,
     )
 
 
@@ -205,6 +212,13 @@ def save_network_mode(mode: str, path: Path = SETTINGS_PATH) -> None:
     if mode not in NETWORK_MODES:
         raise ValueError(f"network mode must be one of: {', '.join(NETWORK_MODES)}")
     _write(path, _replace_sections(_read(path), ("[network]",), [f'[network]\nmode = "{mode}"']))
+
+
+def save_agent_shell(on: bool, path: Path = SETTINGS_PATH) -> None:
+    """Write `[agents] shell` to the settings file, keeping the rest."""
+    if not isinstance(on, bool):
+        raise ValueError("agents.shell must be true or false")
+    _write(path, _replace_sections(_read(path), ("[agents]",), [f"[agents]\nshell = {'true' if on else 'false'}"]))
 
 
 def save_engine(provider: str, model: str, path: Path = SETTINGS_PATH) -> None:
