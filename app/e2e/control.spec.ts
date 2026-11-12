@@ -19,7 +19,7 @@ test("the control panel opens from the ribbon and each tab lists its panels", as
     Work: ["Dispatch", "Scheduled notes jobs", "Triggers"],
     Questions: ["Ask me"],
     "Helpers and skills": ["Helper jobs", "Capabilities", "Skills"],
-    "Team and sharing": ["Teams", "Share a note by password link"],
+    "Team and sharing": ["Teams", "Sharing"],
   };
   await expect(dialog.getByRole("tab")).toHaveText(Object.keys(tabs));
   for (const [name, headings] of Object.entries(tabs)) {
@@ -74,7 +74,7 @@ test("activity filters by kind and shows who approved a change", async ({
   await expect(dialog.getByText("network is Off")).toHaveCount(0);
 });
 
-test("share says Not set up and a helper cannot be started empty", async ({
+test("sharing is a Planned card and a helper cannot be started empty", async ({
   page,
 }) => {
   await mockSidecar(page);
@@ -86,9 +86,11 @@ test("share says Not set up and a helper cannot be started empty", async ({
     dialog.getByRole("button", { name: "Start helper" }),
   ).toBeDisabled();
   await dialog.getByRole("tab", { name: "Team and sharing" }).click();
-  await dialog.getByLabel("Link password").fill("long enough password");
-  await dialog.getByRole("button", { name: "Make link" }).click();
-  await expect(dialog.getByRole("alert")).toContainText("Not set up");
+  const share = dialog.locator("article", { hasText: "Share a note by password link" });
+  await expect(share.getByText("Planned", { exact: true })).toBeVisible();
+  await expect(share.getByText("No share host is set up in this build")).toBeVisible();
+  // No form that can only fail.
+  await expect(dialog.getByRole("button", { name: "Make link" })).toHaveCount(0);
 });
 
 test("the budget has a 5-hour cap next to day, week and month", async ({
@@ -107,7 +109,7 @@ test("the budget has a 5-hour cap next to day, week and month", async ({
   await expect(dialog.getByLabel("Whole app day cap")).toHaveValue("200000");
 });
 
-test("triggers show the network, the job count and that compaction is Not set up", async ({
+test("triggers show the network, the job count and that compaction is Planned", async ({
   page,
 }) => {
   await mockSidecar(page);
@@ -117,7 +119,9 @@ test("triggers show the network, the job count and that compaction is Not set up
   await dialog.getByRole("tab", { name: "Work" }).click();
   await expect(dialog.getByText("1 set, 1 on")).toBeVisible();
   await expect(
-    dialog.getByText("Not set up: the assistant does not shorten"),
+    dialog
+      .locator("article", { hasText: "Context compaction" })
+      .getByText("Planned", { exact: true }),
   ).toBeVisible();
   await expect(dialog.getByText("None saved yet.")).toBeVisible();
 });
@@ -212,7 +216,7 @@ test("a dispatch is sent only after the confirm card", async ({ page }) => {
   await expect(dialog.getByText("Sent to helper.")).toBeVisible();
 });
 
-test("teams say Not enrolled and cannot start a team here", async ({
+test("teams are a Planned card with no button that cannot work", async ({
   page,
 }) => {
   await mockSidecar(page);
@@ -220,12 +224,13 @@ test("teams say Not enrolled and cannot start a team here", async ({
   await openControl(page);
   const dialog = page.getByRole("dialog", { name: "Control panel" });
   await dialog.getByRole("tab", { name: "Team and sharing" }).click();
-  await expect(dialog.getByText("Status: Not enrolled")).toBeVisible();
-  await dialog.getByRole("button", { name: "Start a team" }).click();
-  await expect(dialog.getByRole("status")).toContainText("Not set up");
+  const teams = dialog.locator("article", { hasText: "Share agents with other people" });
+  await expect(teams.getByText("Planned", { exact: true })).toBeVisible();
+  await expect(teams.getByText("Nobody is enrolled")).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Start a team" })).toHaveCount(0);
 });
 
-test("capabilities list the skills and show install as Not set up", async ({
+test("capabilities list the skills and show MCP servers and plugins as Planned", async ({
   page,
 }) => {
   await mockSidecar(page);
@@ -235,7 +240,9 @@ test("capabilities list the skills and show install as Not set up", async ({
   await dialog.getByRole("tab", { name: "Helpers and skills" }).click();
   const caps = dialog.locator("#control-capabilities").locator("..");
   await expect(caps.getByText("tidy-notes")).toBeVisible();
-  await expect(
-    caps.getByRole("button", { name: "Install: Not set up" }).first(),
-  ).toBeDisabled();
+  for (const name of ["MCP servers", "Plugins"]) {
+    const card = caps.locator("article").filter({ has: page.getByText(name, { exact: true }) });
+    await expect(card.getByText("Planned", { exact: true })).toBeVisible();
+  }
+  await expect(caps.getByRole("button", { name: /Not set up/ })).toHaveCount(0);
 });

@@ -1,9 +1,10 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
   import { onMount } from "svelte";
+  import StatusCard from "../controls/StatusCard.svelte";
 
   // Search the assistant's memory notes. Text search always works. Search by meaning
-  // needs an embedding model, which is not installed yet, so it shows "Not set up".
+  // needs an embedding model; until one is installed, a Planned card gives the reason.
   type MemoryStatus = { ready: boolean; reason: string; max_bytes: number };
   type Hits = {
     mode: "text" | "meaning";
@@ -66,13 +67,7 @@
       disabled={!status?.ready}
       onclick={() => (mode = "meaning")}>By meaning</button
     >
-    {#if status && !status.ready}
-      <span class="badge" title={status.reason}>Not set up</span>
-    {/if}
   </div>
-  {#if status && !status.ready}
-    <p class="hint">{status.reason}</p>
-  {/if}
   <form
     class="row"
     onsubmit={(e) => {
@@ -100,4 +95,12 @@
     {/if}
   {/if}
   {#if error}<p class="error" role="alert">{error}</p>{/if}
+  {#if status && !status.ready}
+    <StatusCard
+      name="Search by meaning"
+      what="Finds notes on the same subject even when they use different words."
+      status="Planned"
+      reason={status.reason}
+    />
+  {/if}
 </section>

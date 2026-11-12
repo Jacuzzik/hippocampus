@@ -300,7 +300,7 @@
       </span>
     </div>
     <div class="side">
-      <button type="button" class="talk" disabled title="Talk is not set up yet"
+      <button type="button" class="talk" disabled title="Planned: talking to an agent by voice is not built yet"
         >TALK</button
       >
       <button
@@ -357,7 +357,7 @@
         </span>
       </button>
       <div class="side">
-        <button type="button" class="talk" disabled title="Talk is not set up yet"
+        <button type="button" class="talk" disabled title="Planned: talking to an agent by voice is not built yet"
           >TALK</button
         >
         <button

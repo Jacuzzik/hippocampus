@@ -1,13 +1,11 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
   import { onMount } from "svelte";
+  import StatusCard from "../controls/StatusCard.svelte";
 
   // What the app can use: MCP servers, skills and plugins. Skills can be installed from a folder
-  // and removed (the install_skill and remove_skill calls). MCP and plugins stay Not set up.
+  // and removed (the install_skill and remove_skill calls). MCP servers and plugins are planned.
   type Skill = { name: string; description: string };
-  // MCP servers and plugins are not read from disk yet, so these lists are empty for now.
-  const mcpServers: { name: string }[] = [];
-  const plugins: { name: string }[] = [];
 
   let skills = $state<Skill[]>([]);
   let armed = $state<string | null>(null);
@@ -74,26 +72,20 @@
   <h3 id="control-capabilities">Capabilities</h3>
   <p class="hint">
     Tools and skills the assistant can use. You can install a skill from a folder
-    and remove one here. MCP servers and plugins are Not set up in this build.
+    and remove one here. MCP servers and plugins are planned.
   </p>
-  {#each [{ title: "MCP servers", items: mcpServers }, { title: "Plugins", items: plugins }] as group (group.title)}
-    <h4>{group.title}</h4>
-    {#if group.items.length === 0}
-      <p class="muted">None installed.</p>
-    {:else}
-      <ul>
-        {#each group.items as item (item.name)}
-          <li class="cap">
-            <span>{item.name}</span>
-            <button type="button" disabled>Remove: Not set up</button>
-          </li>
-        {/each}
-      </ul>
-    {/if}
-    <div class="row">
-      <button type="button" disabled>Install: Not set up</button>
-    </div>
-  {/each}
+  <StatusCard
+    name="MCP servers"
+    what="Outside tools the assistant can call through the Model Context Protocol (MCP), such as a calendar or a database."
+    status="Planned"
+    reason="Servers are not read from disk yet, so none can be installed or removed here."
+  />
+  <StatusCard
+    name="Plugins"
+    what="Packs that add several tools and skills in one install."
+    status="Planned"
+    reason="Plugins are not read from disk yet, so none can be installed or removed here."
+  />
   <h4>Skill folders</h4>
   {#if skills.length === 0}
     <p class="muted">None installed.</p>

@@ -5,7 +5,7 @@
   // Sends a task to an agent. Nothing is sent until you confirm the exact task shown.
   const AGENTS = [
     { id: "helper", label: "Helper", ready: true },
-    { id: "assistant", label: "Assistant (Not set up)", ready: false },
+    { id: "assistant", label: "Assistant (planned)", ready: false },
   ];
 
   let agent = $state("helper");

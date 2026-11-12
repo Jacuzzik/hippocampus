@@ -2,6 +2,7 @@
   import { invoke } from "@tauri-apps/api/core";
   import { onMount } from "svelte";
   import { NETWORK_TEXT, type NetworkMode } from "./model";
+  import StatusCard from "../controls/StatusCard.svelte";
 
   // What starts work without you: the network state, scheduled jobs, context compaction and webhooks.
   type Job = { enabled: boolean };
@@ -41,9 +42,13 @@
     <dd>{mode ? `${mode}: ${NETWORK_TEXT[mode]}` : "Checking…"}</dd>
     <dt>Scheduled jobs</dt>
     <dd>{jobs.length} set, {on} on</dd>
-    <dt>Context compaction</dt>
-    <dd>Not set up: the assistant does not shorten its context yet.</dd>
   </dl>
+  <StatusCard
+    name="Context compaction"
+    what="Shortens a long chat on its own, so the assistant keeps working without losing the thread."
+    status="Planned"
+    reason="The assistant does not shorten its context yet."
+  />
   <h4>Webhooks</h4>
   {#if webhooks.length === 0}
     <p class="muted">None saved yet.</p>
