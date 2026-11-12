@@ -40,6 +40,9 @@ export async function mockSidecar(
       if (opts.orphan)
         graph.nodes.push({ id: "delta.md", title: "Delta", tags: [] });
       let vaultOpen = !opts.noVault;
+      // Every terminal start and stop, in order, for tests to read.
+      const terminalCalls: Record<string, unknown>[] = [];
+      (window as unknown as { __terminalCalls: unknown }).__terminalCalls = terminalCalls;
       let savedAgents: unknown[] = [];
       // The Claude key is kept here, never sent back to the page: account reports only yes or no.
       let claudeKey: string | null = opts.signedIn ? "sk-saved" : null;
@@ -435,10 +438,13 @@ export async function mockSidecar(
             workspaceFolders.push(String(args.params?.name));
             return { root: "/home/me/workspaces", folders: [...workspaceFolders] };
           case "terminal_start":
+            terminalCalls.push({ method: args.method, ...args.params });
             return { running: true };
+          case "terminal_stop":
+            terminalCalls.push({ method: args.method, ...args.params });
+            return { ok: true };
           case "terminal_input":
           case "terminal_resize":
-          case "terminal_stop":
             return { ok: true };
           case "webhooks":
             return { webhooks: [] };

@@ -102,7 +102,8 @@ class Terminals:
                 # Reattaching: the new screen is blank, so resize one row off and back to make the CLI redraw.
                 self._resize_running(running[0], running[1], rows + 1, cols)
                 self._resize_running(running[0], running[1], rows, cols)
-                return {"running": True, "replay": self._replay(agent)}
+                # "reattached" tells the caller that no CLI was started, so start-up messages are not sent again.
+                return {"running": True, "reattached": True, "replay": self._replay(agent)}
             previous = self.specs.get(agent)
             if previous and (previous[0] != provider or (model and previous[1] != model)):
                 # A new engine starts a new session: its screen starts blank, not with the old session's output.

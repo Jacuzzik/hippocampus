@@ -1,16 +1,10 @@
 <!-- The right-panel tab for a selected added agent, laid out as in Thalha's picture: segmented pill groups, selected in accent. -->
 <script lang="ts">
   import { FONT_MAX, FONT_MIN, prefs } from "../prefs.svelte.ts";
-  import { cssToken } from "../cssToken.ts";
   import Tabs from "../controls/Tabs.svelte";
   import EmptyState from "../controls/EmptyState.svelte";
   import { invoke } from "@tauri-apps/api/core";
-  import { listen } from "@tauri-apps/api/event";
-  import { onDestroy, onMount } from "svelte";
-  import { bootTask } from "./bootTasks.svelte.ts";
-  import { Terminal } from "@xterm/xterm";
-  import { FitAddon } from "@xterm/addon-fit";
-  import "@xterm/xterm/css/xterm.css";
+  import LiveTerminal, { type TerminalState } from "../regions/LiveTerminal.svelte";
   import type { SavedAgent } from "./addedAgents.svelte";
   import { createTerminalQueue } from "../regions/terminalQueue.svelte";
 
@@ -45,36 +39,12 @@
     return () => clearInterval(timer);
   });
 
-  // The live terminal: the agent's own CLI in a real pseudo-terminal, drawn by xterm.js.
-  let screen: HTMLDivElement;
-  let term: Terminal | null = null;
-  let fit: FitAddon | null = null;
-  let unlisten: (() => void) | null = null;
-  let observer: ResizeObserver | null = null;
-  // False until the terminal has been fitted to a visible box. The panel is mounted hidden at launch, so the CLI
-  // starts at a default width and its first output is laid out for that width, not for the real box.
-  let sized = false;
-  function resizeCli(rows: number, cols: number): Promise<unknown> {
-    return invoke("sidecar_call", { method: "terminal_resize", params: { agent: agent.id, rows, cols } }).catch(() => {});
-  }
-  function sendSize(): void {
-    if (!term || !fit || !screen) return;
-    // A hidden or mid-animation panel reports a tiny width; telling the CLI that makes it redraw one or two characters per line.
-    if (screen.clientWidth < 200 || screen.clientHeight < 80) return;
-    fit.fit();
-    // Give the bottom row one line back so the last line sits inside the box, not on its edge.
-    if (term.rows > 1) term.resize(term.cols, term.rows - 1);
-    const { rows, cols } = term;
-    if (sized) {
-      void resizeCli(rows, cols);
-      return;
-    }
-    // First real size: what is on screen was drawn for the wrong width, and re-wrapping it leaves the CLI's
-    // cursor moves pointing at the wrong rows (overlapping and missing letters). Start from a blank screen
-    // and make the CLI draw everything again: one row off and back, the same nudge a reattach uses.
-    sized = true;
-    term.reset();
-    void resizeCli(rows + 1, cols).then(() => resizeCli(rows, cols));
+  // The agent's CLI runs in the shared terminal. The panel is mounted hidden at launch, so the terminal
+  // redraws at its first real size, and gives its bottom row back so the last line sits inside the box.
+  let terminal: LiveTerminal | undefined = $state();
+  function onTerminalState(state: TerminalState, code: number | null): void {
+    runState = state;
+    exitCode = code;
   }
 
   // "Block tools": on, the CLI runs without shell, file writes or web (Claude Code and Codex only).
@@ -84,11 +54,7 @@
   async function toggleBlock(): Promise<void> {
     blocked = !blocked;
     await invoke("sidecar_call", { method: "terminal_stop", params: { agent: agent.id } }).catch(() => undefined);
-    // Drop the old screen and listeners first, or the output would be drawn twice.
-    unlisten?.();
-    observer?.disconnect();
-    term?.dispose();
-    await startTerminal();
+    await terminal?.restart();
   }
 
   // "+ files": a text file (up to 100 KB) goes into the agent's queue, as the Assistant does.
@@ -103,73 +69,6 @@
     }
     queue.send(`Attached file: ${file.name}\n\`\`\`\n${await file.text()}\n\`\`\``);
   }
-
-  async function startTerminal(): Promise<void> {
-    const fgColour = cssToken("md-text");
-    term = new Terminal({
-      fontFamily: "JetBrainsMono Nerd Font Mono, JetBrains Mono, monospace",
-      fontSize: prefs.terminalFontSize,
-      cursorBlink: true,
-      convertEol: true,
-      theme: { background: cssToken("md-bg-0"), foreground: fgColour, cursor: fgColour },
-    });
-    fit = new FitAddon();
-    term.loadAddon(fit);
-    term.open(screen);
-    // Pass 1: xterm measures cell size once at open; nudge it after the font loads so cells match the drawn glyphs.
-    document.fonts?.ready.then(() => {
-      if (!term) return;
-      const fs = term.options.fontSize ?? 12;
-      term.options.fontSize = fs + 0.01;
-      term.options.fontSize = fs;
-      sendSize();
-    });
-    term.onData((data) => {
-      invoke("sidecar_call", { method: "terminal_input", params: { agent: agent.id, data } }).catch((cause) =>
-        console.error("Could not send to the terminal", cause),
-      );
-    });
-    unlisten = await listen<{ event?: string; agent?: string; data?: string; exit?: number; stopped?: boolean }>("sidecar-event", (event) => {
-      if (event.payload.event !== "terminal" || event.payload.agent !== agent.id || !term) return;
-      if (event.payload.data !== undefined) {
-        // While the saved screen is being written, live output waits behind it, so the replay is not drawn over the new output.
-        term.write(event.payload.data);
-        queue.output(event.payload.data);
-      }
-      if (event.payload.exit !== undefined) {
-        term.write(event.payload.stopped ? "\r\n[the terminal was stopped]\r\n" : `\r\n[the terminal closed, exit ${event.payload.exit}]\r\n`);
-        runState = event.payload.stopped ? "stopped" : "exited";
-        exitCode = event.payload.exit;
-      }
-    });
-    // Wait until a drag settles before telling the CLI its new size, so it is not sent on every frame.
-    let settle: ReturnType<typeof setTimeout> | undefined;
-    observer = new ResizeObserver(() => {
-      clearTimeout(settle);
-      settle = setTimeout(sendSize, 200);
-    });
-    observer.observe(screen);
-    fit.fit();
-    try {
-      await invoke("sidecar_call", {
-        method: "terminal_start",
-        params: { agent: agent.id, provider: agent.provider, model: agent.model, folder: agent.folder, rows: term.rows, cols: term.cols, block_tools: blocked },
-      });
-      // Same as the main agent terminal: no replay, no size nudge, no font bump after start.
-      runState = "running";
-    } catch (cause) {
-      runState = "failed";
-      term.write(`${String(cause)}\r\n`);
-    }
-  }
-
-  // The − and + buttons change the text size; the terminal redraws and tells the CLI its new size.
-  $effect(() => {
-    const size = fontSize; // read before the early return, so the effect tracks it from the start
-    if (!term) return;
-    term.options.fontSize = size;
-    sendSize();
-  });
 
   // "terminal", "git", "messages" or "traces".
   let view = $state("terminal");
@@ -194,19 +93,6 @@
       error = String(cause);
     });
   }
-
-  onMount(() => {
-    // Counted as start-up work so the loading screen waits for this terminal.
-    const done = bootTask();
-    startTerminal().finally(done);
-  });
-
-  onDestroy(() => {
-    observer?.disconnect();
-    unlisten?.();
-    term?.dispose();
-    // Leaving the tab does not stop the CLI: it keeps running in the sidecar. The Stop button does.
-  });
 
   // The queue sends the message into the agent's terminal, as if typed there.
   async function send(event: SubmitEvent): Promise<void> {
@@ -249,7 +135,21 @@
     <span class="size"><button type="button" aria-label="Smaller text" disabled={fontSize <= FONT_MIN} onclick={() => (prefs.terminalFontSize -= 1)}>−</button><output>{fontSize}px</output><button type="button" aria-label="Larger text" disabled={fontSize >= FONT_MAX} onclick={() => (prefs.terminalFontSize += 1)}>+</button></span>
   </div>
 
-  <div class="screen" bind:this={screen} aria-label="Terminal for {agent.name}" hidden={view !== "terminal"}></div>
+  <LiveTerminal
+    bind:this={terminal}
+    agentId={agent.id}
+    provider={agent.provider}
+    model={agent.model}
+    folder={agent.folder}
+    blockTools={blocked}
+    {fontSize}
+    label={`Terminal for ${agent.name}`}
+    hidden={view !== "terminal"}
+    restore="redraw"
+    trimRow
+    onoutput={queue.output}
+    onstate={onTerminalState}
+  />
   {#if view === "git"}
     <pre class="git" aria-label="Git status">{gitText}</pre>
   {/if}
@@ -503,18 +403,6 @@
     font-family: var(--font-mono);
     font-size: var(--font-size-tag);
     white-space: pre;
-  }
-  /* The frame is an inset shadow, not a border: xterm's fit sizes the terminal from the box's height and width
-     and ignores borders, so a border made the last row and the right edge run out of the box. */
-  /* Same frame as the main agent terminal (LiveTerminal.svelte). */
-  .screen {
-    flex: 1 1 0;
-    min-height: 0;
-    overflow: hidden;
-    padding: var(--space-1);
-    border: 1px solid var(--color-md-border);
-    border-radius: var(--radius-sm);
-    background: var(--color-md-bg-0);
   }
   .error {
     margin: 0;

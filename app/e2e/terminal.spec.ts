@@ -1,0 +1,53 @@
+import { expect, test, type Page } from "@playwright/test";
+import { mockSidecar } from "./tauri-mock";
+
+type Call = { method: string; agent: string; [key: string]: unknown };
+const calls = (page: Page): Promise<Call[]> =>
+  page.evaluate(() => (window as unknown as { __terminalCalls: Call[] }).__terminalCalls);
+
+test.beforeEach(async ({ page }) => {
+  await mockSidecar(page);
+  await page.goto("/");
+});
+
+test("the main agent's terminal starts its CLI once", async ({ page }) => {
+  await expect(page.getByLabel("Live terminal").locator(".xterm")).toHaveCount(1);
+  const starts = (await calls(page)).filter((call) => call.method === "terminal_start");
+  expect(starts).toHaveLength(1);
+  expect(starts[0]).toMatchObject({ agent: "hippoherman", block_tools: false });
+});
+
+test("an added agent runs in the same terminal, and block tools restarts it", async ({ page }) => {
+  await page.getByLabel("Agents").getByRole("button", { name: "+ Add agent" }).click();
+  const add = page.getByRole("dialog", { name: "Add agent" });
+  await add.getByRole("textbox", { name: "Name", exact: true }).fill("Ada");
+  await add.getByRole("button", { name: "Next" }).click();
+  await add.getByLabel("Folder in workspaces").selectOption("IT");
+  await add.getByRole("button", { name: "Next" }).click();
+  await add.getByRole("button", { name: "claude-sonnet-5-5" }).click();
+  await add.getByRole("button", { name: "Next" }).click();
+  await add.getByRole("textbox", { name: "Goal", exact: true }).fill("Tidy the inbox notes");
+  await add.getByRole("button", { name: "Spawn" }).click();
+
+  const screen = page.getByLabel("Terminal for Ada");
+  await expect(screen.locator(".xterm")).toHaveCount(1);
+  const own = async (): Promise<Call[]> => (await calls(page)).filter((call) => call.agent !== "hippoherman");
+  await expect.poll(async () => (await own()).length).toBe(1);
+  expect((await own())[0]).toMatchObject({
+    method: "terminal_start",
+    model: "claude-sonnet-5-5",
+    block_tools: false,
+  });
+  expect(String((await own())[0].folder)).toContain("IT");
+
+  await page.getByLabel("Agents").getByText("Ada").click();
+  await page.getByRole("button", { name: "block tools" }).click();
+  await expect.poll(async () => (await own()).map((call) => call.method)).toEqual([
+    "terminal_start",
+    "terminal_stop",
+    "terminal_start",
+  ]);
+  expect((await own())[2]).toMatchObject({ block_tools: true });
+  // The old screen is gone: one terminal in the box, not two drawn over each other.
+  await expect(screen.locator(".xterm")).toHaveCount(1);
+});

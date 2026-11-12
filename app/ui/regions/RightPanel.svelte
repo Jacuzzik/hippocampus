@@ -135,7 +135,7 @@
       </div>
       <div class="live-wrap">
         {#key terminalKey}
-          <LiveTerminal agentId="hippoherman" provider={mainProvider} {fontSize} onoutput={queue.output} />
+          <LiveTerminal agentId="hippoherman" provider={mainProvider} {fontSize} followEngine onoutput={queue.output} />
         {/key}
       </div>
       <Assistant onsend={queue.send} queued={queue.items} />
