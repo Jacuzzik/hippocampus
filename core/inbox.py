@@ -60,7 +60,7 @@ def _write(path: Path, message: dict[str, Any]) -> None:
     tmp.replace(path)
 
 
-def _text(value: Any, name: str, limit: int) -> str:
+def _text(value: object, name: str, limit: int) -> str:
     if value is None:
         return ""
     if not isinstance(value, str):
@@ -112,7 +112,7 @@ def new_message(
     }
 
 
-def send(base: Path, sender: str, to: str, subject: str, body: str, **fields: Any) -> str:
+def send(base: Path, sender: str, to: str, subject: str, body: str, **fields: str) -> str:
     """Put one message in the receiver's inbox and return its id."""
     message = new_message(sender, to, subject, body, **fields)
     _write(_folder(base, message["to"], "inbox") / f"{message['id']}.json", message)
@@ -122,7 +122,9 @@ def send(base: Path, sender: str, to: str, subject: str, body: str, **fields: An
 def pending(base: Path, agent: str) -> list[tuple[Path, dict[str, Any]]]:
     """The agent's queued messages: urgent ones first, then oldest first. Unreadable files are skipped."""
     found = []
-    for path in sorted(_folder(base, agent, "inbox").glob("*.json"), key=lambda p: p.stat().st_mtime):
+    for path in sorted(
+        _folder(base, agent, "inbox").glob("*.json"), key=lambda p: p.stat().st_mtime
+    ):
         try:
             message = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
@@ -211,21 +213,29 @@ def collect_outboxes(base: Path, known: set[str] | None = None) -> int:
                 if message["to"] == sender:
                     raise ValueError("A message to yourself is not delivered.")
                 if known is not None and message["to"] not in known:
-                    raise ValueError(f'No agent has the id "{message["to"]}". Use an id from your start-up inbox.')
+                    raise ValueError(
+                        f'No agent has the id "{message["to"]}". Use an id from your start-up inbox.'
+                    )
             except OSError:
                 continue
             except (json.JSONDecodeError, ValueError) as cause:
-                reason = "The file is not valid JSON." if isinstance(cause, json.JSONDecodeError) else str(cause)
+                reason = (
+                    "The file is not valid JSON."
+                    if isinstance(cause, json.JSONDecodeError)
+                    else str(cause)
+                )
                 mark_failed(path, reason)
                 _tell(base, sender, "Message not sent", f"{reason} {FORMAT_HELP}")
                 continue
             if is_ack_only(message):
-                _file_under(path, ".dropped", {"dropped": "acknowledgement only", "dropped_at": time.time()})
+                _file_under(
+                    path, ".dropped", {"dropped": "acknowledgement only", "dropped_at": time.time()}
+                )
                 _tell(
                     base,
                     sender,
                     "Message not delivered",
-                    f'Your message to {message["to"]} only acknowledged, so it was dropped. Send a message only when it carries something to act on.',
+                    f"Your message to {message['to']} only acknowledged, so it was dropped. Send a message only when it carries something to act on.",
                 )
                 continue
             target = _folder(base, message["to"], "inbox")
@@ -285,8 +295,26 @@ class LoopGuard:
         return True
 
 
-_STATES = (("inbox", "queued"), ("inbox/.done", "delivered"), ("outbox/.failed", "failed"), ("outbox/.dropped", "dropped"))
-_SHOWN = ("id", "from", "to", "act", "subject", "body", "work", "replyTo", "thread", "priority", "created_at", "failed")
+_STATES = (
+    ("inbox", "queued"),
+    ("inbox/.done", "delivered"),
+    ("outbox/.failed", "failed"),
+    ("outbox/.dropped", "dropped"),
+)
+_SHOWN = (
+    "id",
+    "from",
+    "to",
+    "act",
+    "subject",
+    "body",
+    "work",
+    "replyTo",
+    "thread",
+    "priority",
+    "created_at",
+    "failed",
+)
 
 
 def all_messages(base: Path) -> list[dict[str, Any]]:
@@ -310,7 +338,9 @@ def all_messages(base: Path) -> list[dict[str, Any]]:
                 # A file found in an outbox was written by that folder's agent, whatever it says inside.
                 if sub.startswith("outbox"):
                     row["from"] = folder.name
-                row["created_at"] = row["created_at"] or datetime.fromtimestamp(file.stat().st_mtime, UTC).isoformat(timespec="seconds")
+                row["created_at"] = row["created_at"] or datetime.fromtimestamp(
+                    file.stat().st_mtime, UTC
+                ).isoformat(timespec="seconds")
                 row["state"] = state
                 rows.append(row)
     rows.sort(key=lambda row: str(row["created_at"]), reverse=True)
@@ -324,7 +354,9 @@ def search(base: Path, query: str) -> list[dict[str, Any]]:
         return []
     found = []
     for row in all_messages(base):
-        text = " ".join(str(row.get(key) or "") for key in ("from", "to", "subject", "body", "work", "act")).lower()
+        text = " ".join(
+            str(row.get(key) or "") for key in ("from", "to", "subject", "body", "work", "act")
+        ).lower()
         if all(word in text for word in words):
             found.append(row)
     return found
@@ -332,7 +364,9 @@ def search(base: Path, query: str) -> list[dict[str, Any]]:
 
 def thread(base: Path, thread_id: str) -> list[dict[str, Any]]:
     """One conversation, oldest first."""
-    rows = [row for row in all_messages(base) if row["thread"] == thread_id or row["id"] == thread_id]
+    rows = [
+        row for row in all_messages(base) if row["thread"] == thread_id or row["id"] == thread_id
+    ]
     rows.sort(key=lambda row: str(row["created_at"]))
     return rows
 

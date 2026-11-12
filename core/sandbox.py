@@ -50,7 +50,9 @@ def wrap(
     wins over one for a folder that holds it."""
     binary = shutil.which("bwrap")
     if binary is None:
-        raise RuntimeError("bubblewrap (bwrap) is not installed, so the agent sandbox cannot start.")
+        raise RuntimeError(
+            "bubblewrap (bwrap) is not installed, so the agent sandbox cannot start."
+        )
     args = [
         binary,
         "--die-with-parent",

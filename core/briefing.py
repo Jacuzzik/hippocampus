@@ -127,7 +127,9 @@ def main_briefing(vault: Path | str | None) -> str:
     return MAIN.format(vault=vault or "not set")
 
 
-def agent_briefing(agent: str, saved: dict[str, Any], folder: str | None, vault: Path | str | None, outbox: Path) -> str:
+def agent_briefing(
+    agent: str, saved: dict[str, Any], folder: str | None, vault: Path | str | None, outbox: Path
+) -> str:
     """The briefing for a normal agent. `saved` is its row in the agents file: name, description and goal."""
     return AGENT.format(
         agent=agent,
@@ -155,7 +157,8 @@ def finish(text: str, inbox_path: Path, limits: list[str]) -> tuple[str, dict[st
         f"{text}\n\n{last + 1}. Start-up inbox\nYour start-up inbox is typed into this chat shortly after you start. Act on it. "
         "It lists your waiting messages, the agents you can message and how to report back. "
         f"The full list is also at {inbox_path}, but you may not be able to read files in the app folder."
-        f"\n\n{last + 2}. Tools and limits in force for this session\n" + "\n".join(f"- {line}" for line in limits)
+        f"\n\n{last + 2}. Tools and limits in force for this session\n"
+        + "\n".join(f"- {line}" for line in limits)
     )
     mark = stamp(body)
     return f"{body}\n\nBriefing v{mark['version']} · {mark['hash']}", mark
@@ -169,14 +172,20 @@ def lint(text: str) -> list[str]:
     if not numbers or numbers[0] != 1 or "Role" not in text.splitlines()[0]:
         problems.append("The briefing does not start with section 1, Role.")
     elif numbers != expected:
-        problems.append(f"The briefing's sections are out of order or one is missing: found {numbers}.")
+        problems.append(
+            f"The briefing's sections are out of order or one is missing: found {numbers}."
+        )
     for needed in ("Tools and limits in force", "Start-up inbox"):
         if needed not in text:
             problems.append(f'The briefing has no "{needed}" section.')
     if len(text) > SIZE_MAX:
-        problems.append(f"The briefing is {len(text)} characters; the most allowed is {SIZE_MAX}. Shorten the agent's description or goal.")
+        problems.append(
+            f"The briefing is {len(text)} characters; the most allowed is {SIZE_MAX}. Shorten the agent's description or goal."
+        )
     if app_log.mask(text) != text:
-        problems.append("The briefing holds something that looks like a key or token. Remove it from the agent's description or goal.")
+        problems.append(
+            "The briefing holds something that looks like a key or token. Remove it from the agent's description or goal."
+        )
     if re.search(r"\{[a-z_]+\}", text):
         problems.append("The briefing has a blank that was never filled in.")
     return problems

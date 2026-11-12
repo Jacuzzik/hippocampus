@@ -43,7 +43,9 @@ def test_only_a_tested_cli_runs_in_the_sandbox(monkeypatch: pytest.MonkeyPatch) 
     assert terminal.sandbox_for("claude") is False  # no sandbox, so no shell for normal agents
 
 
-def test_the_sandboxed_command_closes_the_app_and_opens_only_the_agents_own_outbox(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_the_sandboxed_command_closes_the_app_and_opens_only_the_agents_own_outbox(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     hive = tmp_path / "hive"
     monkeypatch.setattr(terminal, "HIVE_DIR", hive)
     argv = terminal._sandboxed(["claude"], "ada", str(tmp_path), None)
@@ -56,7 +58,9 @@ def test_the_sandboxed_command_closes_the_app_and_opens_only_the_agents_own_outb
     assert argv.index(str(ROOT)) > argv.index(str(Path.home()))
 
 
-def test_the_switch_is_saved_and_the_rules_are_reported_in_plain_words(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_the_switch_is_saved_and_the_rules_are_reported_in_plain_words(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     path = tmp_path / "config" / "settings.toml"
     path.parent.mkdir()
     path.write_text('[network]\nmode = "off"\n', encoding="utf-8")
@@ -65,15 +69,23 @@ def test_the_switch_is_saved_and_the_rules_are_reported_in_plain_words(tmp_path:
     off = session.dispatch({"method": "settings"})["shell"]
     assert off["on"] is False and off["agents"][0] == "Shell: not available to this agent."
     on = session.dispatch({"method": "set_agent_shell", "on": True})
-    assert on["on"] is True and on["agents"][0].startswith("Shell: allowed") and any("sandbox" in line for line in on["agents"])
-    assert load_settings(path).agent_shell is True and load_settings(path).network_mode == "off"  # the rest of the file is kept
+    assert (
+        on["on"] is True
+        and on["agents"][0].startswith("Shell: allowed")
+        and any("sandbox" in line for line in on["agents"])
+    )
+    assert (
+        load_settings(path).agent_shell is True and load_settings(path).network_mode == "off"
+    )  # the rest of the file is kept
     with pytest.raises(ValueError):
         session.dispatch({"method": "set_agent_shell", "on": "yes"})
     save_agent_shell(False, path)
     assert load_settings(path).agent_shell is False
 
 
-def test_a_working_folder_inside_the_app_or_the_hive_is_not_made_writable(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_a_working_folder_inside_the_app_or_the_hive_is_not_made_writable(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     hive = tmp_path / "hive"
     monkeypatch.setattr(terminal, "HIVE_DIR", hive)
     (hive / "bob" / "inbox").mkdir(parents=True)
@@ -87,5 +99,7 @@ def test_a_working_folder_inside_the_app_or_the_hive_is_not_made_writable(monkey
     assert str(hive / "bob" / "inbox") not in binds(hive / "bob" / "inbox")  # another agent's inbox
     vault = ROOT / "data" / "brains"
     if vault.is_dir():
-        assert str(vault) in binds(vault, vault)  # the vault is the one place inside the app an agent writes
+        assert str(vault) in binds(
+            vault, vault
+        )  # the vault is the one place inside the app an agent writes
     assert str(tmp_path) in binds(tmp_path)  # an ordinary folder outside both

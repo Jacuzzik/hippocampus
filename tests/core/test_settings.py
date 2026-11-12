@@ -75,7 +75,9 @@ def test_engine_switch_refuses_unknown_provider_and_model(tmp_path: Path) -> Non
     from core.settings import save_engine
 
     path = tmp_path / "settings.toml"
-    path.write_text('[ai]\nprovider = "claude"\nclaude_model = "claude-sonnet-5-5"\n', encoding="utf-8")
+    path.write_text(
+        '[ai]\nprovider = "claude"\nclaude_model = "claude-sonnet-5-5"\n', encoding="utf-8"
+    )
     before = path.read_text(encoding="utf-8")
     with pytest.raises(ValueError, match="not a provider"):
         save_engine("nope", "x", path)
@@ -83,7 +85,9 @@ def test_engine_switch_refuses_unknown_provider_and_model(tmp_path: Path) -> Non
         save_engine("claude", "made-up-model", path)
     assert path.read_text(encoding="utf-8") == before
     save_engine("claude", "claude-haiku-5-5", path)
-    assert tomllib.loads(path.read_text(encoding="utf-8"))["ai"]["claude_model"] == "claude-haiku-5-5"
+    assert (
+        tomllib.loads(path.read_text(encoding="utf-8"))["ai"]["claude_model"] == "claude-haiku-5-5"
+    )
 
 
 def test_engine_models_match_the_app_list() -> None:
@@ -91,7 +95,9 @@ def test_engine_models_match_the_app_list() -> None:
 
     from core.settings import ENGINE_MODELS
 
-    source = (Path(__file__).resolve().parents[2] / "app" / "ui" / "control" / "model.ts").read_text(encoding="utf-8")
+    source = (
+        Path(__file__).resolve().parents[2] / "app" / "ui" / "control" / "model.ts"
+    ).read_text(encoding="utf-8")
     block = source.split("export const AGENT_MODELS", 1)[1].split("\n};", 1)[0]
     listed: dict[str, tuple[str, ...]] = {}
     for key, items in re.findall(r'^\s*"?([\w.-]+)"?:\s*\[(.*?)\],?\s*$', block, re.M):

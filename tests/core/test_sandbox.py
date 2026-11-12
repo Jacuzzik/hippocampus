@@ -6,7 +6,9 @@ import pytest
 
 from core import sandbox
 
-pytestmark = pytest.mark.skipif(not sandbox.available(), reason="bubblewrap cannot start on this machine")
+pytestmark = pytest.mark.skipif(
+    not sandbox.available(), reason="bubblewrap cannot start on this machine"
+)
 
 
 @pytest.fixture
@@ -30,7 +32,9 @@ def world(tmp_path: Path) -> dict[str, Path]:
     return paths
 
 
-def run(world: dict[str, Path], script: str, extra_writable: list[Path] | None = None) -> subprocess.CompletedProcess[str]:
+def run(
+    world: dict[str, Path], script: str, extra_writable: list[Path] | None = None
+) -> subprocess.CompletedProcess[str]:
     argv = sandbox.wrap(
         ["sh", "-c", script],
         app_root=world["app"],
@@ -44,7 +48,10 @@ def run(world: dict[str, Path], script: str, extra_writable: list[Path] | None =
 
 
 def test_the_agent_can_work_in_its_own_folder_and_outbox(world: dict[str, Path]) -> None:
-    done = run(world, f"pwd && echo hi > note.txt && echo '{{}}' > {world['outbox']}/m.json && echo x > {world['index']}/db")
+    done = run(
+        world,
+        f"pwd && echo hi > note.txt && echo '{{}}' > {world['outbox']}/m.json && echo x > {world['index']}/db",
+    )
     assert done.returncode == 0, done.stderr
     assert done.stdout.strip() == str(world["folder"])
     assert (world["folder"] / "note.txt").read_text() == "hi\n"
@@ -63,7 +70,9 @@ def test_the_agent_can_work_in_its_own_folder_and_outbox(world: dict[str, Path])
         "echo x > /usr/hippo-test",  # write into the system
     ],
 )
-def test_nothing_the_agent_runs_can_change_the_app_or_the_system(world: dict[str, Path], script: str) -> None:
+def test_nothing_the_agent_runs_can_change_the_app_or_the_system(
+    world: dict[str, Path], script: str
+) -> None:
     done = run(world, script.format(app=world["app"], other=world["other"]))
     assert done.returncode != 0
     assert (world["app"] / "main.py").read_text() == "print('app')\n"
@@ -71,9 +80,15 @@ def test_nothing_the_agent_runs_can_change_the_app_or_the_system(world: dict[str
 
 
 @pytest.mark.parametrize("which", ["home", "app"])
-def test_a_writable_folder_that_holds_the_app_or_is_the_app_does_not_reopen_it(world: dict[str, Path], which: str) -> None:
+def test_a_writable_folder_that_holds_the_app_or_is_the_app_does_not_reopen_it(
+    world: dict[str, Path], which: str
+) -> None:
     # An agent whose working folder is the home folder, or the app folder itself.
-    done = run(world, f"echo x > {world['app']}/new.py; echo x > {world['other']}/fake.json; echo done", [world[which]])
+    done = run(
+        world,
+        f"echo x > {world['app']}/new.py; echo x > {world['other']}/fake.json; echo done",
+        [world[which]],
+    )
     assert "done" in done.stdout
     assert not (world["app"] / "new.py").exists(), "the app folder was writable"
     assert not (world["other"] / "fake.json").exists(), "another agent's inbox was writable"
@@ -100,6 +115,10 @@ def test_the_policy_text_matches_the_switches() -> None:
         "Tools are blocked for this agent: no shell, no file writes, no web and no note tools."
     ]
     open_shell = sandbox.policy_lines(shell=True, sandboxed=True, blocked=False, app_root=root)
-    assert open_shell[0].startswith("Shell: allowed") and any("sandbox" in line for line in open_shell)
+    assert open_shell[0].startswith("Shell: allowed") and any(
+        "sandbox" in line for line in open_shell
+    )
     no_shell = sandbox.policy_lines(shell=False, sandboxed=False, blocked=False, app_root=root)
-    assert no_shell[0] == "Shell: not available to this agent." and not any("sandbox" in line for line in no_shell)
+    assert no_shell[0] == "Shell: not available to this agent." and not any(
+        "sandbox" in line for line in no_shell
+    )

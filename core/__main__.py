@@ -36,8 +36,8 @@ import subprocess
 import sys
 import threading
 import time
-import uuid
 import urllib.request
+import uuid
 from collections.abc import Callable
 from dataclasses import asdict, replace
 from datetime import datetime
@@ -46,24 +46,25 @@ from typing import Any, TextIO
 
 from keyring.errors import KeyringError
 
-from ai import network
+from ai import chat_history, cli_sessions, network
 from ai.agent import Agent, AgentPaused
 from ai.keys import clear_api_key, clear_key, get_api_key, get_key, key_hint, set_api_key, set_key
-
-# The office task board the Tasks tab reads; MD_TASKS_FILE overrides it.
-DEFAULT_TASKS_FILE = "~/.hippocampus/office/tasks.json"
-DEFAULT_HIVE_DIR = "~/.hippocampus/office"
 from ai.providers.openai_compat import PRESETS
 from ai.router import build_router, model_name
-from core import __version__, added_agents, app_log, briefing, crash_log, inbox, note_actions, sandbox, share, skills, startup_inbox, webhooks
-from ai import chat_history, cli_sessions
-from core.terminal import OPENCODE_FOR, Terminals, engine_problem, sandbox_for
-
-# Seconds a terminal must have been running before its waiting inbox messages are typed in.
-INBOX_SETTLE_S = 8.0
-# How much of a message body is typed into a terminal, and how long a message waits for a busy CLI.
-DELIVERY_BODY_MAX = 1500
-DELIVERY_MAX_WAIT_S = 120.0
+from core import (
+    __version__,
+    added_agents,
+    app_log,
+    briefing,
+    crash_log,
+    inbox,
+    note_actions,
+    sandbox,
+    share,
+    skills,
+    startup_inbox,
+    webhooks,
+)
 from core import activity as journal
 from core import budget as budgets
 from core import jobs as job_store
@@ -86,14 +87,24 @@ from core.settings import (
     save_vault,
 )
 from core.system_stats import SystemStats
+from core.terminal import OPENCODE_FOR, Terminals, engine_problem, sandbox_for
 from core.vault import Indexer, open_index
-from core.vault.scanner import iter_notes
 from core.vault.changes import ChangeFlag
+from core.vault.scanner import iter_notes
 from core.vault.watcher import VaultWatcher
+from tools.agent_tools import agent_tools
 from tools.gate import AskQueue, ConfirmGate, KillSwitch, Stopped
 from tools.registry import CONFIRM_TIERS
-from tools.agent_tools import agent_tools
 from tools.vault_tools import vault_tools
+
+# The office task board the Tasks tab reads; MD_TASKS_FILE overrides it.
+DEFAULT_TASKS_FILE = "~/.hippocampus/office/tasks.json"
+DEFAULT_HIVE_DIR = "~/.hippocampus/office"
+# Seconds a terminal must have been running before its waiting inbox messages are typed in.
+INBOX_SETTLE_S = 8.0
+# How much of a message body is typed into a terminal, and how long a message waits for a busy CLI.
+DELIVERY_BODY_MAX = 1500
+DELIVERY_MAX_WAIT_S = 120.0
 
 logger = logging.getLogger("hippocampus.core")
 
@@ -227,11 +238,16 @@ class Session:
         thread = request.get("thread")
         if not isinstance(thread, str) or not thread:
             raise ValueError('"thread" must be a thread id')
-        return {"messages": inbox.thread(self.hive_path, thread), "markdown": inbox.export_thread(self.hive_path, thread)}
+        return {
+            "messages": inbox.thread(self.hive_path, thread),
+            "markdown": inbox.export_thread(self.hive_path, thread),
+        }
 
     def _agent_ids(self) -> set[str]:
         """Every agent that can receive a message: the main agent and each added one."""
-        return {"hippoherman"} | {str(a["id"]) for a in added_agents.load(self.agents_path) if a.get("id")}
+        return {"hippoherman"} | {
+            str(a["id"]) for a in added_agents.load(self.agents_path) if a.get("id")
+        }
 
     def memory_notes(self) -> dict[str, Any]:
         # Read-only list of each agent's memory.md: size and last update, newest first.
@@ -242,11 +258,15 @@ class Session:
                 stat = file.stat()
             except OSError:
                 continue
-            rows.append({
-                "agent": file.parent.name,
-                "bytes": stat.st_size,
-                "updated_at": datetime.fromtimestamp(stat.st_mtime).isoformat(timespec="minutes"),
-            })
+            rows.append(
+                {
+                    "agent": file.parent.name,
+                    "bytes": stat.st_size,
+                    "updated_at": datetime.fromtimestamp(stat.st_mtime).isoformat(
+                        timespec="minutes"
+                    ),
+                }
+            )
         rows.sort(key=lambda r: r["updated_at"], reverse=True)
         return {"notes": rows}
 
@@ -328,18 +348,26 @@ class Session:
         text = request.get("text")
         if not isinstance(text, str):
             raise ValueError('"note_save" needs the note "text"')
-        saved = vault_tools(self.indexer, self.lock)["edit_note"].run({"path": request.get("path"), "content": text})
+        saved = vault_tools(self.indexer, self.lock)["edit_note"].run(
+            {"path": request.get("path"), "content": text}
+        )
         return {"saved": saved}
 
     def note_delete(self, request: dict[str, Any]) -> dict[str, Any]:
         self._open_vault()
-        deleted = note_actions.delete(self.indexer, self.lock, request.get("path"), str(request.get("scope")))
+        deleted = note_actions.delete(
+            self.indexer, self.lock, request.get("path"), str(request.get("scope"))
+        )
         return {"deleted": deleted}
 
     def note_colour(self, request: dict[str, Any]) -> dict[str, Any]:
         self._open_vault()
         changed = note_actions.colour(
-            self.indexer, self.lock, request.get("path"), str(request.get("scope")), request.get("status")
+            self.indexer,
+            self.lock,
+            request.get("path"),
+            str(request.get("scope")),
+            request.get("status"),
         )
         return {"changed": changed}
 
@@ -356,7 +384,9 @@ class Session:
             raise ValueError("nothing is paused to continue")
         self.allowance = False
         messages, self.paused = self.paused, None
-        agent_name = request.get("agent") if isinstance(request.get("agent"), str) else "hippoherman"
+        agent_name = (
+            request.get("agent") if isinstance(request.get("agent"), str) else "hippoherman"
+        )
         if request.get("continue") is not True:
             # The saved chat turns give the model the conversation so far (Claude's session keeps its own).
             messages = chat_history.model_turns(agent_name)
@@ -433,6 +463,7 @@ class Session:
         ):
             raise ValueError("no question is waiting with that call id")
         return {"call": call}
+
     def card_list(self) -> dict[str, Any]:
         return {"cards": self.cards.list()}
 
@@ -446,7 +477,6 @@ class Session:
         changes = {k: request[k] for k in ("title", "body", "locked") if k in request}
         by = "owner" if request.get("by", "owner") == "owner" else "agent"
         return {"card": self.cards.update(request.get("id"), changes, by)}
-
 
     # --- Journal, budgets and the network switch -------------------------------------------
 
@@ -544,8 +574,12 @@ class Session:
         return {
             "on": on,
             "sandbox_available": usable,
-            "main": sandbox.policy_lines(shell=True, sandboxed=on and usable, blocked=False, app_root=ROOT),
-            "agents": sandbox.policy_lines(shell=on and usable, sandboxed=on and usable, blocked=False, app_root=ROOT),
+            "main": sandbox.policy_lines(
+                shell=True, sandboxed=on and usable, blocked=False, app_root=ROOT
+            ),
+            "agents": sandbox.policy_lines(
+                shell=on and usable, sandboxed=on and usable, blocked=False, app_root=ROOT
+            ),
             "note": (
                 "Applies to agents on Claude Code. Other programs (Codex, Gemini, OpenCode) keep their own rules until each is tested in the sandbox."
                 if sandbox_for("claude")
@@ -682,7 +716,9 @@ class Session:
             rows.append(_watcher(name, "helper", status[job["status"]]))
         # Every agent with a terminal: running or stopped, and when it last started or stopped.
         for agent in sorted(set(self.terminals.events) | set(self.terminals.procs)):
-            running = agent in self.terminals.procs and self.terminals.procs[agent][0].poll() is None
+            running = (
+                agent in self.terminals.procs and self.terminals.procs[agent][0].poll() is None
+            )
             last = self.terminals.events.get(agent)
             last_event = f"{datetime.fromtimestamp(last[0]):%H:%M} {last[1]}" if last else None
             # "hippoherman" is the main agent's terminal id; show it by its name.
@@ -746,9 +782,27 @@ class Session:
         # logged_in is None where the login file is not known for this CLI.
         home = Path.home()
         clis = [
-            ("claude", "claude", "Claude Code", home / ".claude" / ".credentials.json", "Run `claude` in a terminal and log in."),
-            ("codex", "codex", "Codex", home / ".codex" / "auth.json", "Run `codex login` in a terminal and finish the browser step."),
-            ("gemini-cli", "gemini", "Gemini CLI", None, "Run `gemini` in a terminal and pick a login method."),
+            (
+                "claude",
+                "claude",
+                "Claude Code",
+                home / ".claude" / ".credentials.json",
+                "Run `claude` in a terminal and log in.",
+            ),
+            (
+                "codex",
+                "codex",
+                "Codex",
+                home / ".codex" / "auth.json",
+                "Run `codex login` in a terminal and finish the browser step.",
+            ),
+            (
+                "gemini-cli",
+                "gemini",
+                "Gemini CLI",
+                None,
+                "Run `gemini` in a terminal and pick a login method.",
+            ),
             ("antigravity", "agy", "Antigravity", None, "Run `agy` in a terminal and sign in."),
         ]
         rows = []
@@ -761,7 +815,15 @@ class Session:
                 steps = login_steps
             else:
                 steps = ""
-            rows.append({"provider": provider, "label": label, "installed": installed, "logged_in": logged_in, "steps": steps})
+            rows.append(
+                {
+                    "provider": provider,
+                    "label": label,
+                    "installed": installed,
+                    "logged_in": logged_in,
+                    "steps": steps,
+                }
+            )
         return {"clis": rows}
 
     def local_status(self) -> dict[str, Any]:
@@ -788,33 +850,55 @@ class Session:
         # Archived ids come from the app's own list; without them, the last saved set is kept.
         archived_path = self.storage / "agents_archived.json"
         if isinstance(request.get("archived"), list):
-            archived_path.write_text(json.dumps([str(x) for x in request["archived"]]), encoding="utf-8")
-        archived = set(json.loads(archived_path.read_text(encoding="utf-8"))) if archived_path.exists() else set()
+            archived_path.write_text(
+                json.dumps([str(x) for x in request["archived"]]), encoding="utf-8"
+            )
+        archived = (
+            set(json.loads(archived_path.read_text(encoding="utf-8")))
+            if archived_path.exists()
+            else set()
+        )
         self._write_agent_list(previous, agents, archived)
         return {"agents": agents}
 
-    def _write_agent_list(self, previous: list[dict[str, Any]], current: list[dict[str, Any]], archived: set[str]) -> None:
+    def _write_agent_list(
+        self, previous: list[dict[str, Any]], current: list[dict[str, Any]], archived: set[str]
+    ) -> None:
         # Keeps the Agent Lists note in step with the app: active agents, and every agent removed since it was added.
         removed_path = self.storage / "agents_removed.json"
-        removed = json.loads(removed_path.read_text(encoding="utf-8")) if removed_path.exists() else []
+        removed = (
+            json.loads(removed_path.read_text(encoding="utf-8")) if removed_path.exists() else []
+        )
         now_ids = {a["id"] for a in current}
         known = {r["id"] for r in removed}
         stamp = datetime.now().date().isoformat()
-        removed += [{"id": a["id"], "name": a["name"], "removed": stamp} for a in previous if a["id"] not in now_ids and a["id"] not in known]
+        removed += [
+            {"id": a["id"], "name": a["name"], "removed": stamp}
+            for a in previous
+            if a["id"] not in now_ids and a["id"] not in known
+        ]
         removed_path.write_text(json.dumps(removed, indent=2), encoding="utf-8")
         vault = self.settings.vault
         if not vault or not Path(vault).is_dir():
             return
         active = [a for a in current if a["id"] not in archived]
         hidden = [a for a in current if a["id"] in archived]
-        lines = ["# Agent Lists", "", "Every agent in the app: what it does, its status and where its memory is kept. One note per agent, linked here. Only the user can edit, delete or remove these notes.", "", "## Active"]
+        lines = [
+            "# Agent Lists",
+            "",
+            "Every agent in the app: what it does, its status and where its memory is kept. One note per agent, linked here. Only the user can edit, delete or remove these notes.",
+            "",
+            "## Active",
+        ]
         # Tokens are counted per folder this month, so two agents in one folder share a figure.
         lines += [
             f"- {a['name']}: {a.get('description') or 'no description yet'} ({a.get('provider', 'no provider')}, model {a.get('model') or 'default'}, folder {a.get('folder') or 'not set'}, tokens this month {cli_sessions.folder_tokens(a['folder']) if a.get('folder') else 0})"
             for a in active
         ] or ["- None yet."]
         lines += ["", "## Archived"]
-        lines += [f"- {a['name']}: {a.get('description') or 'no description yet'}" for a in hidden] or ["- None."]
+        lines += [
+            f"- {a['name']}: {a.get('description') or 'no description yet'}" for a in hidden
+        ] or ["- None."]
         lines += ["", "## Deleted"]
         lines += [f"- {r['name']}, removed {r['removed']}" for r in removed] or ["- None."]
         (Path(vault) / "Agent Lists.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -846,7 +930,14 @@ class Session:
             "priority": str(request.get("priority") or "normal"),
         }
         ids = [
-            inbox.send(self.hive_path, sender, target, str(request.get("subject") or ""), str(request.get("body") or ""), **fields)
+            inbox.send(
+                self.hive_path,
+                sender,
+                target,
+                str(request.get("subject") or ""),
+                str(request.get("body") or ""),
+                **fields,
+            )
             for target in targets
         ]
         return {"id": ids[0] if ids else None, "ids": ids}
@@ -877,7 +968,11 @@ class Session:
     def _daily_compact(self) -> None:
         # Once a day, from 03:00: every running agent is asked to save its notes, then compacts once it is idle again.
         now = datetime.now()
-        if self.compact_day != now.date().isoformat() and now.hour >= 3 and not self.compact_waiting:
+        if (
+            self.compact_day != now.date().isoformat()
+            and now.hour >= 3
+            and not self.compact_waiting
+        ):
             self.compact_day = now.date().isoformat()
             for agent in list(self.terminals.procs):
                 if self.terminals.info(agent)["status"] is None:
@@ -923,7 +1018,9 @@ class Session:
                     if time.time() - self.terminals.started_at.get(agent, 0.0) < INBOX_SETTLE_S:
                         continue
                     path = Path(inbox_file)
-                    text = startup_inbox.for_chat(path.read_text(encoding="utf-8") if path.is_file() else "", path)
+                    text = startup_inbox.for_chat(
+                        path.read_text(encoding="utf-8") if path.is_file() else "", path
+                    )
                     try:
                         self.terminals.send_line(agent, text)
                     except RuntimeError:
@@ -933,7 +1030,10 @@ class Session:
                     if not folder.is_dir():
                         continue
                     # A terminal that has just started is still drawing: messages typed before it is ready are lost, so they wait for it to settle.
-                    if time.time() - self.terminals.started_at.get(folder.name, 0.0) < INBOX_SETTLE_S:
+                    if (
+                        time.time() - self.terminals.started_at.get(folder.name, 0.0)
+                        < INBOX_SETTLE_S
+                    ):
                         continue
                     for path, message in inbox.pending(self.hive_path, folder.name):
                         if not self._deliver(folder.name, path, message):
@@ -964,7 +1064,7 @@ class Session:
         text = (
             f"New {message.get('act') or 'request'}{urgent} from {sender}. Subject: {message.get('subject')}.{work} "
             f"{body} "
-            f"To answer, put \"replyTo\": \"{message.get('id')}\" in your message. "
+            f'To answer, put "replyTo": "{message.get("id")}" in your message. '
             "The app files it for you, so do not open or move the inbox files. Act on it; reply only if your work needs it."
         )
         text = " ".join(text.split())
@@ -995,7 +1095,9 @@ class Session:
         return {"crashes": crash_log.recent(self.storage)}
 
     def record_crash(self, request: dict[str, Any]) -> dict[str, Any]:
-        crash_log.record(self.storage, request.get("source"), request.get("message"), request.get("at"))
+        crash_log.record(
+            self.storage, request.get("source"), request.get("message"), request.get("at")
+        )
         return {"ok": True}
 
     def clear_crashes(self) -> dict[str, Any]:
@@ -1097,12 +1199,16 @@ class Session:
             folder = request.get("folder") if isinstance(request.get("folder"), str) else None
             if folder is None and self.settings.vault:
                 folder = str(self.settings.vault)
-            saved = next((a for a in added_agents.load(self.agents_path) if a.get("id") == agent), {})
+            saved = next(
+                (a for a in added_agents.load(self.agents_path) if a.get("id") == agent), {}
+            )
             # The wording lives in core/briefing.py; the parts that differ per agent are filled in there.
             if agent == "hippoherman":
                 text = briefing.main_briefing(self.settings.vault)
             else:
-                text = briefing.agent_briefing(agent, saved, folder, self.settings.vault, self.hive_path / agent / "outbox")
+                text = briefing.agent_briefing(
+                    agent, saved, folder, self.settings.vault, self.hive_path / agent / "outbox"
+                )
             vault = str(self.settings.vault) if self.settings.vault else None
             block_tools = bool(request.get("block_tools", False))
             # The start-up inbox is written each time a terminal starts, so a new agent gets it as soon as its terminal opens.
@@ -1111,14 +1217,24 @@ class Session:
             shell = self.settings.agent_shell
             # The real rules for this start, computed from the switches, so the briefing cannot disagree with them.
             sandboxed = shell and sandbox_for(provider)
-            limits = sandbox.policy_lines(shell=agent == "hippoherman" or sandboxed, sandboxed=sandboxed, blocked=block_tools, app_root=ROOT)
+            limits = sandbox.policy_lines(
+                shell=agent == "hippoherman" or sandboxed,
+                sandboxed=sandboxed,
+                blocked=block_tools,
+                app_root=ROOT,
+            )
             text, mark = briefing.finish(text, inbox_path, limits)
             problems = briefing.lint(text)
             if problems:
                 # Stops before the agent starts: an agent with a broken briefing would run without its rules.
                 raise ValueError("This agent cannot start. " + " ".join(problems))
-            self.briefing_stamps[agent] = {**mark, "at": datetime.now().isoformat(timespec="seconds")}
-            started = self.terminals.start(agent, provider, rows, cols, model, folder, text, vault, block_tools, shell)
+            self.briefing_stamps[agent] = {
+                **mark,
+                "at": datetime.now().isoformat(timespec="seconds"),
+            }
+            started = self.terminals.start(
+                agent, provider, rows, cols, model, folder, text, vault, block_tools, shell
+            )
             # The start-up inbox is sent into the terminal chat by the delivery loop, once the terminal has settled.
             # Only a CLI that has just started gets it: reopening the window reattaches to a running CLI, and
             # typing the inbox in again each time spent the agent's tokens on a message it had already read.
@@ -1174,7 +1290,9 @@ class Session:
             # Folders an agent can work in: each one inside the app's workspaces folder.
             root = self.storage.parent / "workspaces"
             root.mkdir(parents=True, exist_ok=True)
-            names = sorted(p.name for p in root.iterdir() if p.is_dir() and not p.name.startswith("."))
+            names = sorted(
+                p.name for p in root.iterdir() if p.is_dir() and not p.name.startswith(".")
+            )
             return {"root": str(root.resolve()), "folders": names}
         if method == "create_workspace":
             # A plain folder name only, so the new folder always lands directly inside workspaces.
@@ -1186,7 +1304,10 @@ class Session:
             if folder.exists():
                 raise ValueError(f'A folder named "{name}" already exists.')
             folder.mkdir(parents=True)
-            return {"root": str(root.resolve()), "folders": sorted(p.name for p in root.iterdir() if p.is_dir())}
+            return {
+                "root": str(root.resolve()),
+                "folders": sorted(p.name for p in root.iterdir() if p.is_dir()),
+            }
         if method == "agent_session":
             agent = request.get("agent")
             if not isinstance(agent, str) or not agent:
@@ -1216,7 +1337,11 @@ class Session:
             # "boot" changes each time the backend starts, so the window can tell a restart from a quiet moment
             # and start the agents' programs again (they stop with the backend).
             who = str(request.get("agent") or "")
-            return {**self.terminals.info(who), "boot": self.boot, "briefing": self.briefing_stamps.get(who)}
+            return {
+                **self.terminals.info(who),
+                "boot": self.boot,
+                "briefing": self.briefing_stamps.get(who),
+            }
         if method in ("terminal_start", "terminal_input", "terminal_resize", "terminal_stop"):
             return self.terminal(method, request)
         if method == "git_status":
@@ -1225,7 +1350,10 @@ class Session:
             if not isinstance(folder, str) or not os.path.isdir(folder):
                 raise ValueError("the agent's folder does not exist yet")
             done = subprocess.run(
-                ["git", "-C", folder, "status", "--short", "--branch"], capture_output=True, text=True, timeout=10
+                ["git", "-C", folder, "status", "--short", "--branch"],
+                capture_output=True,
+                text=True,
+                timeout=10,
             )
             if done.returncode != 0:
                 return {"text": "This folder is not a git repository."}
@@ -1239,7 +1367,12 @@ class Session:
             binary = shutil.which(command)
             if binary is None:
                 raise RuntimeError(f"{command} is not installed on this computer")
-            subprocess.Popen([binary, folder], start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.Popen(
+                [binary, folder],
+                start_new_session=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
             return {"ok": True}
         if method == "chat_history":
             agent = request.get("agent")
@@ -1297,7 +1430,10 @@ class Session:
                 self.settings = load_settings(self.settings_path)
             except ValueError as exc:
                 return {"ok": False, "error": str(exc)}
-            return {"ok": True, "message": f"Saved: main agent now uses {provider} {model}. Its terminal restarts with it."}
+            return {
+                "ok": True,
+                "message": f"Saved: main agent now uses {provider} {model}. Its terminal restarts with it.",
+            }
         if method == "engine":
             ai = self.settings
             return {
@@ -1382,8 +1518,22 @@ def _issues(folder: object) -> dict[str, Any]:
         return {"error": "The gh CLI is not installed."}
     try:
         done = subprocess.run(
-            ["gh", "issue", "list", "--state", "open", "--limit", "30", "--json", "number,title,url"],
-            cwd=folder, capture_output=True, text=True, timeout=30, check=False,
+            [
+                "gh",
+                "issue",
+                "list",
+                "--state",
+                "open",
+                "--limit",
+                "30",
+                "--json",
+                "number,title,url",
+            ],
+            cwd=folder,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
         )
     except subprocess.TimeoutExpired:
         return {"error": "GitHub took too long to answer."}

@@ -16,7 +16,15 @@ def finished(text: str) -> str:
 
 def test_both_briefings_pass_their_own_lint() -> None:
     main = finished(briefing.main_briefing("/vault"))
-    agent = finished(briefing.agent_briefing("ada#1", {"name": "Ada", "goal": "Tidy notes"}, "/work/ada", "/vault", Path("/hive/ada#1/outbox")))
+    agent = finished(
+        briefing.agent_briefing(
+            "ada#1",
+            {"name": "Ada", "goal": "Tidy notes"},
+            "/work/ada",
+            "/vault",
+            Path("/hive/ada#1/outbox"),
+        )
+    )
     assert briefing.lint(main) == [] and briefing.lint(agent) == []
     # The added sections carry on from each text's own last number.
     assert "11. Start-up inbox" in main and "12. Tools and limits in force" in main
@@ -25,8 +33,17 @@ def test_both_briefings_pass_their_own_lint() -> None:
 
 def test_the_name_job_goal_and_folder_reach_the_agents_briefing() -> None:
     saved = {"name": "Ada", "description": "Breaks big tasks down", "goal": "Tidy the inbox notes"}
-    text = briefing.agent_briefing("ada#1", saved, "/work/ada", "/vault", Path("/hive/ada#1/outbox"))
-    for part in ("You are Ada,", "Breaks big tasks down", "Tidy the inbox notes", "/work/ada", "/vault", "ada#1-PriorityNotes"):
+    text = briefing.agent_briefing(
+        "ada#1", saved, "/work/ada", "/vault", Path("/hive/ada#1/outbox")
+    )
+    for part in (
+        "You are Ada,",
+        "Breaks big tasks down",
+        "Tidy the inbox notes",
+        "/work/ada",
+        "/vault",
+        "ada#1-PriorityNotes",
+    ):
         assert part in text
     # The message format and the example are the inbox schema's own text.
     assert inbox.FORMAT_HELP in text and '"act": "done"' in text and "/hive/ada#1/outbox" in text
@@ -58,7 +75,17 @@ class FakeTerminals:
     def __init__(self) -> None:
         self.briefings: list[str] = []
 
-    def start(self, agent: str, provider: str, rows: int, cols: int, model: str, folder: Any, text: str, *rest: Any) -> dict[str, Any]:
+    def start(
+        self,
+        agent: str,
+        provider: str,
+        rows: int,
+        cols: int,
+        model: str,
+        folder: Any,
+        text: str,
+        *rest: Any,
+    ) -> dict[str, Any]:
         self.briefings.append(text)
         return {"running": True, "replay": ""}
 
@@ -70,18 +97,42 @@ def test_a_start_hands_the_cli_one_briefing_and_the_card_can_show_its_stamp(tmp_
     session = sidecar.Session(tmp_path, Settings(), emit=lambda e: None)
     session.terminals = FakeTerminals()  # type: ignore[assignment]
     for agent in ("hippoherman", "ada"):
-        session.dispatch({"method": "terminal_start", "agent": agent, "provider": "claude", "rows": 24, "cols": 80})
+        session.dispatch(
+            {
+                "method": "terminal_start",
+                "agent": agent,
+                "provider": "claude",
+                "rows": 24,
+                "cols": 80,
+            }
+        )
     main, ada = session.terminals.briefings
-    assert main.startswith("1. Role\nYou are Hippoherman") and ada.startswith("1. Role\nYou are ada,")
+    assert main.startswith("1. Role\nYou are Hippoherman") and ada.startswith(
+        "1. Role\nYou are ada,"
+    )
     assert main.count("Tools and limits in force") == 1  # added once, not once per layer
     stamp = session.dispatch({"method": "terminal_command", "agent": "ada"})["briefing"]
     assert stamp["version"] == briefing.VERSION and ada.endswith(stamp["hash"]) and stamp["at"]
 
 
-def test_an_agent_whose_goal_holds_a_key_is_not_started(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_an_agent_whose_goal_holds_a_key_is_not_started(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     session = sidecar.Session(tmp_path, Settings(), emit=lambda e: None)
     session.terminals = FakeTerminals()  # type: ignore[assignment]
-    monkeypatch.setattr(sidecar.added_agents, "load", lambda path: [{"id": "ada", "name": "Ada", "goal": "use sk-ant-abcdef1234567890"}])
+    monkeypatch.setattr(
+        sidecar.added_agents,
+        "load",
+        lambda path: [{"id": "ada", "name": "Ada", "goal": "use sk-ant-abcdef1234567890"}],
+    )
     with pytest.raises(ValueError, match="cannot start.*looks like a key"):
-        session.dispatch({"method": "terminal_start", "agent": "ada", "provider": "claude", "rows": 24, "cols": 80})
+        session.dispatch(
+            {
+                "method": "terminal_start",
+                "agent": "ada",
+                "provider": "claude",
+                "rows": 24,
+                "cols": 80,
+            }
+        )
     assert session.terminals.briefings == []

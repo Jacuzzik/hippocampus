@@ -23,7 +23,10 @@ def test_lists_own_waiting_messages_only(tmp_path: Path) -> None:
 def test_lists_other_agents_not_self(tmp_path: Path) -> None:
     text = startup_inbox.build(tmp_path / "hive", "Brooke#1", AGENTS)
     assert "Walter#2" in text
-    assert "keep meeting decisions" not in text.split("## Agents you can message")[1].split("## How")[0]
+    assert (
+        "keep meeting decisions"
+        not in text.split("## Agents you can message")[1].split("## How")[0]
+    )
 
 
 def test_report_and_send_instructions_present(tmp_path: Path) -> None:

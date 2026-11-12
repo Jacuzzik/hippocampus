@@ -1,6 +1,5 @@
 import threading
 import time
-from pathlib import Path
 
 from core import terminal
 from core.terminal import Terminals
@@ -24,7 +23,10 @@ class Recorder(Terminals):
 def test_two_lines_typed_at_once_do_not_mix(monkeypatch) -> None:
     monkeypatch.setattr(terminal, "SUBMIT_DELAY_S", 0.05)
     terms = Recorder()
-    workers = [threading.Thread(target=terms.send_line, args=("ada", text)) for text in ("inbox text", "/remote-control x")]
+    workers = [
+        threading.Thread(target=terms.send_line, args=("ada", text))
+        for text in ("inbox text", "/remote-control x")
+    ]
     for worker in workers:
         worker.start()
     for worker in workers:

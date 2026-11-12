@@ -24,7 +24,9 @@ def test_log_lines_reach_the_file_and_come_back_oldest_first(tmp_path: Path) -> 
 def test_keys_are_masked_before_they_are_written(tmp_path: Path) -> None:
     detach = app_log.attach(tmp_path)
     try:
-        logging.getLogger("hippocampus.test").info("key %s and Bearer abcdefghijklmnop123", "sk-ant-abcdef1234567890")
+        logging.getLogger("hippocampus.test").info(
+            "key %s and Bearer abcdefghijklmnop123", "sk-ant-abcdef1234567890"
+        )
     finally:
         detach()
     text = app_log.path(tmp_path).read_text(encoding="utf-8")

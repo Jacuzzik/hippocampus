@@ -31,15 +31,19 @@ VAULT_TOOLS = (
 
 def mcp_config(vault: str) -> str:
     """The Claude Code --mcp-config value that starts this server for a vault."""
-    server = {"command": sys.executable, "args": ["-m", "tools.vault_mcp", vault], "env": {"PYTHONPATH": str(ROOT)}}
+    server = {
+        "command": sys.executable,
+        "args": ["-m", "tools.vault_mcp", vault],
+        "env": {"PYTHONPATH": str(ROOT)},
+    }
     return json.dumps({"mcpServers": {"vault": server}})
 
 
-def _ok(mid: Any, result: dict[str, Any]) -> dict[str, Any]:
+def _ok(mid: int | str | None, result: dict[str, Any]) -> dict[str, Any]:
     return {"jsonrpc": "2.0", "id": mid, "result": result}
 
 
-def _text(mid: Any, text: str, error: bool = False) -> dict[str, Any]:
+def _text(mid: int | str | None, text: str, error: bool = False) -> dict[str, Any]:
     return _ok(mid, {"content": [{"type": "text", "text": text}], "isError": error})
 
 
@@ -49,9 +53,19 @@ def handle(msg: dict[str, Any], tools: dict[str, Any]) -> dict[str, Any] | None:
         return None
     method = msg.get("method")
     if method == "initialize":
-        return _ok(mid, {"protocolVersion": PROTOCOL, "capabilities": {"tools": {}}, "serverInfo": {"name": "vault", "version": "1"}})
+        return _ok(
+            mid,
+            {
+                "protocolVersion": PROTOCOL,
+                "capabilities": {"tools": {}},
+                "serverInfo": {"name": "vault", "version": "1"},
+            },
+        )
     if method == "tools/list":
-        listed = [{"name": t.name, "description": t.description, "inputSchema": t.parameters} for t in tools.values()]
+        listed = [
+            {"name": t.name, "description": t.description, "inputSchema": t.parameters}
+            for t in tools.values()
+        ]
         return _ok(mid, {"tools": listed})
     if method == "tools/call":
         params = msg.get("params") or {}
@@ -62,7 +76,11 @@ def handle(msg: dict[str, Any], tools: dict[str, Any]) -> dict[str, Any] | None:
             return _text(mid, tool.run(params.get("arguments") or {}))
         except Exception as cause:  # the model sees the reason, the server keeps running
             return _text(mid, str(cause), error=True)
-    return {"jsonrpc": "2.0", "id": mid, "error": {"code": -32601, "message": f"unknown method: {method}"}}
+    return {
+        "jsonrpc": "2.0",
+        "id": mid,
+        "error": {"code": -32601, "message": f"unknown method: {method}"},
+    }
 
 
 def main() -> None:

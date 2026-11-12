@@ -5,7 +5,6 @@ A new session is made only when the user switches it, by removing the agent's en
 """
 
 import json
-import os
 import re
 import threading
 import uuid
@@ -80,7 +79,12 @@ def switch(agent: str, path: Path | None = None) -> None:
         _write(path, data)
 
 
-TOKEN_KEYS = ("input_tokens", "output_tokens", "cache_read_input_tokens", "cache_creation_input_tokens")
+TOKEN_KEYS = (
+    "input_tokens",
+    "output_tokens",
+    "cache_read_input_tokens",
+    "cache_creation_input_tokens",
+)
 
 
 def folder_tokens(folder: str) -> int:
@@ -143,7 +147,11 @@ def folder_activity(folder: str) -> dict[str, Any]:
             if last_reply is None or when > last_reply:
                 last_reply = when
             for block in message.get("content") or []:
-                if isinstance(block, dict) and block.get("type") == "tool_use" and block.get("id") not in seen:
+                if (
+                    isinstance(block, dict)
+                    and block.get("type") == "tool_use"
+                    and block.get("id") not in seen
+                ):
                     seen.add(block.get("id"))
                     calls += 1
                     last_tool = _tool_text(block.get("name"), block.get("input")) or last_tool
@@ -152,7 +160,7 @@ def folder_activity(folder: str) -> dict[str, Any]:
     return {"tool_calls": calls, "last_tool": last_tool, "last_reply": last_reply}
 
 
-def _tool_text(name: str | None, inputs: Any) -> str | None:
+def _tool_text(name: str | None, inputs: object) -> str | None:
     """A tool call as "name: command or description", the same form the terminal shows."""
     if not name:
         return None
@@ -163,7 +171,9 @@ def _tool_text(name: str | None, inputs: Any) -> str | None:
 
 def codex_last_tool(folder: str) -> str | None:
     """The newest Codex CLI tool call run in `folder`, as "name: command"; None when there is none."""
-    sessions = sorted((Path.home() / ".codex" / "sessions").glob("*/*/*/rollout-*.jsonl"), reverse=True)
+    sessions = sorted(
+        (Path.home() / ".codex" / "sessions").glob("*/*/*/rollout-*.jsonl"), reverse=True
+    )
     for path in sessions[:200]:
         try:
             lines = path.read_text(encoding="utf-8").splitlines()
@@ -256,7 +266,14 @@ def context_percent(agent: str, window: int = 200_000) -> int:
         except (ValueError, AttributeError):
             continue
         if isinstance(usage, dict):
-            used = sum(int(usage.get(key) or 0) for key in ("input_tokens", "cache_read_input_tokens", "cache_creation_input_tokens"))
+            used = sum(
+                int(usage.get(key) or 0)
+                for key in (
+                    "input_tokens",
+                    "cache_read_input_tokens",
+                    "cache_creation_input_tokens",
+                )
+            )
             return min(100, used * 100 // window)
     return 0
 
@@ -290,7 +307,9 @@ def open_tool_calls(agent: str) -> list[str]:
             if block.get("type") == "tool_use":
                 inputs = block.get("input") or {}
                 detail = inputs.get("command") or inputs.get("description") or ""
-                started[str(block.get("id"))] = f"{block.get('name')}: {detail}" if detail else str(block.get("name"))
+                started[str(block.get("id"))] = (
+                    f"{block.get('name')}: {detail}" if detail else str(block.get("name"))
+                )
             elif block.get("type") == "tool_result":
                 done.add(str(block.get("tool_use_id")))
     return [name for call, name in started.items() if call not in done]
@@ -343,7 +362,14 @@ def tool_trace(agent: str, limit: int = 100) -> list[dict[str, Any]]:
                 continue
             if block.get("type") == "tool_use":
                 inputs = block.get("input") if isinstance(block.get("input"), dict) else {}
-                detail = inputs.get("command") or inputs.get("description") or inputs.get("file_path") or inputs.get("path") or inputs.get("query") or ""
+                detail = (
+                    inputs.get("command")
+                    or inputs.get("description")
+                    or inputs.get("file_path")
+                    or inputs.get("path")
+                    or inputs.get("query")
+                    or ""
+                )
                 calls[str(block.get("id"))] = {
                     "at": row.get("timestamp"),
                     "tool": str(block.get("name")),
@@ -351,7 +377,9 @@ def tool_trace(agent: str, limit: int = 100) -> list[dict[str, Any]]:
                     "status": "running",
                 }
             elif block.get("type") == "tool_result" and str(block.get("tool_use_id")) in calls:
-                calls[str(block.get("tool_use_id"))]["status"] = "failed" if block.get("is_error") else "done"
+                calls[str(block.get("tool_use_id"))]["status"] = (
+                    "failed" if block.get("is_error") else "done"
+                )
     return list(calls.values())[::-1][:limit]
 
 
@@ -360,7 +388,9 @@ def last_tool_call(agent: str) -> str | None:
     found = _transcript(agent)
     newest = _newest_tool_call(found) if found is not None else None
     if newest is None and agent in PREVIOUS_SESSIONS:
-        previous = next((Path.home() / ".claude" / "projects").glob(f"*/{PREVIOUS_SESSIONS[agent]}.jsonl"), None)
+        previous = next(
+            (Path.home() / ".claude" / "projects").glob(f"*/{PREVIOUS_SESSIONS[agent]}.jsonl"), None
+        )
         newest = _newest_tool_call(previous) if previous is not None else None
     return newest
 
@@ -425,7 +455,9 @@ def opencode_last_tool(folder: str) -> str | None:
     inputs = dict(state.get("input")) if isinstance(state.get("input"), dict) else {}
     # File tools name their target differently; show it where the other tools show a command.
     if not inputs.get("command"):
-        inputs["command"] = inputs.get("filePath") or inputs.get("path") or inputs.get("pattern") or ""
+        inputs["command"] = (
+            inputs.get("filePath") or inputs.get("path") or inputs.get("pattern") or ""
+        )
     return _tool_text(part.get("tool"), inputs)
 
 

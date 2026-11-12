@@ -7,11 +7,50 @@ from ai import cli_sessions
 def test_tool_calls_come_back_newest_first_with_their_outcome(tmp_path: Path, monkeypatch) -> None:
     session = tmp_path / "s.jsonl"
     rows = [
-        {"timestamp": "2026-11-12T10:00:00Z", "message": {"content": [{"type": "tool_use", "id": "t1", "name": "Bash", "input": {"command": "ls notes"}}]}},
-        {"timestamp": "2026-11-12T10:00:01Z", "message": {"content": [{"type": "tool_result", "tool_use_id": "t1"}]}},
-        {"timestamp": "2026-11-12T10:01:00Z", "message": {"content": [{"type": "tool_use", "id": "t2", "name": "Bash", "input": {"command": "rm x"}}]}},
-        {"timestamp": "2026-11-12T10:01:01Z", "message": {"content": [{"type": "tool_result", "tool_use_id": "t2", "is_error": True}]}},
-        {"timestamp": "2026-11-12T10:02:00Z", "message": {"content": [{"type": "tool_use", "id": "t3", "name": "mcp__vault__read_note", "input": {"path": "MAIN.md"}}]}},
+        {
+            "timestamp": "2026-11-12T10:00:00Z",
+            "message": {
+                "content": [
+                    {
+                        "type": "tool_use",
+                        "id": "t1",
+                        "name": "Bash",
+                        "input": {"command": "ls notes"},
+                    }
+                ]
+            },
+        },
+        {
+            "timestamp": "2026-11-12T10:00:01Z",
+            "message": {"content": [{"type": "tool_result", "tool_use_id": "t1"}]},
+        },
+        {
+            "timestamp": "2026-11-12T10:01:00Z",
+            "message": {
+                "content": [
+                    {"type": "tool_use", "id": "t2", "name": "Bash", "input": {"command": "rm x"}}
+                ]
+            },
+        },
+        {
+            "timestamp": "2026-11-12T10:01:01Z",
+            "message": {
+                "content": [{"type": "tool_result", "tool_use_id": "t2", "is_error": True}]
+            },
+        },
+        {
+            "timestamp": "2026-11-12T10:02:00Z",
+            "message": {
+                "content": [
+                    {
+                        "type": "tool_use",
+                        "id": "t3",
+                        "name": "mcp__vault__read_note",
+                        "input": {"path": "MAIN.md"},
+                    }
+                ]
+            },
+        },
         {"message": "not a dict"},
     ]
     session.write_text("\n".join(json.dumps(r) for r in rows) + "\nnot json\n", encoding="utf-8")

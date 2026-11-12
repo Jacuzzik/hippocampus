@@ -11,8 +11,8 @@ import shutil
 from typing import Any
 
 from ai import cli_sessions, network
-from tools.vault_mcp import VAULT_TOOLS, mcp_config
 from ai.providers.base import NetworkBlocked, ProviderError, Reply, ToolSpec
+from tools.vault_mcp import VAULT_TOOLS, mcp_config
 
 CLI = "claude"
 
@@ -33,7 +33,13 @@ def _newest(messages: list[dict[str, Any]]) -> str:
 class ClaudeCliProvider:
     name = "claude-cli"
 
-    def __init__(self, model: str, agent: str = "hippoherman", timeout: float = 120.0, vault: str | None = None) -> None:
+    def __init__(
+        self,
+        model: str,
+        agent: str = "hippoherman",
+        timeout: float = 120.0,
+        vault: str | None = None,
+    ) -> None:
         self.model = model
         self.agent = agent
         self.timeout = timeout
@@ -41,13 +47,17 @@ class ClaudeCliProvider:
 
     async def chat(self, messages: list[dict[str, Any]], tools: list[ToolSpec]) -> Reply:
         if not network.allows_model_calls():
-            raise NetworkBlocked(f"network is {network.mode().capitalize()}: no call to the Claude CLI")
+            raise NetworkBlocked(
+                f"network is {network.mode().capitalize()}: no call to the Claude CLI"
+            )
         binary = shutil.which(CLI)
         if binary is None:
             raise ProviderError("the Claude Code CLI is not installed")
         session = cli_sessions.get(self.agent)
         # The first call creates the agent's session; later calls resume it, across app restarts.
-        resume = ["--resume", session["id"]] if session["started"] else ["--session-id", session["id"]]
+        resume = (
+            ["--resume", session["id"]] if session["started"] else ["--session-id", session["id"]]
+        )
         args = [binary, "-p", _newest(messages), "--output-format", "json", *resume]
         if self.model:
             args += ["--model", self.model]
@@ -64,8 +74,8 @@ class ClaudeCliProvider:
                 "--tools",
                 "",
                 "--append-system-prompt",
-                f"You are Hippoherman, the main agent (Boss) of the Hippocampus app. Questions about our plans, past decisions, "
-                f"projects or the user: use search_notes and read_note on the vault, starting with MAIN, then Projects, Summaries "
+                "You are Hippoherman, the main agent (Boss) of the Hippocampus app. Questions about our plans, past decisions, "
+                "projects or the user: use search_notes and read_note on the vault, starting with MAIN, then Projects, Summaries "
                 "and the other group notes, and answer from them only. The vault is the memory: do not answer from earlier chat history "
                 "or the session transcript. If the notes do not say, say so. You have no shell and no web. "
                 "Only touch notes; never scan hidden folders (names starting with a dot). When the user asks you to organise folders, "
@@ -95,13 +105,17 @@ class ClaudeCliProvider:
         if proc.returncode != 0:
             # The CLI's own message says if the login is missing; show a short part only.
             detail = (err or out).decode("utf-8", "replace").strip()[:200]
-            raise ProviderError(f"the Claude Code CLI failed (exit {proc.returncode}): {detail or 'no message'}")
+            raise ProviderError(
+                f"the Claude Code CLI failed (exit {proc.returncode}): {detail or 'no message'}"
+            )
         try:
             data = json.loads(out.decode("utf-8", "replace"))
         except ValueError as exc:
             raise ProviderError("the Claude Code CLI gave an unreadable reply") from exc
         if data.get("is_error"):
-            raise ProviderError(str(data.get("result") or "the Claude Code CLI reported an error")[:200])
+            raise ProviderError(
+                str(data.get("result") or "the Claude Code CLI reported an error")[:200]
+            )
         usage = data.get("usage") or {}
         tokens = int(usage.get("input_tokens") or 0) + int(usage.get("output_tokens") or 0)
         cli_sessions.mark_started(self.agent)

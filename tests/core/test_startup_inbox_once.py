@@ -21,7 +21,13 @@ class FakeTerminals:
 def test_the_start_up_inbox_is_queued_for_a_new_cli_only(tmp_path: Path) -> None:
     session = sidecar.Session(tmp_path, Settings(), emit=lambda e: None)
     session.terminals = FakeTerminals()  # type: ignore[assignment]
-    request = {"method": "terminal_start", "agent": "ada", "provider": "claude", "rows": 24, "cols": 80}
+    request = {
+        "method": "terminal_start",
+        "agent": "ada",
+        "provider": "claude",
+        "rows": 24,
+        "cols": 80,
+    }
 
     session.dispatch(request)
     assert "ada" in session.inbox_pending  # a CLI that has just started gets its inbox

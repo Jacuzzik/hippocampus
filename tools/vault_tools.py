@@ -12,7 +12,17 @@ from core.vault import Indexer
 from tools.registry import Tool
 
 # Hub notes linked to MAIN. The chat cannot delete them.
-HUB_NOTES = {"WELCOME", "MAIN", "Projects", "Summaries", "Agent Lists", "Contacts", "Socials", "About User", "Test Hub"}
+HUB_NOTES = {
+    "WELCOME",
+    "MAIN",
+    "Projects",
+    "Summaries",
+    "Agent Lists",
+    "Contacts",
+    "Socials",
+    "About User",
+    "Test Hub",
+}
 GROUP_HUBS = ("Projects", "Summaries", "Agent Lists", "Contacts", "Socials", "About User")
 
 
@@ -28,6 +38,7 @@ def main_guard(root: Path, target: Path) -> None:
     main = root / "MAIN.md"
     if main.is_file() and f"[[{target.stem}]]" in main.read_text(encoding="utf-8"):
         raise ValueError(f"{target.stem} is linked from MAIN, so it cannot be deleted.")
+
 
 MAX_READ_CHARS = 20_000
 # The app's own folder (this repo): exports must never land here.
@@ -116,7 +127,9 @@ def vault_tools(indexer: Indexer, lock: threading.RLock) -> dict[str, Tool]:
         target = note_path(args.get("path"))
         # A note in a folder gets that folder as its tag, so it takes the folder's colour.
         rel_parts = target.relative_to(root).parts
-        content = memory_content(str(args.get("content", "")), rel_parts[0] if len(rel_parts) > 1 else "assistant")
+        content = memory_content(
+            str(args.get("content", "")), rel_parts[0] if len(rel_parts) > 1 else "assistant"
+        )
         with lock:
             if target.exists():
                 raise FileExistsError("the note already exists; this tool never overwrites")
@@ -130,7 +143,9 @@ def vault_tools(indexer: Indexer, lock: threading.RLock) -> dict[str, Tool]:
         rel = target.relative_to(root).as_posix()
         old = target.read_text(encoding="utf-8") if target.exists() else ""
         new = str(args.get("content", ""))
-        diff = difflib.unified_diff(old.splitlines(keepends=True), new.splitlines(keepends=True), f"a/{rel}", f"b/{rel}")
+        diff = difflib.unified_diff(
+            old.splitlines(keepends=True), new.splitlines(keepends=True), f"a/{rel}", f"b/{rel}"
+        )
         return "".join(diff) or f"edit {rel} (no change)"
 
     def edit_note(args: dict[str, Any]) -> str:
@@ -151,7 +166,8 @@ def vault_tools(indexer: Indexer, lock: threading.RLock) -> dict[str, Tool]:
             return True
         link = f"[[{target.stem}]]"
         return any(
-            (root / f"{group}.md").is_file() and link in (root / f"{group}.md").read_text(encoding="utf-8")
+            (root / f"{group}.md").is_file()
+            and link in (root / f"{group}.md").read_text(encoding="utf-8")
             for group in GROUP_HUBS
         )
 
@@ -188,7 +204,10 @@ def vault_tools(indexer: Indexer, lock: threading.RLock) -> dict[str, Tool]:
         target = note_path(args.get("to"))
         if not source.is_file():
             raise FileNotFoundError("the note does not exist")
-        if any(part.startswith(".") for part in (*source.relative_to(root).parts, *target.relative_to(root).parts)):
+        if any(
+            part.startswith(".")
+            for part in (*source.relative_to(root).parts, *target.relative_to(root).parts)
+        ):
             raise ValueError("hidden folders are never touched")
         if is_hub(source):
             raise ValueError("Hub notes linked to MAIN cannot be moved.")
@@ -198,7 +217,9 @@ def vault_tools(indexer: Indexer, lock: threading.RLock) -> dict[str, Tool]:
 
     def move_preview(args: dict[str, Any]) -> str:
         source, target = move_plan(args)
-        return f"move {source.relative_to(root).as_posix()} to {target.relative_to(root).as_posix()}"
+        return (
+            f"move {source.relative_to(root).as_posix()} to {target.relative_to(root).as_posix()}"
+        )
 
     def move_note(args: dict[str, Any]) -> str:
         source, target = move_plan(args)
@@ -206,7 +227,9 @@ def vault_tools(indexer: Indexer, lock: threading.RLock) -> dict[str, Tool]:
             target.parent.mkdir(parents=True, exist_ok=True)
             source.rename(target)
             indexer.apply_changes([source, target])
-        return f"moved {source.relative_to(root).as_posix()} to {target.relative_to(root).as_posix()}"
+        return (
+            f"moved {source.relative_to(root).as_posix()} to {target.relative_to(root).as_posix()}"
+        )
 
     def export_plan(args: dict[str, Any]) -> tuple[Path, Path]:
         source = note_path(args.get("path"))
@@ -219,10 +242,16 @@ def vault_tools(indexer: Indexer, lock: threading.RLock) -> dict[str, Tool]:
             raise ValueError('"folder" must be an existing absolute folder the user named')
         target = (folder / source.name).resolve()
         # The copy must land outside the vault and outside the app's own folder.
-        if target.is_relative_to(root) or target.is_relative_to(APP_ROOT) or folder.resolve().is_relative_to(APP_ROOT):
+        if (
+            target.is_relative_to(root)
+            or target.is_relative_to(APP_ROOT)
+            or folder.resolve().is_relative_to(APP_ROOT)
+        ):
             raise ValueError("the copy must go outside the vault and the app folder")
         if target.exists():
-            raise FileExistsError("a file with that name already exists there; this tool never overwrites")
+            raise FileExistsError(
+                "a file with that name already exists there; this tool never overwrites"
+            )
         return source, target
 
     def export_preview(args: dict[str, Any]) -> str:
@@ -342,7 +371,13 @@ def vault_tools(indexer: Indexer, lock: threading.RLock) -> dict[str, Tool]:
             description="Move one note to a new path in the vault. Fails if the target exists. Hub notes cannot move.",
             parameters={
                 "type": "object",
-                "properties": {"path": path_schema, "to": {**path_schema, "description": "New note path relative to the vault, ending in .md"}},
+                "properties": {
+                    "path": path_schema,
+                    "to": {
+                        **path_schema,
+                        "description": "New note path relative to the vault, ending in .md",
+                    },
+                },
                 "required": ["path", "to"],
             },
             run=move_note,
@@ -354,7 +389,13 @@ def vault_tools(indexer: Indexer, lock: threading.RLock) -> dict[str, Tool]:
             description="Copy one note to an existing folder outside the app that the user named. The note stays in the vault. Never overwrites.",
             parameters={
                 "type": "object",
-                "properties": {"path": path_schema, "folder": {"type": "string", "description": "Absolute folder path the user named"}},
+                "properties": {
+                    "path": path_schema,
+                    "folder": {
+                        "type": "string",
+                        "description": "Absolute folder path the user named",
+                    },
+                },
                 "required": ["path", "folder"],
             },
             run=export_note,

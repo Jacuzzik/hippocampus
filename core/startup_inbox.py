@@ -22,7 +22,9 @@ def build(hive: Path, agent: str, agents: list[dict[str, Any]]) -> str:
     if waiting:
         # Only the headline: the app types each message in full right after this, so the body is not sent twice.
         for _, message in waiting:
-            lines.append(f"- {message.get('act') or 'request'} from {message.get('from')}: {message.get('subject') or '(no subject)'}")
+            lines.append(
+                f"- {message.get('act') or 'request'} from {message.get('from')}: {message.get('subject') or '(no subject)'}"
+            )
         lines.append("Each one is typed to you in full next. Act on each once.")
     else:
         lines.append("- None.")
@@ -30,7 +32,14 @@ def build(hive: Path, agent: str, agents: list[dict[str, Any]]) -> str:
     others = [a for a in agents if a.get("id") and a.get("id") != agent]
     if agent != "hippoherman":
         # The main agent is always someone a normal agent can report to.
-        others.insert(0, {"id": "hippoherman", "name": "Hippoherman", "goal": "main agent: receives your reports"})
+        others.insert(
+            0,
+            {
+                "id": "hippoherman",
+                "name": "Hippoherman",
+                "goal": "main agent: receives your reports",
+            },
+        )
     if others:
         for other in others:
             goal = other.get("goal") or other.get("description") or "not described yet"

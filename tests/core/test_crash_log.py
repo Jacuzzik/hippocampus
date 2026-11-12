@@ -16,7 +16,12 @@ def test_a_recorded_error_is_read_back_newest_first(tmp_path: Path) -> None:
     session = session_at(tmp_path)
     assert session.dispatch({"method": "crashes"}) == {"crashes": []}
     session.dispatch(
-        {"method": "record_crash", "source": "Graph", "message": "first", "at": "2026-11-11T10:00:00Z"}
+        {
+            "method": "record_crash",
+            "source": "Graph",
+            "message": "first",
+            "at": "2026-11-11T10:00:00Z",
+        }
     )
     session.dispatch({"method": "record_crash", "source": "window", "message": "second"})
     rows = session.dispatch({"method": "crashes"})["crashes"]

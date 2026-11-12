@@ -12,11 +12,12 @@ import shutil
 import signal
 import struct
 import subprocess
-import time
 import termios
 import threading
+import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from ai import cli_sessions
 from core import sandbox
@@ -27,11 +28,19 @@ from tools.vault_mcp import VAULT_TOOLS, mcp_config
 SCREEN_BYTES = 200_000
 
 # Provider name (as the app stores it) to the CLI that runs for it in the terminal.
-CLI_FOR = {"claude": "claude", "codex": "codex", "ollama": "ollama", "antigravity": "agy", "gemini-cli": "gemini"}
+CLI_FOR = {
+    "claude": "claude",
+    "codex": "codex",
+    "ollama": "ollama",
+    "antigravity": "agy",
+    "gemini-cli": "gemini",
+}
 
 
 class Terminals:
-    def __init__(self, emit: Callable[[dict[str, Any]], None], screen_dir: Path | None = None) -> None:
+    def __init__(
+        self, emit: Callable[[dict[str, Any]], None], screen_dir: Path | None = None
+    ) -> None:
         self.emit = emit
         # Where each terminal's recent output is kept between app restarts.
         self.screen_dir = screen_dir
@@ -126,7 +135,9 @@ class Terminals:
             brief_path = self._write_briefing(agent, briefing)
             # The shell for every agent comes only with the sandbox: without it a normal agent gets no shell.
             sandboxed = shell and sandbox_for(provider)
-            argv = _command(agent, provider, model, brief_path, vault, block_tools, resume, shell=sandboxed)
+            argv = _command(
+                agent, provider, model, brief_path, vault, block_tools, resume, shell=sandboxed
+            )
             run_argv = _sandboxed(argv, agent, folder, vault) if sandboxed else argv
             master, slave = pty.openpty()
             self._resize(slave, rows, cols)
@@ -157,13 +168,29 @@ class Terminals:
             self.procs[agent] = (proc, master)
             # Only Claude Code takes the briefing as a flag. Every other CLI gets a short first message pointing at the briefing file.
             if brief_path and provider != "claude" and provider not in OPENCODE_FOR:
-                threading.Thread(target=self._send_briefing, args=(agent, proc, master, brief_path), daemon=True).start()
+                threading.Thread(
+                    target=self._send_briefing, args=(agent, proc, master, brief_path), daemon=True
+                ).start()
             # Claude terminals start Remote Control, so the agent can be reached from the Claude apps.
             if provider == "claude":
-                threading.Thread(target=self._send_remote_control, args=(agent, proc, master), daemon=True).start()
-            self.specs[agent] =(provider, model or (self.specs.get(agent, ("", ""))[1] if self.specs.get(agent, ("", ""))[0] == provider else ""))
+                threading.Thread(
+                    target=self._send_remote_control, args=(agent, proc, master), daemon=True
+                ).start()
+            self.specs[agent] = (
+                provider,
+                model
+                or (
+                    self.specs.get(agent, ("", ""))[1]
+                    if self.specs.get(agent, ("", ""))[0] == provider
+                    else ""
+                ),
+            )
             # The briefing is kept out of the shown command: it is long, and it is text, not a flag to read.
-            self.argvs[agent] = argv[: argv.index("--append-system-prompt-file")] if "--append-system-prompt-file" in argv else argv
+            self.argvs[agent] = (
+                argv[: argv.index("--append-system-prompt-file")]
+                if "--append-system-prompt-file" in argv
+                else argv
+            )
             self.folders[agent] = folder or ""
             self.started_at[agent] = time.time()
             self.last_output.pop(agent, None)
@@ -173,7 +200,9 @@ class Terminals:
         threading.Thread(target=self._pump, args=(agent, proc, master), daemon=True).start()
         return {"running": True, "replay": replay}
 
-    def _send_briefing(self, agent: str, proc: subprocess.Popen, master: int, brief_path: str) -> None:
+    def _send_briefing(
+        self, agent: str, proc: subprocess.Popen, master: int, brief_path: str
+    ) -> None:
         """Types the briefing pointer into the CLI once its screen has drawn and gone quiet, so the input is not lost in a half-started screen. Skipped if that terminal has stopped or been replaced."""
         started = time.time()
         deadline = started + BRIEFING_WAIT_MAX_S
@@ -206,7 +235,10 @@ class Terminals:
             if proc.poll() is not None or self.procs.get(agent, (None, None))[1] != master:
                 self._log_event(agent, "remote control skipped: CLI stopped before it was sent")
                 return
-            if self.last_output.get(agent) is not None and time.time() - started >= REMOTE_CONTROL_DELAY_S:
+            if (
+                self.last_output.get(agent) is not None
+                and time.time() - started >= REMOTE_CONTROL_DELAY_S
+            ):
                 break
             time.sleep(0.5)
         if proc.poll() is not None or self.procs.get(agent, (None, None))[1] != master:
@@ -245,7 +277,7 @@ class Terminals:
         # os.write can accept only part of a large paste, so keep writing until every byte is in.
         view = memoryview(data.encode("utf-8"))
         while view:
-            view = view[os.write(running[1], view):]
+            view = view[os.write(running[1], view) :]
 
     def send_line(self, agent: str, text: str) -> None:
         """Types the text, then presses Enter as its own write. A TUI such as Claude Code reads text and a trailing Enter in one write as a paste, so the Enter is ignored and the text sits in the input bar unsent."""
@@ -292,7 +324,12 @@ class Terminals:
         """The command the agent's terminal runs and its status: Working or Idle, or None when stopped."""
         running = self.procs.get(agent)
         if running is None or running[0].poll() is not None:
-            return {"command": None, "status": None, "last": self._last_command(agent), "model": cli_sessions.last_model(agent)}
+            return {
+                "command": None,
+                "status": None,
+                "last": self._last_command(agent),
+                "model": cli_sessions.last_model(agent),
+            }
         last = self.last_output.get(agent)
         running = cli_sessions.open_tool_calls(agent)
         status = "Working" if running or (last is not None and time.time() - last < 10) else "Idle"
@@ -303,7 +340,13 @@ class Terminals:
         if "--add-dir" in shown:
             shown = shown[: shown.index("--add-dir")]
         command = " ".join([os.path.basename(shown[0]), *shown[1:]]) if shown else ""
-        return {"command": command, "status": status, "running": running, "last": last_cmd, "model": cli_sessions.last_model(agent)}
+        return {
+            "command": command,
+            "status": status,
+            "running": running,
+            "last": last_cmd,
+            "model": cli_sessions.last_model(agent),
+        }
 
     def _last_command(self, agent: str) -> str | None:
         """The agent's newest command: Claude's transcript first, then the Codex sessions run in its folder. Cached for 10 seconds."""
@@ -394,14 +437,23 @@ class Terminals:
             stopped_by_us = agent in self.stopping
             self.stopping.discard(agent)
             with self.lock:
-                superseded = agent in self.replaced and self.procs.get(agent, (None, None))[0] is not proc
+                superseded = (
+                    agent in self.replaced and self.procs.get(agent, (None, None))[0] is not proc
+                )
                 if superseded:
                     self.replaced.discard(agent)
             if superseded:
-                return
+                # The old CLI of a replaced terminal: nothing to report. Leaving from here is on purpose.
+                return  # noqa: B012
             if code != 0 and not stopped_by_us:
                 # Says what a failed exit usually means, so the terminal shows an error message, not just a code.
-                self.emit({"event": "terminal", "agent": agent, "data": f"\r\nError: the CLI stopped with code {code}. Check that it is installed and signed in, then open it again.\r\n"})
+                self.emit(
+                    {
+                        "event": "terminal",
+                        "agent": agent,
+                        "data": f"\r\nError: the CLI stopped with code {code}. Check that it is installed and signed in, then open it again.\r\n",
+                    }
+                )
             # A stop we asked for is reported as stopped, not as a failed exit code.
             self.emit({"event": "terminal", "agent": agent, "exit": code, "stopped": stopped_by_us})
 
@@ -467,7 +519,15 @@ def provider_env(provider: str) -> dict[str, str]:
 
 
 # Tools a blocked agent may not use in Claude Code: no shell, no file writes, no web.
-BLOCKED_CLAUDE_TOOLS = ("Bash", "Write", "Edit", "NotebookEdit", "WebFetch", "WebSearch", "mcp__vault")
+BLOCKED_CLAUDE_TOOLS = (
+    "Bash",
+    "Write",
+    "Edit",
+    "NotebookEdit",
+    "WebFetch",
+    "WebSearch",
+    "mcp__vault",
+)
 
 
 # The briefing pointer is typed in once a CLI has printed and had BRIEFING_DELAY_S to draw its screen. It does not wait for quiet: TUIs such as OpenCode keep redrawing, so quiet never came and the pointer was dropped.
@@ -485,7 +545,30 @@ REMOTE_CONTROL_IDLE_MAX_S = 900.0
 
 
 # The commands no agent's shell may run, and the rule that none may name the app folder.
-SHELL_DENIED = ("rm", "rmdir", "mv", "cp", "git", "sudo", "chmod", "chown", "curl", "wget", "dd", "kill", "pkill", "ps", "pgrep", "top", "htop", "lsof", "ss", "netstat", "pidof", "claude")
+SHELL_DENIED = (
+    "rm",
+    "rmdir",
+    "mv",
+    "cp",
+    "git",
+    "sudo",
+    "chmod",
+    "chown",
+    "curl",
+    "wget",
+    "dd",
+    "kill",
+    "pkill",
+    "ps",
+    "pgrep",
+    "top",
+    "htop",
+    "lsof",
+    "ss",
+    "netstat",
+    "pidof",
+    "claude",
+)
 
 
 def sandbox_for(provider: str) -> bool:
@@ -522,23 +605,49 @@ def _sandboxed(argv: list[str], agent: str, folder: str | None, vault: str | Non
     )
 
 
-def _command(agent: str, provider: str, model: str = "", briefing: str = "", vault: str | None = None, block_tools: bool = False, resume: bool = False, shell: bool = False) -> list[str]:
+def _command(
+    agent: str,
+    provider: str,
+    model: str = "",
+    briefing: str = "",
+    vault: str | None = None,
+    block_tools: bool = False,
+    resume: bool = False,
+    shell: bool = False,
+) -> list[str]:
     # resume: the agent already ran on this engine, so its CLI continues the last session in its folder (each CLI scopes "last" to the working folder).
     if provider in OPENCODE_FOR:
         binary = shutil.which("opencode")
         if binary is None:
-            raise RuntimeError("opencode is not installed. Install OpenCode, then open this terminal again.")
+            raise RuntimeError(
+                "opencode is not installed. Install OpenCode, then open this terminal again."
+            )
         if not model:
             raise RuntimeError(f"Pick a model for {provider} first.")
         # OpenCode takes the briefing pointer as its first prompt: typed input sent to its screen was not taken.
-        pointer = ["--prompt", f"Your briefing is in {briefing}. Read it now and follow it for this session."] if briefing else []
-        return [binary, *(["--continue"] if resume else []), "-m", f"{OPENCODE_FOR[provider][0]}/{model}", *pointer]
+        pointer = (
+            [
+                "--prompt",
+                f"Your briefing is in {briefing}. Read it now and follow it for this session.",
+            ]
+            if briefing
+            else []
+        )
+        return [
+            binary,
+            *(["--continue"] if resume else []),
+            "-m",
+            f"{OPENCODE_FOR[provider][0]}/{model}",
+            *pointer,
+        ]
     name = CLI_FOR.get(provider)
     if name is None:
         raise RuntimeError(f'The terminal does not run "{provider}" yet.')
     binary = shutil.which(name)
     if binary is None:
-        raise RuntimeError(f"{name} is not installed. Install it, then sign in with `{name}` in a terminal.")
+        raise RuntimeError(
+            f"{name} is not installed. Install it, then sign in with `{name}` in a terminal."
+        )
     if name == "ollama":
         # Ollama's run command keeps no session between starts, so there is nothing to resume.
         return [binary, "run", model]
@@ -574,7 +683,14 @@ def _command(agent: str, provider: str, model: str = "", briefing: str = "", vau
     # The terminal gets the same vault tools as the chat, so its deletes go through the app's checks, not a shell.
     # A blocked agent gets no vault tools either: "block tools" means no shell and no MCP tools.
     vault_tools = (
-        ["--mcp-config", mcp_config(vault), "--allowedTools", *[f"mcp__vault__{name}" for name in VAULT_TOOLS]] if vault and not block_tools else []
+        [
+            "--mcp-config",
+            mcp_config(vault),
+            "--allowedTools",
+            *[f"mcp__vault__{name}" for name in VAULT_TOOLS],
+        ]
+        if vault and not block_tools
+        else []
     )
     return [
         binary,

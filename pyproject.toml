@@ -35,6 +35,13 @@ line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "ANN"]
+# The formatter wraps code at 100. What stays longer is a comment or a sentence shown to the user,
+# which reads worse when split, so the length rule is left to the formatter.
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+# Test doubles take whatever the real object takes; spelling each type out adds nothing.
+"tests/**" = ["ANN"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["ai", "core", "fixtures", "tools"]

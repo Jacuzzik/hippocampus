@@ -22,11 +22,13 @@ def agent_tools(hive: Path, agents_file: Path) -> dict[str, Tool]:
         known = {a.get("id") for a in added_agents.load(agents_file)}
         if to not in known:
             raise ValueError(f'No agent with id "{to}". Use list_agents to see the ids.')
-        message_id = inbox.send(hive, "hippoherman", to, str(args.get("subject", "")), str(args.get("body", "")))
+        message_id = inbox.send(
+            hive, "hippoherman", to, str(args.get("subject", "")), str(args.get("body", ""))
+        )
         return f"sent to {to} (message {message_id})"
 
     def send_preview(args: dict[str, Any]) -> str:
-        return f'Send to {args.get("to")}: {args.get("subject", "")}\n{args.get("body", "")}'
+        return f"Send to {args.get('to')}: {args.get('subject', '')}\n{args.get('body', '')}"
 
     tools = [
         Tool(

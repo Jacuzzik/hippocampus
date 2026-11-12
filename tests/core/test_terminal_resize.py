@@ -36,7 +36,12 @@ def test_resize_tells_the_cli_its_new_size() -> None:
     Terminals._resize(slave, 24, 80)
     # Started the way the app starts a CLI: its own session, the pseudo-terminal as its input and output.
     proc = subprocess.Popen(
-        [sys.executable, "-c", CHILD], stdin=slave, stdout=slave, stderr=slave, start_new_session=True, close_fds=True
+        [sys.executable, "-c", CHILD],
+        stdin=slave,
+        stdout=slave,
+        stderr=slave,
+        start_new_session=True,
+        close_fds=True,
     )
     os.close(slave)
     try:
@@ -51,7 +56,13 @@ def test_resize_tells_the_cli_its_new_size() -> None:
 
 def test_resize_of_a_finished_cli_does_not_raise() -> None:
     master, slave = pty.openpty()
-    proc = subprocess.Popen([sys.executable, "-c", "pass"], stdin=slave, stdout=slave, stderr=slave, start_new_session=True)
+    proc = subprocess.Popen(
+        [sys.executable, "-c", "pass"],
+        stdin=slave,
+        stdout=slave,
+        stderr=slave,
+        start_new_session=True,
+    )
     os.close(slave)
     proc.wait()
     try:
