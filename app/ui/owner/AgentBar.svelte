@@ -311,7 +311,7 @@
           (info = {
             name: "Hippoherman",
             role: "Main · fixed",
-            provider,
+            provider: runningProvider,
             model: account?.model ?? "Loading model",
             folder: "",
             status: ORB_LABELS[assistant.chat.orb],

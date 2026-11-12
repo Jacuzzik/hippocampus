@@ -2,12 +2,14 @@
 // Saved in the window's own storage, so they survive a restart and need no backend call.
 
 export type Motion = "system" | "on" | "off";
-type Prefs = { terminalFontSize: number; motion: Motion; rememberTab: boolean; lastTab: string };
+/** How long the logo stays over the app once it has loaded: 10 seconds, 1 second, or not at all. */
+export type Intro = "long" | "short" | "off";
+type Prefs = { terminalFontSize: number; motion: Motion; intro: Intro; rememberTab: boolean; lastTab: string };
 
 const KEY = "hippocampus.prefs";
 export const FONT_MIN = 10;
 export const FONT_MAX = 20;
-const DEFAULTS: Prefs = { terminalFontSize: 12, motion: "system", rememberTab: true, lastTab: "terminal" };
+const DEFAULTS: Prefs = { terminalFontSize: 12, motion: "system", intro: "long", rememberTab: true, lastTab: "terminal" };
 
 function read(): Prefs {
   try {
@@ -16,6 +18,7 @@ function read(): Prefs {
     return {
       terminalFontSize: Number.isFinite(size) ? Math.min(FONT_MAX, Math.max(FONT_MIN, Math.round(size))) : DEFAULTS.terminalFontSize,
       motion: saved.motion === "on" || saved.motion === "off" ? saved.motion : "system",
+      intro: saved.intro === "short" || saved.intro === "off" ? saved.intro : "long",
       rememberTab: saved.rememberTab !== false,
       lastTab: typeof saved.lastTab === "string" ? saved.lastTab : DEFAULTS.lastTab,
     };
@@ -53,6 +56,13 @@ export const prefs = {
   set motion(value: Motion) {
     state.motion = value;
     applyMotion();
+    save();
+  },
+  get intro(): Intro {
+    return state.intro;
+  },
+  set intro(value: Intro) {
+    state.intro = value;
     save();
   },
   get rememberTab(): boolean {

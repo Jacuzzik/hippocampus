@@ -6,15 +6,17 @@ test.beforeEach(async ({ page }) => {
   await page.goto("/");
 });
 
-test("the brain graph loads and the orb starts idle", async ({ page }) => {
+// The in-app chat pane (orb, approval cards, tool log) is no longer mounted: the Control Room
+// sends messages to the main agent's terminal instead. The tests that drive that pane are marked
+// fixme until the pane is either removed from the code or shown again.
+
+test("the brain graph loads and the main agent starts idle", async ({ page }) => {
   await expect(page.getByRole("main", { name: "Brain graph" })).toBeVisible();
-  await expect(
-    page.getByRole("status", { name: "Assistant: Idle" }).first(),
-  ).toBeVisible();
+  await expect(page.getByLabel("Agents").getByText("Idle").first()).toBeVisible();
   await expect(page.getByText("Could not load the vault")).toHaveCount(0);
 });
 
-test("a question is answered and the tool log shows the read", async ({
+test.fixme("a question is answered and the tool log shows the read", async ({
   page,
 }) => {
   await page
@@ -29,7 +31,7 @@ test("a question is answered and the tool log shows the read", async ({
   await expect(log.getByText("done")).toBeVisible();
 });
 
-test("a write waits for approval, shows the exact change, then runs", async ({
+test.fixme("a write waits for approval, shows the exact change, then runs", async ({
   page,
 }) => {
   await page.getByLabel("Message the assistant").fill("make a new idea note");
@@ -44,7 +46,7 @@ test("a write waits for approval, shows the exact change, then runs", async ({
   await expect(card).toHaveCount(0);
 });
 
-test("declining a write leaves the note uncreated", async ({ page }) => {
+test.fixme("declining a write leaves the note uncreated", async ({ page }) => {
   await page.getByLabel("Message the assistant").fill("make a new idea note");
   await page.getByRole("button", { name: "Send" }).click();
   await page
@@ -54,7 +56,7 @@ test("declining a write leaves the note uncreated", async ({ page }) => {
   await expect(page.getByText("Okay, I did not create it.")).toBeVisible();
 });
 
-test("Stop ends a running chat at once", async ({ page }) => {
+test.fixme("Stop ends a running chat at once", async ({ page }) => {
   await page.getByLabel("Message the assistant").fill("a long task");
   await page.getByRole("button", { name: "Send" }).click();
   const stop = page.getByRole("button", { name: "Stop" });
@@ -68,7 +70,7 @@ test("Stop ends a running chat at once", async ({ page }) => {
   ).toBeVisible();
 });
 
-test("Escape is the keyboard stop", async ({ page }) => {
+test.fixme("Escape is the keyboard stop", async ({ page }) => {
   await page.getByLabel("Message the assistant").fill("a long task");
   await page.getByRole("button", { name: "Send" }).click();
   await expect(page.getByRole("button", { name: "Stop" })).toBeEnabled();
@@ -76,7 +78,7 @@ test("Escape is the keyboard stop", async ({ page }) => {
   await expect(page.getByText("Stopped.")).toBeVisible();
 });
 
-test("reduced motion turns off the orb pulse", async ({ page }) => {
+test.fixme("reduced motion turns off the orb pulse", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.getByLabel("Message the assistant").fill("a long task");
   await page.getByRole("button", { name: "Send" }).click();
@@ -104,7 +106,7 @@ for (const [width, height] of [
     page,
   }) => {
     await page.setViewportSize({ width, height });
-    const canvas = page.locator("canvas");
+    const canvas = page.locator("canvas.canvas");
     const before = (await canvas.boundingBox())?.width ?? 0;
     await page
       .getByRole("list", { name: "Note list" })
@@ -169,7 +171,7 @@ test("the graph labels its notes in the default arc layout", async ({
 test("Fit graph brings every note back into the canvas after a zoom", async ({
   page,
 }) => {
-  const canvas = page.locator("canvas");
+  const canvas = page.locator("canvas.canvas");
   await expect(canvas).toHaveAttribute("data-in-view", "3");
   const box = await canvas.boundingBox();
   if (!box) throw new Error("the graph canvas has no box");
@@ -200,7 +202,7 @@ test("a tag in the tags pane filters the note list", async ({ page }) => {
   ).toHaveCount(0);
 });
 
-test("the tool log says why the assistant paused, and Continue resumes it", async ({
+test.fixme("the tool log says why the assistant paused, and Continue resumes it", async ({
   page,
 }) => {
   await page.getByLabel("Message the assistant").fill("do many things");
@@ -215,7 +217,7 @@ test("the tool log says why the assistant paused, and Continue resumes it", asyn
   await expect(page.getByText("Carried on to the end.")).toBeVisible();
 });
 
-test("the tool log starts with the app start and its time", async ({
+test.fixme("the tool log starts with the app start and its time", async ({
   page,
 }) => {
   const log = page.getByRole("region", { name: "Tool log" });

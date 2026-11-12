@@ -10,9 +10,9 @@ test("the bottom agent bar shows HIPPO with its provider", async ({ page }) => {
   const bar = page.getByLabel("Agents");
   await expect(bar.getByText("HIPPO")).toBeVisible();
   // The provider is shown in the HIPPO details (INFO), not on the bar.
-  await bar.getByRole("button", { name: "Info" }).first().click();
-  const info = page.getByRole("dialog", { name: "HIPPO details" });
-  await expect(info.getByText(/Claude Code|Ollama/)).toBeVisible();
+  await bar.getByRole("button", { name: "Info", exact: true }).first().click();
+  const info = page.getByRole("dialog", { name: "Hippoherman details" });
+  await expect(info.getByText(/Claude|Ollama/)).toBeVisible();
   await page.keyboard.press("Escape");
 });
 
@@ -20,9 +20,9 @@ test("the bottom agent bar shows a token placeholder until usage is counted", as
   page,
 }) => {
   // The bar shows no token count until usage is reported; the HIPPO details still say so.
-  const info = page.getByLabel("Agents").getByRole("button", { name: "Info" }).first();
+  const info = page.getByLabel("Agents").getByRole("button", { name: "Info", exact: true }).first();
   await info.click();
-  await expect(page.getByRole("dialog", { name: "HIPPO details" }).getByText("—").first()).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "Hippoherman details" }).getByText("—").first()).toBeVisible();
   await page.keyboard.press("Escape");
 });
 
@@ -57,8 +57,8 @@ test("INFO opens the card's details and Escape closes them", async ({
   page,
 }) => {
   const bar = page.getByLabel("Agents");
-  await bar.getByRole("button", { name: "Info" }).first().click();
-  const info = page.getByRole("dialog", { name: "HIPPO details" });
+  await bar.getByRole("button", { name: "Info", exact: true }).first().click();
+  const info = page.getByRole("dialog", { name: "Hippoherman details" });
   await expect(info.getByText("MODEL")).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(info).toHaveCount(0);
@@ -72,13 +72,9 @@ test("an added agent is still listed after a reload", async ({ page }) => {
   const add = page.getByRole("dialog", { name: "Add agent" });
   await add.getByRole("textbox", { name: "Name", exact: true }).fill("Ada");
   await add.getByRole("button", { name: "Next" }).click();
-  await add
-    .getByRole("textbox", { name: "Folder", exact: true })
-    .fill("/home/me/notes");
+  await add.getByLabel("Folder in workspaces").selectOption("IT");
   await add.getByRole("button", { name: "Next" }).click();
-  await add
-    .getByLabel("Model", { exact: true })
-    .fill("claude-sonnet-5-5");
+  await add.getByRole("button", { name: "claude-sonnet-5-5" }).click();
   await add.getByRole("button", { name: "Next" }).click();
   await add
     .getByRole("textbox", { name: "Goal", exact: true })
@@ -97,13 +93,9 @@ test("a card menu archives an added agent and the Control panel restores it", as
   const add = page.getByRole("dialog", { name: "Add agent" });
   await add.getByRole("textbox", { name: "Name", exact: true }).fill("Grace");
   await add.getByRole("button", { name: "Next" }).click();
-  await add
-    .getByRole("textbox", { name: "Folder", exact: true })
-    .fill("/home/me/notes");
+  await add.getByLabel("Folder in workspaces").selectOption("IT");
   await add.getByRole("button", { name: "Next" }).click();
-  await add
-    .getByLabel("Model", { exact: true })
-    .fill("claude-sonnet-5-5");
+  await add.getByRole("button", { name: "claude-sonnet-5-5" }).click();
   await add.getByRole("button", { name: "Next" }).click();
   await add
     .getByRole("textbox", { name: "Goal", exact: true })
@@ -113,9 +105,8 @@ test("a card menu archives an added agent and the Control panel restores it", as
   await page.getByRole("menuitem", { name: "Archive" }).click();
   await expect(bar.getByText("Grace")).toHaveCount(0);
   await page.getByRole("button", { name: "Control panel" }).click();
-  await page
-    .getByRole("dialog", { name: "Control panel" })
-    .getByRole("button", { name: "Restore" })
-    .click();
+  const control = page.getByRole("dialog", { name: "Control panel" });
+  await control.getByRole("tab", { name: "Team and sharing" }).click();
+  await control.getByRole("button", { name: "Restore" }).click();
   await expect(bar.getByText("Grace")).toBeVisible();
 });

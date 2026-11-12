@@ -24,7 +24,7 @@ test("the brain graph draws on a 2D canvas when WebGL 2 is missing", async ({
   await page.goto("/");
   const canvas = page
     .getByRole("main", { name: "Brain graph" })
-    .locator("canvas");
+    .locator("canvas.canvas");
   await expect(canvas).toHaveAttribute("data-in-view", "3");
   await expect(page.getByText("The graph cannot be drawn")).toHaveCount(0);
   // Nodes and edges are painted: more than the background colour is on the canvas.

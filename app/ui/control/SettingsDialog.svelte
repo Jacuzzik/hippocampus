@@ -12,7 +12,7 @@
   import StatusCard from "../controls/StatusCard.svelte";
   import Tabs from "../controls/Tabs.svelte";
   import { crashLog, type CrashRow } from "../crashLog.svelte.ts";
-  import { FONT_MAX, FONT_MIN, prefs, type Motion } from "../prefs.svelte.ts";
+  import { FONT_MAX, FONT_MIN, prefs, type Intro, type Motion } from "../prefs.svelte.ts";
   import { SETTINGS_PAGES, type SettingsPage } from "./model";
 
   // Settings as pages: a list of categories on the left, one short page on the right.
@@ -43,6 +43,30 @@
     const first = items[0];
     if (query.trim() && first && !items.some((i) => i.id === page)) page = first.id as SettingsPage;
   });
+
+  // Changing the vault: the backend opens the folder first, so a bad path is never saved.
+  let vaultDraft = $state("");
+  let vaultBusy = $state(false);
+  let vaultNote = $state<string | null>(null);
+  let vaultError = $state<string | null>(null);
+  async function changeVault(event: SubmitEvent): Promise<void> {
+    event.preventDefault();
+    vaultBusy = true;
+    vaultNote = vaultError = null;
+    try {
+      const opened = await invoke<{ vault: string; notes?: number }>("sidecar_call", {
+        method: "set_vault",
+        params: { vault: vaultDraft.trim() },
+      });
+      if (saved) saved.general.vault = opened.vault;
+      vaultNote = `Opened ${opened.vault}. The graph and note list update in a few seconds.`;
+      vaultDraft = "";
+    } catch (cause) {
+      vaultError = String(cause);
+    } finally {
+      vaultBusy = false;
+    }
+  }
 
   // The error log on disk, newest first. An older backend without it falls back to this window's rows.
   let diskRows = $state<CrashRow[] | null>(null);
@@ -103,9 +127,15 @@
           <section class="control-section">
             <h3>General</h3>
             <div class="setting">
-              <div><b>Vault folder</b><p>Where your notes live. Change it in Setup and account.</p></div>
+              <div><b>Vault folder</b><p>Where your notes live. To change it, type a folder that exists and open it.</p></div>
               <code>{saved ? (saved.general.vault ?? "Not chosen") : "…"}</code>
             </div>
+            <form class="row" onsubmit={changeVault}>
+              <input type="text" aria-label="New vault folder" placeholder="/home/you/notes" bind:value={vaultDraft} />
+              <button type="submit" disabled={!vaultDraft.trim() || vaultBusy}>{vaultBusy ? "Opening…" : "Open folder"}</button>
+            </form>
+            {#if vaultNote}<p class="muted" role="status">{vaultNote}</p>{/if}
+            {#if vaultError}<p class="error" role="alert">{vaultError}</p>{/if}
             <div class="setting">
               <div><b>Open on the last tab</b><p>The Control Room opens on the tab you used last.</p></div>
               <label class="switch"><input type="checkbox" bind:checked={prefs.rememberTab} /><span>{prefs.rememberTab ? "On" : "Off"}</span></label>
@@ -129,6 +159,19 @@
                   { value: "off", label: "Off" },
                 ]}
                 onchange={(next) => (prefs.motion = next as Motion)}
+              />
+            </div>
+            <div class="setting">
+              <div><b>Start-up logo</b><p>How long the logo stays once the app has loaded. Applies from the next start.</p></div>
+              <Dropdown
+                label="Start-up logo"
+                value={prefs.intro}
+                options={[
+                  { value: "long", label: "Long (10 s)" },
+                  { value: "short", label: "Short (1 s)" },
+                  { value: "off", label: "Off" },
+                ]}
+                onchange={(next) => (prefs.intro = next as Intro)}
               />
             </div>
             <div class="setting">

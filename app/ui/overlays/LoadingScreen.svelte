@@ -4,12 +4,16 @@
   // then the blur and the logo fade out together, revealing the dashboard.
   // A 2-minute safety cap lifts it even if something hangs.
   import logo from "../assets/brand/hippocampus-mark-mask.png";
+  import { prefs } from "../prefs.svelte.ts";
 
   let { ready }: { ready: boolean } = $props();
 
   // Time the logo stays after loading finishes, then how long the blur and the logo take to fade.
-  const HOLD_MS = 10000;
-  const FADE_MS = 2500;
+  // Settings > Appearance > Start-up logo picks the long or the short pair, or "off" for neither.
+  const TIMES = { long: [10000, 2500], short: [1000, 600] } as const;
+  // Read once at start: changing the setting applies from the next launch.
+  const intro = prefs.intro;
+  const [HOLD_MS, FADE_MS] = TIMES[intro === "off" ? "short" : intro];
 
   let phase = $state<"loading" | "fading" | "gone">("loading");
   let timedOut = $state(false);
@@ -22,8 +26,8 @@
 
   $effect(() => {
     if (phase !== "loading" || !(ready || timedOut)) return;
-    // Reduced motion: skip the fade and lift the screen at once.
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    // Reduced motion, or the logo turned off: skip the hold and the fade and lift the screen at once.
+    if (intro === "off" || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       phase = "gone";
       return;
     }

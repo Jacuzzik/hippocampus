@@ -9,10 +9,18 @@ type Page = {
 // open, so the setup opens, until "open" is called. `signedIn` starts with a saved Claude key.
 export async function mockSidecar(
   page: Page,
-  options: { orphan?: boolean; noVault?: boolean; signedIn?: boolean } = {},
+  options: { orphan?: boolean; noVault?: boolean; signedIn?: boolean; intro?: boolean } = {},
 ): Promise<void> {
   await page.addInitScript(
-    (opts: { orphan: boolean; noVault: boolean; signedIn: boolean }) => {
+    (opts: { orphan: boolean; noVault: boolean; signedIn: boolean; intro: boolean }) => {
+      // Tests skip the start-up logo (Settings > Appearance), which otherwise covers the app for 12 seconds.
+      try {
+        const saved = JSON.parse(localStorage.getItem("hippocampus.prefs") ?? "{}");
+        if (!opts.intro && saved.intro === undefined)
+          localStorage.setItem("hippocampus.prefs", JSON.stringify({ ...saved, intro: "off" }));
+      } catch {
+        /* storage blocked: the logo shows, the test is only slower */
+      }
       const callbacks = new Map<number, (payload: unknown) => void>();
       const listeners = new Map<string, number[]>();
       let nextId = 1;
@@ -265,6 +273,7 @@ export async function mockSidecar(
             return {
               claude: claudeKey !== null,
               model: claudeKey !== null ? "claude-sonnet-5-5" : "qwen2.5:1.5b",
+              provider: claudeKey !== null ? "claude" : "ollama",
             };
           case "sign_in":
             if (!String(args.params?.key ?? "").trim())
@@ -401,6 +410,13 @@ export async function mockSidecar(
             return { clis: [] };
           case "local_status":
             return { servers: [] };
+          case "set_vault":
+            if (!String(args.params?.vault).startsWith("/"))
+              throw new Error("vault folder not found");
+            vaultOpen = true;
+            return { vault: args.params?.vault, notes: 3 };
+          case "remove_data":
+            return { removed: true };
           case "record_crash":
             crashRows.unshift({
               at: String(args.params?.at),
@@ -516,6 +532,7 @@ export async function mockSidecar(
       orphan: options.orphan === true,
       noVault: options.noVault === true,
       signedIn: options.signedIn === true,
+      intro: options.intro === true,
     },
   );
 }

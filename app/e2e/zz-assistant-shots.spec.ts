@@ -4,7 +4,8 @@ import { mockSidecar } from "./tauri-mock";
 const SHOTS = "/tmp/claude-1000/-home-thalha-Hippocampus-worktrees-worker-assistant-files-voice/a3481773-169d-4205-b563-da95244b79d5/scratchpad/shots";
 const INPUT = "/tmp/claude-1000/-home-thalha-Hippocampus-worktrees-worker-assistant-files-voice/a3481773-169d-4205-b563-da95244b79d5/scratchpad/input";
 
-test("assistant files and voice shots", async ({ page }) => {
+// A one-off screenshot script from an earlier job: it needs its own server on port 1431 and that job's folders.
+test.fixme("assistant files and voice shots", async ({ page }) => {
   await mockSidecar(page);
   await page.goto("http://127.0.0.1:1431/");
   const panel = page.locator("aside.assistant");
