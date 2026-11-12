@@ -26,6 +26,7 @@ test("settings has a page per category and each one opens", async ({
     Memory: "Memory size per agent",
     "Privacy and data": "Error log",
     Advanced: "Backend (Python sidecar)",
+    Doctor: "Doctor",
     About: "Hippocampus",
   };
   await expect(dialog.getByRole("tab")).toHaveText(Object.keys(pages));
@@ -159,4 +160,20 @@ test("the shell for every agent is a switch that shows the rules in force", asyn
   await expect(rules).toContainText("Shell: not available to this agent.");
   await dialog.getByRole("checkbox", { name: "Shell for every agent" }).check();
   await expect(rules).toContainText("Your program runs in a sandbox.");
+});
+
+test("the Doctor page lists each check with what to do about a gap", async ({
+  page,
+}) => {
+  await mockSidecar(page);
+  await page.goto("/");
+  const dialog = await openSettings(page);
+  await dialog.getByRole("tab", { name: "Doctor" }).click();
+  await expect(
+    dialog.getByText("1 fine, 1 to look at, 1 to fix"),
+  ).toBeVisible();
+  const checks = dialog.getByRole("list", { name: "Checks" });
+  await expect(checks.getByRole("listitem")).toHaveCount(3);
+  await expect(checks.getByRole("listitem").nth(1)).toContainText("Fix");
+  await expect(checks).toContainText("Run `codex login` in a terminal.");
 });

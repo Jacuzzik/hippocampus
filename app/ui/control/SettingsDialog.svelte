@@ -142,6 +142,30 @@
     }
   });
 
+  // The Doctor page: one list of checks from the backend, read when the page opens.
+  type Check = {
+    name: string;
+    state: "ok" | "warn" | "bad";
+    found: string;
+    fix: string;
+  };
+  let doctor = $state<{
+    checks: Check[];
+    summary: { ok: number; warn: number; bad: number };
+  } | null>(null);
+  let doctorError = $state<string | null>(null);
+  async function readDoctor(): Promise<void> {
+    doctorError = null;
+    try {
+      doctor = await invoke("sidecar_call", { method: "doctor" });
+    } catch (cause) {
+      doctorError = String(cause);
+    }
+  }
+  $effect(() => {
+    if (page === "Doctor" && doctor === null && !doctorError) void readDoctor();
+  });
+
   // The backend log file, newest lines last. Read when the Advanced page opens and on Refresh.
   let logLines = $state<string[] | null>(null);
   let logPath = $state("");
@@ -548,6 +572,49 @@
               reason="No speech-to-text source is set up in this build."
             />
           </div>
+        {:else if page === "Doctor"}
+          <section class="control-section">
+            <h3>Doctor</h3>
+            <p class="hint">
+              Everything the app needs, checked in one go. Each gap says what to
+              do next. Nothing is changed by looking.
+            </p>
+            <div class="setting">
+              <div>
+                <b
+                  >{doctor
+                    ? `${doctor.summary.ok} fine, ${doctor.summary.warn} to look at, ${doctor.summary.bad} to fix`
+                    : "Checking…"}</b
+                >
+              </div>
+              <button type="button" onclick={() => void readDoctor()}
+                >Check again</button
+              >
+            </div>
+            {#if doctorError}<p class="error" role="alert">
+                {doctorError}
+              </p>{/if}
+            {#if doctor}
+              <ul class="checks" aria-label="Checks">
+                {#each doctor.checks as check (check.name)}
+                  <li>
+                    <span class="state {check.state}"
+                      >{check.state === "ok"
+                        ? "Fine"
+                        : check.state === "warn"
+                          ? "Look"
+                          : "Fix"}</span
+                    >
+                    <div>
+                      <b>{check.name}</b>
+                      <p>{check.found}</p>
+                      {#if check.fix}<p class="fix">{check.fix}</p>{/if}
+                    </div>
+                  </li>
+                {/each}
+              </ul>
+            {/if}
+          </section>
         {:else}
           <section class="control-section">
             <h3>About</h3>
@@ -709,6 +776,51 @@
     .rail {
       border-right: 0;
     }
+  }
+
+  .checks {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .checks li {
+    display: flex;
+    gap: var(--space-3);
+    align-items: baseline;
+    padding: var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+  }
+
+  .checks p {
+    margin: 0;
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+  }
+
+  .checks .fix {
+    color: var(--color-text);
+  }
+
+  .checks .state {
+    flex: none;
+    min-width: 40px;
+    font-size: var(--font-size-tag);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-success);
+  }
+
+  .checks .state.warn {
+    color: var(--color-think);
+  }
+
+  .checks .state.bad {
+    color: var(--color-danger);
   }
 
   .rules {

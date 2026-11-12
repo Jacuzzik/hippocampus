@@ -147,6 +147,11 @@ export const SETTINGS_PAGES = [
     words:
       "backend sidecar logs log file feature switches flags dictation meeting prerequisites",
   },
+  {
+    id: "Doctor",
+    words:
+      "health check problems installed signed in vault disk sandbox prerequisites fix",
+  },
   { id: "About", words: "version" },
 ] as const;
 export type SettingsPage = (typeof SETTINGS_PAGES)[number]["id"];

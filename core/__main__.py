@@ -57,6 +57,7 @@ from core import (
     app_log,
     briefing,
     crash_log,
+    doctor,
     inbox,
     note_actions,
     sandbox,
@@ -826,6 +827,31 @@ class Session:
             )
         return {"clis": rows}
 
+    def doctor(self) -> dict[str, Any]:
+        """Everything the app needs, checked in one go, with the next step for each gap."""
+        vault = self.settings.vault
+        notes = self.indexer.store.counts().get("notes") if self.indexer is not None else None
+        rows = [
+            doctor.row("Backend", "ok", f"Running, version {__version__}."),
+            doctor.check_vault(Path(vault) if vault else None, notes),
+            doctor.check_disk(self.storage),
+            *doctor.check_clis(self.provider_status()["clis"]),
+            doctor.check_sandbox(sandbox.available(), self.settings.agent_shell),
+            doctor.check_log(app_log.path(self.storage)),
+        ]
+        errors = len(crash_log.recent(self.storage, 50))
+        rows.append(
+            doctor.row("Recorded errors", "ok", "None.")
+            if errors == 0
+            else doctor.row(
+                "Recorded errors",
+                "warn",
+                f"{errors} in the error log.",
+                "Settings > Privacy and data lists them; clear the list once you have read it.",
+            )
+        )
+        return {"checks": rows, "summary": doctor.summary(rows)}
+
     def local_status(self) -> dict[str, Any]:
         # Is each local model server answering on this computer? Only a quick look at the loopback address.
         servers = [
@@ -1460,6 +1486,7 @@ class Session:
             "agents": self.agents_state,
             "provider_status": self.provider_status,
             "local_status": self.local_status,
+            "doctor": self.doctor,
             "crashes": self.crashes,
             "clear_crashes": self.clear_crashes,
         }

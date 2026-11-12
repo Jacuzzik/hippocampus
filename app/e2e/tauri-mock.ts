@@ -667,6 +667,30 @@ export async function mockSidecar(
           case "clear_key":
             if (String(args.params?.provider) === "claude") claudeKey = null;
             return { keys: keyRows() };
+          case "doctor":
+            return {
+              checks: [
+                {
+                  name: "Backend",
+                  state: "ok",
+                  found: "Running, version 0.1.0.",
+                  fix: "",
+                },
+                {
+                  name: "Codex program",
+                  state: "bad",
+                  found: "Installed, but not signed in.",
+                  fix: "Run `codex login` in a terminal.",
+                },
+                {
+                  name: "Agent sandbox",
+                  state: "warn",
+                  found: "bubblewrap cannot start here.",
+                  fix: "Install bubblewrap.",
+                },
+              ],
+              summary: { ok: 1, warn: 1, bad: 1 },
+            };
           case "terminal_traces":
             return {
               traces: [
