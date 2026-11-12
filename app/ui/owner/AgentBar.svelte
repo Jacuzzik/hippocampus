@@ -1,5 +1,6 @@
 <!-- The bottom agent row: the main agent first (fixed), then added agents that can be moved. -->
 <script lang="ts">
+  import { backend } from "../backend.svelte.ts";
   import { every } from "../poll.ts";
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
@@ -112,10 +113,11 @@
   async function refreshLive(): Promise<void> {
     for (const id of ["hippoherman", ...added.map((a) => a.id)]) {
       try {
-        const info = await invoke<{ command: string | null; status: string | null; running?: string[]; last?: string | null; model?: string | null }>("sidecar_call", {
+        const info = await invoke<{ command: string | null; status: string | null; running?: string[]; last?: string | null; model?: string | null; boot?: string }>("sidecar_call", {
           method: "terminal_command",
           params: { agent: id },
         });
+        backend.seen(info.boot);
         const percent = info.command
           ? (
               await invoke<{ percent: number }>("sidecar_call", {

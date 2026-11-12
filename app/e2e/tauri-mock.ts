@@ -41,6 +41,8 @@ export async function mockSidecar(
         graph.nodes.push({ id: "delta.md", title: "Delta", tags: [] });
       let vaultOpen = !opts.noVault;
       // Every terminal start and stop, in order, for tests to read.
+      // Tests set window.__boot to act out a backend restart.
+      const bootId = () => (window as unknown as { __boot?: string }).__boot ?? "boot-1";
       let shellOn = false;
       const shellState = () => ({
         on: shellOn,
@@ -527,6 +529,9 @@ export async function mockSidecar(
           case "clear_key":
             if (String(args.params?.provider) === "claude") claudeKey = null;
             return { keys: keyRows() };
+          case "terminal_command":
+            // No program is running in tests; the id says which run of the backend answered.
+            return { command: null, status: null, boot: bootId() };
           default:
             throw new Error(`mock: unknown method ${args.method}`);
         }

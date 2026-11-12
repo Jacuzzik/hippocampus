@@ -63,3 +63,15 @@ test("TALK on the main agent's card puts the cursor in its message box", async (
   await expect(page.getByRole("tab", { name: "terminal" })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("textbox", { name: /^Message / }).first()).toBeFocused();
 });
+
+test("after the backend restarts, the agent's program is started again", async ({ page }) => {
+  await expect(page.getByLabel("Live terminal").locator(".xterm")).toHaveCount(1);
+  const starts = async (): Promise<number> => (await calls(page)).filter((call) => call.method === "terminal_start").length;
+  await expect.poll(starts).toBe(1);
+  // The cards ask for each agent's state every few seconds; a new id in the answer means a restart.
+  await page.waitForTimeout(3500);
+  expect(await starts()).toBe(1); // the same backend: nothing is started twice
+  await page.evaluate(() => ((window as unknown as { __boot: string }).__boot = "boot-2"));
+  await expect.poll(starts, { timeout: 10000 }).toBe(2);
+  await expect(page.getByLabel("Live terminal").locator(".xterm")).toHaveCount(1);
+});

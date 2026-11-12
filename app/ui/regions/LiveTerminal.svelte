@@ -10,6 +10,7 @@
   import { listen } from "@tauri-apps/api/event";
   import { onDestroy, onMount } from "svelte";
   import { bootTask } from "../owner/bootTasks.svelte.ts";
+  import { backend } from "../backend.svelte.ts";
   import { Terminal } from "@xterm/xterm";
   import { FitAddon } from "@xterm/addon-fit";
   import "@xterm/xterm/css/xterm.css";
@@ -196,6 +197,16 @@
     if (!term) return;
     term.options.fontSize = size;
     sendSize();
+  });
+
+  // The agent's program stops when the backend does. When the backend comes back, start it again
+  // (it resumes its last session) instead of leaving a dead screen that looks alive.
+  let restartsSeen = backend.restarts;
+  $effect(() => {
+    const count = backend.restarts;
+    if (count === restartsSeen) return;
+    restartsSeen = count;
+    void restart().then(() => term?.write("\r\n[the backend restarted; this agent was started again]\r\n"));
   });
 
   onMount(() => {
