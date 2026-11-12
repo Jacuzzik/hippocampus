@@ -82,6 +82,11 @@
   } | null>(null);
   const NO_DATA = "—";
   // What each added agent's terminal is running and its context use; read every few seconds.
+  // TALK opens that agent's panel and puts the cursor in its message box. (Voice is not built.)
+  function talkTo(id: string): void {
+    window.dispatchEvent(new CustomEvent("agent-talk", { detail: id }));
+  }
+
   let live = $state<Record<string, { command: string | null; status: string | null; percent: number | null; running?: string[]; last?: string | null; model?: string | null }>>({});
   // CMD shows what is running now, else the last command the agent ran.
   const cmdOf = (id: string): string => {
@@ -300,7 +305,7 @@
       </span>
     </div>
     <div class="side">
-      <button type="button" class="talk" disabled title="Planned: talking to an agent by voice is not built yet"
+      <button type="button" class="talk" title="Write to Hippoherman" onclick={() => talkTo("hippoherman")}
         >TALK</button
       >
       <button
@@ -357,7 +362,7 @@
         </span>
       </button>
       <div class="side">
-        <button type="button" class="talk" disabled title="Planned: talking to an agent by voice is not built yet"
+        <button type="button" class="talk" title={`Write to ${agent.name}`} onclick={() => talkTo(agent.id)}
           >TALK</button
         >
         <button
@@ -586,7 +591,7 @@
   .chip .talk,
   .chip .info {
     width: 100%;
-    height: 26px;
+    height: 32px;
     padding: 0;
     border-radius: var(--radius-sm);
     font-family: var(--font-ui);

@@ -1,6 +1,8 @@
 <!-- Every agent's inbox, read only: pending messages first, then handled ones, as in the office app's Inbox page. -->
 <script lang="ts">
   import { onMount } from "svelte";
+  import { every } from "../poll.ts";
+  import { flagOn } from "../flags.svelte.ts";
   import { invoke } from "@tauri-apps/api/core";
 
   type Message = {
@@ -16,13 +18,19 @@
   let messages = $state<Message[]>([]);
   let failed = $state(false);
 
-  onMount(async () => {
+  // Read again every few seconds while this tab is open, so it does not go stale.
+  async function load(): Promise<void> {
     try {
       messages = (await invoke<{ messages: Message[] }>("sidecar_call", { method: "inbox" })).messages;
+      failed = false;
     } catch (cause) {
       failed = true;
       console.error("Could not read the inboxes", cause);
     }
+  }
+  onMount(() => {
+    void load();
+    return flagOn("panelRefresh") ? every(load, 5000) : undefined;
   });
 </script>
 

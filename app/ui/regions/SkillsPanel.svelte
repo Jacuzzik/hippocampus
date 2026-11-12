@@ -1,6 +1,8 @@
 <!-- The installed skills, read only: name, what it does and where it lives. -->
 <script lang="ts">
   import { onMount } from "svelte";
+  import { every } from "../poll.ts";
+  import { flagOn } from "../flags.svelte.ts";
   import { invoke } from "@tauri-apps/api/core";
 
   type Skill = { name: string; description: string; path: string };
@@ -8,13 +10,19 @@
   let skills = $state<Skill[]>([]);
   let failed = $state(false);
 
-  onMount(async () => {
+  // Read again every few seconds while this tab is open, so it does not go stale.
+  async function load(): Promise<void> {
     try {
       skills = (await invoke<{ skills: Skill[] }>("sidecar_call", { method: "skills" })).skills;
+      failed = false;
     } catch (cause) {
       failed = true;
       console.error("Could not read the skills", cause);
     }
+  }
+  onMount(() => {
+    void load();
+    return flagOn("panelRefresh") ? every(load, 5000) : undefined;
   });
 </script>
 

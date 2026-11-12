@@ -443,6 +443,8 @@ export async function mockSidecar(
           case "terminal_stop":
             terminalCalls.push({ method: args.method, ...args.params });
             return { ok: true };
+          case "logs":
+            return { path: "/home/me/.hippocampus/logs/backend.log", lines: ["2026-11-12 10:00:00 INFO hippocampus.core: Synced vault", "2026-11-12 10:00:05 WARNING hippocampus.core: slow call"] };
           case "terminal_input":
           case "terminal_resize":
             return { ok: true };

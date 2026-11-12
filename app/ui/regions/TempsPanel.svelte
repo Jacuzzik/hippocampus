@@ -1,6 +1,8 @@
 <!-- Short-lived helper jobs (temps), read only: each prompt, its status and its result. At most four run at once. -->
 <script lang="ts">
   import { onMount } from "svelte";
+  import { every } from "../poll.ts";
+  import { flagOn } from "../flags.svelte.ts";
   import { invoke } from "@tauri-apps/api/core";
 
   type Temp = { id: number; prompt: string; status: string; result: string };
@@ -8,13 +10,19 @@
   let temps = $state<Temp[]>([]);
   let failed = $state(false);
 
-  onMount(async () => {
+  // Read again every few seconds while this tab is open, so it does not go stale.
+  async function load(): Promise<void> {
     try {
       temps = (await invoke<{ helpers: Temp[] }>("sidecar_call", { method: "helpers" })).helpers;
+      failed = false;
     } catch (cause) {
       failed = true;
       console.error("Could not read the temps", cause);
     }
+  }
+  onMount(() => {
+    void load();
+    return flagOn("panelRefresh") ? every(load, 5000) : undefined;
   });
 </script>
 

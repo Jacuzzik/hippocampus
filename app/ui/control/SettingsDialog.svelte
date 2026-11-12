@@ -14,6 +14,7 @@
   import { crashLog, type CrashRow } from "../crashLog.svelte.ts";
   import { FONT_MAX, FONT_MIN, prefs, type Intro, type Motion } from "../prefs.svelte.ts";
   import { SETTINGS_PAGES, type SettingsPage } from "./model";
+  import { FLAGS, flagOn, setFlag } from "../flags.svelte.ts";
 
   // Settings as pages: a list of categories on the left, one short page on the right.
   // Each setting has one home. Day-to-day controls (dispatch, jobs, questions) stay in the Control panel.
@@ -33,7 +34,7 @@
   let query = $state("");
 
   const items = $derived(
-    SETTINGS_PAGES.filter((p) => !query.trim() || `${p.id} ${p.words}`.toLowerCase().includes(query.trim().toLowerCase())).map((p) => ({
+    SETTINGS_PAGES.filter((p) => p.id !== "Connectors" || flagOn("connectors")).filter((p) => !query.trim() || `${p.id} ${p.words}`.toLowerCase().includes(query.trim().toLowerCase())).map((p) => ({
       id: p.id,
       label: p.id,
     })),
@@ -97,6 +98,24 @@
     } catch (cause) {
       sidecar = `Not running: ${String(cause)}`;
     }
+  });
+
+  // The backend log file, newest lines last. Read when the Advanced page opens and on Refresh.
+  let logLines = $state<string[] | null>(null);
+  let logPath = $state("");
+  let logError = $state<string | null>(null);
+  async function readLogs(): Promise<void> {
+    logError = null;
+    try {
+      const found = await invoke<{ path: string; lines: string[] }>("sidecar_call", { method: "logs", params: { limit: 200 } });
+      logLines = found.lines;
+      logPath = found.path;
+    } catch (cause) {
+      logError = String(cause);
+    }
+  }
+  $effect(() => {
+    if (page === "Advanced" && logLines === null && !logError) void readLogs();
   });
 
   function onKey(e: KeyboardEvent): void {
@@ -257,9 +276,36 @@
               <code>{sidecar}</code>
             </div>
           </section>
+          <section class="control-section">
+            <h3>Feature switches</h3>
+            <p class="hint">Turn a part of the app off without a new build. A change applies the next time that part opens.</p>
+            {#each FLAGS as flag (flag.id)}
+              <div class="setting">
+                <div><b>{flag.name}</b><p>{flag.what}</p></div>
+                <label class="switch"
+                  ><input type="checkbox" aria-label={flag.name} checked={flagOn(flag.id)} onchange={(e) => setFlag(flag.id, e.currentTarget.checked)} /><span
+                    >{flagOn(flag.id) ? "On" : "Off"}</span
+                  ></label
+                >
+              </div>
+            {/each}
+          </section>
+          <section class="control-section">
+            <h3>Backend log</h3>
+            <div class="setting">
+              <div><b>Newest 200 lines</b><p>{logPath || "The backend writes one log file and keeps three older copies. Keys are masked."}</p></div>
+              <button type="button" onclick={() => void readLogs()}>Refresh</button>
+            </div>
+            {#if logError}
+              <p class="error" role="alert">{logError}</p>
+            {:else if logLines && logLines.length === 0}
+              <p class="muted">The log is empty.</p>
+            {:else if logLines}
+              <pre class="backend-log" aria-label="Backend log">{logLines.join("\n")}</pre>
+            {/if}
+          </section>
           <div class="cards">
             <StatusCard name="Dictation and meeting capture" what="Speak into any field and capture meeting notes." status="Planned" reason="No speech-to-text source is set up in this build." />
-            <StatusCard name="Logs viewer" what="Read backend logs here instead of a terminal." status="Planned" reason="The backend does not write a rotating log file yet." />
           </div>
         {:else}
           <section class="control-section">
@@ -417,5 +463,18 @@
     .rail {
       border-right: 0;
     }
+  }
+
+  .backend-log {
+    max-height: 260px;
+    margin: 0;
+    padding: var(--space-2);
+    overflow: auto;
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
+    white-space: pre;
+    background: var(--color-bg-0);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
   }
 </style>

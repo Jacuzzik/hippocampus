@@ -131,7 +131,7 @@ export const SETTINGS_PAGES = [
   { id: "Connectors", words: "integrations slack webhooks github notion calendar gmail drive mcp plugins ollama" },
   { id: "Memory", words: "memory search notes size" },
   { id: "Privacy and data", words: "error log telemetry remove data sign out" },
-  { id: "Advanced", words: "backend sidecar logs dictation meeting prerequisites" },
+  { id: "Advanced", words: "backend sidecar logs log file feature switches flags dictation meeting prerequisites" },
   { id: "About", words: "version" },
 ] as const;
 export type SettingsPage = (typeof SETTINGS_PAGES)[number]["id"];

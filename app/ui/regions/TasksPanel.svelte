@@ -1,6 +1,8 @@
 <!-- The office task board, read only: tasks grouped by status, as in the office app's Tasks page. -->
 <script lang="ts">
   import { onMount } from "svelte";
+  import { every } from "../poll.ts";
+  import { flagOn } from "../flags.svelte.ts";
   import { invoke } from "@tauri-apps/api/core";
 
   type Task = {
@@ -16,13 +18,19 @@
   let tasks = $state<Task[]>([]);
   let failed = $state(false);
 
-  onMount(async () => {
+  // Read again every few seconds while this tab is open, so it does not go stale.
+  async function load(): Promise<void> {
     try {
       tasks = (await invoke<{ tasks: Task[] }>("sidecar_call", { method: "tasks" })).tasks;
+      failed = false;
     } catch (cause) {
       failed = true;
       console.error("Could not read the task board", cause);
     }
+  }
+  onMount(() => {
+    void load();
+    return flagOn("panelRefresh") ? every(load, 5000) : undefined;
   });
 
   const groups = $derived(

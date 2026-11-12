@@ -104,3 +104,18 @@ test("the start-up logo covers the app by default and can be turned off", async 
   await expect(dialog.getByRole("tabpanel")).toContainText("Start-up logo");
   await expect(dialog.getByRole("tabpanel")).toContainText("Off");
 });
+
+test("Advanced shows the backend log and a switch hides the Connectors page", async ({ page }) => {
+  await mockSidecar(page);
+  await page.goto("/");
+  const dialog = await openSettings(page);
+  await dialog.getByRole("tab", { name: "Advanced" }).click();
+  await expect(dialog.getByLabel("Backend log")).toContainText("Synced vault");
+  await expect(dialog.getByRole("tab", { name: "Connectors" })).toBeVisible();
+  await dialog.getByRole("checkbox", { name: "Connectors page" }).uncheck();
+  await expect(dialog.getByRole("tab", { name: "Connectors" })).toHaveCount(0);
+  // The choice is kept for the next start.
+  await page.reload();
+  const again = await openSettings(page);
+  await expect(again.getByRole("tab", { name: "Connectors" })).toHaveCount(0);
+});

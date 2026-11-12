@@ -1,6 +1,8 @@
 <!-- Each agent's memory notes, read only: size and last update, newest first. -->
 <script lang="ts">
   import { onMount } from "svelte";
+  import { every } from "../poll.ts";
+  import { flagOn } from "../flags.svelte.ts";
   import { invoke } from "@tauri-apps/api/core";
 
   type Note = { agent: string; bytes: number; updated_at: string };
@@ -8,13 +10,19 @@
   let notes = $state<Note[]>([]);
   let failed = $state(false);
 
-  onMount(async () => {
+  // Read again every few seconds while this tab is open, so it does not go stale.
+  async function load(): Promise<void> {
     try {
       notes = (await invoke<{ notes: Note[] }>("sidecar_call", { method: "memory" })).notes;
+      failed = false;
     } catch (cause) {
       failed = true;
       console.error("Could not read the memory notes", cause);
     }
+  }
+  onMount(() => {
+    void load();
+    return flagOn("panelRefresh") ? every(load, 5000) : undefined;
   });
 </script>
 

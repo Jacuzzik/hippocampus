@@ -201,6 +201,9 @@
     const stopPoll = every(() => void load(), 5000);
     const onChanged = () => void load();
     window.addEventListener("graph-changed", onChanged);
+    // TALK on a card needs the right panel on screen before its message box can take the cursor.
+    const onTalk = () => (panelOpen = true);
+    window.addEventListener("agent-talk", onTalk);
     // The browser's own right-click menu is off everywhere; the app's own menus still open from their handlers.
     const noNativeMenu = (e: MouseEvent) => e.preventDefault();
     window.addEventListener("contextmenu", noNativeMenu);
@@ -208,6 +211,7 @@
       window.removeEventListener("contextmenu", noNativeMenu);
       stopPoll();
       window.removeEventListener("graph-changed", onChanged);
+      window.removeEventListener("agent-talk", onTalk);
     };
   });
 </script>

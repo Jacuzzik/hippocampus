@@ -51,7 +51,10 @@
   let blocked = $state(false);
   let fileInput: HTMLInputElement | undefined = $state();
   // A block change is a new session: stop the running CLI, then start it again with the new setting.
+  // It ends the running session, so the button asks first.
+  let confirmBlock = $state(false);
   async function toggleBlock(): Promise<void> {
+    confirmBlock = false;
     blocked = !blocked;
     await invoke("sidecar_call", { method: "terminal_stop", params: { agent: agent.id } }).catch(() => undefined);
     await terminal?.restart();
@@ -112,12 +115,22 @@
   <div class="desc">{agent.description || NO_DATA}</div>
 
   <div class="seg" role="group" aria-label="Agent actions">
-    <button type="button" onclick={() => openFolder("ide")} disabled={!agent.folder}>IDE</button>
+    <button type="button" onclick={() => openFolder("ide")} disabled={!agent.folder} title={agent.folder ? "Open this agent's folder in VS Code" : "This agent has no working folder"}>IDE</button>
   </div>
   <div class="seg" role="group" aria-label="Run controls">
     <button type="button" class="stop" title="Interrupts the current run" disabled={runState !== "running"} onclick={() => invoke("sidecar_call", { method: "terminal_input", params: { agent: agent.id, data: "\x1b" } }).catch(() => {})}>Stop</button>
-    <button type="button" aria-pressed={blocked} class:on={blocked} onclick={toggleBlock}>block tools</button>
+    <button type="button" aria-pressed={blocked} class:on={blocked} onclick={() => (confirmBlock = !confirmBlock)}>block tools</button>
   </div>
+  {#if confirmBlock}
+    <div class="confirm" role="group" aria-label="Confirm block tools">
+      <p>
+        {blocked ? "Give the tools back" : "Block shell, file writes and web"} for {agent.name}? Its program restarts, and work in
+        progress stops.
+      </p>
+      <button type="button" class="send" onclick={toggleBlock}>Restart {blocked ? "with tools" : "without tools"}</button>
+      <button type="button" onclick={() => (confirmBlock = false)}>Cancel</button>
+    </div>
+  {/if}
 
 
   <Tabs
@@ -403,6 +416,24 @@
     font-family: var(--font-mono);
     font-size: var(--font-size-tag);
     white-space: pre;
+  }
+  .confirm {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    align-items: center;
+    padding: var(--space-2);
+    border: 1px solid var(--color-md-border);
+    border-radius: var(--radius-sm);
+  }
+  .confirm p {
+    flex: 1 1 100%;
+    margin: 0;
+    color: var(--color-md-text-muted);
+  }
+  .confirm button {
+    flex: 1 1 0;
+    width: auto;
   }
   .error {
     margin: 0;

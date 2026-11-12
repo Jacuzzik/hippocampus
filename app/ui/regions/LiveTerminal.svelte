@@ -5,7 +5,7 @@
 </script>
 
 <script lang="ts">
-  import { cssToken } from "../cssToken.ts";
+  import { cssToken, fontToken } from "../cssToken.ts";
   import { invoke } from "@tauri-apps/api/core";
   import { listen } from "@tauri-apps/api/event";
   import { onDestroy, onMount } from "svelte";
@@ -89,7 +89,8 @@
     const bg = cssToken("md-bg-0");
     const fg = cssToken("md-text");
     term = new Terminal({
-      fontFamily: "JetBrainsMono Nerd Font Mono, JetBrains Mono, monospace",
+      // The app's monospace token, with the Nerd Font variant first for the icons some CLIs draw.
+      fontFamily: `"JetBrainsMono Nerd Font Mono", ${fontToken("mono")}`,
       fontSize,
       cursorBlink: true,
       convertEol: true,

@@ -1,6 +1,8 @@
 <!-- The live activity log, read only: tool runs, approvals and errors, newest first. -->
 <script lang="ts">
   import { onMount } from "svelte";
+  import { every } from "../poll.ts";
+  import { flagOn } from "../flags.svelte.ts";
   import { invoke } from "@tauri-apps/api/core";
 
   type Row = {
@@ -16,13 +18,19 @@
   let rows = $state<Row[]>([]);
   let failed = $state(false);
 
-  onMount(async () => {
+  // Read again every few seconds while this tab is open, so it does not go stale.
+  async function load(): Promise<void> {
     try {
       rows = (await invoke<{ rows: Row[] }>("sidecar_call", { method: "activity" })).rows;
+      failed = false;
     } catch (cause) {
       failed = true;
       console.error("Could not read the activity log", cause);
     }
+  }
+  onMount(() => {
+    void load();
+    return flagOn("panelRefresh") ? every(load, 5000) : undefined;
   });
 
   const label = (row: Row) =>

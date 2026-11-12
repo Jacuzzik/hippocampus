@@ -1,7 +1,7 @@
 <script lang="ts">
   import { FONT_MAX, FONT_MIN, prefs } from "../prefs.svelte.ts";
   import { every } from "../poll.ts";
-  import { onMount } from "svelte";
+  import { onMount, tick } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
   import Assistant from "../assistant/Assistant.svelte";
   import Tabs, { type TabItem } from "../controls/Tabs.svelte";
@@ -40,7 +40,9 @@
     const stopCounts = every(readCounts, 10000);
     const onEngineChanged = () => loadEngine(false);
     window.addEventListener("engine-changed", onEngineChanged);
+    window.addEventListener("agent-talk", onTalk);
     return () => {
+      window.removeEventListener("agent-talk", onTalk);
       stopPoll();
       stopCounts();
       window.removeEventListener("engine-changed", onEngineChanged);
@@ -58,7 +60,7 @@
   import HistoryPanel from "./HistoryPanel.svelte";
   import AgentPanel from "../owner/AgentPanel.svelte";
   import LiveTerminal from "./LiveTerminal.svelte";
-  import { addedAgents, archived, selection } from "../owner/addedAgents.svelte";
+  import { addedAgents, archived, selectAgent, selection } from "../owner/addedAgents.svelte";
 
   // Kept mounted when hidden so the chat session and its tool log survive a toggle.
   let { open = true }: { open?: boolean } = $props();
@@ -108,6 +110,27 @@
     return () => clearInterval(timer);
   });
 
+  // A card's TALK button: show that agent's terminal and put the cursor in its message box.
+  let panel: HTMLDivElement | undefined = $state();
+  function onTalk(event: Event): void {
+    const id = (event as CustomEvent<string>).detail;
+    if (id === "hippoherman") {
+      selectAgent(null);
+      tab = "terminal";
+    } else {
+      selectAgent(id);
+    }
+    void tick().then(() => {
+      // The terminal keeps a hidden textarea of its own for typing; the message box is the other one.
+      for (const box of panel?.querySelectorAll<HTMLTextAreaElement>("textarea:not(.xterm-helper-textarea)") ?? []) {
+        if (box.offsetParent !== null) {
+          box.focus();
+          break;
+        }
+      }
+    });
+  }
+
   // Selecting a card opens its tab; deselecting (or archiving or deleting it) returns to the terminal.
   $effect(() => {
     if (agent) tab = "agent";
@@ -115,7 +138,7 @@
   });
 </script>
 
-<div class="right-panel" hidden={!open}>
+<div class="right-panel" hidden={!open} bind:this={panel}>
   <div class="column">
     {#if !(tab === "agent" && agent)}
       <div class="title"><b>Control Room</b><span class="pill">■ Live</span></div>

@@ -41,7 +41,12 @@ test("an added agent runs in the same terminal, and block tools restarts it", as
   expect(String((await own())[0].folder)).toContain("IT");
 
   await page.getByLabel("Agents").getByText("Ada").click();
+  // Blocking tools ends the session, so it asks first; Cancel changes nothing.
   await page.getByRole("button", { name: "block tools" }).click();
+  await page.getByRole("button", { name: "Cancel" }).click();
+  expect((await own()).length).toBe(1);
+  await page.getByRole("button", { name: "block tools" }).click();
+  await page.getByRole("button", { name: "Restart without tools" }).click();
   await expect.poll(async () => (await own()).map((call) => call.method)).toEqual([
     "terminal_start",
     "terminal_stop",
@@ -50,4 +55,11 @@ test("an added agent runs in the same terminal, and block tools restarts it", as
   expect((await own())[2]).toMatchObject({ block_tools: true });
   // The old screen is gone: one terminal in the box, not two drawn over each other.
   await expect(screen.locator(".xterm")).toHaveCount(1);
+});
+
+test("TALK on the main agent's card puts the cursor in its message box", async ({ page }) => {
+  await page.getByRole("tab", { name: "tasks" }).click();
+  await page.getByLabel("Agents").getByRole("button", { name: "TALK", exact: true }).first().click();
+  await expect(page.getByRole("tab", { name: "terminal" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("textbox", { name: /^Message / }).first()).toBeFocused();
 });
