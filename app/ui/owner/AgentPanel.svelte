@@ -2,6 +2,8 @@
 <script lang="ts">
   import { FONT_MAX, FONT_MIN, prefs } from "../prefs.svelte.ts";
   import { cssToken } from "../cssToken.ts";
+  import Tabs from "../controls/Tabs.svelte";
+  import EmptyState from "../controls/EmptyState.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { listen } from "@tauri-apps/api/event";
   import { onDestroy, onMount } from "svelte";
@@ -56,7 +58,7 @@
     return invoke("sidecar_call", { method: "terminal_resize", params: { agent: agent.id, rows, cols } }).catch(() => {});
   }
   function sendSize(): void {
-    if (!term || !fit) return;
+    if (!term || !fit || !screen) return;
     // A hidden or mid-animation panel reports a tiny width; telling the CLI that makes it redraw one or two characters per line.
     if (screen.clientWidth < 200 || screen.clientHeight < 80) return;
     fit.fit();
@@ -169,11 +171,18 @@
     sendSize();
   });
 
-  let view = $state<"terminal" | "git" | "messages" | "traces">("terminal");
+  // "terminal", "git", "messages" or "traces".
+  let view = $state("terminal");
   let gitText = $state("");
+  const views = $derived([
+    { id: "terminal", label: "Terminal" },
+    { id: "git", label: "Git", disabled: !agent.folder, reason: "This agent has no working folder" },
+    { id: "messages", label: "Messages" },
+    { id: "traces", label: "Traces" },
+  ]);
 
   function showGit(): void {
-    view = "git";
+    gitText = "Reading git status…";
     invoke<{ text: string }>("sidecar_call", { method: "git_status", params: { folder: agent.folder } })
       .then((result) => (gitText = result.text))
       .catch((cause) => (gitText = String(cause)));
@@ -225,14 +234,14 @@
   </div>
 
 
-  {#if view !== "git"}
-    <div class="seg" role="tablist" aria-label="Agent views">
-      <button type="button" role="tab" aria-selected={view === "terminal"} class:on={view === "terminal"} onclick={() => (view = "terminal")}>Terminal</button>
-      <button type="button" role="tab" aria-selected="false" disabled={!agent.folder} title={agent.folder ? undefined : "This agent has no working folder"} onclick={() => showGit()}>Git</button>
-      <button type="button" role="tab" aria-selected={view === "messages"} class:on={view === "messages"} onclick={() => (view = "messages")}>Messages</button>
-      <button type="button" role="tab" aria-selected={view === "traces"} class:on={view === "traces"} onclick={() => (view = "traces")}>Traces</button>
-    </div>
-  {/if}
+  <Tabs
+    items={views}
+    bind:value={view}
+    label="Agent views"
+    idBase={`agent-${agent.id.replace(/\W+/g, "-")}`}
+    segmented
+    onchange={(id) => id === "git" && showGit()}
+  />
 
   <div class="live">
     <span class="dot" aria-hidden="true"></span>
@@ -242,24 +251,20 @@
 
   <div class="screen" bind:this={screen} aria-label="Terminal for {agent.name}" hidden={view !== "terminal"}></div>
   {#if view === "git"}
-    <button type="button" class="back" onclick={() => (view = "terminal")}>← back to terminal</button>
     <pre class="git" aria-label="Git status">{gitText}</pre>
   {/if}
   {#if view === "messages"}
-    <div class="placeholder-list" aria-label="Messages placeholders">
-      <div class="row"><span class="key">FROM</span><span class="val">{NO_DATA}</span></div>
-      <div class="row"><span class="key">TO</span><span class="val">{NO_DATA}</span></div>
-      <div class="row"><span class="key">REPLY</span><span class="val">{NO_DATA}</span></div>
-    </div>
+    <EmptyState
+      title="No messages to show"
+      text="Messages this agent sends and receives are not read into this view yet. The Inbox tab in the Control Room lists every agent's messages."
+    />
   {/if}
   {#if view === "traces"}
-    <div class="placeholder-list" aria-label="Traces placeholders">
-      <div class="row"><span class="key">TOOL</span><span class="val">{NO_DATA}</span></div>
-      <div class="row"><span class="key">TOKENS</span><span class="val">{NO_DATA}</span></div>
-      <div class="row"><span class="key">TIME</span><span class="val">{NO_DATA}</span></div>
-    </div>
+    <EmptyState
+      title="No traces to show"
+      text="Tool calls, token use and timings for this agent are not recorded yet. The Activity tab in the Control Room lists tool runs."
+    />
   {/if}
-
 
   <!-- Queue, message box, Send and + files sit in one composer, as on the main agent, so they share its gaps. -->
   <form class="composer" onsubmit={send}>
@@ -331,28 +336,6 @@
   /* The note is a one-line field inside its box; the shared textarea height would make the row too tall. */
   /* Segmented pill groups: one bordered pill, the selected segment in accent. */
   /* Placeholder rows, styled like the bottom-bar cards (AgentBar .chip.main .row). */
-  .placeholder-list {
-    display: grid;
-    gap: 2px;
-    padding: var(--space-2) 0;
-    font-size: var(--font-size-xs);
-    line-height: 1.6;
-  }
-  .placeholder-list .row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .placeholder-list .key {
-    width: 44px;
-    flex: none;
-    font-size: var(--font-size-tag);
-    color: var(--color-md-card-muted);
-  }
-  .placeholder-list .val {
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
   .seg {
     display: flex;
     flex-wrap: wrap;

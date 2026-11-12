@@ -35,6 +35,7 @@ export async function mockSidecar(
       let savedAgents: unknown[] = [];
       // The Claude key is kept here, never sent back to the page: account reports only yes or no.
       let claudeKey: string | null = opts.signedIn ? "sk-saved" : null;
+      const workspaceFolders = ["IT"];
 
       // The note text the drawer reads through the "read" method.
       const texts: Record<string, string> = {
@@ -397,6 +398,13 @@ export async function mockSidecar(
             return { session: "mock-session" };
           case "provider_status":
             return { clis: [] };
+          case "local_status":
+            return { servers: [] };
+          case "workspaces":
+            return { root: "/home/me/workspaces", folders: workspaceFolders };
+          case "create_workspace":
+            workspaceFolders.push(String(args.params?.name));
+            return { root: "/home/me/workspaces", folders: [...workspaceFolders] };
           case "terminal_start":
             return { running: true };
           case "terminal_input":

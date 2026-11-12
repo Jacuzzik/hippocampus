@@ -40,12 +40,28 @@ test("the right panel tabs save screenshots when SHOTS_DIR is set", async ({ pag
   }
 });
 
-test("the monitor tab lists the background watchers with their status", async ({ page }) => {
+test("the monitor tab lists the agents, the month's token use and the agent folders", async ({ page }) => {
   await page.getByRole("tab", { name: "monitor" }).click();
   const region = page.getByRole("region", { name: "Monitor" });
-  await expect(region).toContainText("Watchers");
-  await expect(region).toContainText("CPU");
-  await expect(region).toContainText("42%");
-  await expect(region).toContainText("Weekly link check");
-  await expect(region).toContainText("trigger");
+  await expect(region).toContainText(/agents/i);
+  await expect(region).toContainText("Hippoherman");
+  await expect(region).toContainText("tok burned this month");
+  await expect(region).toContainText(/directories/i);
+});
+
+test("the tabs show how many questions and inbox messages are waiting", async ({ page }) => {
+  await expect(page.getByRole("tab", { name: "ask me" })).toContainText("1");
+  await expect(page.getByRole("tab", { name: "inbox" })).toContainText("1");
+  await expect(page.getByRole("tab", { name: "tasks" })).toHaveText("tasks");
+});
+
+test("arrow keys move between the Control Room tabs", async ({ page }) => {
+  const terminal = page.getByRole("tab", { name: "terminal" });
+  await terminal.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(page.getByRole("tab", { name: "monitor" })).toHaveAttribute("aria-selected", "true");
+  await page.keyboard.press("End");
+  await expect(page.getByRole("tab", { name: "temps" })).toHaveAttribute("aria-selected", "true");
+  await page.keyboard.press("Home");
+  await expect(terminal).toHaveAttribute("aria-selected", "true");
 });

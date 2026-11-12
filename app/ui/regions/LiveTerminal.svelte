@@ -20,7 +20,7 @@
   let onEngineChangedHandler: ((e: Event) => void) | null = null;
 
   function sendSize(): void {
-    if (!term || !fit) return;
+    if (!term || !fit || !screen) return;
     // A hidden panel reports no width; sending that would make the CLI redraw for a tiny screen.
     if (screen.clientWidth < 200 || screen.clientHeight < 80) return;
     fit.fit();

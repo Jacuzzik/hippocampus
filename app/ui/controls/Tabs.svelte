@@ -10,17 +10,40 @@
     label,
     idBase,
     vertical = false,
-  }: { items: TabItem[]; value: string; label: string; idBase: string; vertical?: boolean } = $props();
+    segmented = false,
+    columns = 0,
+    onchange,
+  }: {
+    items: TabItem[];
+    value: string;
+    label: string;
+    idBase: string;
+    vertical?: boolean;
+    /** The joined pill look used in the Control Room and agent panels. */
+    segmented?: boolean;
+    /** Segmented only: tabs per row. 0 puts them all on one row. */
+    columns?: number;
+    /** Called after the user picks a tab, for a tab that also has to load something. */
+    onchange?: (id: string) => void;
+  } = $props();
 
   let bar: HTMLDivElement;
+
+  // An element id cannot hold a space, and some tab ids do ("ask me").
+  const tabId = (id: string): string => `${idBase}-tab-${id.replace(/\W+/g, "-")}`;
+
+  function pick(id: string): void {
+    value = id;
+    onchange?.(id);
+  }
 
   function move(from: number, step: number): void {
     const count = items.length;
     for (let i = 1; i <= count; i++) {
       const next = items[(from + step * i + count * i) % count];
       if (next && !next.disabled) {
-        value = next.id;
-        bar.querySelector<HTMLButtonElement>(`#${CSS.escape(`${idBase}-tab-${next.id}`)}`)?.focus();
+        pick(next.id);
+        bar.querySelector<HTMLButtonElement>(`#${CSS.escape(tabId(next.id))}`)?.focus();
         return;
       }
     }
@@ -38,18 +61,25 @@
   }
 </script>
 
-<div class="tabs" class:vertical role="tablist" aria-label={label} aria-orientation={vertical ? "vertical" : "horizontal"} bind:this={bar}>
+<div
+  class="tabs"
+  class:vertical
+  class:segmented
+  style:--tab-columns={segmented ? columns || items.length : null}
+  role="tablist" aria-label={label}   aria-orientation={vertical ? "vertical" : "horizontal"}
+  bind:this={bar}
+>
   {#each items as item, index (item.id)}
     <button
       type="button"
       role="tab"
-      id={`${idBase}-tab-${item.id}`}
+      id={tabId(item.id)}
       aria-selected={value === item.id}
       aria-controls={`${idBase}-panel`}
       tabindex={value === item.id ? 0 : -1}
       disabled={item.disabled}
       title={item.disabled ? item.reason : undefined}
-      onclick={() => (value = item.id)}
+      onclick={() => pick(item.id)}
       onkeydown={(e) => onKey(e, index)}
     >
       <span>{item.label}</span>
@@ -112,6 +142,43 @@
   button:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+
+  /* Segmented: rows of joined cells, each row its own pill, in the Control Room colours. */
+  .tabs.segmented {
+    display: grid;
+    grid-template-columns: repeat(var(--tab-columns), minmax(0, 1fr));
+    gap: var(--space-2) 1px;
+    padding: 1px;
+  }
+
+  .segmented button {
+    justify-content: center;
+    min-width: 0;
+    min-height: 32px;
+    padding: 0 var(--space-2);
+    color: var(--color-md-text-muted);
+    font-size: var(--font-size-xs);
+    text-align: center;
+    border: none;
+    border-radius: 0;
+    box-shadow: 0 0 0 1px var(--color-md-border);
+  }
+
+  .segmented button:hover:not(:disabled) {
+    color: var(--color-md-text);
+  }
+
+  .segmented button[aria-selected="true"] {
+    color: var(--color-md-accent-on);
+    background: var(--color-md-accent);
+    box-shadow: 0 0 0 1px var(--color-md-accent);
+  }
+
+  .segmented button > span:first-child {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
 
   .badge {

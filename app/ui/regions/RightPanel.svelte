@@ -4,6 +4,7 @@
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
   import Assistant from "../assistant/Assistant.svelte";
+  import Tabs, { type TabItem } from "../controls/Tabs.svelte";
   import { createTerminalQueue } from "./terminalQueue.svelte";
 
   // The main agent's terminal runs the provider saved in the engine switch (CLI name is the provider id).
@@ -35,10 +36,13 @@
     loadEngine(true);
     readHippo();
     const stopPoll = every(readHippo, 3000);
+    readCounts();
+    const stopCounts = every(readCounts, 10000);
     const onEngineChanged = () => loadEngine(false);
     window.addEventListener("engine-changed", onEngineChanged);
     return () => {
       stopPoll();
+      stopCounts();
       window.removeEventListener("engine-changed", onEngineChanged);
     };
   });
@@ -71,8 +75,25 @@
     "terminal", "monitor", "tasks", "inbox", "ask me", "triggers",
     "history", "memory", "activity", "skills", "temps",
   ];
-  // The views sit in rows of four, each row its own pill, as in the picture.
-  const TAB_ROWS = [TABS.slice(0, 4), TABS.slice(4, 8), TABS.slice(8)];
+  // Counts shown on the tabs: questions waiting for an answer, and inbox messages not handled yet.
+  let waiting = $state({ asks: 0, inbox: 0 });
+  function readCounts(): void {
+    invoke<{ asks: unknown[] }>("sidecar_call", { method: "asks" })
+      .then((value) => (waiting.asks = value.asks.length))
+      .catch(() => {});
+    invoke<{ messages: { state: string }[] }>("sidecar_call", { method: "inbox" })
+      .then((value) => (waiting.inbox = value.messages.filter((m) => m.state === "pending").length))
+      .catch(() => {});
+  }
+  // The views sit in rows of four, as in the picture. A selected agent adds its own tab at the end.
+  const tabItems = $derived<TabItem[]>([
+    ...TABS.map((id) => ({
+      id,
+      label: id,
+      badge: id === "ask me" ? waiting.asks : id === "inbox" ? waiting.inbox : undefined,
+    })),
+    ...(agent ? [{ id: "agent", label: agent.name }] : []),
+  ]);
   // Opens on the tab used last, when that setting is on (Settings > General).
   let tab = $state(prefs.rememberTab && TABS.includes(prefs.lastTab) ? prefs.lastTab : "terminal");
   $effect(() => {
@@ -99,37 +120,10 @@
     {#if !(tab === "agent" && agent)}
       <div class="title"><b>Control Room</b><span class="pill">■ Live</span></div>
       <div class="card">
-      <div class="tab-rows">
-        {#each TAB_ROWS as row (row[0])}
-          <div class="tabs" role="tablist" aria-label="Panels">
-            {#each row as name (name)}
-              <button
-                type="button"
-                class="tab"
-                role="tab"
-                aria-selected={tab === name}
-                class:on={tab === name}
-                onclick={() => (tab = name)}>{name}</button
-              >
-            {/each}
-          </div>
-        {/each}
-        {#if agent}
-          <div class="tabs" role="tablist" aria-label="Panels">
-            <button
-              type="button"
-              class="tab"
-              role="tab"
-              aria-selected={tab === "agent"}
-              class:on={tab === "agent"}
-              onclick={() => (tab = "agent")}>{agent.name}</button
-            >
-          </div>
-        {/if}
-      </div>
+        <Tabs items={tabItems} bind:value={tab} label="Panels" idBase="control-room" segmented columns={4} />
       </div>
     {/if}
-    <div class="pane" hidden={tab !== "terminal"}>
+    <div class="pane" id={tab === "terminal" ? "control-room-panel" : undefined} hidden={tab !== "terminal"}>
       <div class="live">
         <span class="dot" aria-hidden="true"></span>
         <span>{hippoState}</span>
@@ -153,26 +147,30 @@
         <AgentPanel agent={item} />
       </div>
     {/each}
-    {#if tab === "tasks"}
-      <TasksPanel />
-    {:else if tab === "inbox"}
-      <InboxPanel />
-    {:else if tab === "memory"}
-      <MemoryPanel />
-    {:else if tab === "monitor"}
-      <MonitorPanel />
-    {:else if tab === "ask me"}
-      <AsksSection />
-    {:else if tab === "triggers"}
-      <TriggersSection />
-    {:else if tab === "activity"}
-      <ActivityPanel />
-    {:else if tab === "skills"}
-      <SkillsPanel />
-    {:else if tab === "temps"}
-      <TempsPanel />
-    {:else if tab === "history"}
-      <HistoryPanel />
+    {#if tab !== "terminal" && tab !== "agent"}
+      <div class="pane" id="control-room-panel" role="tabpanel" aria-labelledby={`control-room-tab-${tab.replace(/\W+/g, "-")}`}>
+      {#if tab === "tasks"}
+        <TasksPanel />
+      {:else if tab === "inbox"}
+        <InboxPanel />
+      {:else if tab === "memory"}
+        <MemoryPanel />
+      {:else if tab === "monitor"}
+        <MonitorPanel />
+      {:else if tab === "ask me"}
+        <AsksSection />
+      {:else if tab === "triggers"}
+        <TriggersSection />
+      {:else if tab === "activity"}
+        <ActivityPanel />
+      {:else if tab === "skills"}
+        <SkillsPanel />
+      {:else if tab === "temps"}
+        <TempsPanel />
+      {:else if tab === "history"}
+        <HistoryPanel />
+      {/if}
+      </div>
     {/if}
   </div>
 </div>
@@ -202,46 +200,6 @@
     background: var(--color-bg-0);
     border-radius: var(--radius-md);
     font-family: var(--font-ui);
-  }
-
-  .tab-rows {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-  }
-
-  /* One segmented pill group per row of views, as in the picture. */
-  .tabs {
-    display: flex;
-    flex-wrap: wrap;
-    border: 1px solid var(--color-md-border);
-    border-radius: var(--radius-sm);
-    overflow: hidden;
-  }
-
-  .tab {
-    flex: 1 1 0;
-    min-height: 32px;
-    font-family: var(--font-ui);
-    font-size: var(--font-size-xs);
-    padding: 0 var(--space-2);
-    border: none;
-    border-right: 1px solid var(--color-md-border);
-    border-radius: 0;
-    background: transparent;
-    color: var(--color-md-text-muted);
-    cursor: pointer;
-  }
-
-  .tab:disabled {
-    cursor: default;
-    opacity: 0.6;
-  }
-
-  .tab.on {
-    background: var(--color-md-accent);
-    color: var(--color-md-accent-on);
-    border-color: var(--color-md-accent);
   }
 
   .live {

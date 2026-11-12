@@ -145,17 +145,26 @@ test("add an agent stops at each step until it is answered", async ({
   await expect(add.getByRole("alert")).toHaveText("Give the agent a name.");
   await add.getByRole("textbox", { name: "Name", exact: true }).fill("Ada");
   await add.getByRole("button", { name: "Next" }).click();
-  await add
-    .getByRole("textbox", { name: "Folder", exact: true })
-    .fill("/home/me/notes");
+
+  // The folder step: nothing is chosen yet, then a new folder is made inside workspaces.
   await add.getByRole("button", { name: "Next" }).click();
-  await expect(add.getByRole("status")).toHaveText(
-    "Not set up: no Claude (Anthropic) key saved.",
+  await expect(add.getByRole("alert")).toHaveText(
+    "Choose the folder the agent works in.",
   );
-  await add
-    .getByRole("textbox", { name: "Model", exact: true })
-    .fill("claude-sonnet-5-5");
+  await add.getByLabel("New folder inside workspaces").fill("ada");
+  await add.getByRole("button", { name: "Create folder" }).click();
   await add.getByRole("button", { name: "Next" }).click();
+
+  // The engine step: no key is saved, and a model has to be picked.
+  await expect(
+    add.getByText("Not set up: no Claude (Anthropic) key saved."),
+  ).toBeVisible();
+  await add.getByRole("button", { name: "Next" }).click();
+  await expect(add.getByRole("alert")).toHaveText("Name the model.");
+  await add.getByRole("button", { name: "claude-sonnet-5-5" }).click();
+  await expect(add.locator("code")).toContainText("claude-sonnet-5-5");
+  await add.getByRole("button", { name: "Next" }).click();
+
   await add
     .getByRole("textbox", { name: "Goal", exact: true })
     .fill("Tidy the inbox notes");
@@ -174,16 +183,11 @@ test("the engine is ready once a Claude key is saved", async ({ page }) => {
   const add = page.getByRole("dialog", { name: "Add agent" });
   await add.getByRole("textbox", { name: "Name", exact: true }).fill("Ada");
   await add.getByRole("button", { name: "Next" }).click();
-  await add
-    .getByRole("textbox", { name: "Folder", exact: true })
-    .fill("/home/me/notes");
+  await add.getByLabel("Folder in workspaces").selectOption("IT");
   await add.getByRole("button", { name: "Next" }).click();
-  await add
-    .getByRole("textbox", { name: "Model", exact: true })
-    .fill("claude-sonnet-5-5");
-  await expect(add.getByRole("status")).toHaveText(
-    "Ready: Claude (Anthropic) key saved.",
-  );
+  await expect(
+    add.getByText("Ready: Claude (Anthropic) key saved."),
+  ).toBeVisible();
 });
 
 test("a dispatch is sent only after the confirm card", async ({ page }) => {
