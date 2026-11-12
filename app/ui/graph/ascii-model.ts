@@ -12,7 +12,11 @@ const NOTE_RADII = [5, 10, 7, 9, 14];
 /** Drops the vault's test<digits> notes (data/brains/Hippocampus/test*.md) from the graph view. The files stay. */
 export function hideTestNotes(data: GraphData): GraphData {
   const gone = new Set(
-    data.nodes.filter((n) => /^test\d+$/.test((n.id.split("/").pop() ?? "").replace(/\.md$/i, ""))).map((n) => n.id),
+    data.nodes
+      .filter((n) =>
+        /^test\d+$/.test((n.id.split("/").pop() ?? "").replace(/\.md$/i, "")),
+      )
+      .map((n) => n.id),
   );
   if (gone.size === 0) return data;
   return {
@@ -22,13 +26,15 @@ export function hideTestNotes(data: GraphData): GraphData {
 }
 
 /** Radius multiplier by angle: 0.55 to 1.45, lumpy so no layout is a perfect circle. */
-const lump = (a: number) => 1 + 0.3 * Math.sin(3 * a + 0.7) + 0.15 * Math.sin(5 * a + 2.1);
+const lump = (a: number) =>
+  1 + 0.3 * Math.sin(3 * a + 0.7) + 0.15 * Math.sin(5 * a + 2.1);
 
 /** A random stream seeded from a note id (FNV-1a hash), so a note's spot depends only on its own id. */
 function idRandom(id: string): () => number {
   let s = 2166136261;
-  for (let k = 0; k < id.length; k++) s = Math.imul(s ^ id.charCodeAt(k), 16777619) >>> 0;
-  return () => ((s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967296);
+  for (let k = 0; k < id.length; k++)
+    s = Math.imul(s ^ id.charCodeAt(k), 16777619) >>> 0;
+  return () => (s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967296;
 }
 
 /**
@@ -58,7 +64,9 @@ export function asciiLayout(data: GraphData): Float32Array<ArrayBuffer> {
         // Every layout has a lumpy outline, not a circle, so the picture reads as organic like the reference.
         const R = (scatter ? disc : rad) * lump(a);
         const hole = R * 0.35;
-        const dist = scatter ? Math.sqrt(hole * hole + random() * (R * R - hole * hole)) : R;
+        const dist = scatter
+          ? Math.sqrt(hole * hole + random() * (R * R - hole * hole))
+          : R;
         const c = Math.round(Math.cos(a) * dist);
         // Rows are CELL_H tall, so the row count is squashed by CELL / CELL_H to keep the ring round on screen.
         const r = Math.round((Math.sin(a) * dist * CELL) / CELL_H);
@@ -81,7 +89,12 @@ export function asciiLayout(data: GraphData): Float32Array<ArrayBuffer> {
  * own speed and phase, so the picture breathes.
  * shortcut: whole-cell steps only, so the orbit is ASCII-sized, upgrade to sub-cell offsets if it looks steppy.
  */
-export function cellOf(i: number, x: number, y: number, t: number): [number, number] {
+export function cellOf(
+  i: number,
+  x: number,
+  y: number,
+  t: number,
+): [number, number] {
   const c = Math.round(x / CELL);
   const r = Math.round(y / CELL_H);
   const a = t * (0.3 + (i % 7) * 0.05) + i * 2.399;

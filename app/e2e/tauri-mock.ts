@@ -9,15 +9,30 @@ type Page = {
 // open, so the setup opens, until "open" is called. `signedIn` starts with a saved Claude key.
 export async function mockSidecar(
   page: Page,
-  options: { orphan?: boolean; noVault?: boolean; signedIn?: boolean; intro?: boolean } = {},
+  options: {
+    orphan?: boolean;
+    noVault?: boolean;
+    signedIn?: boolean;
+    intro?: boolean;
+  } = {},
 ): Promise<void> {
   await page.addInitScript(
-    (opts: { orphan: boolean; noVault: boolean; signedIn: boolean; intro: boolean }) => {
+    (opts: {
+      orphan: boolean;
+      noVault: boolean;
+      signedIn: boolean;
+      intro: boolean;
+    }) => {
       // Tests skip the start-up logo (Settings > Appearance), which otherwise covers the app for 12 seconds.
       try {
-        const saved = JSON.parse(localStorage.getItem("hippocampus.prefs") ?? "{}");
+        const saved = JSON.parse(
+          localStorage.getItem("hippocampus.prefs") ?? "{}",
+        );
         if (!opts.intro && saved.intro === undefined)
-          localStorage.setItem("hippocampus.prefs", JSON.stringify({ ...saved, intro: "off" }));
+          localStorage.setItem(
+            "hippocampus.prefs",
+            JSON.stringify({ ...saved, intro: "off" }),
+          );
       } catch {
         /* storage blocked: the logo shows, the test is only slower */
       }
@@ -42,23 +57,67 @@ export async function mockSidecar(
       let vaultOpen = !opts.noVault;
       // Every terminal start and stop, in order, for tests to read.
       // Tests set window.__boot to act out a backend restart.
-      const bootId = () => (window as unknown as { __boot?: string }).__boot ?? "boot-1";
+      const bootId = () =>
+        (window as unknown as { __boot?: string }).__boot ?? "boot-1";
       let shellOn = false;
       const shellState = () => ({
         on: shellOn,
         sandbox_available: true,
         main: ["Shell: allowed for simple tasks."],
-        agents: shellOn ? ["Shell: allowed for simple tasks.", "Your program runs in a sandbox."] : ["Shell: not available to this agent."],
+        agents: shellOn
+          ? [
+              "Shell: allowed for simple tasks.",
+              "Your program runs in a sandbox.",
+            ]
+          : ["Shell: not available to this agent."],
         note: "Applies to agents on Claude Code.",
       });
       // Messages between agents, in the backend's schema; a sent message is added at the top.
       const inboxRows: Record<string, string>[] = [
-        { id: "m-1", from: "hippoherman", to: "kevin", act: "request", subject: "Research the plan", body: "Read the audit and list the gaps.", work: "T-1", thread: "m-1", priority: "normal", created_at: "2026-10-29T12:30:00+00:00", state: "queued" },
-        { id: "m-2", from: "kevin", to: "hippoherman", act: "done", subject: "Research done", body: "Three gaps found.", work: "T-1", thread: "m-1", priority: "normal", created_at: "2026-10-29T13:10:00+00:00", state: "delivered" },
-        { id: "m-3", from: "kevin", to: "zed", act: "request", subject: "Lost message", body: "x", work: "", thread: "m-3", priority: "normal", created_at: "2026-10-28T09:00:00+00:00", state: "failed", failed: 'No agent has the id "zed".' },
+        {
+          id: "m-1",
+          from: "hippoherman",
+          to: "kevin",
+          act: "request",
+          subject: "Research the plan",
+          body: "Read the audit and list the gaps.",
+          work: "T-1",
+          thread: "m-1",
+          priority: "normal",
+          created_at: "2026-10-29T12:30:00+00:00",
+          state: "queued",
+        },
+        {
+          id: "m-2",
+          from: "kevin",
+          to: "hippoherman",
+          act: "done",
+          subject: "Research done",
+          body: "Three gaps found.",
+          work: "T-1",
+          thread: "m-1",
+          priority: "normal",
+          created_at: "2026-10-29T13:10:00+00:00",
+          state: "delivered",
+        },
+        {
+          id: "m-3",
+          from: "kevin",
+          to: "zed",
+          act: "request",
+          subject: "Lost message",
+          body: "x",
+          work: "",
+          thread: "m-3",
+          priority: "normal",
+          created_at: "2026-10-28T09:00:00+00:00",
+          state: "failed",
+          failed: 'No agent has the id "zed".',
+        },
       ];
       const terminalCalls: Record<string, unknown>[] = [];
-      (window as unknown as { __terminalCalls: unknown }).__terminalCalls = terminalCalls;
+      (window as unknown as { __terminalCalls: unknown }).__terminalCalls =
+        terminalCalls;
       let savedAgents: unknown[] = [];
       // The Claude key is kept here, never sent back to the page: account reports only yes or no.
       let claudeKey: string | null = opts.signedIn ? "sk-saved" : null;
@@ -259,23 +318,73 @@ export async function mockSidecar(
           case "tasks":
             return {
               tasks: [
-                { id: "MDF-1", title: "Ship the Tasks page", status: "doing", assignee: "hippoherman", updatedAt: null },
-                { id: "MDF-2", title: "Check the Inbox feed", status: "todo", assignee: null, updatedAt: null },
+                {
+                  id: "MDF-1",
+                  title: "Ship the Tasks page",
+                  status: "doing",
+                  assignee: "hippoherman",
+                  updatedAt: null,
+                },
+                {
+                  id: "MDF-2",
+                  title: "Check the Inbox feed",
+                  status: "todo",
+                  assignee: null,
+                  updatedAt: null,
+                },
               ],
             };
           case "inbox":
-            return { messages: inboxRows, acts: ["request", "inform", "note", "propose", "query", "agree", "refuse", "done"] };
+            return {
+              messages: inboxRows,
+              acts: [
+                "request",
+                "inform",
+                "note",
+                "propose",
+                "query",
+                "agree",
+                "refuse",
+                "done",
+              ],
+            };
           case "inbox_search": {
             const words = String(args.params?.query ?? "").toLowerCase();
-            return { messages: inboxRows.filter((m) => `${m.subject} ${m.body} ${m.from} ${m.to}`.toLowerCase().includes(words)) };
+            return {
+              messages: inboxRows.filter((m) =>
+                `${m.subject} ${m.body} ${m.from} ${m.to}`
+                  .toLowerCase()
+                  .includes(words),
+              ),
+            };
           }
           case "inbox_thread":
-            return { messages: inboxRows.filter((m) => m.thread === args.params?.thread), markdown: "# Research the plan\n" };
+            return {
+              messages: inboxRows.filter(
+                (m) => m.thread === args.params?.thread,
+              ),
+              markdown: "# Research the plan\n",
+            };
           case "task_send": {
-            const targets = args.params?.to === "all" ? ["hippoherman"] : [String(args.params?.to)];
+            const targets =
+              args.params?.to === "all"
+                ? ["hippoherman"]
+                : [String(args.params?.to)];
             const ids = targets.map((to, i) => {
               const id = `m-new-${inboxRows.length + i}`;
-              inboxRows.unshift({ id, from: "user", to, act: "request", subject: String(args.params?.subject ?? ""), body: String(args.params?.body ?? ""), work: "", thread: id, priority: String(args.params?.priority ?? "normal"), created_at: "2026-11-12T08:00:00+00:00", state: "queued" });
+              inboxRows.unshift({
+                id,
+                from: "user",
+                to,
+                act: "request",
+                subject: String(args.params?.subject ?? ""),
+                body: String(args.params?.body ?? ""),
+                work: "",
+                thread: id,
+                priority: String(args.params?.priority ?? "normal"),
+                created_at: "2026-11-12T08:00:00+00:00",
+                state: "queued",
+              });
               return id;
             });
             return { id: ids[0], ids };
@@ -283,10 +392,19 @@ export async function mockSidecar(
           case "settings":
             return {
               general: { vault: "data/brains/Hippocampus", network: "off" },
-              agents: { provider: "claude", model: "claude-sonnet-5-5", ollama: "qwen2.5:1.5b" },
+              agents: {
+                provider: "claude",
+                model: "claude-sonnet-5-5",
+                ollama: "qwen2.5:1.5b",
+              },
               budgets: {
                 app: { five_hour: 0, daily: 0, weekly: 0, monthly: 0 },
-                assistant: { five_hour: 0, daily: 50000, weekly: 0, monthly: 0 },
+                assistant: {
+                  five_hour: 0,
+                  daily: 50000,
+                  weekly: 0,
+                  monthly: 0,
+                },
                 max_tool_calls: 20,
               },
               memory: { max_bytes: 32000 },
@@ -323,7 +441,10 @@ export async function mockSidecar(
           }
           // The graph's right-click actions, as core/__main__.py answers them.
           case "note_text":
-            return { id: args.params?.path, text: texts[String(args.params?.path)] };
+            return {
+              id: args.params?.path,
+              text: texts[String(args.params?.path)],
+            };
           case "note_save":
             texts[String(args.params?.path)] = String(args.params?.text);
             return { saved: `edited ${args.params?.path}` };
@@ -423,7 +544,12 @@ export async function mockSidecar(
           case "watchers":
             return {
               watchers: [
-                { name: "brain", kind: "vault watcher", status: "stopped", last_event: null },
+                {
+                  name: "brain",
+                  kind: "vault watcher",
+                  status: "stopped",
+                  last_event: null,
+                },
                 {
                   name: "Weekly link check",
                   kind: "trigger",
@@ -466,7 +592,10 @@ export async function mockSidecar(
             return { root: "/home/me/workspaces", folders: workspaceFolders };
           case "create_workspace":
             workspaceFolders.push(String(args.params?.name));
-            return { root: "/home/me/workspaces", folders: [...workspaceFolders] };
+            return {
+              root: "/home/me/workspaces",
+              folders: [...workspaceFolders],
+            };
           case "terminal_start":
             terminalCalls.push({ method: args.method, ...args.params });
             return { running: true };
@@ -474,7 +603,13 @@ export async function mockSidecar(
             terminalCalls.push({ method: args.method, ...args.params });
             return { ok: true };
           case "logs":
-            return { path: "/home/me/.hippocampus/logs/backend.log", lines: ["2026-11-12 10:00:00 INFO hippocampus.core: Synced vault", "2026-11-12 10:00:05 WARNING hippocampus.core: slow call"] };
+            return {
+              path: "/home/me/.hippocampus/logs/backend.log",
+              lines: [
+                "2026-11-12 10:00:00 INFO hippocampus.core: Synced vault",
+                "2026-11-12 10:00:05 WARNING hippocampus.core: slow call",
+              ],
+            };
           case "terminal_input":
           case "terminal_resize":
             return { ok: true };
@@ -515,7 +650,10 @@ export async function mockSidecar(
           case "install_skill": {
             const path = String(args.params?.path ?? "");
             const name = path.split("/").pop() ?? "";
-            skillRows = [...skillRows, { name, description: "Installed from a folder", path }];
+            skillRows = [
+              ...skillRows,
+              { name, description: "Installed from a folder", path },
+            ];
             return { skills: skillRows };
           }
           case "share":
@@ -532,8 +670,18 @@ export async function mockSidecar(
           case "terminal_traces":
             return {
               traces: [
-                { at: "2026-11-12T10:01:00Z", tool: "Bash", detail: "rm notes.md", status: "failed" },
-                { at: "2026-11-12T10:00:00Z", tool: "mcp__vault__read_note", detail: "MAIN.md", status: "done" },
+                {
+                  at: "2026-11-12T10:01:00Z",
+                  tool: "Bash",
+                  detail: "rm notes.md",
+                  status: "failed",
+                },
+                {
+                  at: "2026-11-12T10:00:00Z",
+                  tool: "mcp__vault__read_note",
+                  detail: "MAIN.md",
+                  status: "done",
+                },
               ],
             };
           case "terminal_command":

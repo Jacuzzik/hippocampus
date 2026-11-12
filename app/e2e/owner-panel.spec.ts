@@ -20,9 +20,17 @@ test("the bottom agent bar shows a token placeholder until usage is counted", as
   page,
 }) => {
   // The bar shows no token count until usage is reported; the HIPPO details still say so.
-  const info = page.getByLabel("Agents").getByRole("button", { name: "Info", exact: true }).first();
+  const info = page
+    .getByLabel("Agents")
+    .getByRole("button", { name: "Info", exact: true })
+    .first();
   await info.click();
-  await expect(page.getByRole("dialog", { name: "Hippoherman details" }).getByText("—").first()).toBeVisible();
+  await expect(
+    page
+      .getByRole("dialog", { name: "Hippoherman details" })
+      .getByText("—")
+      .first(),
+  ).toBeVisible();
   await page.keyboard.press("Escape");
 });
 
@@ -101,7 +109,9 @@ test("a card menu archives an added agent and the Control panel restores it", as
     .getByRole("textbox", { name: "Goal", exact: true })
     .fill("Tidy the notes");
   await add.getByRole("button", { name: "Spawn" }).click();
-  await bar.getByRole("button", { name: "Grace options" }).click({ button: "right" });
+  await bar
+    .getByRole("button", { name: "Grace options" })
+    .click({ button: "right" });
   await page.getByRole("menuitem", { name: "Archive" }).click();
   await expect(bar.getByText("Grace")).toHaveCount(0);
   await page.getByRole("button", { name: "Control panel" }).click();

@@ -38,14 +38,28 @@ import {
 } from "../ui/graph/model.ts";
 
 test("lonely notes share 40 display hubs, each linked to MAIN, so none is left alone", () => {
-  const nodes = [{ id: "MAIN.md", title: "MAIN", tags: [] }, { id: "Work.md", title: "Work", tags: ["work"] }];
+  const nodes = [
+    { id: "MAIN.md", title: "MAIN", tags: [] },
+    { id: "Work.md", title: "Work", tags: ["work"] },
+  ];
   const edges = [["MAIN.md", "Work.md"]];
-  for (let i = 0; i < 100; i++) nodes.push({ id: `Loose${i}.md`, title: `Loose ${i}`, tags: [i % 2 ? "a" : "b"] });
+  for (let i = 0; i < 100; i++)
+    nodes.push({
+      id: `Loose${i}.md`,
+      title: `Loose ${i}`,
+      tags: [i % 2 ? "a" : "b"],
+    });
   const extra = lonelyHubs(nodes, edges);
   assert.equal(extra.nodes.length, LONELY_HUBS);
   const hubIds = new Set(extra.nodes.map((n) => n.id));
-  for (const n of nodes.slice(2)) assert.ok(extra.edges.some(([a, b]) => b === n.id && hubIds.has(a)), n.id);
-  assert.ok(extra.edges.filter(([a]) => hubIds.has(a)).some(([, b]) => b === "MAIN.md"));
+  for (const n of nodes.slice(2))
+    assert.ok(
+      extra.edges.some(([a, b]) => b === n.id && hubIds.has(a)),
+      n.id,
+    );
+  assert.ok(
+    extra.edges.filter(([a]) => hubIds.has(a)).some(([, b]) => b === "MAIN.md"),
+  );
 });
 
 function syntheticEdges(n, perNode, seed) {
@@ -78,7 +92,10 @@ test("1,167 notes spread out: the typical note keeps room for its dot", () => {
     let best = Infinity;
     for (let j = 0; j < n; j++) {
       if (i === j) continue;
-      best = Math.min(best, Math.hypot(pos[2 * i] - pos[2 * j], pos[2 * i + 1] - pos[2 * j + 1]));
+      best = Math.min(
+        best,
+        Math.hypot(pos[2 * i] - pos[2 * j], pos[2 * i + 1] - pos[2 * j + 1]),
+      );
     }
     nearest.push(best);
   }
@@ -105,11 +122,17 @@ test("unlinked notes scatter irregularly, not on a lattice", () => {
   const gaps = free.map((i) => {
     let best = Infinity;
     for (const j of free)
-      if (j !== i) best = Math.min(best, Math.hypot(pos[2 * i] - pos[2 * j], pos[2 * i + 1] - pos[2 * j + 1]));
+      if (j !== i)
+        best = Math.min(
+          best,
+          Math.hypot(pos[2 * i] - pos[2 * j], pos[2 * i + 1] - pos[2 * j + 1]),
+        );
     return best;
   });
   const mean = gaps.reduce((a, b) => a + b, 0) / gaps.length;
-  const sd = Math.sqrt(gaps.reduce((a, b) => a + (b - mean) ** 2, 0) / gaps.length);
+  const sd = Math.sqrt(
+    gaps.reduce((a, b) => a + (b - mean) ** 2, 0) / gaps.length,
+  );
   // Notes now keep their boxes apart, which packs them more evenly (CV ~0.34); the old grid was 0.22.
   assert.ok(sd / mean >= 0.3, `nearest-gap CV ${(sd / mean).toFixed(3)}`);
 });
@@ -255,9 +278,15 @@ test("nodeRadius grows with the link count, capped, and a selected node is at le
 });
 
 test("nodeShape: about 40% rectangles, split vertical and horizontal, the rest squares", () => {
-  const shapes = Array.from({ length: 1000 }, (_, i) => nodeShape(`Notes/n${i}.md`));
+  const shapes = Array.from({ length: 1000 }, (_, i) =>
+    nodeShape(`Notes/n${i}.md`),
+  );
   const count = (s) => shapes.filter((x) => x === s).length;
-  assert.ok(shapes.every((s) => s === SHAPE_SQUARE || s === SHAPE_TALL || s === SHAPE_WIDE));
+  assert.ok(
+    shapes.every(
+      (s) => s === SHAPE_SQUARE || s === SHAPE_TALL || s === SHAPE_WIDE,
+    ),
+  );
   assert.ok(count(SHAPE_TALL) > 150 && count(SHAPE_TALL) < 250);
   assert.ok(count(SHAPE_WIDE) > 150 && count(SHAPE_WIDE) < 250);
 });
@@ -281,7 +310,9 @@ test("arc rows run by group, then title, one row per note, and each note sits on
   const pos = arcLayout(arcRows(nodes));
   const r = ringRadius(3);
   for (let i = 0; i < 3; i++)
-    assert.ok(Math.abs(Math.hypot(pos[2 * i] ?? 0, pos[2 * i + 1] ?? 0) - r) < 1e-3);
+    assert.ok(
+      Math.abs(Math.hypot(pos[2 * i] ?? 0, pos[2 * i + 1] ?? 0) - r) < 1e-3,
+    );
   // Gamma is row 0, so it sits at the top of the ring.
   assert.ok(Math.abs(pos[4] ?? 1) < 1e-3 && Math.abs((pos[5] ?? 0) + r) < 1e-3);
 });
@@ -315,7 +346,10 @@ test("an arc link starts and ends on its nodes and bows in toward the core", () 
   // Midpoint of the cubic with controls at half each end: (0.3125 * (A + B)), a straight midpoint would be (50, 50).
   const mid = (ARC_SEGMENTS / 2) * 4 - 2;
   assert.ok(Math.abs(out[mid] - 31.25) < 1e-3, `midpoint x ${out[mid]}`);
-  assert.ok(Math.abs(out[mid + 1] - 31.25) < 1e-3, `midpoint y ${out[mid + 1]}`);
+  assert.ok(
+    Math.abs(out[mid + 1] - 31.25) < 1e-3,
+    `midpoint y ${out[mid + 1]}`,
+  );
 });
 
 test("round hubs: a centre per group inside the ring, the core at the origin, every note strung to its centre", () => {
@@ -345,7 +379,10 @@ test("an arc link never reaches past its ends, so a long link from the rim stays
 });
 
 test("a grabbed note stays where it is held while the simulation settles its neighbours", () => {
-  const sim = newSim(3, [[0, 1], [1, 2]]);
+  const sim = newSim(3, [
+    [0, 1],
+    [1, 2],
+  ]);
   sim.grabbed = 0;
   const [x, y] = [sim.pos[0], sim.pos[1]];
   settle(sim, 50);
@@ -362,7 +399,10 @@ test("incidentLines keeps only the links that touch the focused note", () => {
   const pos = new Float32Array([0, 0, 10, 0, 20, 0, 30, 0]);
   const edges = new Uint32Array([0, 1, 2, 3, 1, 2]);
   // Note 1 touches links 0-1 and 1-2 only.
-  assert.deepEqual(Array.from(incidentLines(pos, edges, 1)), [0, 0, 10, 0, 10, 0, 20, 0]);
+  assert.deepEqual(
+    Array.from(incidentLines(pos, edges, 1)),
+    [0, 0, 10, 0, 10, 0, 20, 0],
+  );
   assert.equal(incidentLines(pos, edges, -1).length, 0);
   assert.equal(incidentLines(pos, edges, 9).length, 0);
 });

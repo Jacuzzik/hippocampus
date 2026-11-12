@@ -145,7 +145,11 @@ test("an engine is Not set up until its key is saved, and Ollama needs none", ()
     text: "Not set up: no Claude (Anthropic) key saved.",
   });
   assert.equal(engineStatus("claude", ["claude"]).ready, true);
-  assert.equal(engineStatus("ollama", [], [], [{ provider: "ollama", running: true }]).ready, true);
+  assert.equal(
+    engineStatus("ollama", [], [], [{ provider: "ollama", running: true }])
+      .ready,
+    true,
+  );
 });
 
 test("a dispatch needs an agent and a task", () => {

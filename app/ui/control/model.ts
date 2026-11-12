@@ -124,14 +124,29 @@ export function keyStatus(saved: boolean, hint: string | null): string {
 // The Settings pages, in rail order. "words" are extra terms the search box matches.
 export const SETTINGS_PAGES = [
   { id: "General", words: "vault folder last tab settings file" },
-  { id: "Appearance", words: "motion animation terminal text size font theme light dark reset" },
-  { id: "Agents", words: "engine provider model tool calls network autonomy shell sandbox rules bash" },
+  {
+    id: "Appearance",
+    words: "motion animation terminal text size font theme light dark reset",
+  },
+  {
+    id: "Agents",
+    words:
+      "engine provider model tool calls network autonomy shell sandbox rules bash",
+  },
   { id: "Budgets", words: "tokens caps limits spend" },
   { id: "Models and keys", words: "api key secret provider claude openai" },
-  { id: "Connectors", words: "integrations slack webhooks github notion calendar gmail drive mcp plugins ollama" },
+  {
+    id: "Connectors",
+    words:
+      "integrations slack webhooks github notion calendar gmail drive mcp plugins ollama",
+  },
   { id: "Memory", words: "memory search notes size" },
   { id: "Privacy and data", words: "error log telemetry remove data sign out" },
-  { id: "Advanced", words: "backend sidecar logs log file feature switches flags dictation meeting prerequisites" },
+  {
+    id: "Advanced",
+    words:
+      "backend sidecar logs log file feature switches flags dictation meeting prerequisites",
+  },
   { id: "About", words: "version" },
 ] as const;
 export type SettingsPage = (typeof SETTINGS_PAGES)[number]["id"];
@@ -147,9 +162,24 @@ export const AGENT_STEPS = [
 export const AGENT_PROVIDERS = [
   { id: "claude", label: "Claude (Anthropic)", needsKey: true, kind: "key" },
   { id: "codex", label: "Codex (OpenAI CLI)", needsKey: false, kind: "cli" },
-  { id: "gemini-cli", label: "Gemini CLI (Google)", needsKey: false, kind: "cli" },
-  { id: "antigravity", label: "Antigravity (Google)", needsKey: false, kind: "cli" },
-  { id: "ollama", label: "Ollama (on this computer)", needsKey: false, kind: "local" },
+  {
+    id: "gemini-cli",
+    label: "Gemini CLI (Google)",
+    needsKey: false,
+    kind: "cli",
+  },
+  {
+    id: "antigravity",
+    label: "Antigravity (Google)",
+    needsKey: false,
+    kind: "cli",
+  },
+  {
+    id: "ollama",
+    label: "Ollama (on this computer)",
+    needsKey: false,
+    kind: "local",
+  },
   { id: "openai", label: "OpenAI", needsKey: true, kind: "key" },
   { id: "xai", label: "xAI Grok", needsKey: true, kind: "key" },
   { id: "moonshot", label: "Moonshot Kimi", needsKey: true, kind: "key" },
@@ -165,43 +195,102 @@ export const AGENT_PROVIDERS = [
 // Plain Node (node --test) has no import.meta.glob, so the call throws there and the map stays empty.
 let providerLogoFiles: Record<string, string> = {};
 try {
-  providerLogoFiles = import.meta.glob("../assets/provider-logos/*.svg", { eager: true, query: "?url", import: "default" }) as Record<string, string>;
+  providerLogoFiles = import.meta.glob("../assets/provider-logos/*.svg", {
+    eager: true,
+    query: "?url",
+    import: "default",
+  }) as Record<string, string>;
 } catch {
   /* no glob under node */
 }
-export const providerLogo = (id: string): string | undefined => providerLogoFiles[`../assets/provider-logos/${id}.svg`];
+export const providerLogo = (id: string): string | undefined =>
+  providerLogoFiles[`../assets/provider-logos/${id}.svg`];
 
 // Model names shown as suggestions; the model field still accepts any name typed in.
 // Claude: the project's Claude 5 list. Codex, Gemini, xAI, DeepSeek and Mistral: 2026 names from web sources, not checked against provider docs.
 // Moonshot, Qwen, Groq and OpenRouter names are older and unverified for 2026.
 export const AGENT_MODELS: Record<string, string[]> = {
-  claude: ["claude-fable-5-1", "claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5"],
-  codex: ["gpt-6.1-sol", "gpt-6.1-terra", "gpt-6-luna", "gpt-5.5", "gpt-5.4", "gpt-5.3-codex"],
+  claude: [
+    "claude-fable-5-1",
+    "claude-opus-5-5",
+    "claude-sonnet-5-5",
+    "claude-haiku-5-5",
+  ],
+  codex: [
+    "gpt-6.1-sol",
+    "gpt-6.1-terra",
+    "gpt-6-luna",
+    "gpt-5.5",
+    "gpt-5.4",
+    "gpt-5.3-codex",
+  ],
   // From `agy models` (Antigravity CLI), read 2026-11-07.
-  antigravity: ["gemini-3.8-flash-high", "gemini-3.8-flash-medium", "gemini-3.8-flash-low", "claude-sonnet-4-6", "claude-opus-4-6-thinking", "gpt-oss-120b-medium"],
-  "gemini-cli": ["gemini-3.1-pro-preview", "gemini-3-flash-preview", "gemini-2.5-pro", "gemini-2.5-flash"],
+  antigravity: [
+    "gemini-3.8-flash-high",
+    "gemini-3.8-flash-medium",
+    "gemini-3.8-flash-low",
+    "claude-sonnet-4-6",
+    "claude-opus-4-6-thinking",
+    "gpt-oss-120b-medium",
+  ],
+  "gemini-cli": [
+    "gemini-3.1-pro-preview",
+    "gemini-3-flash-preview",
+    "gemini-2.5-pro",
+    "gemini-2.5-flash",
+  ],
   ollama: ["qwen2.5:1.5b"],
-  openai: ["gpt-6.1-sol", "gpt-6.1-terra", "gpt-6-luna", "gpt-5.5", "gpt-5.4", "gpt-5.4-mini", "gpt-5.4-nano"],
+  openai: [
+    "gpt-6.1-sol",
+    "gpt-6.1-terra",
+    "gpt-6-luna",
+    "gpt-5.5",
+    "gpt-5.4",
+    "gpt-5.4-mini",
+    "gpt-5.4-nano",
+  ],
   xai: ["grok-4.6", "grok-4.5", "grok-4.3", "grok-latest"],
   moonshot: ["kimi-k3", "kimi-k2.6", "moonshot-v1-8k"],
-  gemini: ["gemini-3.1-pro-preview", "gemini-3.1-flash-lite", "gemini-3-flash-preview", "gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite"],
+  gemini: [
+    "gemini-3.1-pro-preview",
+    "gemini-3.1-flash-lite",
+    "gemini-3-flash-preview",
+    "gemini-2.5-pro",
+    "gemini-2.5-flash",
+    "gemini-2.5-flash-lite",
+  ],
   qwen: ["qwen3.8-max", "qwen3.7-plus", "qwen3.8-flash"],
   deepseek: ["deepseek-v4-pro", "deepseek-flash"],
   mistral: ["mistral-large-3", "mistral-small-4", "codestral-latest"],
-  groq: ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "openai/gpt-oss-120b"],
-  openrouter: ["anthropic/claude-sonnet-4.5", "openai/gpt-4o", "google/gemini-2.5-pro"],
+  groq: [
+    "llama-3.3-70b-versatile",
+    "llama-3.1-8b-instant",
+    "openai/gpt-oss-120b",
+  ],
+  openrouter: [
+    "anthropic/claude-sonnet-4.5",
+    "openai/gpt-4o",
+    "google/gemini-2.5-pro",
+  ],
 };
 
 /** Card faces: one per card-face-XX.svg in ui/assets/faces-new. The id is the file name. */
 let cardFaceUrls: Record<string, string> = {};
 try {
-  cardFaceUrls = import.meta.glob("../assets/faces-new/card-face-*.svg", { eager: true, query: "?url", import: "default" }) as Record<string, string>;
+  cardFaceUrls = import.meta.glob("../assets/faces-new/card-face-*.svg", {
+    eager: true,
+    query: "?url",
+    import: "default",
+  }) as Record<string, string>;
 } catch {
   /* no glob under node */
 }
 
 export const CARD_FACES = Object.entries(cardFaceUrls)
-  .map(([path, url]) => ({ id: path.split("/").pop()?.replace(".svg", "") ?? path, url }))
+  .map(([path, url]) => ({
+    id: path.split("/").pop()?.replace(".svg", "") ?? path,
+    url,
+  }))
   .sort((a, b) => a.id.localeCompare(b.id));
 
 /** Original 8x8 pixel avatars drawn here in code. "#" is a filled pixel, "." is empty. */
@@ -264,29 +353,129 @@ export const AVATARS = [
   },
 ] as const;
 
-
 /** Jobs for the briefing step. Clicking one fills the description and the goal. */
 export const AGENT_TEMPLATES = [
-  { id: "janitor", label: "Repo janitor", description: "Keeps the repository tidy: stale branches, dead code and clutter.", goal: "Keep the repo lean so the team can find things fast. Remove stale branches, dead code and stray files each week and list what was removed." },
-  { id: "docs", label: "Docs writer", description: "Keeps the docs in step with the code.", goal: "Make sure every doc matches the code it describes. Update or flag any page whose content no longer matches the current behaviour." },
-  { id: "triage", label: "Bug triager", description: "Reads new bug reports and sorts them.", goal: "Get every new bug report into the right queue within a day. Read each one and file it under the correct area." },
-  { id: "research", label: "Research assistant", description: "Finds and summarises sources on a question.", goal: "Answer one question with the best sources available. Find credible sources and summarise what each says about it." },
-  { id: "release", label: "Release manager", description: "Prepares each release.", goal: "Ship each release on time with nothing missing. Run the checklist from freeze to publish and report any open item." },
-  { id: "tests", label: "Test writer", description: "Writes tests for untested code and keeps the suite green.", goal: "Raise confidence in the codebase. Find code without tests, write focused tests for it and make sure the full suite passes." },
-  { id: "deps", label: "Dependency updater", description: "Keeps packages current and flags breaking upgrades.", goal: "Stay secure and current. Update packages with patch and minor releases, and report major upgrades with the changes they need." },
-  { id: "security", label: "Security auditor", description: "Scans code and config for common security holes.", goal: "Find and report security problems before attackers do. Check for injection, exposed secrets and unsafe defaults, ranked by risk." },
-  { id: "review", label: "Code reviewer", description: "Reviews each change for bugs, clarity and risk.", goal: "Catch problems before merge. Review each change for correctness and clarity, and leave specific, actionable comments." },
-  { id: "perf", label: "Performance tuner", description: "Finds slow code paths and measures the fixes.", goal: "Make the app faster where it matters. Profile the slowest paths, propose fixes, and measure before and after each change." },
-  { id: "a11y", label: "Accessibility checker", description: "Checks screens for contrast, labels and keyboard use.", goal: "Make the app usable for everyone. Check each screen for colour contrast, labels and keyboard navigation, and list each fix." },
-  { id: "i18n", label: "Translator", description: "Translates UI text and keeps language files in sync.", goal: "Make the app available in more languages. Translate new strings, keep every language file in step and flag missing keys." },
-  { id: "support", label: "Support drafter", description: "Drafts replies to customer questions for review.", goal: "Answer customers faster without losing the human touch. Draft a clear, polite reply to each question for a person to approve." },
-  { id: "inbox", label: "Inbox sorter", description: "Sorts incoming messages into folders and flags urgent ones.", goal: "Keep the inbox workable. Label each new message, flag urgent ones and draft replies for routine questions." },
-  { id: "notes", label: "Meeting summariser", description: "Turns meeting notes into decisions and action items.", goal: "Make sure nothing agreed in a meeting gets lost. Write the decisions, then each action item with its owner and due date." },
-  { id: "planner", label: "Sprint planner", description: "Breaks big tasks into small ones and estimates them.", goal: "Make the next sprint realistic. Split large tasks into small ones with estimates, and flag work too vague to start." },
-  { id: "metrics", label: "Metrics reporter", description: "Builds a short weekly report from the key numbers.", goal: "Give the team a weekly read on how things are going. Pull the key numbers, note what changed and why it matters." },
-  { id: "seo", label: "SEO checker", description: "Checks pages for titles, descriptions and broken links.", goal: "Help people find the site. Check each page's title, meta description and headings, and list fixes in priority order." },
-  { id: "onboard", label: "Onboarding guide", description: "Walks new team members through setup and first tasks.", goal: "Get new team members productive quickly. Give each newcomer the setup steps and a first task that teaches the codebase." },
-  { id: "data", label: "Data cleaner", description: "Finds and fixes duplicate, missing or malformed records.", goal: "Keep the data trustworthy. Find duplicate, empty or malformed records, fix the safe ones and list the rest for review." },
+  {
+    id: "janitor",
+    label: "Repo janitor",
+    description:
+      "Keeps the repository tidy: stale branches, dead code and clutter.",
+    goal: "Keep the repo lean so the team can find things fast. Remove stale branches, dead code and stray files each week and list what was removed.",
+  },
+  {
+    id: "docs",
+    label: "Docs writer",
+    description: "Keeps the docs in step with the code.",
+    goal: "Make sure every doc matches the code it describes. Update or flag any page whose content no longer matches the current behaviour.",
+  },
+  {
+    id: "triage",
+    label: "Bug triager",
+    description: "Reads new bug reports and sorts them.",
+    goal: "Get every new bug report into the right queue within a day. Read each one and file it under the correct area.",
+  },
+  {
+    id: "research",
+    label: "Research assistant",
+    description: "Finds and summarises sources on a question.",
+    goal: "Answer one question with the best sources available. Find credible sources and summarise what each says about it.",
+  },
+  {
+    id: "release",
+    label: "Release manager",
+    description: "Prepares each release.",
+    goal: "Ship each release on time with nothing missing. Run the checklist from freeze to publish and report any open item.",
+  },
+  {
+    id: "tests",
+    label: "Test writer",
+    description: "Writes tests for untested code and keeps the suite green.",
+    goal: "Raise confidence in the codebase. Find code without tests, write focused tests for it and make sure the full suite passes.",
+  },
+  {
+    id: "deps",
+    label: "Dependency updater",
+    description: "Keeps packages current and flags breaking upgrades.",
+    goal: "Stay secure and current. Update packages with patch and minor releases, and report major upgrades with the changes they need.",
+  },
+  {
+    id: "security",
+    label: "Security auditor",
+    description: "Scans code and config for common security holes.",
+    goal: "Find and report security problems before attackers do. Check for injection, exposed secrets and unsafe defaults, ranked by risk.",
+  },
+  {
+    id: "review",
+    label: "Code reviewer",
+    description: "Reviews each change for bugs, clarity and risk.",
+    goal: "Catch problems before merge. Review each change for correctness and clarity, and leave specific, actionable comments.",
+  },
+  {
+    id: "perf",
+    label: "Performance tuner",
+    description: "Finds slow code paths and measures the fixes.",
+    goal: "Make the app faster where it matters. Profile the slowest paths, propose fixes, and measure before and after each change.",
+  },
+  {
+    id: "a11y",
+    label: "Accessibility checker",
+    description: "Checks screens for contrast, labels and keyboard use.",
+    goal: "Make the app usable for everyone. Check each screen for colour contrast, labels and keyboard navigation, and list each fix.",
+  },
+  {
+    id: "i18n",
+    label: "Translator",
+    description: "Translates UI text and keeps language files in sync.",
+    goal: "Make the app available in more languages. Translate new strings, keep every language file in step and flag missing keys.",
+  },
+  {
+    id: "support",
+    label: "Support drafter",
+    description: "Drafts replies to customer questions for review.",
+    goal: "Answer customers faster without losing the human touch. Draft a clear, polite reply to each question for a person to approve.",
+  },
+  {
+    id: "inbox",
+    label: "Inbox sorter",
+    description: "Sorts incoming messages into folders and flags urgent ones.",
+    goal: "Keep the inbox workable. Label each new message, flag urgent ones and draft replies for routine questions.",
+  },
+  {
+    id: "notes",
+    label: "Meeting summariser",
+    description: "Turns meeting notes into decisions and action items.",
+    goal: "Make sure nothing agreed in a meeting gets lost. Write the decisions, then each action item with its owner and due date.",
+  },
+  {
+    id: "planner",
+    label: "Sprint planner",
+    description: "Breaks big tasks into small ones and estimates them.",
+    goal: "Make the next sprint realistic. Split large tasks into small ones with estimates, and flag work too vague to start.",
+  },
+  {
+    id: "metrics",
+    label: "Metrics reporter",
+    description: "Builds a short weekly report from the key numbers.",
+    goal: "Give the team a weekly read on how things are going. Pull the key numbers, note what changed and why it matters.",
+  },
+  {
+    id: "seo",
+    label: "SEO checker",
+    description: "Checks pages for titles, descriptions and broken links.",
+    goal: "Help people find the site. Check each page's title, meta description and headings, and list fixes in priority order.",
+  },
+  {
+    id: "onboard",
+    label: "Onboarding guide",
+    description: "Walks new team members through setup and first tasks.",
+    goal: "Get new team members productive quickly. Give each newcomer the setup steps and a first task that teaches the codebase.",
+  },
+  {
+    id: "data",
+    label: "Data cleaner",
+    description: "Finds and fixes duplicate, missing or malformed records.",
+    goal: "Keep the data trustworthy. Find duplicate, empty or malformed records, fix the safe ones and list the rest for review.",
+  },
 ] as const;
 
 /** What the add-agent form collects. Empty strings are not yet answered. */
@@ -344,7 +533,10 @@ export function engineStatus(
     if (!cli) return { ready: false, text: `Checking ${row.label}…` };
     if (cli.logged_in === true && cli.installed)
       return { ready: true, text: `Ready: ${row.label} is logged in.` };
-    return { ready: false, text: cli.steps || `Not checked: log in to ${row.label} first.` };
+    return {
+      ready: false,
+      text: cli.steps || `Not checked: log in to ${row.label} first.`,
+    };
   }
   return savedKeys.includes(provider)
     ? { ready: true, text: `Ready: ${row.label} key saved.` }

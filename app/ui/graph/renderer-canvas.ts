@@ -1,6 +1,12 @@
 // 2D canvas renderer for the brain graph, used when WebGL 2 is missing (some phone browsers).
 // Same methods as BrainRenderer, so the graph component can use either one.
-import { SHAPE_DISK, SHAPE_LONG, SHAPE_TALL, SHAPE_WIDE, type Camera } from "./model";
+import {
+  SHAPE_DISK,
+  SHAPE_LONG,
+  SHAPE_TALL,
+  SHAPE_WIDE,
+  type Camera,
+} from "./model";
 import type { Rgba } from "./renderer";
 
 // Colours come from design tokens (see colors.ts); this only turns them into a canvas hex string.
@@ -109,8 +115,22 @@ export class Canvas2DRenderer {
       }
       // Hollow outline, same size as the WebGL shape (tall rectangles are 0.6 by 1.4 times the radius).
       // Squares are 1.5 times the radius, to match the WebGL shape's ext.
-      const w = shape === SHAPE_LONG ? 0.6 * r : shape === SHAPE_TALL ? 1.2 * r : shape === SHAPE_WIDE ? 2.0 * r : 1.5 * r;
-      const h = shape === SHAPE_LONG ? 2.4 * r : shape === SHAPE_TALL ? 2.0 * r : shape === SHAPE_WIDE ? 1.2 * r : 1.5 * r;
+      const w =
+        shape === SHAPE_LONG
+          ? 0.6 * r
+          : shape === SHAPE_TALL
+            ? 1.2 * r
+            : shape === SHAPE_WIDE
+              ? 2.0 * r
+              : 1.5 * r;
+      const h =
+        shape === SHAPE_LONG
+          ? 2.4 * r
+          : shape === SHAPE_TALL
+            ? 2.0 * r
+            : shape === SHAPE_WIDE
+              ? 1.2 * r
+              : 1.5 * r;
       ctx.strokeStyle = css(c);
       ctx.lineWidth = 1.5;
       ctx.strokeRect(x - w, y - h, 2 * w, 2 * h);

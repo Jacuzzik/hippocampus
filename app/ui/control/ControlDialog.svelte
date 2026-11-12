@@ -61,8 +61,21 @@
         >
       </div>
     </header>
-    <div class="tabbar"><Tabs items={TABS} bind:value={tab} label="Control panel tabs" idBase="control" /></div>
-    <div class="sections" role="tabpanel" id="control-panel" aria-labelledby={`control-tab-${tab}`} tabindex="-1">
+    <div class="tabbar">
+      <Tabs
+        items={TABS}
+        bind:value={tab}
+        label="Control panel tabs"
+        idBase="control"
+      />
+    </div>
+    <div
+      class="sections"
+      role="tabpanel"
+      id="control-panel"
+      aria-labelledby={`control-tab-${tab}`}
+      tabindex="-1"
+    >
       {#if tab === "overview"}
         <NetworkSection />
         <ActivitySection />

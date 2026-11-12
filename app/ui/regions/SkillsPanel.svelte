@@ -13,7 +13,9 @@
   // Read again every few seconds while this tab is open, so it does not go stale.
   async function load(): Promise<void> {
     try {
-      skills = (await invoke<{ skills: Skill[] }>("sidecar_call", { method: "skills" })).skills;
+      skills = (
+        await invoke<{ skills: Skill[] }>("sidecar_call", { method: "skills" })
+      ).skills;
       failed = false;
     } catch (cause) {
       failed = true;

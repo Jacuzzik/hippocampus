@@ -3,15 +3,32 @@
   import { every } from "../poll.ts";
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
-  import { addedAgents, archived, removeAgent, setArchived } from "../owner/addedAgents.svelte";
-  import { AGENT_MODELS, AGENT_PROVIDERS, CARD_FACES, type Caps } from "../control/model";
+  import {
+    addedAgents,
+    archived,
+    removeAgent,
+    setArchived,
+  } from "../owner/addedAgents.svelte";
+  import {
+    AGENT_MODELS,
+    AGENT_PROVIDERS,
+    CARD_FACES,
+    type Caps,
+  } from "../control/model";
   import Dropdown from "../controls/Dropdown.svelte";
 
-  type Budget = { caps: { app: Caps; assistant: Caps }; used: { app: Caps; assistant: Caps } };
+  type Budget = {
+    caps: { app: Caps; assistant: Caps };
+    used: { app: Caps; assistant: Caps };
+  };
 
   // Only the agents the user added (addedAgents store); archived ones show a REOPEN button.
-  const active = $derived(addedAgents.list.filter((a) => !archived.ids.includes(a.id)));
-  const hidden = $derived(addedAgents.list.filter((a) => archived.ids.includes(a.id)));
+  const active = $derived(
+    addedAgents.list.filter((a) => !archived.ids.includes(a.id)),
+  );
+  const hidden = $derived(
+    addedAgents.list.filter((a) => archived.ids.includes(a.id)),
+  );
 
   // Unique folders of the agents the user added (agents with no folder are left out).
 
@@ -21,12 +38,22 @@
   let selectedFolder = $state("");
   // The main agent's engine as the app has it set (read only: no call changes it yet).
   type Engine = { provider: string; model: string; folder: string };
-  type Activity = { tool_calls: number; last_tool: string | null; last_reply: string | null };
+  type Activity = {
+    tool_calls: number;
+    last_tool: string | null;
+    last_reply: string | null;
+  };
   // Per agent folder, this month: real Claude Code activity from the session files.
   let activity = $state<Record<string, Activity>>({});
   let engine = $state<Engine | null>(null);
   // The main agent's folder is included, so its card gets its own token count.
-  const directories = $derived([...new Set([engine?.folder, ...addedAgents.list.map((a) => a.folder)].filter(Boolean))] as string[]);
+  const directories = $derived([
+    ...new Set(
+      [engine?.folder, ...addedAgents.list.map((a) => a.folder)].filter(
+        Boolean,
+      ),
+    ),
+  ] as string[]);
   // Second step of delete: the card asks again before it removes the agent.
   let confirmDelete = $state<string | null>(null);
 
@@ -36,7 +63,10 @@
 
   // Stops the agent's running terminal; the card stays.
   async function stopAgent(id: string): Promise<void> {
-    await invoke("sidecar_call", { method: "terminal_stop", params: { agent: id } }).catch(() => undefined);
+    await invoke("sidecar_call", {
+      method: "terminal_stop",
+      params: { agent: id },
+    }).catch(() => undefined);
   }
 
   let engineProvider = $state("");
@@ -46,19 +76,26 @@
   // The current model is listed first when the provider has not changed.
   const modelOptions = $derived.by(() => {
     const list = AGENT_MODELS[engineProvider] ?? [];
-    const now = engine && engine.provider === engineProvider ? engine.model : "";
+    const now =
+      engine && engine.provider === engineProvider ? engine.model : "";
     return now && !list.includes(now) ? [now, ...list] : list;
   });
   // Apply asks first: it resets the terminal and starts a new session that cannot be resumed.
   let confirmOpen = $state(false);
-  const engineChanged = $derived(!!engine && (engineProvider !== engine.provider || engineModel !== engine.model));
+  const engineChanged = $derived(
+    !!engine &&
+      (engineProvider !== engine.provider || engineModel !== engine.model),
+  );
 
   // Checked before the confirm dialog: a provider or model this app does not offer shows its reason at once.
   const engineIssue = $derived.by(() => {
-    if (!AGENT_PROVIDERS.some((p) => p.id === engineProvider)) return `${engineProvider || "This provider"} is not a provider in this app.`;
+    if (!AGENT_PROVIDERS.some((p) => p.id === engineProvider))
+      return `${engineProvider || "This provider"} is not a provider in this app.`;
     const list = AGENT_MODELS[engineProvider] ?? [];
-    if (!list.length) return `${engineProvider} has no models in this app to pick from.`;
-    if (!list.includes(engineModel)) return `${engineModel || "No model"} is not a model ${engineProvider} offers in this app.`;
+    if (!list.length)
+      return `${engineProvider} has no models in this app to pick from.`;
+    if (!list.includes(engineModel))
+      return `${engineModel || "No model"} is not a model ${engineProvider} offers in this app.`;
     return "";
   });
   function askApply(): void {
@@ -72,7 +109,11 @@
     engineDone = "";
     try {
       // The sidecar answers { ok, error } for a refused change, so a refusal shows here, not as silence.
-      const result = await invoke<{ ok: boolean; error?: string; message?: string }>("sidecar_call", {
+      const result = await invoke<{
+        ok: boolean;
+        error?: string;
+        message?: string;
+      }>("sidecar_call", {
         method: "set_engine",
         params: { provider: engineProvider, model: engineModel },
       });
@@ -82,8 +123,15 @@
       }
       engine = await invoke<Engine>("sidecar_call", { method: "engine" });
       // Stop the main terminal so the next start runs the new provider; the open panel restarts it.
-      await invoke("sidecar_call", { method: "terminal_stop", params: { agent: "hippoherman" } }).catch(() => undefined);
-      window.dispatchEvent(new CustomEvent("engine-changed", { detail: { provider: engineProvider, model: engineModel } }));
+      await invoke("sidecar_call", {
+        method: "terminal_stop",
+        params: { agent: "hippoherman" },
+      }).catch(() => undefined);
+      window.dispatchEvent(
+        new CustomEvent("engine-changed", {
+          detail: { provider: engineProvider, model: engineModel },
+        }),
+      );
       engineDone = result.message ?? "Saved.";
     } catch (cause) {
       engineError = String(cause);
@@ -91,16 +139,22 @@
   }
   const current = $derived(issues[selectedFolder]);
   $effect(() => {
-    if (!directories.includes(selectedFolder)) selectedFolder = directories[0] ?? "";
+    if (!directories.includes(selectedFolder))
+      selectedFolder = directories[0] ?? "";
   });
 
   async function fetchIssues(folder: string): Promise<void> {
     try {
-      const result = await invoke<{ issues?: Issue[]; error?: string }>("sidecar_call", {
-        method: "issues",
-        params: { folder },
-      });
-      issues[folder] = result.error ? { error: result.error } : { list: result.issues ?? [] };
+      const result = await invoke<{ issues?: Issue[]; error?: string }>(
+        "sidecar_call",
+        {
+          method: "issues",
+          params: { folder },
+        },
+      );
+      issues[folder] = result.error
+        ? { error: result.error }
+        : { list: result.issues ?? [] };
     } catch (cause) {
       console.error("Could not fetch the issues", cause);
       issues[folder] = { error: "Could not reach the app's helper." };
@@ -111,11 +165,16 @@
   let failed = $state(false);
   // Tokens per agent folder this month, from each agent's Claude Code sessions (real transcripts).
   let folderTokens = $state<Record<string, number>>({});
-  const agentTokens = $derived(Object.values(folderTokens).reduce((sum, n) => sum + n, 0));
+  const agentTokens = $derived(
+    Object.values(folderTokens).reduce((sum, n) => sum + n, 0),
+  );
 
   function loadTokens(folders: string[]): void {
     if (folders.length === 0) return;
-    invoke<{ folders: Record<string, number>; activity: Record<string, Activity> }>("sidecar_call", {
+    invoke<{
+      folders: Record<string, number>;
+      activity: Record<string, Activity>;
+    }>("sidecar_call", {
       method: "tokens",
       params: { folders },
     }).then(
@@ -161,21 +220,29 @@
     <p class="muted">Checking…</p>
   {:else}
     <div class="sec">
-      <h3>AGENTS<em>{active.length + 1} active · {hidden.length} archived</em></h3>
+      <h3>
+        AGENTS<em>{active.length + 1} active · {hidden.length} archived</em>
+      </h3>
       {#if active.length === 0}
         <p class="muted">No agents yet. Agents you add appear here.</p>
       {/if}
       <div class="cards">
         <div class="card main">
           <div class="title-row">
-            <img src={CARD_FACES.find((f) => f.id === "card-face-17")?.url} alt="" class="pic big" />
+            <img
+              src={CARD_FACES.find((f) => f.id === "card-face-17")?.url}
+              alt=""
+              class="pic big"
+            />
             <div class="title-text">
               <div class="title-line">
                 <span class="title">Hippoherman</span>
                 <span class="badge">MAIN</span>
               </div>
-              {#if engine}<span class="subtitle">{providerLabel(engine.provider)}</span>
-              <span class="subtitle">{engine.model}</span>{/if}
+              {#if engine}<span class="subtitle"
+                  >{providerLabel(engine.provider)}</span
+                >
+                <span class="subtitle">{engine.model}</span>{/if}
             </div>
           </div>
           {#if engine}
@@ -183,7 +250,10 @@
             <div class="picker">
               <Dropdown
                 bind:value={engineProvider}
-                options={AGENT_PROVIDERS.map((p) => ({ value: p.id, label: p.label }))}
+                options={AGENT_PROVIDERS.map((p) => ({
+                  value: p.id,
+                  label: p.label,
+                }))}
                 label="AI provider"
                 onchange={() => (engineModel = modelOptions[0] ?? "")}
               />
@@ -193,16 +263,48 @@
                 label="AI model"
                 disabled={!modelOptions.length}
               />
-              <button type="button" class="btn" disabled={!engineChanged} onclick={askApply}>apply</button>
+              <button
+                type="button"
+                class="btn"
+                disabled={!engineChanged}
+                onclick={askApply}>apply</button
+              >
             </div>
             {#if confirmOpen}
-              <div class="scrim" role="presentation" onclick={() => (confirmOpen = false)}>
-                <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="engine-confirm-title" tabindex="-1" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.key === "Escape" && (confirmOpen = false)}>
+              <div
+                class="scrim"
+                role="presentation"
+                onclick={() => (confirmOpen = false)}
+              >
+                <div
+                  class="dialog"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby="engine-confirm-title"
+                  tabindex="-1"
+                  onclick={(e) => e.stopPropagation()}
+                  onkeydown={(e) => e.key === "Escape" && (confirmOpen = false)}
+                >
                   <h3 id="engine-confirm-title">Change the AI model?</h3>
-                  <p>Changing to <strong>{engineProvider}</strong> / <strong>{engineModel}</strong> resets the terminal and starts a new session. The current session cannot be resumed.</p>
+                  <p>
+                    Changing to <strong>{engineProvider}</strong> /
+                    <strong>{engineModel}</strong> resets the terminal and starts
+                    a new session. The current session cannot be resumed.
+                  </p>
                   <div class="actions">
-                    <button type="button" class="btn" onclick={() => (confirmOpen = false)}>cancel</button>
-                    <button type="button" class="btn solid" onclick={() => { confirmOpen = false; applyEngine(); }}>apply and reset</button>
+                    <button
+                      type="button"
+                      class="btn"
+                      onclick={() => (confirmOpen = false)}>cancel</button
+                    >
+                    <button
+                      type="button"
+                      class="btn solid"
+                      onclick={() => {
+                        confirmOpen = false;
+                        applyEngine();
+                      }}>apply and reset</button
+                    >
                   </div>
                 </div>
               </div>
@@ -210,11 +312,19 @@
             {#if engineError}<p class="status error">{engineError}</p>{/if}
             {#if engineDone}<p class="status">{engineDone}</p>{/if}
             <div class="meta">
-              <span class="lastran">{activity[engine.folder]?.last_tool ? `${activity[engine.folder]?.last_tool} - last ran` : "none this month"}</span>
+              <span class="lastran"
+                >{activity[engine.folder]?.last_tool
+                  ? `${activity[engine.folder]?.last_tool} - last ran`
+                  : "none this month"}</span
+              >
             </div>
             <div class="row">
               <span class="zone-tag">DANGER ZONE</span>
-              <button type="button" class="btn danger" onclick={() => stopAgent("hippoherman")}>stop</button>
+              <button
+                type="button"
+                class="btn danger"
+                onclick={() => stopAgent("hippoherman")}>stop</button
+              >
             </div>
           {/if}
         </div>
@@ -222,14 +332,22 @@
           <div class="card">
             <div class="title-row">
               {#if CARD_FACES.find((f) => f.id === agent.character)}
-                <img src={CARD_FACES.find((f) => f.id === agent.character)?.url} alt="" class="pic big" />
+                <img
+                  src={CARD_FACES.find((f) => f.id === agent.character)?.url}
+                  alt=""
+                  class="pic big"
+                />
               {:else}
-                <div class="pic big letter">{agent.name.slice(0, 1).toUpperCase()}</div>
+                <div class="pic big letter">
+                  {agent.name.slice(0, 1).toUpperCase()}
+                </div>
               {/if}
               <div class="title-text">
                 <div class="title-line">
                   <span class="title">{agent.name}</span>
-                  <span class="tok">{(folderTokens[agent.folder] ?? 0).toLocaleString("en-US")} tok</span>
+                  <span class="tok"
+                    >{(folderTokens[agent.folder] ?? 0).toLocaleString("en-US")} tok</span
+                  >
                 </div>
                 <span class="subtitle">{providerLabel(agent.provider)}</span>
                 <span class="subtitle">{agent.model || "default"}</span>
@@ -237,23 +355,49 @@
             </div>
             <div class="dir">{agent.folder}</div>
             <div class="meta">
-              <span class="lastran">{activity[agent.folder]?.last_tool ? `${activity[agent.folder]?.last_tool} - last ran` : "none this month"}</span>
+              <span class="lastran"
+                >{activity[agent.folder]?.last_tool
+                  ? `${activity[agent.folder]?.last_tool} - last ran`
+                  : "none this month"}</span
+              >
             </div>
             <div class="row">
               <span class="zone-tag">DANGER ZONE</span>
               <div class="row-btns">
-              <button type="button" class="btn danger" onclick={() => stopAgent(agent.id)}>stop</button>
-              {#if confirmDelete === agent.id}
-                <button type="button" class="btn confirm" onclick={() => { removeAgent(agent.id); confirmDelete = null; }}>confirm delete</button>
-              {:else}
-                <button type="button" class="btn danger" onclick={() => (confirmDelete = agent.id)}>delete</button>
-              {/if}
-              <button type="button" class="btn danger" onclick={() => setArchived(agent.id, true)}>archive</button>
+                <button
+                  type="button"
+                  class="btn danger"
+                  onclick={() => stopAgent(agent.id)}>stop</button
+                >
+                {#if confirmDelete === agent.id}
+                  <button
+                    type="button"
+                    class="btn confirm"
+                    onclick={() => {
+                      removeAgent(agent.id);
+                      confirmDelete = null;
+                    }}>confirm delete</button
+                  >
+                {:else}
+                  <button
+                    type="button"
+                    class="btn danger"
+                    onclick={() => (confirmDelete = agent.id)}>delete</button
+                  >
+                {/if}
+                <button
+                  type="button"
+                  class="btn danger"
+                  onclick={() => setArchived(agent.id, true)}>archive</button
+                >
               </div>
             </div>
           </div>
         {/each}
-        <p class="sigma">Σ {(budget.used.app.monthly + agentTokens).toLocaleString("en-US")} tok <span>burned this month</span></p>
+        <p class="sigma">
+          Σ {(budget.used.app.monthly + agentTokens).toLocaleString("en-US")} tok
+          <span>burned this month</span>
+        </p>
       </div>
     </div>
 
@@ -263,15 +407,25 @@
         {#each hidden as agent (agent.id)}
           <div class="arch">
             {#if CARD_FACES.find((f) => f.id === agent.character)}
-              <img src={CARD_FACES.find((f) => f.id === agent.character)?.url} alt="" class="pic small" />
+              <img
+                src={CARD_FACES.find((f) => f.id === agent.character)?.url}
+                alt=""
+                class="pic small"
+              />
             {:else}
-              <div class="pic small letter">{agent.name.slice(0, 1).toUpperCase()}</div>
+              <div class="pic small letter">
+                {agent.name.slice(0, 1).toUpperCase()}
+              </div>
             {/if}
             <div class="grow">
               <div class="name">{agent.name}</div>
               <div class="sub">{agent.folder}</div>
             </div>
-            <button type="button" class="btn solid" onclick={() => setArchived(agent.id, false)}>REOPEN</button>
+            <button
+              type="button"
+              class="btn solid"
+              onclick={() => setArchived(agent.id, false)}>REOPEN</button
+            >
           </div>
         {/each}
       </details>
@@ -288,8 +442,16 @@
           {/each}
         </ul>
         <div class="picker">
-          <Dropdown bind:value={selectedFolder} options={directories.map((f) => ({ value: f, label: f }))} label="Folder" />
-          <button type="button" class="btn solid" onclick={() => fetchIssues(selectedFolder)}>Fetch issues</button>
+          <Dropdown
+            bind:value={selectedFolder}
+            options={directories.map((f) => ({ value: f, label: f }))}
+            label="Folder"
+          />
+          <button
+            type="button"
+            class="btn solid"
+            onclick={() => fetchIssues(selectedFolder)}>Fetch issues</button
+          >
         </div>
         {#if current?.error}
           <p class="status error">{current.error}</p>
@@ -300,13 +462,15 @@
             {/each}
           </ul>
         {:else if current?.list}
-          <p class="status error">No issues were fetched for this folder. It may have no open issues, or gh could not reach its GitHub repo.</p>
+          <p class="status error">
+            No issues were fetched for this folder. It may have no open issues,
+            or gh could not reach its GitHub repo.
+          </p>
         {:else}
           <p class="muted">Pick a folder and press Fetch issues.</p>
         {/if}
       {/if}
     </div>
-
   {/if}
 </section>
 
@@ -448,8 +612,6 @@
     width: 32px;
     height: 32px;
   }
-
-
 
   .pic.letter {
     display: flex;
@@ -640,7 +802,6 @@
     gap: var(--space-2);
   }
 
-
   /* Collapsible groups (archived): click the heading to open or close. No colour or border. */
   .fold > summary {
     cursor: pointer;
@@ -654,12 +815,50 @@
   .status.error {
     color: var(--color-md-danger);
   }
-  .scrim { position: fixed; inset: 0; background: var(--color-scrim); display: grid; place-items: center; z-index: 1000; }
+  .scrim {
+    position: fixed;
+    inset: 0;
+    background: var(--color-scrim);
+    display: grid;
+    place-items: center;
+    z-index: 1000;
+  }
   /* Dark confirm box, the app's dark palette, with a warning bar on its left edge. */
-  .dialog { background: var(--color-md-surface); color: var(--color-md-text); border: 1px solid var(--color-md-border); border-left: 3px solid var(--color-accent); border-radius: var(--radius-sm); padding: var(--space-4); max-width: 420px; width: calc(100% - 32px); box-shadow: 0 8px 24px var(--color-shadow-strong); }
-  .dialog h3 { margin: 0 0 var(--space-2); font-size: var(--font-size-md); font-weight: 600; color: var(--color-md-text); }
-  .dialog p { margin: 0 0 var(--space-4); font-size: var(--font-size-sm); line-height: 1.45; color: var(--color-md-text-muted); }
-  .dialog p strong { color: var(--color-md-text); font-weight: 600; }
-  .dialog .actions { display: flex; justify-content: flex-end; gap: var(--space-2); }
-  .dialog .btn.solid { background: var(--color-md-accent); color: var(--color-md-accent-on); border-color: var(--color-md-accent); }
+  .dialog {
+    background: var(--color-md-surface);
+    color: var(--color-md-text);
+    border: 1px solid var(--color-md-border);
+    border-left: 3px solid var(--color-accent);
+    border-radius: var(--radius-sm);
+    padding: var(--space-4);
+    max-width: 420px;
+    width: calc(100% - 32px);
+    box-shadow: 0 8px 24px var(--color-shadow-strong);
+  }
+  .dialog h3 {
+    margin: 0 0 var(--space-2);
+    font-size: var(--font-size-md);
+    font-weight: 600;
+    color: var(--color-md-text);
+  }
+  .dialog p {
+    margin: 0 0 var(--space-4);
+    font-size: var(--font-size-sm);
+    line-height: 1.45;
+    color: var(--color-md-text-muted);
+  }
+  .dialog p strong {
+    color: var(--color-md-text);
+    font-weight: 600;
+  }
+  .dialog .actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
+  }
+  .dialog .btn.solid {
+    background: var(--color-md-accent);
+    color: var(--color-md-accent-on);
+    border-color: var(--color-md-accent);
+  }
 </style>

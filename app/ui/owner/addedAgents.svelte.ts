@@ -70,7 +70,9 @@ export function setArchived(id: string, on: boolean): void {
   invoke("sidecar_call", {
     method: "save_agents",
     params: { agents: addedAgents.list, archived: archived.ids },
-  }).catch((cause) => console.error("Could not sync the archived agents", cause));
+  }).catch((cause) =>
+    console.error("Could not sync the archived agents", cause),
+  );
 }
 
 import { bootTask } from "./bootTasks.svelte.ts";
@@ -122,9 +124,14 @@ export function addAgent(draft: AgentDraft): SavedAgent {
   }).then(
     (result) => {
       if (result.folder && result.folder !== agent.folder)
-        setAddedAgents(addedAgents.list.map((a) => (a.id === agent.id ? { ...a, folder: result.folder ?? a.folder } : a)));
+        setAddedAgents(
+          addedAgents.list.map((a) =>
+            a.id === agent.id ? { ...a, folder: result.folder ?? a.folder } : a,
+          ),
+        );
     },
-    (cause) => console.error("Could not create the agent's session or folder", cause),
+    (cause) =>
+      console.error("Could not create the agent's session or folder", cause),
   );
   return agent;
 }

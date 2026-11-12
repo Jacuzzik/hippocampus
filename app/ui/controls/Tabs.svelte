@@ -1,5 +1,11 @@
 <script lang="ts" module>
-  export type TabItem = { id: string; label: string; badge?: number | string; disabled?: boolean; reason?: string };
+  export type TabItem = {
+    id: string;
+    label: string;
+    badge?: number | string;
+    disabled?: boolean;
+    reason?: string;
+  };
 </script>
 
 <script lang="ts">
@@ -30,7 +36,8 @@
   let bar: HTMLDivElement;
 
   // An element id cannot hold a space, and some tab ids do ("ask me").
-  const tabId = (id: string): string => `${idBase}-tab-${id.replace(/\W+/g, "-")}`;
+  const tabId = (id: string): string =>
+    `${idBase}-tab-${id.replace(/\W+/g, "-")}`;
 
   function pick(id: string): void {
     value = id;
@@ -43,7 +50,9 @@
       const next = items[(from + step * i + count * i) % count];
       if (next && !next.disabled) {
         pick(next.id);
-        bar.querySelector<HTMLButtonElement>(`#${CSS.escape(tabId(next.id))}`)?.focus();
+        bar
+          .querySelector<HTMLButtonElement>(`#${CSS.escape(tabId(next.id))}`)
+          ?.focus();
         return;
       }
     }
@@ -66,7 +75,9 @@
   class:vertical
   class:segmented
   style:--tab-columns={segmented ? columns || items.length : null}
-  role="tablist" aria-label={label}   aria-orientation={vertical ? "vertical" : "horizontal"}
+  role="tablist"
+  aria-label={label}
+  aria-orientation={vertical ? "vertical" : "horizontal"}
   bind:this={bar}
 >
   {#each items as item, index (item.id)}

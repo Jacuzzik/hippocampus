@@ -41,7 +41,10 @@
 
   async function openFolder(name: string): Promise<void> {
     try {
-      await invoke("sidecar_call", { method: "open_skill_folder", params: { name } });
+      await invoke("sidecar_call", {
+        method: "open_skill_folder",
+        params: { name },
+      });
     } catch (cause) {
       error = String(cause);
     }

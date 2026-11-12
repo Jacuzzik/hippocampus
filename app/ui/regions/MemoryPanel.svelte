@@ -13,7 +13,9 @@
   // Read again every few seconds while this tab is open, so it does not go stale.
   async function load(): Promise<void> {
     try {
-      notes = (await invoke<{ notes: Note[] }>("sidecar_call", { method: "memory" })).notes;
+      notes = (
+        await invoke<{ notes: Note[] }>("sidecar_call", { method: "memory" })
+      ).notes;
       failed = false;
     } catch (cause) {
       failed = true;
@@ -36,7 +38,12 @@
       {#each notes as note (note.agent)}
         <li>
           <span class="agent">{note.agent}</span>
-          <small>{(note.bytes / 1024).toFixed(1)} KB · {note.updated_at.replace("T", " ")}</small>
+          <small
+            >{(note.bytes / 1024).toFixed(1)} KB · {note.updated_at.replace(
+              "T",
+              " ",
+            )}</small
+          >
         </li>
       {/each}
     </ul>

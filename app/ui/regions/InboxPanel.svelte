@@ -45,7 +45,9 @@
       messages = (
         await invoke<{ messages: Message[] }>(
           "sidecar_call",
-          words ? { method: "inbox_search", params: { query: words } } : { method: "inbox" },
+          words
+            ? { method: "inbox_search", params: { query: words } }
+            : { method: "inbox" },
         )
       ).messages;
       failed = false;
@@ -59,8 +61,16 @@
     return flagOn("panelRefresh") ? every(load, 5000) : undefined;
   });
 
-  const agents = $derived(["hippoherman", ...addedAgents.list.filter((a) => !archived.ids.includes(a.id)).map((a) => a.id)]);
-  const agentOptions = $derived([{ value: "all", label: "All agents" }, ...agents.map((id) => ({ value: id, label: id }))]);
+  const agents = $derived([
+    "hippoherman",
+    ...addedAgents.list
+      .filter((a) => !archived.ids.includes(a.id))
+      .map((a) => a.id),
+  ]);
+  const agentOptions = $derived([
+    { value: "all", label: "All agents" },
+    ...agents.map((id) => ({ value: id, label: id })),
+  ]);
   const STATE_OPTIONS = [
     { value: "all", label: "Any state" },
     { value: "queued", label: "Waiting" },
@@ -71,7 +81,11 @@
 
   const shown = $derived(
     messages.filter(
-      (m) => (agentFilter === "all" || m.from === agentFilter || m.to === agentFilter) && (stateFilter === "all" || m.state === stateFilter),
+      (m) =>
+        (agentFilter === "all" ||
+          m.from === agentFilter ||
+          m.to === agentFilter) &&
+        (stateFilter === "all" || m.state === stateFilter),
     ),
   );
   // One row per conversation, newest conversation first; the messages inside run oldest first.
@@ -79,15 +93,28 @@
     const groups: Record<string, Message[]> = {};
     for (const message of shown) (groups[message.thread] ??= []).push(message);
     return Object.entries(groups).flatMap(([id, list]) => {
-      const ordered = [...list].sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)));
+      const ordered = [...list].sort((a, b) =>
+        String(a.created_at).localeCompare(String(b.created_at)),
+      );
       const first = ordered[0];
       const last = ordered[ordered.length - 1];
       if (!first || !last) return [];
-      return [{ id, list: ordered, first, last, waiting: ordered.filter((m) => m.state === "queued").length }];
+      return [
+        {
+          id,
+          list: ordered,
+          first,
+          last,
+          waiting: ordered.filter((m) => m.state === "queued").length,
+        },
+      ];
     });
   });
-  const waitingTotal = $derived(messages.filter((m) => m.state === "queued").length);
-  const when = (value: string | null): string => (value ?? "").replace("T", " ").slice(0, 16);
+  const waitingTotal = $derived(
+    messages.filter((m) => m.state === "queued").length,
+  );
+  const when = (value: string | null): string =>
+    (value ?? "").replace("T", " ").slice(0, 16);
 
   // The box to write a message as yourself, to one agent or to all of them.
   let to = $state("all");
@@ -96,16 +123,28 @@
   let urgent = $state(false);
   let sendNote = $state<string | null>(null);
   let sendError = $state<string | null>(null);
-  const toOptions = $derived([{ value: "all", label: "All agents" }, ...agents.map((id) => ({ value: id, label: id }))]);
+  const toOptions = $derived([
+    { value: "all", label: "All agents" },
+    ...agents.map((id) => ({ value: id, label: id })),
+  ]);
   async function send(event: SubmitEvent): Promise<void> {
     event.preventDefault();
     sendNote = sendError = null;
     try {
       const sent = await invoke<{ ids: string[] }>("sidecar_call", {
         method: "task_send",
-        params: { to, from: "user", subject: subject.trim(), body: body.trim(), priority: urgent ? "urgent" : "normal" },
+        params: {
+          to,
+          from: "user",
+          subject: subject.trim(),
+          body: body.trim(),
+          priority: urgent ? "urgent" : "normal",
+        },
       });
-      sendNote = sent.ids.length === 1 ? "Message queued." : `Message queued for ${sent.ids.length} agents.`;
+      sendNote =
+        sent.ids.length === 1
+          ? "Message queued."
+          : `Message queued for ${sent.ids.length} agents.`;
       subject = body = "";
       urgent = false;
       await load();
@@ -118,7 +157,10 @@
   let copied = $state<string | null>(null);
   async function exportThread(id: string): Promise<void> {
     try {
-      const found = await invoke<{ markdown: string }>("sidecar_call", { method: "inbox_thread", params: { thread: id } });
+      const found = await invoke<{ markdown: string }>("sidecar_call", {
+        method: "inbox_thread",
+        params: { thread: id },
+      });
       await navigator.clipboard.writeText(found.markdown);
       copied = id;
     } catch (cause) {
@@ -131,27 +173,65 @@
   <form class="compose" aria-label="Write a message" onsubmit={send}>
     <div class="row">
       <Dropdown options={toOptions} bind:value={to} label="Send to" />
-      <label class="urgent"><input type="checkbox" bind:checked={urgent} /> urgent</label>
+      <label class="urgent"
+        ><input type="checkbox" bind:checked={urgent} /> urgent</label
+      >
     </div>
-    <input type="text" aria-label="Subject" placeholder="Subject" maxlength="200" bind:value={subject} />
-    <textarea rows="2" aria-label="Message text" placeholder="Message to your agents" bind:value={body}></textarea>
-    <button type="submit" class="primary" disabled={!subject.trim() && !body.trim()}>Send message</button>
+    <input
+      type="text"
+      aria-label="Subject"
+      placeholder="Subject"
+      maxlength="200"
+      bind:value={subject}
+    />
+    <textarea
+      rows="2"
+      aria-label="Message text"
+      placeholder="Message to your agents"
+      bind:value={body}></textarea>
+    <button
+      type="submit"
+      class="primary"
+      disabled={!subject.trim() && !body.trim()}>Send message</button
+    >
     {#if sendNote}<p class="muted" role="status">{sendNote}</p>{/if}
     {#if sendError}<p class="error" role="alert">{sendError}</p>{/if}
   </form>
 
   <div class="filters">
-    <input type="search" aria-label="Search messages" placeholder="Search messages" bind:value={query} oninput={() => void load()} />
-    <Dropdown options={agentOptions} bind:value={agentFilter} label="Filter by agent" />
-    <Dropdown options={STATE_OPTIONS} bind:value={stateFilter} label="Filter by state" />
+    <input
+      type="search"
+      aria-label="Search messages"
+      placeholder="Search messages"
+      bind:value={query}
+      oninput={() => void load()}
+    />
+    <Dropdown
+      options={agentOptions}
+      bind:value={agentFilter}
+      label="Filter by agent"
+    />
+    <Dropdown
+      options={STATE_OPTIONS}
+      bind:value={stateFilter}
+      label="Filter by state"
+    />
   </div>
-  <p class="muted" aria-live="polite">{waitingTotal} waiting · {threads.length} {threads.length === 1 ? "conversation" : "conversations"}</p>
+  <p class="muted" aria-live="polite">
+    {waitingTotal} waiting · {threads.length}
+    {threads.length === 1 ? "conversation" : "conversations"}
+  </p>
 
   {#if failed}
-    <EmptyState title="Could not read the inboxes" text="The backend did not answer. It is asked again in a few seconds." />
+    <EmptyState
+      title="Could not read the inboxes"
+      text="The backend did not answer. It is asked again in a few seconds."
+    />
   {:else if threads.length === 0}
     <EmptyState
-      title={messages.length === 0 && !query.trim() ? "No messages yet" : "No message matches"}
+      title={messages.length === 0 && !query.trim()
+        ? "No messages yet"
+        : "No message matches"}
       text={messages.length === 0 && !query.trim()
         ? "Messages your agents send each other show here, grouped by conversation. Write one above to start."
         : "Change the search or the filters to see more."}
@@ -164,11 +244,21 @@
             type="button"
             class="thread"
             aria-expanded={openThread === thread.id}
-            onclick={() => (openThread = openThread === thread.id ? null : thread.id)}
+            onclick={() =>
+              (openThread = openThread === thread.id ? null : thread.id)}
           >
-            <span class="subject">{thread.first.subject || thread.first.act || "(no subject)"}</span>
-            {#if thread.waiting > 0}<span class="badge">{thread.waiting} waiting</span>{/if}
-            <span class="route">{thread.first.from ?? "?"} → {thread.first.to ?? "?"} · {thread.list.length}</span>
+            <span class="subject"
+              >{thread.first.subject ||
+                thread.first.act ||
+                "(no subject)"}</span
+            >
+            {#if thread.waiting > 0}<span class="badge"
+                >{thread.waiting} waiting</span
+              >{/if}
+            <span class="route"
+              >{thread.first.from ?? "?"} → {thread.first.to ?? "?"} · {thread
+                .list.length}</span
+            >
             <small>{when(thread.last.created_at)}</small>
           </button>
           {#if openThread === thread.id}
@@ -176,20 +266,38 @@
               {#each thread.list as message (message.id + message.state)}
                 <li>
                   <div class="meta">
-                    <span class="state {message.state}">{STATE_TEXT[message.state]}</span>
-                    <span class="act">{message.act ?? "request"}{message.priority === "urgent" ? " · urgent" : ""}</span>
-                    <span class="route">{message.from ?? "?"} → {message.to ?? "?"}</span>
-                    {#if message.work}<span class="route">task {message.work}</span>{/if}
+                    <span class="state {message.state}"
+                      >{STATE_TEXT[message.state]}</span
+                    >
+                    <span class="act"
+                      >{message.act ?? "request"}{message.priority === "urgent"
+                        ? " · urgent"
+                        : ""}</span
+                    >
+                    <span class="route"
+                      >{message.from ?? "?"} → {message.to ?? "?"}</span
+                    >
+                    {#if message.work}<span class="route"
+                        >task {message.work}</span
+                      >{/if}
                     <small>{when(message.created_at)}</small>
                   </div>
                   {#if message.subject}<b>{message.subject}</b>{/if}
                   {#if message.body}<p>{message.body}</p>{/if}
-                  {#if message.failed}<p class="error">Not sent: {message.failed}</p>{/if}
+                  {#if message.failed}<p class="error">
+                      Not sent: {message.failed}
+                    </p>{/if}
                 </li>
               {/each}
             </ol>
-            <button type="button" class="export" onclick={() => void exportThread(thread.id)}>
-              {copied === thread.id ? "Copied" : "Copy conversation as Markdown"}
+            <button
+              type="button"
+              class="export"
+              onclick={() => void exportThread(thread.id)}
+            >
+              {copied === thread.id
+                ? "Copied"
+                : "Copy conversation as Markdown"}
             </button>
           {/if}
         </li>

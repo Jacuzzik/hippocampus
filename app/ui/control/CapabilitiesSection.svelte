@@ -71,8 +71,8 @@
 <section class="control-section" aria-labelledby="control-capabilities">
   <h3 id="control-capabilities">Capabilities</h3>
   <p class="hint">
-    Tools and skills the assistant can use. You can install a skill from a folder
-    and remove one here. MCP servers and plugins are planned.
+    Tools and skills the assistant can use. You can install a skill from a
+    folder and remove one here. MCP servers and plugins are planned.
   </p>
   <StatusCard
     name="MCP servers"

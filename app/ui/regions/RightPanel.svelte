@@ -22,14 +22,20 @@
       .catch(() => (mainProvider = "claude"));
   }
   // The main agent's real terminal state from the sidecar: running while its CLI is up, otherwise idle.
-  let hippoInfo = $state<{ command: string | null; status: string | null }>({ command: null, status: null });
+  let hippoInfo = $state<{ command: string | null; status: string | null }>({
+    command: null,
+    status: null,
+  });
   const hippoState = $derived(hippoInfo.command ? "running" : "idle");
   function readHippo(): void {
     invoke<{ command: string | null; status: string | null }>("sidecar_call", {
       method: "terminal_command",
       params: { agent: "hippoherman" },
     })
-      .then((value) => (hippoInfo = { command: value.command, status: value.status }))
+      .then(
+        (value) =>
+          (hippoInfo = { command: value.command, status: value.status }),
+      )
       .catch(() => (hippoInfo = { command: null, status: null }));
   }
   onMount(() => {
@@ -60,22 +66,37 @@
   import HistoryPanel from "./HistoryPanel.svelte";
   import AgentPanel from "../owner/AgentPanel.svelte";
   import LiveTerminal from "./LiveTerminal.svelte";
-  import { addedAgents, archived, selectAgent, selection } from "../owner/addedAgents.svelte";
+  import {
+    addedAgents,
+    archived,
+    selectAgent,
+    selection,
+  } from "../owner/addedAgents.svelte";
 
   // Kept mounted when hidden so the chat session and its tool log survive a toggle.
   let { open = true }: { open?: boolean } = $props();
 
   // The selected added agent (a card click). Its own tab shows while it is selected.
   const agent = $derived(
-    addedAgents.list.find((a) => a.id === selection.id && !archived.ids.includes(a.id)) ?? null,
+    addedAgents.list.find(
+      (a) => a.id === selection.id && !archived.ids.includes(a.id),
+    ) ?? null,
   );
-
 
   // Only the terminal is built; the rest of the grid is shown and stays disabled.
   // Names match the office app's Command Center tabs.
   const TABS = [
-    "terminal", "monitor", "tasks", "inbox", "ask me", "triggers",
-    "history", "memory", "activity", "skills", "temps",
+    "terminal",
+    "monitor",
+    "tasks",
+    "inbox",
+    "ask me",
+    "triggers",
+    "history",
+    "memory",
+    "activity",
+    "skills",
+    "temps",
   ];
   // Counts shown on the tabs: questions waiting for an answer, and inbox messages not handled yet.
   let waiting = $state({ asks: 0, inbox: 0 });
@@ -83,8 +104,15 @@
     invoke<{ asks: unknown[] }>("sidecar_call", { method: "asks" })
       .then((value) => (waiting.asks = value.asks.length))
       .catch(() => {});
-    invoke<{ messages: { state: string }[] }>("sidecar_call", { method: "inbox" })
-      .then((value) => (waiting.inbox = value.messages.filter((m) => m.state === "queued").length))
+    invoke<{ messages: { state: string }[] }>("sidecar_call", {
+      method: "inbox",
+    })
+      .then(
+        (value) =>
+          (waiting.inbox = value.messages.filter(
+            (m) => m.state === "queued",
+          ).length),
+      )
       .catch(() => {});
   }
   // The views sit in rows of four, as in the picture. A selected agent adds its own tab at the end.
@@ -92,12 +120,21 @@
     ...TABS.map((id) => ({
       id,
       label: id,
-      badge: id === "ask me" ? waiting.asks : id === "inbox" ? waiting.inbox : undefined,
+      badge:
+        id === "ask me"
+          ? waiting.asks
+          : id === "inbox"
+            ? waiting.inbox
+            : undefined,
     })),
     ...(agent ? [{ id: "agent", label: agent.name }] : []),
   ]);
   // Opens on the tab used last, when that setting is on (Settings > General).
-  let tab = $state(prefs.rememberTab && TABS.includes(prefs.lastTab) ? prefs.lastTab : "terminal");
+  let tab = $state(
+    prefs.rememberTab && TABS.includes(prefs.lastTab)
+      ? prefs.lastTab
+      : "terminal",
+  );
   $effect(() => {
     if (tab !== "agent") prefs.lastTab = tab;
   });
@@ -122,7 +159,9 @@
     }
     void tick().then(() => {
       // The terminal keeps a hidden textarea of its own for typing; the message box is the other one.
-      for (const box of panel?.querySelectorAll<HTMLTextAreaElement>("textarea:not(.xterm-helper-textarea)") ?? []) {
+      for (const box of panel?.querySelectorAll<HTMLTextAreaElement>(
+        "textarea:not(.xterm-helper-textarea)",
+      ) ?? []) {
         if (box.offsetParent !== null) {
           box.focus();
           break;
@@ -141,24 +180,53 @@
 <div class="right-panel" hidden={!open} bind:this={panel}>
   <div class="column">
     {#if !(tab === "agent" && agent)}
-      <div class="title"><b>Control Room</b><span class="pill">■ Live</span></div>
+      <div class="title">
+        <b>Control Room</b><span class="pill">■ Live</span>
+      </div>
       <div class="card">
-        <Tabs items={tabItems} bind:value={tab} label="Panels" idBase="control-room" segmented columns={4} />
+        <Tabs
+          items={tabItems}
+          bind:value={tab}
+          label="Panels"
+          idBase="control-room"
+          segmented
+          columns={4}
+        />
       </div>
     {/if}
-    <div class="pane" id={tab === "terminal" ? "control-room-panel" : undefined} hidden={tab !== "terminal"}>
+    <div
+      class="pane"
+      id={tab === "terminal" ? "control-room-panel" : undefined}
+      hidden={tab !== "terminal"}
+    >
       <div class="live">
         <span class="dot" aria-hidden="true"></span>
         <span>{hippoState}</span>
         <span class="size">
-          <button type="button" aria-label="Smaller text" disabled={fontSize <= FONT_MIN} onclick={() => (prefs.terminalFontSize -= 1)}>−</button>
+          <button
+            type="button"
+            aria-label="Smaller text"
+            disabled={fontSize <= FONT_MIN}
+            onclick={() => (prefs.terminalFontSize -= 1)}>−</button
+          >
           <output>{fontSize}px</output>
-          <button type="button" aria-label="Larger text" disabled={fontSize >= FONT_MAX} onclick={() => (prefs.terminalFontSize += 1)}>+</button>
+          <button
+            type="button"
+            aria-label="Larger text"
+            disabled={fontSize >= FONT_MAX}
+            onclick={() => (prefs.terminalFontSize += 1)}>+</button
+          >
         </span>
       </div>
       <div class="live-wrap">
         {#key terminalKey}
-          <LiveTerminal agentId="hippoherman" provider={mainProvider} {fontSize} followEngine onoutput={queue.output} />
+          <LiveTerminal
+            agentId="hippoherman"
+            provider={mainProvider}
+            {fontSize}
+            followEngine
+            onoutput={queue.output}
+          />
         {/key}
       </div>
       <Assistant onsend={queue.send} queued={queue.items} />
@@ -171,28 +239,33 @@
       </div>
     {/each}
     {#if tab !== "terminal" && tab !== "agent"}
-      <div class="pane" id="control-room-panel" role="tabpanel" aria-labelledby={`control-room-tab-${tab.replace(/\W+/g, "-")}`}>
-      {#if tab === "tasks"}
-        <TasksPanel />
-      {:else if tab === "inbox"}
-        <InboxPanel />
-      {:else if tab === "memory"}
-        <MemoryPanel />
-      {:else if tab === "monitor"}
-        <MonitorPanel />
-      {:else if tab === "ask me"}
-        <AsksSection />
-      {:else if tab === "triggers"}
-        <TriggersSection />
-      {:else if tab === "activity"}
-        <ActivityPanel />
-      {:else if tab === "skills"}
-        <SkillsPanel />
-      {:else if tab === "temps"}
-        <TempsPanel />
-      {:else if tab === "history"}
-        <HistoryPanel />
-      {/if}
+      <div
+        class="pane"
+        id="control-room-panel"
+        role="tabpanel"
+        aria-labelledby={`control-room-tab-${tab.replace(/\W+/g, "-")}`}
+      >
+        {#if tab === "tasks"}
+          <TasksPanel />
+        {:else if tab === "inbox"}
+          <InboxPanel />
+        {:else if tab === "memory"}
+          <MemoryPanel />
+        {:else if tab === "monitor"}
+          <MonitorPanel />
+        {:else if tab === "ask me"}
+          <AsksSection />
+        {:else if tab === "triggers"}
+          <TriggersSection />
+        {:else if tab === "activity"}
+          <ActivityPanel />
+        {:else if tab === "skills"}
+          <SkillsPanel />
+        {:else if tab === "temps"}
+          <TempsPanel />
+        {:else if tab === "history"}
+          <HistoryPanel />
+        {/if}
       </div>
     {/if}
   </div>

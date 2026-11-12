@@ -1,5 +1,10 @@
 <script lang="ts" module>
-  export type CardStatus = "Connected" | "Local only" | "Not connected" | "Needs attention" | "Planned";
+  export type CardStatus =
+    | "Connected"
+    | "Local only"
+    | "Not connected"
+    | "Needs attention"
+    | "Planned";
 </script>
 
 <script lang="ts">
@@ -13,9 +18,21 @@
     status,
     reason = "",
     children,
-  }: { name: string; what: string; status: CardStatus; reason?: string; children?: Snippet } = $props();
+  }: {
+    name: string;
+    what: string;
+    status: CardStatus;
+    reason?: string;
+    children?: Snippet;
+  } = $props();
   const tone = $derived(
-    status === "Connected" || status === "Local only" ? "ok" : status === "Needs attention" ? "bad" : status === "Planned" ? "plan" : "off",
+    status === "Connected" || status === "Local only"
+      ? "ok"
+      : status === "Needs attention"
+        ? "bad"
+        : status === "Planned"
+          ? "plan"
+          : "off",
   );
 </script>
 

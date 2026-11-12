@@ -21,7 +21,9 @@
   // Read again every few seconds while this tab is open, so it does not go stale.
   async function load(): Promise<void> {
     try {
-      tasks = (await invoke<{ tasks: Task[] }>("sidecar_call", { method: "tasks" })).tasks;
+      tasks = (
+        await invoke<{ tasks: Task[] }>("sidecar_call", { method: "tasks" })
+      ).tasks;
       failed = false;
     } catch (cause) {
       failed = true;
@@ -34,7 +36,10 @@
   });
 
   const groups = $derived(
-    STATUSES.map((status) => ({ status, items: tasks.filter((t) => t.status === status) })),
+    STATUSES.map((status) => ({
+      status,
+      items: tasks.filter((t) => t.status === status),
+    })),
   );
 </script>
 

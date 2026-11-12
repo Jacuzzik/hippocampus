@@ -26,7 +26,9 @@ test("the control panel opens from the ribbon and each tab lists its panels", as
     await dialog.getByRole("tab", { name }).click();
     for (const heading of headings) {
       // Some headings carry a status badge, so match the start of the name.
-      await expect(dialog.getByRole("heading", { name: new RegExp(`^${heading}`) })).toBeVisible();
+      await expect(
+        dialog.getByRole("heading", { name: new RegExp(`^${heading}`) }),
+      ).toBeVisible();
     }
   }
 });
@@ -38,9 +40,14 @@ test("arrow keys move between the control panel tabs", async ({ page }) => {
   const dialog = page.getByRole("dialog", { name: "Control panel" });
   await dialog.getByRole("tab", { name: "Overview" }).focus();
   await page.keyboard.press("ArrowRight");
-  await expect(dialog.getByRole("tab", { name: "Work" })).toHaveAttribute("aria-selected", "true");
+  await expect(dialog.getByRole("tab", { name: "Work" })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
   await page.keyboard.press("End");
-  await expect(dialog.getByRole("tab", { name: "Team and sharing" })).toHaveAttribute("aria-selected", "true");
+  await expect(
+    dialog.getByRole("tab", { name: "Team and sharing" }),
+  ).toHaveAttribute("aria-selected", "true");
 });
 
 test("network starts Off and a chosen mode is kept", async ({ page }) => {
@@ -86,11 +93,17 @@ test("sharing is a Planned card and a helper cannot be started empty", async ({
     dialog.getByRole("button", { name: "Start helper" }),
   ).toBeDisabled();
   await dialog.getByRole("tab", { name: "Team and sharing" }).click();
-  const share = dialog.locator("article", { hasText: "Share a note by password link" });
+  const share = dialog.locator("article", {
+    hasText: "Share a note by password link",
+  });
   await expect(share.getByText("Planned", { exact: true })).toBeVisible();
-  await expect(share.getByText("No share host is set up in this build")).toBeVisible();
+  await expect(
+    share.getByText("No share host is set up in this build"),
+  ).toBeVisible();
   // No form that can only fail.
-  await expect(dialog.getByRole("button", { name: "Make link" })).toHaveCount(0);
+  await expect(dialog.getByRole("button", { name: "Make link" })).toHaveCount(
+    0,
+  );
 });
 
 test("the budget has a 5-hour cap next to day, week and month", async ({
@@ -224,10 +237,14 @@ test("teams are a Planned card with no button that cannot work", async ({
   await openControl(page);
   const dialog = page.getByRole("dialog", { name: "Control panel" });
   await dialog.getByRole("tab", { name: "Team and sharing" }).click();
-  const teams = dialog.locator("article", { hasText: "Share agents with other people" });
+  const teams = dialog.locator("article", {
+    hasText: "Share agents with other people",
+  });
   await expect(teams.getByText("Planned", { exact: true })).toBeVisible();
   await expect(teams.getByText("Nobody is enrolled")).toBeVisible();
-  await expect(dialog.getByRole("button", { name: "Start a team" })).toHaveCount(0);
+  await expect(
+    dialog.getByRole("button", { name: "Start a team" }),
+  ).toHaveCount(0);
 });
 
 test("capabilities list the skills and show MCP servers and plugins as Planned", async ({
@@ -241,7 +258,9 @@ test("capabilities list the skills and show MCP servers and plugins as Planned",
   const caps = dialog.locator("#control-capabilities").locator("..");
   await expect(caps.getByText("tidy-notes")).toBeVisible();
   for (const name of ["MCP servers", "Plugins"]) {
-    const card = caps.locator("article").filter({ has: page.getByText(name, { exact: true }) });
+    const card = caps
+      .locator("article")
+      .filter({ has: page.getByText(name, { exact: true }) });
     await expect(card.getByText("Planned", { exact: true })).toBeVisible();
   }
   await expect(caps.getByRole("button", { name: /Not set up/ })).toHaveCount(0);

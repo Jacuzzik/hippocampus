@@ -15,7 +15,9 @@
   // Read again every few seconds while this tab is open, so it does not go stale.
   async function load(): Promise<void> {
     try {
-      const all = (await invoke<{ rows: Row[] }>("sidecar_call", { method: "activity" })).rows;
+      const all = (
+        await invoke<{ rows: Row[] }>("sidecar_call", { method: "activity" })
+      ).rows;
       rows = all.filter((row) => PAST.includes(row.kind));
       failed = false;
     } catch (cause) {

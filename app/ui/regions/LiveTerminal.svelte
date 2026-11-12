@@ -63,7 +63,10 @@
   let sized = false;
 
   function resizeCli(rows: number, cols: number): Promise<unknown> {
-    return invoke("sidecar_call", { method: "terminal_resize", params: { agent: agentId, rows, cols } }).catch(() => {});
+    return invoke("sidecar_call", {
+      method: "terminal_resize",
+      params: { agent: agentId, rows, cols },
+    }).catch(() => {});
   }
 
   function sendSize(): void {
@@ -112,25 +115,47 @@
     term.onData((data) => {
       // Focus in/out reports are not typing; sent to the CLI they show as ^[[O text on screen.
       if (data === "\x1b[I" || data === "\x1b[O") return;
-      invoke("sidecar_call", { method: "terminal_input", params: { agent: agentId, data } }).catch((cause) =>
+      invoke("sidecar_call", {
+        method: "terminal_input",
+        params: { agent: agentId, data },
+      }).catch((cause) =>
         console.error("Could not send to the terminal", cause),
       );
     });
-    unlisten = await listen<{ event?: string; agent?: string; data?: string; exit?: number; stopped?: boolean }>("sidecar-event", (event) => {
-      if (event.payload.event !== "terminal" || event.payload.agent !== agentId || !term) return;
+    unlisten = await listen<{
+      event?: string;
+      agent?: string;
+      data?: string;
+      exit?: number;
+      stopped?: boolean;
+    }>("sidecar-event", (event) => {
+      if (
+        event.payload.event !== "terminal" ||
+        event.payload.agent !== agentId ||
+        !term
+      )
+        return;
       if (event.payload.data !== undefined) {
         term.write(event.payload.data);
         onoutput?.(event.payload.data);
       }
       // A model change stops the old process on purpose; the new session replaces it, so no "closed" line.
       if (event.payload.exit !== undefined && !restarting) {
-        term.write(event.payload.stopped ? "\r\n[the terminal was stopped]\r\n" : `\r\n[the terminal closed, exit ${event.payload.exit}]\r\n`);
-        onstate?.(event.payload.stopped ? "stopped" : "exited", event.payload.exit);
+        term.write(
+          event.payload.stopped
+            ? "\r\n[the terminal was stopped]\r\n"
+            : `\r\n[the terminal closed, exit ${event.payload.exit}]\r\n`,
+        );
+        onstate?.(
+          event.payload.stopped ? "stopped" : "exited",
+          event.payload.exit,
+        );
       }
     });
     if (followEngine) {
       onEngineChanged = (e: Event) => {
-        const detail = (e as CustomEvent<{ provider?: string; model?: string }>).detail;
+        const detail = (e as CustomEvent<{ provider?: string; model?: string }>)
+          .detail;
         restarting = true;
         term?.reset();
         // After the new CLI starts, resend the size so it redraws at the right dimensions (fixes garbled output).
@@ -156,7 +181,15 @@
     try {
       const started = await invoke<{ replay?: string }>("sidecar_call", {
         method: "terminal_start",
-        params: { agent: agentId, provider: p, model, folder, rows: term.rows, cols: term.cols, block_tools: blockTools },
+        params: {
+          agent: agentId,
+          provider: p,
+          model,
+          folder,
+          rows: term.rows,
+          cols: term.cols,
+          block_tools: blockTools,
+        },
       });
       // reset() clears modes left by the old screen (alt buffer, cursor, colours) so the replay draws cleanly.
       if (restore === "replay" && started?.replay) {
@@ -176,7 +209,8 @@
     clearTimeout(settle);
     observer?.disconnect();
     unlisten?.();
-    if (onEngineChanged) window.removeEventListener("engine-changed", onEngineChanged);
+    if (onEngineChanged)
+      window.removeEventListener("engine-changed", onEngineChanged);
     term?.dispose();
     observer = null;
     unlisten = null;
@@ -206,7 +240,11 @@
     const count = backend.restarts;
     if (count === restartsSeen) return;
     restartsSeen = count;
-    void restart().then(() => term?.write("\r\n[the backend restarted; this agent was started again]\r\n"));
+    void restart().then(() =>
+      term?.write(
+        "\r\n[the backend restarted; this agent was started again]\r\n",
+      ),
+    );
   });
 
   onMount(() => {

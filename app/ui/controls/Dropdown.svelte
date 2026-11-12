@@ -18,7 +18,9 @@
 
   let open = $state(false);
   let root: HTMLDivElement | undefined = $state();
-  const shown = $derived(options.find((o) => o.value === value)?.label ?? (value || "Choose"));
+  const shown = $derived(
+    options.find((o) => o.value === value)?.label ?? (value || "Choose"),
+  );
 
   function pick(next: string): void {
     value = next;
@@ -49,7 +51,14 @@
     onclick={() => (open = !open)}
   >
     <span class="text">{shown}</span>
-    <svg class="caret" width="11" height="10" viewBox="0 0 11 10" aria-hidden="true"><path d="M1 1.5 L5.5 8.5 L10 1.5 Z" fill="currentColor" /></svg>
+    <svg
+      class="caret"
+      width="11"
+      height="10"
+      viewBox="0 0 11 10"
+      aria-hidden="true"
+      ><path d="M1 1.5 L5.5 8.5 L10 1.5 Z" fill="currentColor" /></svg
+    >
   </button>
   {#if open}
     <ul class="menu" role="listbox" aria-label={label}>

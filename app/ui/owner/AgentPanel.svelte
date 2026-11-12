@@ -5,7 +5,9 @@
   import EmptyState from "../controls/EmptyState.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { every } from "../poll.ts";
-  import LiveTerminal, { type TerminalState } from "../regions/LiveTerminal.svelte";
+  import LiveTerminal, {
+    type TerminalState,
+  } from "../regions/LiveTerminal.svelte";
   import type { SavedAgent } from "./addedAgents.svelte";
   import { createTerminalQueue } from "../regions/terminalQueue.svelte";
 
@@ -19,18 +21,20 @@
   // One text size for every agent terminal, set here or in Settings > Appearance.
   const fontSize = $derived(prefs.terminalFontSize);
   // Real state from the sidecar: set when the CLI starts, and when it exits.
-  let runState = $state<"starting" | "running" | "exited" | "stopped" | "failed">("starting");
+  let runState = $state<
+    "starting" | "running" | "exited" | "stopped" | "failed"
+  >("starting");
   let exitCode = $state<number | null>(null);
   const stateLabel = $derived(
     runState === "running"
       ? "running"
       : runState === "stopped"
         ? "stopped"
-      : runState === "exited"
-        ? `exited · code ${exitCode}`
-        : runState === "failed"
-          ? "not running"
-          : "starting…",
+        : runState === "exited"
+          ? `exited · code ${exitCode}`
+          : runState === "failed"
+            ? "not running"
+            : "starting…",
   );
 
   // Messages wait here while the CLI is printing, then go into its terminal in order.
@@ -57,7 +61,10 @@
   async function toggleBlock(): Promise<void> {
     confirmBlock = false;
     blocked = !blocked;
-    await invoke("sidecar_call", { method: "terminal_stop", params: { agent: agent.id } }).catch(() => undefined);
+    await invoke("sidecar_call", {
+      method: "terminal_stop",
+      params: { agent: agent.id },
+    }).catch(() => undefined);
     await terminal?.restart();
   }
 
@@ -71,7 +78,9 @@
       error = `${file.name} is larger than 100 KB, so it was not attached.`;
       return;
     }
-    queue.send(`Attached file: ${file.name}\n\`\`\`\n${await file.text()}\n\`\`\``);
+    queue.send(
+      `Attached file: ${file.name}\n\`\`\`\n${await file.text()}\n\`\`\``,
+    );
   }
 
   // "terminal", "git", "messages" or "traces".
@@ -79,23 +88,50 @@
   let gitText = $state("");
   const views = $derived([
     { id: "terminal", label: "Terminal" },
-    { id: "git", label: "Git", disabled: !agent.folder, reason: "This agent has no working folder" },
+    {
+      id: "git",
+      label: "Git",
+      disabled: !agent.folder,
+      reason: "This agent has no working folder",
+    },
     { id: "messages", label: "Messages" },
     { id: "traces", label: "Traces" },
   ]);
 
   // Messages and Traces read again every few seconds while their tab is open.
-  type Message = { id: string; from: string | null; to: string | null; act: string | null; subject: string | null; created_at: string | null; state: string };
-  type Trace = { at: string | null; tool: string; detail: string; status: string };
+  type Message = {
+    id: string;
+    from: string | null;
+    to: string | null;
+    act: string | null;
+    subject: string | null;
+    created_at: string | null;
+    state: string;
+  };
+  type Trace = {
+    at: string | null;
+    tool: string;
+    detail: string;
+    status: string;
+  };
   let messages = $state<Message[]>([]);
   let traces = $state<Trace[]>([]);
   async function loadView(): Promise<void> {
     try {
       if (view === "messages") {
-        const all = (await invoke<{ messages: Message[] }>("sidecar_call", { method: "inbox" })).messages;
+        const all = (
+          await invoke<{ messages: Message[] }>("sidecar_call", {
+            method: "inbox",
+          })
+        ).messages;
         messages = all.filter((m) => m.from === agent.id || m.to === agent.id);
       } else if (view === "traces") {
-        traces = (await invoke<{ traces: Trace[] }>("sidecar_call", { method: "terminal_traces", params: { agent: agent.id } })).traces;
+        traces = (
+          await invoke<{ traces: Trace[] }>("sidecar_call", {
+            method: "terminal_traces",
+            params: { agent: agent.id },
+          })
+        ).traces;
       }
     } catch (cause) {
       error = String(cause);
@@ -109,14 +145,20 @@
 
   function showGit(): void {
     gitText = "Reading git status…";
-    invoke<{ text: string }>("sidecar_call", { method: "git_status", params: { folder: agent.folder } })
+    invoke<{ text: string }>("sidecar_call", {
+      method: "git_status",
+      params: { folder: agent.folder },
+    })
       .then((result) => (gitText = result.text))
       .catch((cause) => (gitText = String(cause)));
   }
 
   // Opens the agent's folder in the file manager, or in VS Code when app is "ide".
   function openFolder(app: "file" | "ide"): void {
-    invoke("sidecar_call", { method: "open_folder", params: { folder: agent.folder, app } }).catch((cause) => {
+    invoke("sidecar_call", {
+      method: "open_folder",
+      params: { folder: agent.folder, app },
+    }).catch((cause) => {
       error = String(cause);
     });
   }
@@ -139,23 +181,48 @@
   <div class="desc">{agent.description || NO_DATA}</div>
 
   <div class="seg" role="group" aria-label="Agent actions">
-    <button type="button" onclick={() => openFolder("ide")} disabled={!agent.folder} title={agent.folder ? "Open this agent's folder in VS Code" : "This agent has no working folder"}>IDE</button>
+    <button
+      type="button"
+      onclick={() => openFolder("ide")}
+      disabled={!agent.folder}
+      title={agent.folder
+        ? "Open this agent's folder in VS Code"
+        : "This agent has no working folder"}>IDE</button
+    >
   </div>
   <div class="seg" role="group" aria-label="Run controls">
-    <button type="button" class="stop" title="Interrupts the current run" disabled={runState !== "running"} onclick={() => invoke("sidecar_call", { method: "terminal_input", params: { agent: agent.id, data: "\x1b" } }).catch(() => {})}>Stop</button>
-    <button type="button" aria-pressed={blocked} class:on={blocked} onclick={() => (confirmBlock = !confirmBlock)}>block tools</button>
+    <button
+      type="button"
+      class="stop"
+      title="Interrupts the current run"
+      disabled={runState !== "running"}
+      onclick={() =>
+        invoke("sidecar_call", {
+          method: "terminal_input",
+          params: { agent: agent.id, data: "\x1b" },
+        }).catch(() => {})}>Stop</button
+    >
+    <button
+      type="button"
+      aria-pressed={blocked}
+      class:on={blocked}
+      onclick={() => (confirmBlock = !confirmBlock)}>block tools</button
+    >
   </div>
   {#if confirmBlock}
     <div class="confirm" role="group" aria-label="Confirm block tools">
       <p>
-        {blocked ? "Give the tools back" : "Block shell, file writes and web"} for {agent.name}? Its program restarts, and work in
-        progress stops.
+        {blocked ? "Give the tools back" : "Block shell, file writes and web"} for
+        {agent.name}? Its program restarts, and work in progress stops.
       </p>
-      <button type="button" class="send" onclick={toggleBlock}>Restart {blocked ? "with tools" : "without tools"}</button>
-      <button type="button" onclick={() => (confirmBlock = false)}>Cancel</button>
+      <button type="button" class="send" onclick={toggleBlock}
+        >Restart {blocked ? "with tools" : "without tools"}</button
+      >
+      <button type="button" onclick={() => (confirmBlock = false)}
+        >Cancel</button
+      >
     </div>
   {/if}
-
 
   <Tabs
     items={views}
@@ -169,7 +236,19 @@
   <div class="live">
     <span class="dot" aria-hidden="true"></span>
     <span>{stateLabel}</span>
-    <span class="size"><button type="button" aria-label="Smaller text" disabled={fontSize <= FONT_MIN} onclick={() => (prefs.terminalFontSize -= 1)}>−</button><output>{fontSize}px</output><button type="button" aria-label="Larger text" disabled={fontSize >= FONT_MAX} onclick={() => (prefs.terminalFontSize += 1)}>+</button></span>
+    <span class="size"
+      ><button
+        type="button"
+        aria-label="Smaller text"
+        disabled={fontSize <= FONT_MIN}
+        onclick={() => (prefs.terminalFontSize -= 1)}>−</button
+      ><output>{fontSize}px</output><button
+        type="button"
+        aria-label="Larger text"
+        disabled={fontSize >= FONT_MAX}
+        onclick={() => (prefs.terminalFontSize += 1)}>+</button
+      ></span
+    >
   </div>
 
   <LiveTerminal
@@ -192,15 +271,28 @@
   {/if}
   {#if view === "messages"}
     {#if messages.length === 0}
-      <EmptyState title="No messages yet" text="Messages this agent sends or receives show here. Write to it from the Inbox tab in the Control Room." />
+      <EmptyState
+        title="No messages yet"
+        text="Messages this agent sends or receives show here. Write to it from the Inbox tab in the Control Room."
+      />
     {:else}
       <ul class="rows" aria-label="Messages for {agent.name}">
         {#each messages as message (message.id + message.state)}
           <li>
-            <span class="tag">{message.state === "queued" ? "waiting" : message.state}</span>
-            <span class="dim">{message.from === agent.id ? `to ${message.to}` : `from ${message.from}`}</span>
+            <span class="tag"
+              >{message.state === "queued" ? "waiting" : message.state}</span
+            >
+            <span class="dim"
+              >{message.from === agent.id
+                ? `to ${message.to}`
+                : `from ${message.from}`}</span
+            >
             <span class="grow">{message.subject || message.act}</span>
-            <small>{(message.created_at ?? "").replace("T", " ").slice(5, 16)}</small>
+            <small
+              >{(message.created_at ?? "")
+                .replace("T", " ")
+                .slice(5, 16)}</small
+            >
           </li>
         {/each}
       </ul>
@@ -216,7 +308,9 @@
       <ul class="rows" aria-label="Tool calls by {agent.name}">
         {#each traces as trace, index (index)}
           <li>
-            <span class="tag" class:bad={trace.status === "failed"}>{trace.status}</span>
+            <span class="tag" class:bad={trace.status === "failed"}
+              >{trace.status}</span
+            >
             <span class="dim">{trace.tool.replace("mcp__vault__", "")}</span>
             <span class="grow mono">{trace.detail}</span>
             <small>{(trace.at ?? "").replace("T", " ").slice(5, 16)}</small>
@@ -236,7 +330,11 @@
         {/each}
       </div>
     {/if}
-    <textarea rows="2" bind:value={text} placeholder={`Message ${agent.name}`} aria-label={`Message ${agent.name}`}
+    <textarea
+      rows="2"
+      bind:value={text}
+      placeholder={`Message ${agent.name}`}
+      aria-label={`Message ${agent.name}`}
       onkeydown={(e) => {
         // Enter sends; Shift+Enter starts a new line.
         if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
@@ -247,11 +345,16 @@
     <button type="submit" class="send" disabled={!text.trim()}>Send →</button>
     <div class="attach">
       <button type="button" onclick={() => fileInput?.click()}>+ files</button>
-      <input bind:this={fileInput} type="file" accept=".txt,.md,.csv,.json,.ts,.js,.py,.svelte,.css,.html" onchange={attachFile} hidden />
+      <input
+        bind:this={fileInput}
+        type="file"
+        accept=".txt,.md,.csv,.json,.ts,.js,.py,.svelte,.css,.html"
+        onchange={attachFile}
+        hidden
+      />
     </div>
   </form>
   {#if error}<p class="error" role="alert">{error}</p>{/if}
-
 </div>
 
 <style>

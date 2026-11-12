@@ -12,7 +12,13 @@
   import StatusCard from "../controls/StatusCard.svelte";
   import Tabs from "../controls/Tabs.svelte";
   import { crashLog, type CrashRow } from "../crashLog.svelte.ts";
-  import { FONT_MAX, FONT_MIN, prefs, type Intro, type Motion } from "../prefs.svelte.ts";
+  import {
+    FONT_MAX,
+    FONT_MIN,
+    prefs,
+    type Intro,
+    type Motion,
+  } from "../prefs.svelte.ts";
   import { SETTINGS_PAGES, type SettingsPage } from "./model";
   import { FLAGS, flagOn, setFlag } from "../flags.svelte.ts";
 
@@ -28,12 +34,21 @@
     shell?: Shell;
   };
   // Whether every agent has a shell, and the rules in force, in the backend's own words.
-  type Shell = { on: boolean; sandbox_available: boolean; main: string[]; agents: string[]; note: string };
+  type Shell = {
+    on: boolean;
+    sandbox_available: boolean;
+    main: string[];
+    agents: string[];
+    note: string;
+  };
   let shellError = $state<string | null>(null);
   async function setShell(on: boolean): Promise<void> {
     shellError = null;
     try {
-      const next = await invoke<Shell>("sidecar_call", { method: "set_agent_shell", params: { on } });
+      const next = await invoke<Shell>("sidecar_call", {
+        method: "set_agent_shell",
+        params: { on },
+      });
       if (saved) saved.shell = next;
     } catch (cause) {
       shellError = String(cause);
@@ -47,15 +62,24 @@
   let query = $state("");
 
   const items = $derived(
-    SETTINGS_PAGES.filter((p) => p.id !== "Connectors" || flagOn("connectors")).filter((p) => !query.trim() || `${p.id} ${p.words}`.toLowerCase().includes(query.trim().toLowerCase())).map((p) => ({
-      id: p.id,
-      label: p.id,
-    })),
+    SETTINGS_PAGES.filter((p) => p.id !== "Connectors" || flagOn("connectors"))
+      .filter(
+        (p) =>
+          !query.trim() ||
+          `${p.id} ${p.words}`
+            .toLowerCase()
+            .includes(query.trim().toLowerCase()),
+      )
+      .map((p) => ({
+        id: p.id,
+        label: p.id,
+      })),
   );
   // Typing in the search box jumps to the first page that matches.
   $effect(() => {
     const first = items[0];
-    if (query.trim() && first && !items.some((i) => i.id === page)) page = first.id as SettingsPage;
+    if (query.trim() && first && !items.some((i) => i.id === page))
+      page = first.id as SettingsPage;
   });
 
   // Changing the vault: the backend opens the folder first, so a bad path is never saved.
@@ -68,10 +92,13 @@
     vaultBusy = true;
     vaultNote = vaultError = null;
     try {
-      const opened = await invoke<{ vault: string; notes?: number }>("sidecar_call", {
-        method: "set_vault",
-        params: { vault: vaultDraft.trim() },
-      });
+      const opened = await invoke<{ vault: string; notes?: number }>(
+        "sidecar_call",
+        {
+          method: "set_vault",
+          params: { vault: vaultDraft.trim() },
+        },
+      );
       if (saved) saved.general.vault = opened.vault;
       vaultNote = `Opened ${opened.vault}. The graph and note list update in a few seconds.`;
       vaultDraft = "";
@@ -94,7 +121,9 @@
   });
   function clearErrors(): void {
     crashLog.clear();
-    invoke<{ crashes: CrashRow[] }>("sidecar_call", { method: "clear_crashes" }).then(
+    invoke<{ crashes: CrashRow[] }>("sidecar_call", {
+      method: "clear_crashes",
+    }).then(
       (value) => (diskRows = value.crashes),
       () => (diskRows = null),
     );
@@ -120,7 +149,10 @@
   async function readLogs(): Promise<void> {
     logError = null;
     try {
-      const found = await invoke<{ path: string; lines: string[] }>("sidecar_call", { method: "logs", params: { limit: 200 } });
+      const found = await invoke<{ path: string; lines: string[] }>(
+        "sidecar_call",
+        { method: "logs", params: { limit: 200 } },
+      );
       logLines = found.lines;
       logPath = found.path;
     } catch (cause) {
@@ -140,40 +172,96 @@
 </script>
 
 <div class="scrim" role="presentation" onmousedown={onclose}>
-  <div class="box" role="dialog" aria-modal="true" aria-label="Settings" tabindex="-1" onkeydown={onKey} onmousedown={(e) => e.stopPropagation()}>
+  <div
+    class="box"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Settings"
+    tabindex="-1"
+    onkeydown={onKey}
+    onmousedown={(e) => e.stopPropagation()}
+  >
     <header>
       <h2>Settings</h2>
-      <input type="search" aria-label="Search settings" placeholder="Search settings" bind:value={query} />
-      <button type="button" class="close" aria-label="Close settings" onclick={onclose}>×</button>
+      <input
+        type="search"
+        aria-label="Search settings"
+        placeholder="Search settings"
+        bind:value={query}
+      />
+      <button
+        type="button"
+        class="close"
+        aria-label="Close settings"
+        onclick={onclose}>×</button
+      >
     </header>
     <div class="body">
       <nav class="rail">
         {#if items.length}
-          <Tabs {items} bind:value={page} label="Settings pages" idBase="settings" vertical />
+          <Tabs
+            {items}
+            bind:value={page}
+            label="Settings pages"
+            idBase="settings"
+            vertical
+          />
         {:else}
           <p class="muted">No page matches "{query}".</p>
         {/if}
       </nav>
-      <div class="page" role="tabpanel" id="settings-panel" aria-labelledby={`settings-tab-${page}`} tabindex="-1">
+      <div
+        class="page"
+        role="tabpanel"
+        id="settings-panel"
+        aria-labelledby={`settings-tab-${page}`}
+        tabindex="-1"
+      >
         {#if page === "General"}
           <section class="control-section">
             <h3>General</h3>
             <div class="setting">
-              <div><b>Vault folder</b><p>Where your notes live. To change it, type a folder that exists and open it.</p></div>
+              <div>
+                <b>Vault folder</b>
+                <p>
+                  Where your notes live. To change it, type a folder that exists
+                  and open it.
+                </p>
+              </div>
               <code>{saved ? (saved.general.vault ?? "Not chosen") : "…"}</code>
             </div>
             <form class="row" onsubmit={changeVault}>
-              <input type="text" aria-label="New vault folder" placeholder="/home/you/notes" bind:value={vaultDraft} />
-              <button type="submit" disabled={!vaultDraft.trim() || vaultBusy}>{vaultBusy ? "Opening…" : "Open folder"}</button>
+              <input
+                type="text"
+                aria-label="New vault folder"
+                placeholder="/home/you/notes"
+                bind:value={vaultDraft}
+              />
+              <button type="submit" disabled={!vaultDraft.trim() || vaultBusy}
+                >{vaultBusy ? "Opening…" : "Open folder"}</button
+              >
             </form>
             {#if vaultNote}<p class="muted" role="status">{vaultNote}</p>{/if}
             {#if vaultError}<p class="error" role="alert">{vaultError}</p>{/if}
             <div class="setting">
-              <div><b>Open on the last tab</b><p>The Control Room opens on the tab you used last.</p></div>
-              <label class="switch"><input type="checkbox" bind:checked={prefs.rememberTab} /><span>{prefs.rememberTab ? "On" : "Off"}</span></label>
+              <div>
+                <b>Open on the last tab</b>
+                <p>The Control Room opens on the tab you used last.</p>
+              </div>
+              <label class="switch"
+                ><input type="checkbox" bind:checked={prefs.rememberTab} /><span
+                  >{prefs.rememberTab ? "On" : "Off"}</span
+                ></label
+              >
             </div>
             <div class="setting">
-              <div><b>Settings file</b><p>Backend settings are also in this file. No keys are stored in it.</p></div>
+              <div>
+                <b>Settings file</b>
+                <p>
+                  Backend settings are also in this file. No keys are stored in
+                  it.
+                </p>
+              </div>
               <code>config/settings.toml</code>
             </div>
           </section>
@@ -181,7 +269,10 @@
           <section class="control-section">
             <h3>Appearance</h3>
             <div class="setting">
-              <div><b>Motion</b><p>System follows your computer's reduced-motion setting.</p></div>
+              <div>
+                <b>Motion</b>
+                <p>System follows your computer's reduced-motion setting.</p>
+              </div>
               <Dropdown
                 label="Motion"
                 value={prefs.motion}
@@ -194,7 +285,13 @@
               />
             </div>
             <div class="setting">
-              <div><b>Start-up logo</b><p>How long the logo stays once the app has loaded. Applies from the next start.</p></div>
+              <div>
+                <b>Start-up logo</b>
+                <p>
+                  How long the logo stays once the app has loaded. Applies from
+                  the next start.
+                </p>
+              </div>
               <Dropdown
                 label="Start-up logo"
                 value={prefs.intro}
@@ -207,34 +304,73 @@
               />
             </div>
             <div class="setting">
-              <div><b>Terminal text size</b><p>Used by every agent terminal. {FONT_MIN} to {FONT_MAX} px.</p></div>
+              <div>
+                <b>Terminal text size</b>
+                <p>
+                  Used by every agent terminal. {FONT_MIN} to {FONT_MAX} px.
+                </p>
+              </div>
               <span class="stepper">
-                <button type="button" aria-label="Smaller terminal text" disabled={prefs.terminalFontSize <= FONT_MIN} onclick={() => (prefs.terminalFontSize -= 1)}>−</button>
+                <button
+                  type="button"
+                  aria-label="Smaller terminal text"
+                  disabled={prefs.terminalFontSize <= FONT_MIN}
+                  onclick={() => (prefs.terminalFontSize -= 1)}>−</button
+                >
                 <output>{prefs.terminalFontSize}px</output>
-                <button type="button" aria-label="Larger terminal text" disabled={prefs.terminalFontSize >= FONT_MAX} onclick={() => (prefs.terminalFontSize += 1)}>+</button>
+                <button
+                  type="button"
+                  aria-label="Larger terminal text"
+                  disabled={prefs.terminalFontSize >= FONT_MAX}
+                  onclick={() => (prefs.terminalFontSize += 1)}>+</button
+                >
               </span>
             </div>
             <div class="setting">
-              <div><b>Font</b><p>One monospace face everywhere, bundled with the app.</p></div>
+              <div>
+                <b>Font</b>
+                <p>One monospace face everywhere, bundled with the app.</p>
+              </div>
               <code>JetBrains Mono</code>
             </div>
             <div class="setting">
-              <div><b>Reset appearance</b><p>Back to 12 px text, system motion and remembering the last tab.</p></div>
+              <div>
+                <b>Reset appearance</b>
+                <p>
+                  Back to 12 px text, system motion and remembering the last
+                  tab.
+                </p>
+              </div>
               <button type="button" onclick={() => prefs.reset()}>Reset</button>
             </div>
           </section>
           <div class="cards">
-            <StatusCard name="Light theme" what="A light set of colours next to the dark one." status="Planned" reason="Every colour is a token now, so this needs a second token set and a contrast pass." />
+            <StatusCard
+              name="Light theme"
+              what="A light set of colours next to the dark one."
+              status="Planned"
+              reason="Every colour is a token now, so this needs a second token set and a contrast pass."
+            />
           </div>
         {:else if page === "Agents"}
           <section class="control-section">
             <h3>Agents</h3>
             <div class="setting">
-              <div><b>Main agent engine</b><p>Change it on the Monitor tab of the Control Room.</p></div>
-              <code>{saved ? `${saved.agents.provider} · ${saved.agents.model}` : "…"}</code>
+              <div>
+                <b>Main agent engine</b>
+                <p>Change it on the Monitor tab of the Control Room.</p>
+              </div>
+              <code
+                >{saved
+                  ? `${saved.agents.provider} · ${saved.agents.model}`
+                  : "…"}</code
+              >
             </div>
             <div class="setting">
-              <div><b>Tool calls per request</b><p>The most tools the assistant may call for one request.</p></div>
+              <div>
+                <b>Tool calls per request</b>
+                <p>The most tools the assistant may call for one request.</p>
+              </div>
               <code>{saved ? saved.budgets.max_tool_calls : "…"}</code>
             </div>
           </section>
@@ -244,8 +380,10 @@
               <div>
                 <b>Shell for every agent</b>
                 <p>
-                  On: each agent can run simple shell commands, and its program runs in a sandbox that keeps the app and the
-                  system read-only. Off: only the main agent has a shell. Applies the next time an agent starts.
+                  On: each agent can run simple shell commands, and its program
+                  runs in a sandbox that keeps the app and the system read-only.
+                  Off: only the main agent has a shell. Applies the next time an
+                  agent starts.
                 </p>
               </div>
               <label class="switch"
@@ -282,8 +420,15 @@
           <section class="control-section">
             <h3>Memory</h3>
             <div class="setting">
-              <div><b>Memory size per agent</b><p>Notes past this size are condensed.</p></div>
-              <code>{saved ? `${saved.memory.max_bytes.toLocaleString()} bytes` : "…"}</code>
+              <div>
+                <b>Memory size per agent</b>
+                <p>Notes past this size are condensed.</p>
+              </div>
+              <code
+                >{saved
+                  ? `${saved.memory.max_bytes.toLocaleString()} bytes`
+                  : "…"}</code
+              >
             </div>
           </section>
           <MemorySection />
@@ -291,47 +436,82 @@
           <section class="control-section">
             <h3>Privacy and data</h3>
             <div class="setting">
-              <div><b>Your data</b><p>Sign out or remove your data in Setup and account, on the left ribbon.</p></div>
+              <div>
+                <b>Your data</b>
+                <p>
+                  Sign out or remove your data in Setup and account, on the left
+                  ribbon.
+                </p>
+              </div>
             </div>
             <div class="setting">
               <div>
                 <b>Error log</b>
-                <p>Errors from this window and the backend, kept on this computer in <code>crashes.jsonl</code>. Never sent.</p>
+                <p>
+                  Errors from this window and the backend, kept on this computer
+                  in <code>crashes.jsonl</code>. Never sent.
+                </p>
               </div>
               <span class="row">
                 <code>{errorRows.length} recorded</code>
-                <button type="button" disabled={errorRows.length === 0} onclick={clearErrors}>Clear</button>
+                <button
+                  type="button"
+                  disabled={errorRows.length === 0}
+                  onclick={clearErrors}>Clear</button
+                >
               </span>
             </div>
             {#if errorRows.length}
               <ul class="log" aria-label="Recorded errors">
                 {#each errorRows.slice(0, 10) as row, index (index)}
-                  <li><span class="muted">{row.at.slice(0, 19).replace("T", " ")}</span> <b>{row.source}</b> {row.message}</li>
+                  <li>
+                    <span class="muted"
+                      >{row.at.slice(0, 19).replace("T", " ")}</span
+                    > <b>{row.source}</b>
+                    {row.message}
+                  </li>
                 {/each}
               </ul>
             {/if}
           </section>
           <div class="cards">
-            <StatusCard name="Telemetry" what="Anonymous usage numbers, off unless you turn them on." status="Planned" reason="Nothing is collected today." />
+            <StatusCard
+              name="Telemetry"
+              what="Anonymous usage numbers, off unless you turn them on."
+              status="Planned"
+              reason="Nothing is collected today."
+            />
           </div>
         {:else if page === "Advanced"}
           <section class="control-section">
             <h3>Advanced</h3>
             <div class="setting">
-              <div><b>Backend (Python sidecar)</b><p>Answers every request from this window.</p></div>
+              <div>
+                <b>Backend (Python sidecar)</b>
+                <p>Answers every request from this window.</p>
+              </div>
               <code>{sidecar}</code>
             </div>
           </section>
           <section class="control-section">
             <h3>Feature switches</h3>
-            <p class="hint">Turn a part of the app off without a new build. A change applies the next time that part opens.</p>
+            <p class="hint">
+              Turn a part of the app off without a new build. A change applies
+              the next time that part opens.
+            </p>
             {#each FLAGS as flag (flag.id)}
               <div class="setting">
-                <div><b>{flag.name}</b><p>{flag.what}</p></div>
+                <div>
+                  <b>{flag.name}</b>
+                  <p>{flag.what}</p>
+                </div>
                 <label class="switch"
-                  ><input type="checkbox" aria-label={flag.name} checked={flagOn(flag.id)} onchange={(e) => setFlag(flag.id, e.currentTarget.checked)} /><span
-                    >{flagOn(flag.id) ? "On" : "Off"}</span
-                  ></label
+                  ><input
+                    type="checkbox"
+                    aria-label={flag.name}
+                    checked={flagOn(flag.id)}
+                    onchange={(e) => setFlag(flag.id, e.currentTarget.checked)}
+                  /><span>{flagOn(flag.id) ? "On" : "Off"}</span></label
                 >
               </div>
             {/each}
@@ -339,25 +519,45 @@
           <section class="control-section">
             <h3>Backend log</h3>
             <div class="setting">
-              <div><b>Newest 200 lines</b><p>{logPath || "The backend writes one log file and keeps three older copies. Keys are masked."}</p></div>
-              <button type="button" onclick={() => void readLogs()}>Refresh</button>
+              <div>
+                <b>Newest 200 lines</b>
+                <p>
+                  {logPath ||
+                    "The backend writes one log file and keeps three older copies. Keys are masked."}
+                </p>
+              </div>
+              <button type="button" onclick={() => void readLogs()}
+                >Refresh</button
+              >
             </div>
             {#if logError}
               <p class="error" role="alert">{logError}</p>
             {:else if logLines && logLines.length === 0}
               <p class="muted">The log is empty.</p>
             {:else if logLines}
-              <pre class="backend-log" aria-label="Backend log">{logLines.join("\n")}</pre>
+              <pre class="backend-log" aria-label="Backend log">{logLines.join(
+                  "\n",
+                )}</pre>
             {/if}
           </section>
           <div class="cards">
-            <StatusCard name="Dictation and meeting capture" what="Speak into any field and capture meeting notes." status="Planned" reason="No speech-to-text source is set up in this build." />
+            <StatusCard
+              name="Dictation and meeting capture"
+              what="Speak into any field and capture meeting notes."
+              status="Planned"
+              reason="No speech-to-text source is set up in this build."
+            />
           </div>
         {:else}
           <section class="control-section">
             <h3>About</h3>
             <div class="setting">
-              <div><b>Hippocampus</b><p>A local notes vault with a graph and real command-line agents.</p></div>
+              <div>
+                <b>Hippocampus</b>
+                <p>
+                  A local notes vault with a graph and real command-line agents.
+                </p>
+              </div>
               <code>{version ? `v${version}` : "…"}</code>
             </div>
           </section>

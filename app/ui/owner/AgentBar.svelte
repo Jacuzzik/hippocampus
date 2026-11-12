@@ -63,7 +63,10 @@
   });
 
   const provider = $derived(
-    account ? (AGENT_PROVIDERS.find((p) => p.id === account?.provider)?.label ?? account?.provider) : "...",
+    account
+      ? (AGENT_PROVIDERS.find((p) => p.id === account?.provider)?.label ??
+          account?.provider)
+      : "...",
   );
   const labelOf = (id: string): string =>
     AGENT_PROVIDERS.find((p) => p.id === id)?.label ?? id;
@@ -88,42 +91,93 @@
 
   // The briefing an agent last started with: its version, a short hash and when it was handed over.
   type Briefing = { version: number; hash: string; at: string };
-  let live = $state<Record<string, { command: string | null; status: string | null; percent: number | null; running?: string[]; last?: string | null; model?: string | null; briefing?: Briefing | null }>>({});
+  let live = $state<
+    Record<
+      string,
+      {
+        command: string | null;
+        status: string | null;
+        percent: number | null;
+        running?: string[];
+        last?: string | null;
+        model?: string | null;
+        briefing?: Briefing | null;
+      }
+    >
+  >({});
   // What the info box says about an agent's program right now, from the same live state the card shows.
-  function liveInfo(id: string): { status: string; ctx: string; briefing: string } {
+  function liveInfo(id: string): {
+    status: string;
+    ctx: string;
+    briefing: string;
+  } {
     const now = live[id];
     const brief = now?.briefing;
     return {
       status: now?.status ?? "Not running",
       ctx: now?.percent != null ? `${now.percent}%` : NO_DATA,
-      briefing: brief ? `v${brief.version} · ${brief.hash} · handed over ${brief.at.slice(11, 16)}` : "Not handed over in this run",
+      briefing: brief
+        ? `v${brief.version} · ${brief.hash} · handed over ${brief.at.slice(11, 16)}`
+        : "Not handed over in this run",
     };
   }
   // CMD shows what is running now, else the last command the agent ran.
   const cmdOf = (id: string): string => {
     const info = live[id];
-    const shown = info?.running?.length ? info.running : info?.last ? [info.last] : [];
+    const shown = info?.running?.length
+      ? info.running
+      : info?.last
+        ? [info.last]
+        : [];
     // Drop the tool word the terminal puts in front ("Bash: ls ...", "exec ...").
-    return shown.map((c) => c.replace(/^\s*(bash|exec|sh|shell|cmd)\b\s*:?\s*/i, "")).join("  ·  ") || NO_DATA;
+    return (
+      shown
+        .map((c) => c.replace(/^\s*(bash|exec|sh|shell|cmd)\b\s*:?\s*/i, ""))
+        .join("  ·  ") || NO_DATA
+    );
   };
   // The provider a card's terminal runs (its CLI name), else the agent's own provider: its name and logo.
-  const providerOf = (id: string, fallback: string): { name: string; logo?: string } => {
+  const providerOf = (
+    id: string,
+    fallback: string,
+  ): { name: string; logo?: string } => {
     const word = (live[id]?.command ?? "").split(" ")[0] ?? "";
-    return { name: CLI_ID[word] ? labelFor(CLI_ID[word]) : labelOf(fallback), logo: providerLogo(CLI_ID[word] ?? fallback) };
+    return {
+      name: CLI_ID[word] ? labelFor(CLI_ID[word]) : labelOf(fallback),
+      logo: providerLogo(CLI_ID[word] ?? fallback),
+    };
   };
   // The provider HIPPO's terminal actually runs, from its CLI name; the account's provider until a terminal runs.
   // Names come from the Monitor picker list (AGENT_PROVIDERS), so one provider has one name everywhere.
-  const labelFor = (id: string): string => AGENT_PROVIDERS.find((p) => p.id === id)?.label ?? id;
-  const CLI_ID: Record<string, string> = { claude: "claude", codex: "codex", ollama: "ollama", agy: "antigravity" };
-  const cliWord = $derived((live.hippoherman?.command ?? "").split(" ")[0] ?? "");
-  const runningProvider = $derived(CLI_ID[cliWord] ? labelFor(CLI_ID[cliWord]) : provider);
+  const labelFor = (id: string): string =>
+    AGENT_PROVIDERS.find((p) => p.id === id)?.label ?? id;
+  const CLI_ID: Record<string, string> = {
+    claude: "claude",
+    codex: "codex",
+    ollama: "ollama",
+    agy: "antigravity",
+  };
+  const cliWord = $derived(
+    (live.hippoherman?.command ?? "").split(" ")[0] ?? "",
+  );
+  const runningProvider = $derived(
+    CLI_ID[cliWord] ? labelFor(CLI_ID[cliWord]) : provider,
+  );
   // Fallback is the account's own provider, not a guess: a Codex account with no running CLI must not show Ollama.
   const runningId = $derived(CLI_ID[cliWord] ?? account?.provider ?? "");
   const runningLogo = $derived(providerLogo(runningId));
   async function refreshLive(): Promise<void> {
     for (const id of ["hippoherman", ...added.map((a) => a.id)]) {
       try {
-        const info = await invoke<{ command: string | null; status: string | null; running?: string[]; last?: string | null; model?: string | null; boot?: string; briefing?: Briefing | null }>("sidecar_call", {
+        const info = await invoke<{
+          command: string | null;
+          status: string | null;
+          running?: string[];
+          last?: string | null;
+          model?: string | null;
+          boot?: string;
+          briefing?: Briefing | null;
+        }>("sidecar_call", {
           method: "terminal_command",
           params: { agent: id },
         });
@@ -136,7 +190,15 @@
               })
             ).percent
           : null;
-        live[id] = { command: info.command, status: info.status, percent, running: info.running, last: info.last, model: info.model, briefing: info.briefing ?? null };
+        live[id] = {
+          command: info.command,
+          status: info.status,
+          percent,
+          running: info.running,
+          last: info.last,
+          model: info.model,
+          briefing: info.briefing ?? null,
+        };
       } catch {
         live[id] = { command: null, status: null, percent: null };
       }
@@ -146,7 +208,6 @@
     void refreshLive();
     return every(() => void refreshLive(), 3000);
   });
-
 </script>
 
 <svelte:window
@@ -160,7 +221,11 @@
 
 {#if menu}
   {@const open = menu}
-  <div class="menu-scrim" role="presentation" onmousedown={() => (menu = null)}></div>
+  <div
+    class="menu-scrim"
+    role="presentation"
+    onmousedown={() => (menu = null)}
+  ></div>
   <div
     class="card-menu"
     role="menu"
@@ -213,25 +278,45 @@
 {/if}
 
 {#if agentEdit.current}
-  <div class="info-scrim" role="presentation" onmousedown={() => (agentEdit.current = null)}>
+  <div
+    class="info-scrim"
+    role="presentation"
+    onmousedown={() => (agentEdit.current = null)}
+  >
     <div
       class="info-box"
       role="dialog"
       aria-modal="true"
-      aria-label={agentEdit.current.mode === "rename" ? "Rename agent" : "Agent note"}
+      aria-label={agentEdit.current.mode === "rename"
+        ? "Rename agent"
+        : "Agent note"}
       tabindex="-1"
       onmousedown={(e) => e.stopPropagation()}
     >
       <header>
-        <b>{agentEdit.current.mode === "rename" ? "Rename" : "Note (only you can see this)"}</b>
+        <b
+          >{agentEdit.current.mode === "rename"
+            ? "Rename"
+            : "Note (only you can see this)"}</b
+        >
       </header>
       {#if agentEdit.current.mode === "rename"}
-        <input class="edit-field" bind:value={agentEdit.current.value} aria-label="Name" />
+        <input
+          class="edit-field"
+          bind:value={agentEdit.current.value}
+          aria-label="Name"
+        />
       {:else}
-        <textarea class="edit-field" rows="5" bind:value={agentEdit.current.value} aria-label="Note"></textarea>
+        <textarea
+          class="edit-field"
+          rows="5"
+          bind:value={agentEdit.current.value}
+          aria-label="Note"></textarea>
       {/if}
       <div class="edit-actions">
-        <button type="button" onclick={() => (agentEdit.current = null)}>Cancel</button>
+        <button type="button" onclick={() => (agentEdit.current = null)}
+          >Cancel</button
+        >
         <button type="button" onclick={saveEdit}>Save</button>
       </div>
     </div>
@@ -295,7 +380,11 @@
       if (e.key === "Enter" || e.key === " ") selectAgent("hippoherman");
     }}
   >
-    <img src={CARD_FACES.find((f) => f.id === "card-face-17")?.url ?? logo} alt="" class="face" />
+    <img
+      src={CARD_FACES.find((f) => f.id === "card-face-17")?.url ?? logo}
+      alt=""
+      class="face"
+    />
     <div class="text">
       <span class="head">
         <b>Hippoherman</b>
@@ -303,24 +392,44 @@
       </span>
       <span class="row">
         <span class="val provider-line">
-          {#if runningLogo}<span class="provider-logo" style='--logo: url("{runningLogo}")'></span>{/if}
+          {#if runningLogo}<span
+              class="provider-logo"
+              style:--logo={`url("${runningLogo}")`}
+            ></span>{/if}
           <span class="provider-name">{runningProvider}</span>
         </span>
       </span>
       <span class="row">
-        <span class="val model">{live.hippoherman?.model ?? account?.model ?? NO_DATA}</span>
+        <span class="val model"
+          >{live.hippoherman?.model ?? account?.model ?? NO_DATA}</span
+        >
       </span>
       <span class="row wide cmd-row">
         <span class="val cmd">{cmdOf("hippoherman")}</span>
       </span>
-      <span class="row wide" aria-label="Context {live.hippoherman?.percent ?? NO_DATA}">
-        <span class="ctx-bar" aria-hidden="true"><span class="ctx-fill" style="width: {live.hippoherman?.percent ?? 0}%"></span></span>
-        <span class="pct">{live.hippoherman?.percent != null ? `${live.hippoherman?.percent}%` : NO_DATA}</span>
+      <span
+        class="row wide"
+        aria-label="Context {live.hippoherman?.percent ?? NO_DATA}"
+      >
+        <span class="ctx-bar" aria-hidden="true"
+          ><span
+            class="ctx-fill"
+            style="width: {live.hippoherman?.percent ?? 0}%"
+          ></span></span
+        >
+        <span class="pct"
+          >{live.hippoherman?.percent != null
+            ? `${live.hippoherman?.percent}%`
+            : NO_DATA}</span
+        >
       </span>
     </div>
     <div class="side">
-      <button type="button" class="talk" title="Write to Hippoherman" onclick={() => talkTo("hippoherman")}
-        >TALK</button
+      <button
+        type="button"
+        class="talk"
+        title="Write to Hippoherman"
+        onclick={() => talkTo("hippoherman")}>TALK</button
       >
       <button
         type="button"
@@ -336,7 +445,9 @@
             ...liveInfo("hippoherman"),
           })}>INFO</button
       >
-      <span class="status">{live.hippoherman?.status === "Working" ? "Working" : "Idle"}</span>
+      <span class="status"
+        >{live.hippoherman?.status === "Working" ? "Working" : "Idle"}</span
+      >
     </div>
   </div>
   {#each added as agent (agent.id)}
@@ -353,30 +464,56 @@
           openMenu(e, agent.id);
         }}
       >
-        <img src={CARD_FACES.find((f) => f.id === agent.character)?.url ?? logo} alt="" class="face" />
+        <img
+          src={CARD_FACES.find((f) => f.id === agent.character)?.url ?? logo}
+          alt=""
+          class="face"
+        />
         <span class="text">
           <span class="head"><b>{agent.name}</b></span>
           <span class="row">
             <span class="val provider-line">
-              {#if providerOf(agent.id, agent.provider).logo}<span class="provider-logo" style='--logo: url("{providerOf(agent.id, agent.provider).logo}")'></span>{/if}
-              <span class="provider-name">{providerOf(agent.id, agent.provider).name}</span>
+              {#if providerOf(agent.id, agent.provider).logo}<span
+                  class="provider-logo"
+                  style:--logo={`url("${providerOf(agent.id, agent.provider).logo}")`}
+                ></span>{/if}
+              <span class="provider-name"
+                >{providerOf(agent.id, agent.provider).name}</span
+              >
             </span>
           </span>
           <span class="row">
-            <span class="val model">{agent.model || live[agent.id]?.model || "No model set"}</span>
+            <span class="val model"
+              >{agent.model || live[agent.id]?.model || "No model set"}</span
+            >
           </span>
           <span class="row wide cmd-row">
             <span class="val cmd">{cmdOf(agent.id)}</span>
           </span>
-          <span class="row wide" aria-label="Context {live[agent.id]?.percent ?? NO_DATA}">
-            <span class="ctx-bar" aria-hidden="true"><span class="ctx-fill" style="width: {live[agent.id]?.percent ?? 0}%"></span></span>
-            <span class="pct">{live[agent.id]?.percent != null ? `${live[agent.id]?.percent}%` : NO_DATA}</span>
+          <span
+            class="row wide"
+            aria-label="Context {live[agent.id]?.percent ?? NO_DATA}"
+          >
+            <span class="ctx-bar" aria-hidden="true"
+              ><span
+                class="ctx-fill"
+                style="width: {live[agent.id]?.percent ?? 0}%"
+              ></span></span
+            >
+            <span class="pct"
+              >{live[agent.id]?.percent != null
+                ? `${live[agent.id]?.percent}%`
+                : NO_DATA}</span
+            >
           </span>
         </span>
       </button>
       <div class="side">
-        <button type="button" class="talk" title={`Write to ${agent.name}`} onclick={() => talkTo(agent.id)}
-          >TALK</button
+        <button
+          type="button"
+          class="talk"
+          title={`Write to ${agent.name}`}
+          onclick={() => talkTo(agent.id)}>TALK</button
         >
         <button
           type="button"
@@ -384,7 +521,9 @@
           aria-label="Info"
           onclick={() => showInfo(agent)}>INFO</button
         >
-        <span class="status">{live[agent.id]?.status === "Working" ? "Working" : "Idle"}</span>
+        <span class="status"
+          >{live[agent.id]?.status === "Working" ? "Working" : "Idle"}</span
+        >
       </div>
     </div>
   {/each}
@@ -522,8 +661,6 @@
     mask-position: center;
   }
 
-
-
   .chip .row {
     display: flex;
     align-items: center;
@@ -531,7 +668,6 @@
     font-size: var(--font-size-xs);
     line-height: 1.6;
   }
-
 
   .chip .val {
     overflow: hidden;
@@ -629,7 +765,6 @@
     background: var(--color-md-card);
     color: var(--hippo-purple);
   }
-
 
   /* Added agents: HIPPO's layout and outline, but no purple accent top line. */
   /* The 6px less top border is made up in padding, so the card is as tall as HIPPO's. */
@@ -767,7 +902,6 @@
     font-family: var(--font-ui);
     font-size: var(--font-size-tag);
   }
-
 
   .pct {
     margin-left: 4px;

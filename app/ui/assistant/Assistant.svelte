@@ -4,7 +4,10 @@
   import { assistant } from "./session.svelte";
 
   // When given, the message goes here (the Control Room sends it to the terminal) instead of the chat.
-  let { onsend, queued = [] }: { onsend?: (text: string) => void; queued?: string[] } = $props();
+  let {
+    onsend,
+    queued = [],
+  }: { onsend?: (text: string) => void; queued?: string[] } = $props();
 
   const STATUS_TEXT: Record<ToolStatus, string> = {
     requested: "asked",
@@ -82,107 +85,110 @@
 <svelte:window onkeydown={onKeydown} />
 
 <aside class="assistant md-theme" aria-label="Assistant">
-
-
   {#if !onsend}
-  <ol class="messages" aria-live="polite" aria-label="Conversation">
-    {#each chat.messages as message, index (index)}
-      <li class="message {message.role}">
-        <span class="who"
-          >{message.role === "user"
-            ? "You"
-            : message.role === "assistant"
-              ? "Assistant"
-              : "Note"}</span
-        >
-        <p>{message.text}</p>
-      </li>
-    {/each}
-  </ol>
-
-  {#each chat.confirms as card (card.call)}
-    <section class="confirm" role="group" aria-label="Approval needed">
-      <p class="confirm-title">
-        Approve: {card.name}
-        {TIER_TEXT[card.tier] ?? card.tier}
-      </p>
-      <pre>{card.preview}</pre>
-      <div class="actions">
-        <button
-          type="button"
-          class="approve"
-          onclick={() => assistant.decide(card.call, true)}
-        >
-          Approve
-        </button>
-        <button type="button" onclick={() => assistant.decide(card.call, false)}
-          >Decline</button
-        >
-      </div>
-    </section>
-  {/each}
-
-  {#each chat.asks as ask (ask.call)}
-    <form
-      class="ask"
-      aria-label="Question from the assistant"
-      onsubmit={(event) => answer(event, ask.call)}
-    >
-      <p class="confirm-title">{ask.question}</p>
-      <label class="visually-hidden" for="ask-{ask.call}">Your answer</label>
-      <textarea id="ask-{ask.call}" rows="2" bind:value={answers[ask.call]}
-      ></textarea>
-      <div class="actions">
-        <button type="submit" disabled={!(answers[ask.call] ?? "").trim()}
-          >Answer</button
-        >
-      </div>
-    </form>
-  {/each}
-
-  <section class="tools" aria-label="Tool log">
-    <h3 class="visually-hidden">Tool log</h3>
-    {#if chat.tools.length === 0 && chat.activity.length === 0}
-      <p class="muted">No tools used yet.</p>
-    {/if}
-    <!-- Terminal lines, as in the mockup: the provider's session echoed as $ and > prompts. -->
-    {#if chat.tools.length > 0 || chat.activity.length > 0}
-    <div class="term">
-      {#each chat.activity as entry, index (index)}
-        <div><span class="arrow">&gt;</span> <time>{entry.at}</time> {entry.text}</div>
+    <ol class="messages" aria-live="polite" aria-label="Conversation">
+      {#each chat.messages as message, index (index)}
+        <li class="message {message.role}">
+          <span class="who"
+            >{message.role === "user"
+              ? "You"
+              : message.role === "assistant"
+                ? "Assistant"
+                : "Note"}</span
+          >
+          <p>{message.text}</p>
+        </li>
       {/each}
-      {#each chat.tools as tool (tool.call + tool.name)}
-        <div>
-          <span class="arrow">&gt;</span> {tool.name}
-          <span class="status">{STATUS_TEXT[tool.status]}</span>
-        </div>
-      {/each}
-    </div>
-    {/if}
-    {#if chat.budgetPause !== null}
-      <div class="budget-card" role="alert">
-        <p>
-          The {chat.budgetPause.scope}
-          {chat.budgetPause.window} token cap is used. Allow one more request, then
-          send your message again.
+    </ol>
+
+    {#each chat.confirms as card (card.call)}
+      <section class="confirm" role="group" aria-label="Approval needed">
+        <p class="confirm-title">
+          Approve: {card.name}
+          {TIER_TEXT[card.tier] ?? card.tier}
         </p>
+        <pre>{card.preview}</pre>
+        <div class="actions">
+          <button
+            type="button"
+            class="approve"
+            onclick={() => assistant.decide(card.call, true)}
+          >
+            Approve
+          </button>
+          <button
+            type="button"
+            onclick={() => assistant.decide(card.call, false)}>Decline</button
+          >
+        </div>
+      </section>
+    {/each}
+
+    {#each chat.asks as ask (ask.call)}
+      <form
+        class="ask"
+        aria-label="Question from the assistant"
+        onsubmit={(event) => answer(event, ask.call)}
+      >
+        <p class="confirm-title">{ask.question}</p>
+        <label class="visually-hidden" for="ask-{ask.call}">Your answer</label>
+        <textarea id="ask-{ask.call}" rows="2" bind:value={answers[ask.call]}
+        ></textarea>
+        <div class="actions">
+          <button type="submit" disabled={!(answers[ask.call] ?? "").trim()}
+            >Answer</button
+          >
+        </div>
+      </form>
+    {/each}
+
+    <section class="tools" aria-label="Tool log">
+      <h3 class="visually-hidden">Tool log</h3>
+      {#if chat.tools.length === 0 && chat.activity.length === 0}
+        <p class="muted">No tools used yet.</p>
+      {/if}
+      <!-- Terminal lines, as in the mockup: the provider's session echoed as $ and > prompts. -->
+      {#if chat.tools.length > 0 || chat.activity.length > 0}
+        <div class="term">
+          {#each chat.activity as entry, index (index)}
+            <div>
+              <span class="arrow">&gt;</span> <time>{entry.at}</time>
+              {entry.text}
+            </div>
+          {/each}
+          {#each chat.tools as tool (tool.call + tool.name)}
+            <div>
+              <span class="arrow">&gt;</span>
+              {tool.name}
+              <span class="status">{STATUS_TEXT[tool.status]}</span>
+            </div>
+          {/each}
+        </div>
+      {/if}
+      {#if chat.budgetPause !== null}
+        <div class="budget-card" role="alert">
+          <p>
+            The {chat.budgetPause.scope}
+            {chat.budgetPause.window} token cap is used. Allow one more request, then
+            send your message again.
+          </p>
+          <button
+            type="button"
+            class="continue"
+            disabled={assistant.busy}
+            onclick={() => assistant.allowOne()}>Allow one more request</button
+          >
+        </div>
+      {/if}
+      {#if chat.paused !== null}
         <button
           type="button"
           class="continue"
           disabled={assistant.busy}
-          onclick={() => assistant.allowOne()}>Allow one more request</button
+          onclick={() => assistant.resume()}>Continue</button
         >
-      </div>
-    {/if}
-    {#if chat.paused !== null}
-      <button
-        type="button"
-        class="continue"
-        disabled={assistant.busy}
-        onclick={() => assistant.resume()}>Continue</button
-      >
-    {/if}
-  </section>
+      {/if}
+    </section>
   {/if}
 
   <form class="composer" onsubmit={submit}>
@@ -205,8 +211,8 @@
             <button
               type="button"
               aria-label="Remove {file.name}"
-              onclick={() => (attached = attached.filter((_, i) => i !== index))}
-              >×</button
+              onclick={() =>
+                (attached = attached.filter((_, i) => i !== index))}>×</button
             >
           </li>
         {/each}

@@ -29,17 +29,29 @@
 {#if backendDown || warnings.length > 0 || crashLog.fresh > 0}
   <div class="health" role="status">
     {#if backendDown}
-      <span class="item"><span class="dot down" aria-hidden="true"></span>Backend not answering. Retrying…</span>
+      <span class="item"
+        ><span class="dot down" aria-hidden="true"></span>Backend not answering.
+        Retrying…</span
+      >
     {/if}
     {#each warnings as line (line)}
-      <span class="item"><span class="dot down" aria-hidden="true"></span>{line}</span>
+      <span class="item"
+        ><span class="dot down" aria-hidden="true"></span>{line}</span
+      >
     {/each}
     {#if crashLog.fresh > 0}
       <span class="item">
         <span class="dot" aria-hidden="true"></span>
         {crashLog.fresh} UI {crashLog.fresh === 1 ? "error" : "errors"} recorded
-        <button type="button" aria-expanded={open} onclick={() => (open = !open)}>{open ? "Hide" : "Details"}</button>
-        <button type="button" onclick={() => ((open = false), crashLog.dismiss())}>Dismiss</button>
+        <button
+          type="button"
+          aria-expanded={open}
+          onclick={() => (open = !open)}>{open ? "Hide" : "Details"}</button
+        >
+        <button
+          type="button"
+          onclick={() => ((open = false), crashLog.dismiss())}>Dismiss</button
+        >
       </span>
     {/if}
     {#if open && crashLog.fresh > 0}

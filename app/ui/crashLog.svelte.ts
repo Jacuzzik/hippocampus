@@ -25,7 +25,9 @@ let fresh = $state(0);
 /** A short readable line for any thrown value. */
 export function errorText(cause: unknown): string {
   if (cause instanceof Error) return cause.message || cause.name;
-  return typeof cause === "string" ? cause : JSON.stringify(cause) ?? String(cause);
+  return typeof cause === "string"
+    ? cause
+    : (JSON.stringify(cause) ?? String(cause));
 }
 
 /** Records one error. Never throws: a broken log must not break the app. */
@@ -43,7 +45,9 @@ export function recordError(source: string, cause: unknown): void {
   }
   // Also on disk. If the backend is the thing that is down, the copy above still holds the row.
   try {
-    invoke("sidecar_call", { method: "record_crash", params: row }).catch(() => {});
+    invoke("sidecar_call", { method: "record_crash", params: row }).catch(
+      () => {},
+    );
   } catch {
     /* no bridge (a test page): nothing to do */
   }
@@ -51,8 +55,12 @@ export function recordError(source: string, cause: unknown): void {
 
 /** Catches errors that no component handled: thrown in handlers, timers and rejected promises. */
 export function installGlobalHandlers(): void {
-  window.addEventListener("error", (e) => recordError("window", e.error ?? e.message));
-  window.addEventListener("unhandledrejection", (e) => recordError("promise", e.reason));
+  window.addEventListener("error", (e) =>
+    recordError("window", e.error ?? e.message),
+  );
+  window.addEventListener("unhandledrejection", (e) =>
+    recordError("promise", e.reason),
+  );
 }
 
 export const crashLog = {

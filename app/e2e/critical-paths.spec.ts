@@ -6,9 +6,13 @@ test.beforeEach(async ({ page }) => {
   await page.goto("/");
 });
 
-test("the brain graph loads and the main agent starts idle", async ({ page }) => {
+test("the brain graph loads and the main agent starts idle", async ({
+  page,
+}) => {
   await expect(page.getByRole("main", { name: "Brain graph" })).toBeVisible();
-  await expect(page.getByLabel("Agents").getByText("Idle").first()).toBeVisible();
+  await expect(
+    page.getByLabel("Agents").getByText("Idle").first(),
+  ).toBeVisible();
   await expect(page.getByText("Could not load the vault")).toHaveCount(0);
 });
 
@@ -125,4 +129,3 @@ test("a tag in the tags pane filters the note list", async ({ page }) => {
       .getByRole("button", { name: "Beta" }),
   ).toHaveCount(0);
 });
-

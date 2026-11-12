@@ -32,8 +32,9 @@ export interface Constellation {
 /** A stream seeded from a string (FNV-1a), so a formation depends only on its own id. */
 export function rng(seed: string): () => number {
   let s = 2166136261;
-  for (let k = 0; k < seed.length; k++) s = Math.imul(s ^ seed.charCodeAt(k), 16777619) >>> 0;
-  return () => ((s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967296);
+  for (let k = 0; k < seed.length; k++)
+    s = Math.imul(s ^ seed.charCodeAt(k), 16777619) >>> 0;
+  return () => (s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967296;
 }
 
 /**
@@ -45,13 +46,14 @@ export function withTestGraph(data: GraphData): GraphData {
   const edges: [string, string][] = [...data.edges];
   const hubs = Array.from({ length: 12 }, (_, i) => "test-hub-" + i);
   hubs.forEach((id) => nodes.push({ id, title: id, tags: [] }));
-  hubs.forEach((h, i) => edges.push([h, (hubs[(i + 1) % hubs.length] ?? h)]));
+  hubs.forEach((h, i) => edges.push([h, hubs[(i + 1) % hubs.length] ?? h]));
   for (let i = 0; i < 60; i++) {
     const id = "test-note-" + i;
     nodes.push({ id, title: id, tags: [] });
-    edges.push([id, (hubs[i % hubs.length] ?? hubs[0] ?? id)]);
+    edges.push([id, hubs[i % hubs.length] ?? hubs[0] ?? id]);
   }
-  for (let i = 0; i < 140; i++) nodes.push({ id: "test-lonely-" + i, title: "test-lonely-" + i, tags: [] });
+  for (let i = 0; i < 140; i++)
+    nodes.push({ id: "test-lonely-" + i, title: "test-lonely-" + i, tags: [] });
   return { nodes, edges };
 }
 
@@ -60,16 +62,29 @@ export function withTestGraph(data: GraphData): GraphData {
  * Hubs get a dense core and nested towers; notes get small formations in their hub's colour; edges become
  * curved trails of sparse dots with an occasional tiny box; lonely notes stay alone, with no trail.
  */
-export function buildConstellation(data: GraphData, pos: ArrayLike<number>): Constellation {
+export function buildConstellation(
+  data: GraphData,
+  pos: ArrayLike<number>,
+): Constellation {
   const n = data.nodes.length;
   const deg = linkCounts(data.nodes, data.edges);
   const index = new Map(data.nodes.map((node, i) => [node.id, i]));
-  const isHub = data.nodes.map((node, i) => (deg[i] ?? 0) >= HUB_LINKS || node.id.startsWith("hub:") || node.title === "MAIN");
+  const isHub = data.nodes.map(
+    (node, i) =>
+      (deg[i] ?? 0) >= HUB_LINKS ||
+      node.id.startsWith("hub:") ||
+      node.title === "MAIN",
+  );
 
   // Each note takes the colour of a hub it links to; a hub takes one from its id.
   const colour = new Int32Array(n).fill(CYAN);
   const ownerHub = new Int32Array(n).fill(-1);
-  for (let i = 0; i < n; i++) if (isHub[i]) colour[i] = HUB_COLOURS[Math.floor(rng(data.nodes[i]?.id ?? "")() * HUB_COLOURS.length)] ?? CYAN;
+  for (let i = 0; i < n; i++)
+    if (isHub[i])
+      colour[i] =
+        HUB_COLOURS[
+          Math.floor(rng(data.nodes[i]?.id ?? "")() * HUB_COLOURS.length)
+        ] ?? CYAN;
   const ends = new Int32Array(2 * data.edges.length);
   data.edges.forEach(([a, b], e) => {
     const ia = index.get(a);
@@ -87,10 +102,23 @@ export function buildConstellation(data: GraphData, pos: ArrayLike<number>): Con
 
   const glyphs: number[] = [];
   const boxes: number[] = [];
-  const glyph = (x: number, y: number, ch: number, c: number, a: number, owner: number) =>
-    glyphs.push(x, y, ch, c, a, owner);
-  const box = (x: number, y: number, w: number, h: number, c: number, a: number, owner: number) =>
-    boxes.push(x, y, w, h, c, a, owner);
+  const glyph = (
+    x: number,
+    y: number,
+    ch: number,
+    c: number,
+    a: number,
+    owner: number,
+  ) => glyphs.push(x, y, ch, c, a, owner);
+  const box = (
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    c: number,
+    a: number,
+    owner: number,
+  ) => boxes.push(x, y, w, h, c, a, owner);
 
   // Connections first, so the formations sit on top of their trails.
   data.edges.forEach(([a, b], e) => {
@@ -115,12 +143,16 @@ export function buildConstellation(data: GraphData, pos: ArrayLike<number>): Con
     const owner = e * 2 + 1;
     for (let k = 1; k < steps; k++) {
       // Irregular spacing: each particle jitters off its even slot along the curve.
-      const t = Math.min(1, Math.max(0, k / steps + ((r() - 0.5) * 0.4) / steps));
+      const t = Math.min(
+        1,
+        Math.max(0, k / steps + ((r() - 0.5) * 0.4) / steps),
+      );
       if (r() > keep) continue;
       const u = 1 - t;
       const x = u * u * x0 + 2 * u * t * cx + t * t * x1;
       const y = u * u * y0 + 2 * u * t * cy + t * t * y1;
-      if (hubPair && k % 9 === 0) box(x, y, 3, 2, (colour[ia] ?? CYAN), 0.5, owner);
+      if (hubPair && k % 9 === 0)
+        box(x, y, 3, 2, colour[ia] ?? CYAN, 0.5, owner);
       else glyph(x, y, r() < 0.7 ? 0 : 1, WHITE, 0.28 + 0.2 * r(), owner);
     }
   });
@@ -140,7 +172,14 @@ export function buildConstellation(data: GraphData, pos: ArrayLike<number>): Con
         const rad = R * r() * r();
         const a = r() * Math.PI * 2;
         const bright = k % 7 === 0;
-        glyph(x + Math.cos(a) * rad, y + Math.sin(a) * rad, rad < R * 0.3 ? 2 : 1, bright ? WHITE : (colour[i] ?? CYAN), 1 - (0.7 * rad) / R, own);
+        glyph(
+          x + Math.cos(a) * rad,
+          y + Math.sin(a) * rad,
+          rad < R * 0.3 ? 2 : 1,
+          bright ? WHITE : (colour[i] ?? CYAN),
+          1 - (0.7 * rad) / R,
+          own,
+        );
       }
       // Nested towers: tall or wide outlined boxes around the core, with a white crossing at the corner.
       const towers = 2 + Math.min(4, Math.floor(d / 3));
@@ -149,7 +188,7 @@ export function buildConstellation(data: GraphData, pos: ArrayLike<number>): Con
         const h = r() < 0.5 ? w * (1.6 + 0.8 * r()) : w * (0.5 + 0.4 * r());
         const bx = x + (r() - 0.5) * R * 0.6 - w / 2;
         const by = y + (r() - 0.5) * R * 0.6 - h / 2;
-        box(bx, by, w, h, (colour[i] ?? CYAN), 0.55, own);
+        box(bx, by, w, h, colour[i] ?? CYAN, 0.55, own);
         glyph(bx, by, 1, WHITE, 1, own);
       }
     } else if (d === 0) {
@@ -160,17 +199,29 @@ export function buildConstellation(data: GraphData, pos: ArrayLike<number>): Con
       else box(x - 1.5, y - 2, 3, 4, WHITE, 0.35, own);
     } else {
       // Note with links: a small outlined box, or a few + marks, in its hub's colour.
-      if (r() < 0.35) box(x - 1.3, y - 2, 2.6, 4.2, (colour[i] ?? CYAN), 0.6, own);
+      if (r() < 0.35)
+        box(x - 1.3, y - 2, 2.6, 4.2, colour[i] ?? CYAN, 0.6, own);
       else {
         const m = 3 + Math.floor(r() * 3);
         for (let k = 0; k < m; k++) {
           const a = r() * Math.PI * 2;
           const rad = 2.5 * r();
-          glyph(x + Math.cos(a) * rad, y + Math.sin(a) * rad, 1, r() < 0.2 ? WHITE : (colour[i] ?? CYAN), 0.75, own);
+          glyph(
+            x + Math.cos(a) * rad,
+            y + Math.sin(a) * rad,
+            1,
+            r() < 0.2 ? WHITE : (colour[i] ?? CYAN),
+            0.75,
+            own,
+          );
         }
       }
     }
   }
 
-  return { glyphs: Float32Array.from(glyphs), boxes: Float32Array.from(boxes), ends };
+  return {
+    glyphs: Float32Array.from(glyphs),
+    boxes: Float32Array.from(boxes),
+    ends,
+  };
 }

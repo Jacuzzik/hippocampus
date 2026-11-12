@@ -3,7 +3,9 @@ import { mockSidecar } from "./tauri-mock";
 
 type Call = { method: string; agent: string; [key: string]: unknown };
 const calls = (page: Page): Promise<Call[]> =>
-  page.evaluate(() => (window as unknown as { __terminalCalls: Call[] }).__terminalCalls);
+  page.evaluate(
+    () => (window as unknown as { __terminalCalls: Call[] }).__terminalCalls,
+  );
 
 test.beforeEach(async ({ page }) => {
   await mockSidecar(page);
@@ -11,14 +13,23 @@ test.beforeEach(async ({ page }) => {
 });
 
 test("the main agent's terminal starts its CLI once", async ({ page }) => {
-  await expect(page.getByLabel("Live terminal").locator(".xterm")).toHaveCount(1);
-  const starts = (await calls(page)).filter((call) => call.method === "terminal_start");
+  await expect(page.getByLabel("Live terminal").locator(".xterm")).toHaveCount(
+    1,
+  );
+  const starts = (await calls(page)).filter(
+    (call) => call.method === "terminal_start",
+  );
   expect(starts).toHaveLength(1);
   expect(starts[0]).toMatchObject({ agent: "hippoherman", block_tools: false });
 });
 
-test("an added agent runs in the same terminal, and block tools restarts it", async ({ page }) => {
-  await page.getByLabel("Agents").getByRole("button", { name: "+ Add agent" }).click();
+test("an added agent runs in the same terminal, and block tools restarts it", async ({
+  page,
+}) => {
+  await page
+    .getByLabel("Agents")
+    .getByRole("button", { name: "+ Add agent" })
+    .click();
   const add = page.getByRole("dialog", { name: "Add agent" });
   await add.getByRole("textbox", { name: "Name", exact: true }).fill("Ada");
   await add.getByRole("button", { name: "Next" }).click();
@@ -26,12 +37,15 @@ test("an added agent runs in the same terminal, and block tools restarts it", as
   await add.getByRole("button", { name: "Next" }).click();
   await add.getByRole("button", { name: "claude-sonnet-5-5" }).click();
   await add.getByRole("button", { name: "Next" }).click();
-  await add.getByRole("textbox", { name: "Goal", exact: true }).fill("Tidy the inbox notes");
+  await add
+    .getByRole("textbox", { name: "Goal", exact: true })
+    .fill("Tidy the inbox notes");
   await add.getByRole("button", { name: "Spawn" }).click();
 
   const screen = page.getByLabel("Terminal for Ada");
   await expect(screen.locator(".xterm")).toHaveCount(1);
-  const own = async (): Promise<Call[]> => (await calls(page)).filter((call) => call.agent !== "hippoherman");
+  const own = async (): Promise<Call[]> =>
+    (await calls(page)).filter((call) => call.agent !== "hippoherman");
   await expect.poll(async () => (await own()).length).toBe(1);
   expect((await own())[0]).toMatchObject({
     method: "terminal_start",
@@ -47,11 +61,9 @@ test("an added agent runs in the same terminal, and block tools restarts it", as
   expect((await own()).length).toBe(1);
   await page.getByRole("button", { name: "block tools" }).click();
   await page.getByRole("button", { name: "Restart without tools" }).click();
-  await expect.poll(async () => (await own()).map((call) => call.method)).toEqual([
-    "terminal_start",
-    "terminal_stop",
-    "terminal_start",
-  ]);
+  await expect
+    .poll(async () => (await own()).map((call) => call.method))
+    .toEqual(["terminal_start", "terminal_stop", "terminal_start"]);
   expect((await own())[2]).toMatchObject({ block_tools: true });
   // The old screen is gone: one terminal in the box, not two drawn over each other.
   await expect(screen.locator(".xterm")).toHaveCount(1);
@@ -66,21 +78,42 @@ test("an added agent runs in the same terminal, and block tools restarts it", as
   await expect(page.getByText("No messages yet")).toBeVisible();
 });
 
-test("TALK on the main agent's card puts the cursor in its message box", async ({ page }) => {
+test("TALK on the main agent's card puts the cursor in its message box", async ({
+  page,
+}) => {
   await page.getByRole("tab", { name: "tasks" }).click();
-  await page.getByLabel("Agents").getByRole("button", { name: "TALK", exact: true }).first().click();
-  await expect(page.getByRole("tab", { name: "terminal" })).toHaveAttribute("aria-selected", "true");
-  await expect(page.getByRole("textbox", { name: /^Message / }).first()).toBeFocused();
+  await page
+    .getByLabel("Agents")
+    .getByRole("button", { name: "TALK", exact: true })
+    .first()
+    .click();
+  await expect(page.getByRole("tab", { name: "terminal" })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  await expect(
+    page.getByRole("textbox", { name: /^Message / }).first(),
+  ).toBeFocused();
 });
 
-test("after the backend restarts, the agent's program is started again", async ({ page }) => {
-  await expect(page.getByLabel("Live terminal").locator(".xterm")).toHaveCount(1);
-  const starts = async (): Promise<number> => (await calls(page)).filter((call) => call.method === "terminal_start").length;
+test("after the backend restarts, the agent's program is started again", async ({
+  page,
+}) => {
+  await expect(page.getByLabel("Live terminal").locator(".xterm")).toHaveCount(
+    1,
+  );
+  const starts = async (): Promise<number> =>
+    (await calls(page)).filter((call) => call.method === "terminal_start")
+      .length;
   await expect.poll(starts).toBe(1);
   // The cards ask for each agent's state every few seconds; a new id in the answer means a restart.
   await page.waitForTimeout(3500);
   expect(await starts()).toBe(1); // the same backend: nothing is started twice
-  await page.evaluate(() => ((window as unknown as { __boot: string }).__boot = "boot-2"));
+  await page.evaluate(
+    () => ((window as unknown as { __boot: string }).__boot = "boot-2"),
+  );
   await expect.poll(starts, { timeout: 10000 }).toBe(2);
-  await expect(page.getByLabel("Live terminal").locator(".xterm")).toHaveCount(1);
+  await expect(page.getByLabel("Live terminal").locator(".xterm")).toHaveCount(
+    1,
+  );
 });

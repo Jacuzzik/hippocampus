@@ -1,7 +1,10 @@
 // Which run of the backend this window is talking to. The backend gives a new id each time it
 // starts; when the id changes, the backend restarted and every agent's program stopped with it.
 
-const state = $state<{ boot: string | null; restarts: number }>({ boot: null, restarts: 0 });
+const state = $state<{ boot: string | null; restarts: number }>({
+  boot: null,
+  restarts: 0,
+});
 
 export const backend = {
   /** How many times the backend has restarted since this window opened. Terminals watch this number. */

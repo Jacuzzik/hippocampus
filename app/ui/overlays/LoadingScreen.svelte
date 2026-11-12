@@ -27,7 +27,10 @@
   $effect(() => {
     if (phase !== "loading" || !(ready || timedOut)) return;
     // Reduced motion, or the logo turned off: skip the hold and the fade and lift the screen at once.
-    if (intro === "off" || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (
+      intro === "off" ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
       phase = "gone";
       return;
     }
@@ -65,8 +68,10 @@
     z-index: 1000;
     display: grid;
     place-items: center;
-    padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px))
-      max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+    padding: max(16px, env(safe-area-inset-top, 0px))
+      max(16px, env(safe-area-inset-right, 0px))
+      max(16px, env(safe-area-inset-bottom, 0px))
+      max(16px, env(safe-area-inset-left, 0px));
   }
   /* The blurred view of the app behind, with a light dark tint so the white logo reads.
      It fades with the same timing and easing as the logo, so the two always reach zero together. */

@@ -139,7 +139,10 @@ export function separate(sim: Sim, passes: number): void {
   for (let p = 0; p < passes; p++) {
     const cells = new Map<number, number[]>();
     for (let i = 0; i < count; i++) {
-      const k = key(Math.floor((pos[2 * i] ?? 0) / cell), Math.floor((pos[2 * i + 1] ?? 0) / cell));
+      const k = key(
+        Math.floor((pos[2 * i] ?? 0) / cell),
+        Math.floor((pos[2 * i + 1] ?? 0) / cell),
+      );
       const list = cells.get(k);
       if (list) list.push(i);
       else cells.set(k, [i]);
@@ -219,8 +222,7 @@ export function tick(sim: Sim): boolean {
     const dx = (pos[2 * j] ?? 0) - (pos[2 * i] ?? 0);
     const dy = (pos[2 * j + 1] ?? 0) - (pos[2 * i + 1] ?? 0);
     const d = Math.sqrt(dx * dx + dy * dy) || 1e-6;
-    const k =
-      ((d - LINK_DISTANCE) / d) * a;
+    const k = ((d - LINK_DISTANCE) / d) * a;
     add(vel, 2 * i, (dx * k) / (deg[i] ?? 1));
     add(vel, 2 * i + 1, (dy * k) / (deg[i] ?? 1));
     add(vel, 2 * j, (-dx * k) / (deg[j] ?? 1));
@@ -232,9 +234,15 @@ export function tick(sim: Sim): boolean {
     const x = pos[2 * i] ?? 0;
     const y = pos[2 * i + 1] ?? 0;
     const grab = i === grabbed;
-    const pull = CENTER_STRENGTH * a * (sim.pull[i] ?? 1) * ((deg[i] ?? 0) === 0 ? LONELY_PULL : 1);
+    const pull =
+      CENTER_STRENGTH *
+      a *
+      (sim.pull[i] ?? 1) *
+      ((deg[i] ?? 0) === 0 ? LONELY_PULL : 1);
     const vx = grab ? 0 : ((vel[2 * i] ?? 0) + (cx - x) * pull) * VELOCITY_KEEP;
-    const vy = grab ? 0 : ((vel[2 * i + 1] ?? 0) + (cy - y) * pull) * VELOCITY_KEEP;
+    const vy = grab
+      ? 0
+      : ((vel[2 * i + 1] ?? 0) + (cy - y) * pull) * VELOCITY_KEEP;
     vel[2 * i] = vx;
     vel[2 * i + 1] = vy;
     if (!grab) {
@@ -417,10 +425,17 @@ export function lonelyHubs(
   }
   const main = nodes.find((n) => n.title === "MAIN");
   const topic = (n: GraphNode) =>
-    n.tags[0] ?? n.title.toLowerCase().split(/[^a-z0-9]+/).find((w) => w.length > 2) ?? "misc";
+    n.tags[0] ??
+    n.title
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .find((w) => w.length > 2) ??
+    "misc";
   const lonely = nodes
     .filter((n) => !linked.has(n.id) && n.id !== main?.id)
-    .sort((a, b) => topic(a).localeCompare(topic(b)) || a.id.localeCompare(b.id));
+    .sort(
+      (a, b) => topic(a).localeCompare(topic(b)) || a.id.localeCompare(b.id),
+    );
   const groups = Math.min(LONELY_HUBS, lonely.length);
   const hubNodes: GraphNode[] = [];
   const hubEdges: [string, string][] = [];
@@ -430,7 +445,11 @@ export function lonelyHubs(
     const members = lonely.slice(from, to);
     const label = topic(members[0] as GraphNode);
     const id = `hub:${g}`;
-    hubNodes.push({ id, title: label.charAt(0).toUpperCase() + label.slice(1), tags: [] });
+    hubNodes.push({
+      id,
+      title: label.charAt(0).toUpperCase() + label.slice(1),
+      tags: [],
+    });
     for (const m of members) hubEdges.push([id, m.id]);
     if (main) hubEdges.push([id, main.id]);
   }
@@ -455,7 +474,8 @@ export const NODE_HIT_PX = 14;
 
 function idHash(id: string): number {
   let h = 2166136261;
-  for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 16777619);
+  for (let i = 0; i < id.length; i++)
+    h = Math.imul(h ^ id.charCodeAt(i), 16777619);
   return h >>> 0;
 }
 
@@ -476,7 +496,10 @@ export function nodeTone(id: string): number {
 }
 
 /** Mix an RGBA colour toward white by t (0 to 1), keeping its alpha. */
-export function tint([r = 0, g = 0, b = 0, a = 1]: number[], t: number): [number, number, number, number] {
+export function tint(
+  [r = 0, g = 0, b = 0, a = 1]: number[],
+  t: number,
+): [number, number, number, number] {
   return [r + (1 - r) * t, g + (1 - g) * t, b + (1 - b) * t, a];
 }
 
@@ -609,9 +632,15 @@ export function arcSegments(
     const t = s / ARC_SEGMENTS;
     const u = 1 - t;
     const x =
-      u * u * u * ax + 3 * u * u * t * c1x + 3 * u * t * t * c2x + t * t * t * bx;
+      u * u * u * ax +
+      3 * u * u * t * c1x +
+      3 * u * t * t * c2x +
+      t * t * t * bx;
     const y =
-      u * u * u * ay + 3 * u * u * t * c1y + 3 * u * t * t * c2y + t * t * t * by;
+      u * u * u * ay +
+      3 * u * u * t * c1y +
+      3 * u * t * t * c2y +
+      t * t * t * by;
     out[at++] = px;
     out[at++] = py;
     out[at++] = x;
@@ -670,6 +699,7 @@ export function incidentLines(
 ): Float32Array<ArrayBuffer> {
   const picked: number[] = [];
   for (let e = 0; e < edges.length; e += 2)
-    if (edges[e] === focus || edges[e + 1] === focus) picked.push(edges[e] ?? 0, edges[e + 1] ?? 0);
+    if (edges[e] === focus || edges[e + 1] === focus)
+      picked.push(edges[e] ?? 0, edges[e + 1] ?? 0);
   return straightLines(pos, Uint32Array.from(picked));
 }

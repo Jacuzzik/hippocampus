@@ -1,12 +1,19 @@
 // Paints the neural constellation on a 2D canvas: black void, dots and marks, outlined boxes. Culled to the view.
 import type { Camera } from "./model.ts";
-import { BOX_STRIDE, GLYPH_STRIDE, PALETTE_SIZE, type Constellation } from "./constellation-model.ts";
+import {
+  BOX_STRIDE,
+  GLYPH_STRIDE,
+  PALETTE_SIZE,
+  type Constellation,
+} from "./constellation-model.ts";
 import { cssToken } from "../cssToken.ts";
 
 // The palette is read from the colour tokens once, on the first draw.
 let palette: string[] | null = null;
 function colours(): string[] {
-  palette ??= Array.from({ length: PALETTE_SIZE }, (_, i) => cssToken(`holo-${i}`));
+  palette ??= Array.from({ length: PALETTE_SIZE }, (_, i) =>
+    cssToken(`holo-${i}`),
+  );
   return palette;
 }
 
@@ -34,9 +41,12 @@ export function drawConstellation(
     if (!lit) return true;
     if (owner % 2 === 0) return lit[owner / 2] === 1;
     const e = (owner - 1) / 2;
-    return lit[geo.ends[2 * e] ?? -1] === 1 || lit[geo.ends[2 * e + 1] ?? -1] === 1;
+    return (
+      lit[geo.ends[2 * e] ?? -1] === 1 || lit[geo.ends[2 * e + 1] ?? -1] === 1
+    );
   };
-  const visibleRect = (x: number, y: number, pad: number) => x >= -pad && y >= -pad && x <= w + pad && y <= h + pad;
+  const visibleRect = (x: number, y: number, pad: number) =>
+    x >= -pad && y >= -pad && x <= w + pad && y <= h + pad;
 
   // Boxes: outlined only, skipped when they would be sub-pixel.
   ctx.lineWidth = 1;

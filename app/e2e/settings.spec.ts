@@ -10,7 +10,9 @@ async function openSettings(page: import("@playwright/test").Page) {
   return page.getByRole("dialog", { name: "Settings" });
 }
 
-test("settings has a page per category and each one opens", async ({ page }) => {
+test("settings has a page per category and each one opens", async ({
+  page,
+}) => {
   await mockSidecar(page);
   await page.goto("/");
   const dialog = await openSettings(page);
@@ -29,11 +31,15 @@ test("settings has a page per category and each one opens", async ({ page }) => 
   await expect(dialog.getByRole("tab")).toHaveText(Object.keys(pages));
   for (const [name, text] of Object.entries(pages)) {
     await dialog.getByRole("tab", { name, exact: true }).click();
-    await expect(dialog.getByRole("tabpanel").getByText(text, { exact: true }).first()).toBeVisible();
+    await expect(
+      dialog.getByRole("tabpanel").getByText(text, { exact: true }).first(),
+    ).toBeVisible();
   }
 });
 
-test("the terminal text size is kept between 10 and 20 and survives a reload", async ({ page }) => {
+test("the terminal text size is kept between 10 and 20 and survives a reload", async ({
+  page,
+}) => {
   await mockSidecar(page);
   await page.goto("/");
   let dialog = await openSettings(page);
@@ -41,19 +47,25 @@ test("the terminal text size is kept between 10 and 20 and survives a reload", a
   await dialog.getByRole("button", { name: "Larger terminal text" }).click();
   await expect(dialog.getByText("13px")).toBeVisible();
   for (let i = 0; i < 10; i++) {
-    const smaller = dialog.getByRole("button", { name: "Smaller terminal text" });
+    const smaller = dialog.getByRole("button", {
+      name: "Smaller terminal text",
+    });
     if (await smaller.isDisabled()) break;
     await smaller.click();
   }
   await expect(dialog.getByText("10px")).toBeVisible();
-  await expect(dialog.getByRole("button", { name: "Smaller terminal text" })).toBeDisabled();
+  await expect(
+    dialog.getByRole("button", { name: "Smaller terminal text" }),
+  ).toBeDisabled();
   await page.reload();
   dialog = await openSettings(page);
   await dialog.getByRole("tab", { name: "Appearance" }).click();
   await expect(dialog.getByText("10px")).toBeVisible();
 });
 
-test("a connector that is not built yet is a Planned card with its reason", async ({ page }) => {
+test("a connector that is not built yet is a Planned card with its reason", async ({
+  page,
+}) => {
   await mockSidecar(page);
   await page.goto("/");
   const dialog = await openSettings(page);
@@ -61,7 +73,9 @@ test("a connector that is not built yet is a Planned card with its reason", asyn
   const slack = dialog.getByRole("article").filter({ hasText: "Slack" });
   await expect(slack).toContainText("Planned");
   await expect(slack).toContainText("Needs a token store");
-  await expect(dialog.getByRole("article").filter({ hasText: "Webhooks" }).first()).toContainText("0 webhooks saved.");
+  await expect(
+    dialog.getByRole("article").filter({ hasText: "Webhooks" }).first(),
+  ).toContainText("0 webhooks saved.");
 });
 
 test("searching settings jumps to the matching page", async ({ page }) => {
@@ -70,14 +84,24 @@ test("searching settings jumps to the matching page", async ({ page }) => {
   const dialog = await openSettings(page);
   await dialog.getByLabel("Search settings").fill("slack");
   await expect(dialog.getByRole("tab")).toHaveText(["Connectors"]);
-  await expect(dialog.getByRole("heading", { name: "Connectors" })).toBeVisible();
+  await expect(
+    dialog.getByRole("heading", { name: "Connectors" }),
+  ).toBeVisible();
 });
 
-test("an error is recorded on disk, listed under Privacy and data, and Clear removes it", async ({ page }) => {
+test("an error is recorded on disk, listed under Privacy and data, and Clear removes it", async ({
+  page,
+}) => {
   await mockSidecar(page);
   await page.goto("/");
-  await page.evaluate(() => window.dispatchEvent(new ErrorEvent("error", { error: new Error("boom in a handler") })));
-  await expect(page.getByRole("status").filter({ hasText: "1 UI error recorded" })).toBeVisible();
+  await page.evaluate(() =>
+    window.dispatchEvent(
+      new ErrorEvent("error", { error: new Error("boom in a handler") }),
+    ),
+  );
+  await expect(
+    page.getByRole("status").filter({ hasText: "1 UI error recorded" }),
+  ).toBeVisible();
   const dialog = await openSettings(page);
   await dialog.getByRole("tab", { name: "Privacy and data" }).click();
   const log = dialog.getByRole("list", { name: "Recorded errors" });
@@ -88,7 +112,9 @@ test("an error is recorded on disk, listed under Privacy and data, and Clear rem
   await expect(log).toHaveCount(0);
 });
 
-test("the start-up logo covers the app by default and can be turned off", async ({ page }) => {
+test("the start-up logo covers the app by default and can be turned off", async ({
+  page,
+}) => {
   await mockSidecar(page, { intro: true });
   await page.goto("/");
   const logo = page.locator(".loading");
@@ -105,7 +131,9 @@ test("the start-up logo covers the app by default and can be turned off", async 
   await expect(dialog.getByRole("tabpanel")).toContainText("Off");
 });
 
-test("Advanced shows the backend log and a switch hides the Connectors page", async ({ page }) => {
+test("Advanced shows the backend log and a switch hides the Connectors page", async ({
+  page,
+}) => {
   await mockSidecar(page);
   await page.goto("/");
   const dialog = await openSettings(page);
@@ -120,7 +148,9 @@ test("Advanced shows the backend log and a switch hides the Connectors page", as
   await expect(again.getByRole("tab", { name: "Connectors" })).toHaveCount(0);
 });
 
-test("the shell for every agent is a switch that shows the rules in force", async ({ page }) => {
+test("the shell for every agent is a switch that shows the rules in force", async ({
+  page,
+}) => {
   await mockSidecar(page);
   await page.goto("/");
   const dialog = await openSettings(page);

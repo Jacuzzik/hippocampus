@@ -13,7 +13,9 @@ test("the activity tab lists tool runs and approvals", async ({ page }) => {
   await expect(region).toContainText("approved");
 });
 
-test("the history tab lists past events but not tool runs", async ({ page }) => {
+test("the history tab lists past events but not tool runs", async ({
+  page,
+}) => {
   await page.getByRole("tab", { name: "history" }).click();
   const region = page.getByRole("region", { name: "History" });
   await expect(region).toContainText("paused: assistant daily cap reached");
@@ -22,7 +24,9 @@ test("the history tab lists past events but not tool runs", async ({ page }) => 
 
 test("the skills tab lists installed skills", async ({ page }) => {
   await page.getByRole("tab", { name: "skills" }).click();
-  await expect(page.getByRole("region", { name: "Skills" })).toContainText("tidy-notes");
+  await expect(page.getByRole("region", { name: "Skills" })).toContainText(
+    "tidy-notes",
+  );
 });
 
 test("the temps tab lists helper jobs with their status", async ({ page }) => {
@@ -32,7 +36,9 @@ test("the temps tab lists helper jobs with their status", async ({ page }) => {
   await expect(region).toContainText("done");
 });
 
-test("the right panel tabs save screenshots when SHOTS_DIR is set", async ({ page }) => {
+test("the right panel tabs save screenshots when SHOTS_DIR is set", async ({
+  page,
+}) => {
   test.skip(!process.env.SHOTS_DIR, "SHOTS_DIR not set");
   for (const name of ["activity", "history", "skills", "temps"]) {
     await page.getByRole("tab", { name }).click();
@@ -40,7 +46,9 @@ test("the right panel tabs save screenshots when SHOTS_DIR is set", async ({ pag
   }
 });
 
-test("the monitor tab lists the agents, the month's token use and the agent folders", async ({ page }) => {
+test("the monitor tab lists the agents, the month's token use and the agent folders", async ({
+  page,
+}) => {
   await page.getByRole("tab", { name: "monitor" }).click();
   const region = page.getByRole("region", { name: "Monitor" });
   await expect(region).toContainText(/agents/i);
@@ -49,7 +57,9 @@ test("the monitor tab lists the agents, the month's token use and the agent fold
   await expect(region).toContainText(/directories/i);
 });
 
-test("the tabs show how many questions and inbox messages are waiting", async ({ page }) => {
+test("the tabs show how many questions and inbox messages are waiting", async ({
+  page,
+}) => {
   await expect(page.getByRole("tab", { name: "ask me" })).toContainText("1");
   await expect(page.getByRole("tab", { name: "inbox" })).toContainText("1");
   await expect(page.getByRole("tab", { name: "tasks" })).toHaveText("tasks");
@@ -59,9 +69,15 @@ test("arrow keys move between the Control Room tabs", async ({ page }) => {
   const terminal = page.getByRole("tab", { name: "terminal" });
   await terminal.focus();
   await page.keyboard.press("ArrowRight");
-  await expect(page.getByRole("tab", { name: "monitor" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tab", { name: "monitor" })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
   await page.keyboard.press("End");
-  await expect(page.getByRole("tab", { name: "temps" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("tab", { name: "temps" })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
   await page.keyboard.press("Home");
   await expect(terminal).toHaveAttribute("aria-selected", "true");
 });

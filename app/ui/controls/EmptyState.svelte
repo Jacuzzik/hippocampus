@@ -1,12 +1,24 @@
 <script lang="ts">
   // What a list shows when it has nothing: what it is for, why it is empty, and one thing to do next.
-  let { title, text = "", action = "", onaction }: { title: string; text?: string; action?: string; onaction?: () => void } = $props();
+  let {
+    title,
+    text = "",
+    action = "",
+    onaction,
+  }: {
+    title: string;
+    text?: string;
+    action?: string;
+    onaction?: () => void;
+  } = $props();
 </script>
 
 <div class="empty">
   <b>{title}</b>
   {#if text}<p>{text}</p>{/if}
-  {#if action && onaction}<button type="button" onclick={onaction}>{action}</button>{/if}
+  {#if action && onaction}<button type="button" onclick={onaction}
+      >{action}</button
+    >{/if}
 </div>
 
 <style>

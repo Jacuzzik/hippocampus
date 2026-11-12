@@ -39,13 +39,18 @@
   let draft = $state<AgentDraft>(blankDraft());
   // "brain" uses the brain folder; "other" picks one of the folders inside the app's workspaces folder.
   let folderChoice = $state<"brain" | "other">("other");
-  let workspaces = $state<{ root: string; folders: string[] }>({ root: "", folders: [] });
+  let workspaces = $state<{ root: string; folders: string[] }>({
+    root: "",
+    folders: [],
+  });
   let newFolder = $state("");
   let workspaceError = $state<string | null>(null);
 
   let clis = $state<CliState[]>([]);
   let servers = $state<{ provider: string; running: boolean }[]>([]);
-  const engine = $derived(engineStatus(draft.provider, savedKeys, clis, servers));
+  const engine = $derived(
+    engineStatus(draft.provider, savedKeys, clis, servers),
+  );
   const command = $derived(
     draft.model.trim() === "" ? "" : agentCommand(draft),
   );
@@ -60,12 +65,21 @@
       error = String(cause);
     }
     try {
-      clis = (await invoke<{ clis: CliState[] }>("sidecar_call", { method: "provider_status" })).clis;
+      clis = (
+        await invoke<{ clis: CliState[] }>("sidecar_call", {
+          method: "provider_status",
+        })
+      ).clis;
     } catch (cause) {
       console.error("Could not check the CLI logins", cause);
     }
     try {
-      servers = (await invoke<{ servers: { provider: string; running: boolean }[] }>("sidecar_call", { method: "local_status" })).servers;
+      servers = (
+        await invoke<{ servers: { provider: string; running: boolean }[] }>(
+          "sidecar_call",
+          { method: "local_status" },
+        )
+      ).servers;
     } catch (cause) {
       console.error("Could not check the local model servers", cause);
     }
@@ -78,7 +92,10 @@
 
   async function loadWorkspaces(): Promise<void> {
     try {
-      workspaces = await invoke<{ root: string; folders: string[] }>("sidecar_call", { method: "workspaces" });
+      workspaces = await invoke<{ root: string; folders: string[] }>(
+        "sidecar_call",
+        { method: "workspaces" },
+      );
     } catch (cause) {
       console.error("Could not list the workspaces", cause);
     }
@@ -88,10 +105,13 @@
     const name = newFolder.trim();
     workspaceError = null;
     try {
-      workspaces = await invoke<{ root: string; folders: string[] }>("sidecar_call", {
-        method: "create_workspace",
-        params: { name },
-      });
+      workspaces = await invoke<{ root: string; folders: string[] }>(
+        "sidecar_call",
+        {
+          method: "create_workspace",
+          params: { name },
+        },
+      );
       newFolder = "";
       chooseFolder("other", name);
     } catch (cause) {
@@ -195,10 +215,14 @@
         {#if workspaces.folders.length > 0}
           <label
             >Folder in workspaces
-            <select onchange={(e) => chooseFolder("other", e.currentTarget.value)}>
+            <select
+              onchange={(e) => chooseFolder("other", e.currentTarget.value)}
+            >
               <option value="">Choose a folder</option>
               {#each workspaces.folders as name (name)}
-                <option value={name} selected={draft.folder === `${workspaces.root}/${name}`}
+                <option
+                  value={name}
+                  selected={draft.folder === `${workspaces.root}/${name}`}
                   >{name}</option
                 >
               {/each}
@@ -210,9 +234,15 @@
           <input type="text" bind:value={newFolder} placeholder="Folder name" />
         </label>
         <div class="choice">
-          <button type="button" disabled={!newFolder.trim()} onclick={createWorkspace}>Create folder</button>
+          <button
+            type="button"
+            disabled={!newFolder.trim()}
+            onclick={createWorkspace}>Create folder</button
+          >
         </div>
-        {#if workspaceError}<p class="error" role="alert">{workspaceError}</p>{/if}
+        {#if workspaceError}<p class="error" role="alert">
+            {workspaceError}
+          </p>{/if}
       {/if}
     {:else if step === 2}
       <label>
@@ -223,7 +253,14 @@
           {/each}
         </select>
       </label>
-      <label>Model <input type="text" readonly value={draft.model} placeholder="Pick a model below" /></label>
+      <label
+        >Model <input
+          type="text"
+          readonly
+          value={draft.model}
+          placeholder="Pick a model below"
+        /></label
+      >
       <div class="choice" aria-label="Suggested models">
         {#each AGENT_MODELS[draft.provider] ?? [] as m (m)}
           <button
@@ -269,8 +306,7 @@
           rows="3"
           maxlength="4000"
           bind:value={draft.goal}
-          placeholder="The outcome this agent is working toward."
-        ></textarea>
+          placeholder="The outcome this agent is working toward."></textarea>
       </label>
       <p class="muted count">{draft.goal.length} / 4000</p>
     {/if}

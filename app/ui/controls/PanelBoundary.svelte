@@ -4,7 +4,11 @@
 
   // Wraps one region of the app. If that region throws while drawing, only it is replaced
   // by this notice; the rest of the window keeps working. "Reload panel" draws it again.
-  let { name, area = "", children }: { name: string; area?: string; children: Snippet } = $props();
+  let {
+    name,
+    area = "",
+    children,
+  }: { name: string; area?: string; children: Snippet } = $props();
 </script>
 
 <svelte:boundary onerror={(cause) => recordError(name, cause)}>

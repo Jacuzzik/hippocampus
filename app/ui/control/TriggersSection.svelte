@@ -24,7 +24,9 @@
       jobs = (await invoke<{ jobs: Job[] }>("sidecar_call", { method: "jobs" }))
         .jobs;
       webhooks = (
-        await invoke<{ webhooks: Webhook[] }>("sidecar_call", { method: "webhooks" })
+        await invoke<{ webhooks: Webhook[] }>("sidecar_call", {
+          method: "webhooks",
+        })
       ).webhooks;
     } catch (cause) {
       error = String(cause);

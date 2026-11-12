@@ -21,7 +21,9 @@
   // Read again every few seconds while this tab is open, so it does not go stale.
   async function load(): Promise<void> {
     try {
-      rows = (await invoke<{ rows: Row[] }>("sidecar_call", { method: "activity" })).rows;
+      rows = (
+        await invoke<{ rows: Row[] }>("sidecar_call", { method: "activity" })
+      ).rows;
       failed = false;
     } catch (cause) {
       failed = true;
@@ -34,7 +36,10 @@
   });
 
   const label = (row: Row) =>
-    row.text ?? [row.tool, row.tier, row.approved ? "approved" : row.status].filter(Boolean).join(" · ");
+    row.text ??
+    [row.tool, row.tier, row.approved ? "approved" : row.status]
+      .filter(Boolean)
+      .join(" · ");
 </script>
 
 <section class="activity" aria-label="Activity">

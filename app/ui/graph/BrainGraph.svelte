@@ -9,7 +9,10 @@
   import { BrainRenderer } from "./renderer";
   import { Canvas2DRenderer } from "./renderer-canvas";
   import { drawAscii, type AsciiColours } from "./renderer-ascii";
-  import { buildConstellation, type Constellation } from "./constellation-model";
+  import {
+    buildConstellation,
+    type Constellation,
+  } from "./constellation-model";
   import { drawConstellation } from "./renderer-constellation";
   import {
     centerOn,
@@ -69,7 +72,9 @@
   let menu = $state<MenuTarget | null>(null);
   let asciiLayer: HTMLCanvasElement | undefined = $state();
   let labelLayer: HTMLDivElement | undefined = $state();
-  let labels = $state<{ text: string; x: number; y: number; a: number; hub: boolean }[]>([]);
+  let labels = $state<
+    { text: string; x: number; y: number; a: number; hub: boolean }[]
+  >([]);
   let hovered = -1;
   let error = $state<string | null>(null);
   let cam = $state<Camera>({ x: 0, y: 0, zoom: 1 });
@@ -125,7 +130,14 @@
   const matched = $derived(matchFilter(data.nodes, { query, tag, memory }));
   const degree = $derived(linkCounts(data.nodes, data.edges));
   // The six groups linked to MAIN: their names are bold and their icons are larger.
-  const GROUP_HUBS = new Set(["Projects", "Summaries", "Agent Lists", "Contacts", "Socials", "About User"]);
+  const GROUP_HUBS = new Set([
+    "Projects",
+    "Summaries",
+    "Agent Lists",
+    "Contacts",
+    "Socials",
+    "About User",
+  ]);
   // Hub title to colour token name.
   const HUB_COLOURS: Record<string, string> = { MAIN: "on-strong" };
   // Each note is also drawn as draw-only copies: 3 above and 3 below (vertical trail), and one shifted sideways (colour fringe).
@@ -144,7 +156,8 @@
     for (let i = 0; i < n; i++)
       for (let k = 0; k < GHOST_KINDS; k++) {
         const g = core + i * GHOST_KINDS + k;
-        const dy = k < 3 ? -(k + 1) * GHOST_STEP : k < 6 ? (k - 2) * GHOST_STEP : 0;
+        const dy =
+          k < 3 ? -(k + 1) * GHOST_STEP : k < 6 ? (k - 2) * GHOST_STEP : 0;
         out[2 * g] = (p[2 * i] ?? 0) + (k === 6 ? 1.5 : 0);
         out[2 * g + 1] = (p[2 * i + 1] ?? 0) + dy;
       }
@@ -214,7 +227,13 @@
     }
     const [w, h] = size();
     const fade = labelAlpha(cam.zoom);
-    const placed: { text: string; x: number; y: number; a: number; hub: boolean }[] = [];
+    const placed: {
+      text: string;
+      x: number;
+      y: number;
+      a: number;
+      hub: boolean;
+    }[] = [];
     const boxes: number[] = [];
     const place = (i: number, a: number) => {
       if (placed.length >= MAX_LABELS || !visible[i] || a <= 0) return;
@@ -240,12 +259,14 @@
     // The focused note and its links are always named; every other name fades in with zoom.
     // The constellation has no permanent titles: only the note under the pointer (or selected) is named.
     if (constellation) {
-      if (hovered >= 0 || selected >= 0) place(hovered >= 0 ? hovered : selected, 1);
+      if (hovered >= 0 || selected >= 0)
+        place(hovered >= 0 ? hovered : selected, 1);
       labels = placed;
       return;
     }
     for (const i of near) place(i, 1);
-    for (let i = 0; i < data.nodes.length; i++) if (!near.has(i)) place(i, fade);
+    for (let i = 0; i < data.nodes.length; i++)
+      if (!near.has(i)) place(i, fade);
     labels = placed;
   }
 
@@ -287,7 +308,10 @@
     if (!layer || !ctx) return;
     const [w, h] = size();
     const dpr = Math.min(window.devicePixelRatio || 1, LOW_POWER.dprCap);
-    if (layer.width !== Math.round(w * dpr) || layer.height !== Math.round(h * dpr)) {
+    if (
+      layer.width !== Math.round(w * dpr) ||
+      layer.height !== Math.round(h * dpr)
+    ) {
       layer.width = Math.round(w * dpr);
       layer.height = Math.round(h * dpr);
     }
@@ -314,13 +338,27 @@
     const [w, h] = size();
     const dpr = Math.min(window.devicePixelRatio || 1, LOW_POWER.dprCap);
     // Resizing clears the canvas, so only resize when the box changed.
-    if (layer.width !== Math.round(w * dpr) || layer.height !== Math.round(h * dpr)) {
+    if (
+      layer.width !== Math.round(w * dpr) ||
+      layer.height !== Math.round(h * dpr)
+    ) {
       layer.width = Math.round(w * dpr);
       layer.height = Math.round(h * dpr);
     }
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     const focus = hovered >= 0 ? hovered : selected;
-    drawAscii(ctx, cam, pos, sim.edges, degree, asciiColours, w, h, calm ? 0 : performance.now() / 1000, focus);
+    drawAscii(
+      ctx,
+      cam,
+      pos,
+      sim.edges,
+      degree,
+      asciiColours,
+      w,
+      h,
+      calm ? 0 : performance.now() / 1000,
+      focus,
+    );
   }
 
   function size(): [number, number] {
@@ -468,7 +506,12 @@
     const text = editText;
     if (!id || text === null || text === savedText) return;
     writes = writes
-      .then(() => invoke("sidecar_call", { method: "note_save", params: { path: id, text } }))
+      .then(() =>
+        invoke("sidecar_call", {
+          method: "note_save",
+          params: { path: id, text },
+        }),
+      )
       .then(() => {
         if (nodeId === id) {
           savedText = text;
@@ -527,7 +570,9 @@
     const radii = new Float32Array(total);
     const shapes = new Float32Array(total);
     // The MAIN hub notes keep their own colours, whatever folder they sit in.
-    const hubs = new Map(Object.entries(HUB_COLOURS).map(([title, name]) => [title, token(name)]));
+    const hubs = new Map(
+      Object.entries(HUB_COLOURS).map(([title, name]) => [title, token(name)]),
+    );
     // A hovered note (else the selected one) and its links stay bright; every other note dims.
     const focus = hovered >= 0 ? hovered : selected;
     near = neighbourhood(focus);
@@ -555,7 +600,15 @@
     for (let g = core; g < total; g++) {
       const k = (g - core) % GHOST_KINDS;
       const note = Math.floor((g - core) / GHOST_KINDS);
-      colors.set([colors[4 * note] ?? 0, colors[4 * note + 1] ?? 0, colors[4 * note + 2] ?? 0, (colors[4 * note + 3] ?? 0) * (GHOST_ALPHA[k] ?? 0)], 4 * g);
+      colors.set(
+        [
+          colors[4 * note] ?? 0,
+          colors[4 * note + 1] ?? 0,
+          colors[4 * note + 2] ?? 0,
+          (colors[4 * note + 3] ?? 0) * (GHOST_ALPHA[k] ?? 0),
+        ],
+        4 * g,
+      );
       radii[g] = radii[note] ?? 0;
       shapes[g] = shapes[note] ?? SHAPE_DISK;
     }
@@ -780,7 +833,8 @@
   // the notes app's keys: +/- zoom about the middle, arrows move the view (Shift for a bigger step). Not while typing.
   function onWindowKey(e: KeyboardEvent): void {
     // While an edit is open, Escape must not close the drawer and lose the text.
-    if (e.key === "Escape" && selected >= 0 && editText === null) return onselect(null);
+    if (e.key === "Escape" && selected >= 0 && editText === null)
+      return onselect(null);
     const target = e.target instanceof HTMLElement ? e.target : null;
     if (target?.closest("input, textarea, select, [contenteditable]")) return;
     const [w, h] = size();
@@ -793,7 +847,8 @@
     };
     const move = moves[e.key];
     if (e.key === "+" || e.key === "=") cam = zoomAt(cam, w / 2, h / 2, 1.25);
-    else if (e.key === "-" || e.key === "_") cam = zoomAt(cam, w / 2, h / 2, 0.8);
+    else if (e.key === "-" || e.key === "_")
+      cam = zoomAt(cam, w / 2, h / 2, 0.8);
     else if (move) cam = { ...cam, x: cam.x + move[0], y: cam.y + move[1] };
     else return;
     e.preventDefault();
@@ -810,7 +865,12 @@
     aria-label="Brain graph of {data.nodes.length} notes"
   >
     <canvas bind:this={canvas} class="canvas"></canvas>
-    <canvas bind:this={asciiLayer} class="ascii-layer" hidden={!ascii && !constellation} aria-hidden="true"></canvas>
+    <canvas
+      bind:this={asciiLayer}
+      class="ascii-layer"
+      hidden={!ascii && !constellation}
+      aria-hidden="true"
+    ></canvas>
     <div
       class="labels"
       aria-hidden="true"
@@ -818,8 +878,11 @@
       data-labels={labels.length}
     >
       {#each labels as l, k (k)}
-        <span class="label" class:hub={l.hub} style:opacity={l.a} style:transform="translate({l.x}px, {l.y}px)"
-          >{l.text}</span
+        <span
+          class="label"
+          class:hub={l.hub}
+          style:opacity={l.a}
+          style:transform="translate({l.x}px, {l.y}px)">{l.text}</span
         >
       {/each}
     </div>
@@ -853,7 +916,9 @@
         <h2>{node.title}</h2>
         <div class="head-actions">
           {#if editText === null}
-            <button type="button" onclick={() => nodeId && startEdit(nodeId)}>Edit</button>
+            <button type="button" onclick={() => nodeId && startEdit(nodeId)}
+              >Edit</button
+            >
           {/if}
           <button
             type="button"
@@ -874,42 +939,44 @@
             aria-label="Note text"
             value={editText}
             oninput={(e) => onEditInput(e.currentTarget.value)}
-            onblur={() => saveNow(nodeId)}
-          ></textarea>
+            onblur={() => saveNow(nodeId)}></textarea>
           {#if editError}<p class="muted" role="alert">{editError}</p>{/if}
         </section>
       {:else}
-      {#if editError}<p class="muted" role="alert">{editError}</p>{/if}
-      <section class="body" aria-label="Note text">
-        {#if shown && "error" in shown}
-          <p class="muted" role="alert">
-            Could not read this note: {shown.error}
-          </p>
-        {:else if shown}
-          <!-- A leading title heading repeats the drawer's own title, so it is not shown twice. -->
-          {#each shown.blocks.filter((b, k) => !(k === 0 && b.kind === "heading" && b.level === 1 && b.children
-                  .map((c) => c.text)
-                  .join("") === node?.title)) as block, k (k)}
-            {#if block.kind === "heading"}
-              <svelte:element this={`h${block.level}`}>
-                {@render inlines(block.children)}
-              </svelte:element>
-            {:else if block.kind === "paragraph"}
-              <p>{@render inlines(block.children)}</p>
-            {:else if block.kind === "list"}
-              <svelte:element this={block.ordered ? "ol" : "ul"} class="items">
-                {#each block.items as item, j (j)}
-                  <li>{@render inlines(item)}</li>
-                {/each}
-              </svelte:element>
-            {:else}
-              <pre><code>{block.text}</code></pre>
-            {/if}
-          {/each}
-        {:else}
-          <p class="muted">Loading the note…</p>
-        {/if}
-      </section>
+        {#if editError}<p class="muted" role="alert">{editError}</p>{/if}
+        <section class="body" aria-label="Note text">
+          {#if shown && "error" in shown}
+            <p class="muted" role="alert">
+              Could not read this note: {shown.error}
+            </p>
+          {:else if shown}
+            <!-- A leading title heading repeats the drawer's own title, so it is not shown twice. -->
+            {#each shown.blocks.filter((b, k) => !(k === 0 && b.kind === "heading" && b.level === 1 && b.children
+                    .map((c) => c.text)
+                    .join("") === node?.title)) as block, k (k)}
+              {#if block.kind === "heading"}
+                <svelte:element this={`h${block.level}`}>
+                  {@render inlines(block.children)}
+                </svelte:element>
+              {:else if block.kind === "paragraph"}
+                <p>{@render inlines(block.children)}</p>
+              {:else if block.kind === "list"}
+                <svelte:element
+                  this={block.ordered ? "ol" : "ul"}
+                  class="items"
+                >
+                  {#each block.items as item, j (j)}
+                    <li>{@render inlines(item)}</li>
+                  {/each}
+                </svelte:element>
+              {:else}
+                <pre><code>{block.text}</code></pre>
+              {/if}
+            {/each}
+          {:else}
+            <p class="muted">Loading the note…</p>
+          {/if}
+        </section>
       {/if}
       <h3>Links to</h3>
       {#if outgoing.length}

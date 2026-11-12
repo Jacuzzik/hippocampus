@@ -13,7 +13,9 @@
   // Read again every few seconds while this tab is open, so it does not go stale.
   async function load(): Promise<void> {
     try {
-      temps = (await invoke<{ helpers: Temp[] }>("sidecar_call", { method: "helpers" })).helpers;
+      temps = (
+        await invoke<{ helpers: Temp[] }>("sidecar_call", { method: "helpers" })
+      ).helpers;
       failed = false;
     } catch (cause) {
       failed = true;

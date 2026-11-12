@@ -30,5 +30,14 @@ export function parse(value: string): Rgba {
 
 /** RGBA 0 to 1 as a #rrggbb string, for a colour input. */
 export function hexOf([r, g, b]: Rgba): string {
-  return "#" + [r, g, b].map((v) => Math.round(v * 255).toString(16).padStart(2, "0")).join("");
+  return (
+    "#" +
+    [r, g, b]
+      .map((v) =>
+        Math.round(v * 255)
+          .toString(16)
+          .padStart(2, "0"),
+      )
+      .join("")
+  );
 }

@@ -2,7 +2,13 @@
 // A full disk or exhausted memory is the usual reason an agent or the index stops saving,
 // so the app says so before it happens.
 
-export type SystemStats = { cpu: number; ram: number; swap: number; disk: number; disk_free: number };
+export type SystemStats = {
+  cpu: number;
+  ram: number;
+  swap: number;
+  disk: number;
+  disk_free: number;
+};
 
 /** Free disk space, in GB, below which saving is at risk. */
 export const DISK_FREE_MIN_GB = 2;
@@ -16,10 +22,16 @@ export function systemWarnings(stats: SystemStats | null): string[] {
   if (!stats) return [];
   const lines: string[] = [];
   if (stats.disk_free < DISK_FREE_MIN_GB)
-    lines.push(`Disk almost full: ${stats.disk_free.toFixed(1)} GB free. Notes and agent work may not save.`);
+    lines.push(
+      `Disk almost full: ${stats.disk_free.toFixed(1)} GB free. Notes and agent work may not save.`,
+    );
   if (stats.ram >= RAM_MAX_PERCENT)
-    lines.push(`Memory almost full: ${Math.round(stats.ram)}% in use. Close an agent or another app.`);
+    lines.push(
+      `Memory almost full: ${Math.round(stats.ram)}% in use. Close an agent or another app.`,
+    );
   if (stats.swap >= SWAP_MAX_PERCENT)
-    lines.push(`Swap almost full: ${Math.round(stats.swap)}% in use. The computer may freeze.`);
+    lines.push(
+      `Swap almost full: ${Math.round(stats.swap)}% in use. The computer may freeze.`,
+    );
   return lines;
 }

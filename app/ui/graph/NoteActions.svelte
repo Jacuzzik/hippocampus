@@ -120,13 +120,28 @@
     {#if view === "menu"}
       {#if isHub(open.id)}
         {#if !isMain(open.id)}
-          <button type="button" role="menuitem" onclick={() => startDelete("group")}>Delete whole group</button>
+          <button
+            type="button"
+            role="menuitem"
+            onclick={() => startDelete("group")}>Delete whole group</button
+          >
         {/if}
-        <button type="button" role="menuitem" onclick={() => startColour("group")}>Colour whole group</button>
+        <button
+          type="button"
+          role="menuitem"
+          onclick={() => startColour("group")}>Colour whole group</button
+        >
         {#if !isMain(open.id)}
-          <button type="button" role="menuitem" onclick={() => startDelete("hub")}>Delete hub only and unlink</button>
+          <button
+            type="button"
+            role="menuitem"
+            onclick={() => startDelete("hub")}
+            >Delete hub only and unlink</button
+          >
         {/if}
-        <button type="button" role="menuitem" onclick={() => startColour("hub")}>Colour hub only</button>
+        <button type="button" role="menuitem" onclick={() => startColour("hub")}
+          >Colour hub only</button
+        >
       {:else}
         <button
           type="button"
@@ -136,7 +151,11 @@
             onclose();
           }}>Edit</button
         >
-        <button type="button" role="menuitem" onclick={() => startColour("note")}>Change colour</button>
+        <button
+          type="button"
+          role="menuitem"
+          onclick={() => startColour("note")}>Change colour</button
+        >
         {#if !isMain(open.id) && !fromMain(open.id)}
           <button
             type="button"
@@ -159,14 +178,20 @@
           type="button"
           role="menuitem"
           disabled={busy}
-          onclick={() => call("note_colour", { path: open.id, scope, status: tag })}
+          onclick={() =>
+            call("note_colour", { path: open.id, scope, status: tag })}
           >{label}</button
         >
       {/each}
-      <button type="button" class="back" onclick={() => (view = "menu")}>Back</button>
+      <button type="button" class="back" onclick={() => (view = "menu")}
+        >Back</button
+      >
     {:else}
       {@const names = scope === "group" ? groupOf(open.id) : [open.id]}
-      <p class="heading">Delete {names.length} {names.length === 1 ? "note" : "notes"}?</p>
+      <p class="heading">
+        Delete {names.length}
+        {names.length === 1 ? "note" : "notes"}?
+      </p>
       <p class="muted">
         {scope === "hub"
           ? "Only the hub is removed. The notes it links to stay, unlinked."
@@ -175,13 +200,16 @@
       <ul>
         {#each names as id (id)}<li>{title(id)}</li>{/each}
       </ul>
-      <button type="button" class="back" onclick={() => (view = "menu")}>Cancel</button>
+      <button type="button" class="back" onclick={() => (view = "menu")}
+        >Cancel</button
+      >
       <button
         type="button"
         role="menuitem"
         class="danger"
         disabled={busy}
-        onclick={() => call("note_delete", { path: open.id, scope })}>Delete</button
+        onclick={() => call("note_delete", { path: open.id, scope })}
+        >Delete</button
       >
     {/if}
     {#if error}<p class="error" role="alert">{error}</p>{/if}

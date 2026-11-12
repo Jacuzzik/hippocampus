@@ -36,7 +36,8 @@ export function drawAscii(
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   // Cell of a note at time t: its world position in cells, plus its orbit, so every glyph sits on the grid.
-  const cell = (i: number) => cellOf(i, pos[2 * i] ?? 0, pos[2 * i + 1] ?? 0, t);
+  const cell = (i: number) =>
+    cellOf(i, pos[2 * i] ?? 0, pos[2 * i + 1] ?? 0, t);
   const sx = (c: number) => c * CELL * z + cam.x;
   const sy = (r: number) => r * CELL_H * z + cam.y;
 
@@ -46,16 +47,27 @@ export function drawAscii(
     const [ca, ra] = cell(a);
     const [cb, rb] = cell(b);
     // About 70% of hub-to-hub links (7 in every 10) use the darker colour.
-    const hub = (deg[a] ?? 0) >= HUB_DEG && (deg[b] ?? 0) >= HUB_DEG && (e / 2) % 10 < 7;
+    const hub =
+      (deg[a] ?? 0) >= HUB_DEG && (deg[b] ?? 0) >= HUB_DEG && (e / 2) % 10 < 7;
     ctx.fillStyle = hub ? colours.hub : colours.link;
     ctx.globalAlpha = focus < 0 || a === focus || b === focus ? 1 : DIM;
     const len = Math.max(Math.abs(cb - ca), Math.abs(rb - ra), 1);
     for (let t = 0; t <= len; t++) {
       // Per cell: 40% a small dot, 60% blank, like the reference's dotted links. A fixed hash, so the picture does not flicker.
-      const roll = ((Math.imul(t + 1, 7919) ^ Math.imul(ca + 3, 104729) ^ Math.imul(ra + 5, 1299709) ^ Math.imul(e + 7, 2246822519)) >>> 0) % 10;
+      const roll =
+        ((Math.imul(t + 1, 7919) ^
+          Math.imul(ca + 3, 104729) ^
+          Math.imul(ra + 5, 1299709) ^
+          Math.imul(e + 7, 2246822519)) >>>
+          0) %
+        10;
       if (roll >= 4) continue;
       const ch = "·";
-      ctx.fillText(ch, sx(Math.round(ca + ((cb - ca) * t) / len)), sy(Math.round(ra + ((rb - ra) * t) / len)));
+      ctx.fillText(
+        ch,
+        sx(Math.round(ca + ((cb - ca) * t) / len)),
+        sy(Math.round(ra + ((rb - ra) * t) / len)),
+      );
     }
   }
 
@@ -64,6 +76,7 @@ export function drawAscii(
   for (let i = 0; i < deg.length; i++) {
     ctx.globalAlpha = focus < 0 || i === focus ? 1 : DIM;
     const [c, r] = cell(i);
-    for (const [dx, dy, ch] of ballCells(deg[i] ?? 0)) ctx.fillText(ch, sx(c + dx), sy(r + dy));
+    for (const [dx, dy, ch] of ballCells(deg[i] ?? 0))
+      ctx.fillText(ch, sx(c + dx), sy(r + dy));
   }
 }

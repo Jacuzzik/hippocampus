@@ -273,7 +273,10 @@ export class BrainRenderer {
     gl.bindVertexArray(this.edgeVao);
     gl.drawArrays(gl.LINES, 0, this.edgeVertexCount);
     if (this.focusVertexCount > 0) {
-      gl.uniform4f(gl.getUniformLocation(this.edgeProg, "edgeColor"), ...focusColor);
+      gl.uniform4f(
+        gl.getUniformLocation(this.edgeProg, "edgeColor"),
+        ...focusColor,
+      );
       gl.bindVertexArray(this.focusVao);
       gl.drawArrays(gl.LINES, 0, this.focusVertexCount);
     }

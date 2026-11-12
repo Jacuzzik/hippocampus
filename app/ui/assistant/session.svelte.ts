@@ -43,7 +43,9 @@ function errorText(cause: unknown): string {
 function persist(): void {
   if (sessions.length === 0) return;
   const last = sessions.length - 1;
-  const saved = sessions.map((s, i) => (i === last && viewing === null ? { ...s, messages: chat.messages } : s));
+  const saved = sessions.map((s, i) =>
+    i === last && viewing === null ? { ...s, messages: chat.messages } : s,
+  );
   sessions = saved;
   invoke("sidecar_call", {
     method: "chat_history_save",
@@ -88,7 +90,10 @@ export const assistant = {
         });
         sessions = [{ session: id.session, messages: [] }];
       }
-      chat = { ...chat, messages: (sessions[sessions.length - 1]?.messages ?? []) };
+      chat = {
+        ...chat,
+        messages: sessions[sessions.length - 1]?.messages ?? [],
+      };
     } catch (cause) {
       console.error("Could not load the chat history", cause);
     }
@@ -98,14 +103,14 @@ export const assistant = {
   showSession(index: number): void {
     if (this.busy || index < 0 || index >= sessions.length) return;
     viewing = index === sessions.length - 1 ? null : index;
-    chat = { ...chat, messages: (sessions[index]?.messages ?? []) };
+    chat = { ...chat, messages: sessions[index]?.messages ?? [] };
   },
 
   /** Go back to the current session. */
   showCurrent(): void {
     if (this.busy || viewing === null) return;
     viewing = null;
-    chat = { ...chat, messages: (sessions[sessions.length - 1]?.messages ?? []) };
+    chat = { ...chat, messages: sessions[sessions.length - 1]?.messages ?? [] };
   },
 
   /** Start a new Claude Code session for this agent. The old one stays in the list. */

@@ -40,7 +40,11 @@
     event.preventDefault(); // no text selection while dragging
     const column = side === "left" ? "--sidebar-col" : "--panel-col";
     const startX = event.clientX;
-    const startWidth = (side === "left" ? shell.querySelector(".sidebar") : shell.querySelector(".right-panel"))?.getBoundingClientRect().width ?? 240;
+    const startWidth =
+      (side === "left"
+        ? shell.querySelector(".sidebar")
+        : shell.querySelector(".right-panel")
+      )?.getBoundingClientRect().width ?? 240;
     let width = startWidth;
     let frame: number | null = null;
     // Apply at most one width per animation frame, so the graph redraws once per frame, not per mouse move.
@@ -235,7 +239,9 @@
 {/if}
 
 {#if toolsOpen}
-  <PanelBoundary name="Tools"><ToolsDialog onclose={() => (toolsOpen = false)} /></PanelBoundary>
+  <PanelBoundary name="Tools"
+    ><ToolsDialog onclose={() => (toolsOpen = false)} /></PanelBoundary
+  >
 {/if}
 
 {#if controlOpen}
@@ -251,11 +257,15 @@
 {/if}
 
 {#if addOpen}
-  <PanelBoundary name="Add agent"><AddAgentDialog onclose={() => (addOpen = false)} /></PanelBoundary>
+  <PanelBoundary name="Add agent"
+    ><AddAgentDialog onclose={() => (addOpen = false)} /></PanelBoundary
+  >
 {/if}
 
 {#if settingsOpen}
-  <PanelBoundary name="Settings"><SettingsDialog onclose={() => (settingsOpen = false)} /></PanelBoundary>
+  <PanelBoundary name="Settings"
+    ><SettingsDialog onclose={() => (settingsOpen = false)} /></PanelBoundary
+  >
 {/if}
 
 {#if setupOpen}
@@ -297,18 +307,18 @@
     </PanelBoundary>
   {/if}
   <PanelBoundary name="Graph" area="graph">
-  <GraphRegion
-    {data}
-    {error}
-    {query}
-    {tag}
-    {memory}
-    {selectedId}
-    {viewKey}
-    fullscreen={terminalOnly}
-    onfullscreen={() => (terminalOnly = !terminalOnly)}
-    onselect={(id) => (selectedId = id)}
-  />
+    <GraphRegion
+      {data}
+      {error}
+      {query}
+      {tag}
+      {memory}
+      {selectedId}
+      {viewKey}
+      fullscreen={terminalOnly}
+      onfullscreen={() => (terminalOnly = !terminalOnly)}
+      onselect={(id) => (selectedId = id)}
+    />
   </PanelBoundary>
   <PanelBoundary name="Control Room" area="panel">
     <RightPanel open={panelOpen || terminalOnly} />
