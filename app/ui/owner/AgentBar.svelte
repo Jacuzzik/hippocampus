@@ -17,8 +17,6 @@
     startEdit,
   } from "./addedAgents.svelte";
   import { AGENT_PROVIDERS, CARD_FACES, providerLogo } from "../control/model";
-  import { ORB_LABELS } from "../assistant/model";
-  import { assistant } from "../assistant/session.svelte";
 
   type Account = { claude: boolean; model: string; provider: string };
 
@@ -43,8 +41,7 @@
       provider: labelOf(agent.provider),
       model: agent.model,
       folder: agent.folder,
-      status: NO_DATA,
-      ctx: NO_DATA,
+      ...liveInfo(agent.id),
     };
   }
 
@@ -80,6 +77,7 @@
     folder: string;
     status: string;
     ctx: string;
+    briefing: string;
   } | null>(null);
   const NO_DATA = "—";
   // What each added agent's terminal is running and its context use; read every few seconds.
@@ -88,7 +86,19 @@
     window.dispatchEvent(new CustomEvent("agent-talk", { detail: id }));
   }
 
-  let live = $state<Record<string, { command: string | null; status: string | null; percent: number | null; running?: string[]; last?: string | null; model?: string | null }>>({});
+  // The briefing an agent last started with: its version, a short hash and when it was handed over.
+  type Briefing = { version: number; hash: string; at: string };
+  let live = $state<Record<string, { command: string | null; status: string | null; percent: number | null; running?: string[]; last?: string | null; model?: string | null; briefing?: Briefing | null }>>({});
+  // What the info box says about an agent's program right now, from the same live state the card shows.
+  function liveInfo(id: string): { status: string; ctx: string; briefing: string } {
+    const now = live[id];
+    const brief = now?.briefing;
+    return {
+      status: now?.status ?? "Not running",
+      ctx: now?.percent != null ? `${now.percent}%` : NO_DATA,
+      briefing: brief ? `v${brief.version} · ${brief.hash} · handed over ${brief.at.slice(11, 16)}` : "Not handed over in this run",
+    };
+  }
   // CMD shows what is running now, else the last command the agent ran.
   const cmdOf = (id: string): string => {
     const info = live[id];
@@ -113,7 +123,7 @@
   async function refreshLive(): Promise<void> {
     for (const id of ["hippoherman", ...added.map((a) => a.id)]) {
       try {
-        const info = await invoke<{ command: string | null; status: string | null; running?: string[]; last?: string | null; model?: string | null; boot?: string }>("sidecar_call", {
+        const info = await invoke<{ command: string | null; status: string | null; running?: string[]; last?: string | null; model?: string | null; boot?: string; briefing?: Briefing | null }>("sidecar_call", {
           method: "terminal_command",
           params: { agent: id },
         });
@@ -126,7 +136,7 @@
               })
             ).percent
           : null;
-        live[id] = { command: info.command, status: info.status, percent, running: info.running, last: info.last, model: info.model };
+        live[id] = { command: info.command, status: info.status, percent, running: info.running, last: info.last, model: info.model, briefing: info.briefing ?? null };
       } catch {
         live[id] = { command: null, status: null, percent: null };
       }
@@ -262,6 +272,8 @@
         <dd>{info.status}</dd>
         <dt>CTX</dt>
         <dd>{info.ctx}</dd>
+        <dt>BRIEFING</dt>
+        <dd>{info.briefing}</dd>
       </dl>
     </div>
   </div>
@@ -321,11 +333,10 @@
             provider: runningProvider,
             model: account?.model ?? "Loading model",
             folder: "",
-            status: ORB_LABELS[assistant.chat.orb],
-            ctx: NO_DATA,
+            ...liveInfo("hippoherman"),
           })}>INFO</button
       >
-      <span class="status">{assistant.chat.orb === "thinking" ? "Working" : "Idle"}</span>
+      <span class="status">{live.hippoherman?.status === "Working" ? "Working" : "Idle"}</span>
     </div>
   </div>
   {#each added as agent (agent.id)}

@@ -4,6 +4,7 @@
   import Tabs from "../controls/Tabs.svelte";
   import EmptyState from "../controls/EmptyState.svelte";
   import { invoke } from "@tauri-apps/api/core";
+  import { every } from "../poll.ts";
   import LiveTerminal, { type TerminalState } from "../regions/LiveTerminal.svelte";
   import type { SavedAgent } from "./addedAgents.svelte";
   import { createTerminalQueue } from "../regions/terminalQueue.svelte";
@@ -82,6 +83,29 @@
     { id: "messages", label: "Messages" },
     { id: "traces", label: "Traces" },
   ]);
+
+  // Messages and Traces read again every few seconds while their tab is open.
+  type Message = { id: string; from: string | null; to: string | null; act: string | null; subject: string | null; created_at: string | null; state: string };
+  type Trace = { at: string | null; tool: string; detail: string; status: string };
+  let messages = $state<Message[]>([]);
+  let traces = $state<Trace[]>([]);
+  async function loadView(): Promise<void> {
+    try {
+      if (view === "messages") {
+        const all = (await invoke<{ messages: Message[] }>("sidecar_call", { method: "inbox" })).messages;
+        messages = all.filter((m) => m.from === agent.id || m.to === agent.id);
+      } else if (view === "traces") {
+        traces = (await invoke<{ traces: Trace[] }>("sidecar_call", { method: "terminal_traces", params: { agent: agent.id } })).traces;
+      }
+    } catch (cause) {
+      error = String(cause);
+    }
+  }
+  $effect(() => {
+    if (view !== "messages" && view !== "traces") return;
+    void loadView();
+    return every(loadView, 5000);
+  });
 
   function showGit(): void {
     gitText = "Reading git status…";
@@ -167,16 +191,39 @@
     <pre class="git" aria-label="Git status">{gitText}</pre>
   {/if}
   {#if view === "messages"}
-    <EmptyState
-      title="No messages to show"
-      text="Messages this agent sends and receives are not read into this view yet. The Inbox tab in the Control Room lists every agent's messages."
-    />
+    {#if messages.length === 0}
+      <EmptyState title="No messages yet" text="Messages this agent sends or receives show here. Write to it from the Inbox tab in the Control Room." />
+    {:else}
+      <ul class="rows" aria-label="Messages for {agent.name}">
+        {#each messages as message (message.id + message.state)}
+          <li>
+            <span class="tag">{message.state === "queued" ? "waiting" : message.state}</span>
+            <span class="dim">{message.from === agent.id ? `to ${message.to}` : `from ${message.from}`}</span>
+            <span class="grow">{message.subject || message.act}</span>
+            <small>{(message.created_at ?? "").replace("T", " ").slice(5, 16)}</small>
+          </li>
+        {/each}
+      </ul>
+    {/if}
   {/if}
   {#if view === "traces"}
-    <EmptyState
-      title="No traces to show"
-      text="Tool calls, token use and timings for this agent are not recorded yet. The Activity tab in the Control Room lists tool runs."
-    />
+    {#if traces.length === 0}
+      <EmptyState
+        title="No tool calls yet"
+        text="Every tool this agent runs shows here with its time and result, shell commands included. Only agents on Claude Code are read so far."
+      />
+    {:else}
+      <ul class="rows" aria-label="Tool calls by {agent.name}">
+        {#each traces as trace, index (index)}
+          <li>
+            <span class="tag" class:bad={trace.status === "failed"}>{trace.status}</span>
+            <span class="dim">{trace.tool.replace("mcp__vault__", "")}</span>
+            <span class="grow mono">{trace.detail}</span>
+            <small>{(trace.at ?? "").replace("T", " ").slice(5, 16)}</small>
+          </li>
+        {/each}
+      </ul>
+    {/if}
   {/if}
 
   <!-- Queue, message box, Send and + files sit in one composer, as on the main agent, so they share its gaps. -->
@@ -416,6 +463,45 @@
     font-family: var(--font-mono);
     font-size: var(--font-size-tag);
     white-space: pre;
+  }
+  /* Messages and Traces: one row each, scrolling inside the same box the terminal uses. */
+  .rows {
+    flex: 1 1 0;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+    list-style: none;
+    border: 1px solid var(--color-md-border);
+    border-radius: var(--radius-sm);
+  }
+  .rows li {
+    display: flex;
+    gap: var(--space-2);
+    align-items: baseline;
+    padding: var(--space-1) var(--space-2);
+    border-bottom: 1px solid var(--color-md-border);
+  }
+  .rows .tag {
+    color: var(--color-md-accent);
+  }
+  .rows .tag.bad {
+    color: var(--color-danger);
+  }
+  .rows .dim,
+  .rows small {
+    flex: none;
+    color: var(--color-md-text-muted);
+  }
+  .rows .grow {
+    flex: 1 1 0;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  .rows .mono {
+    font-family: var(--font-mono);
   }
   .confirm {
     display: flex;

@@ -529,6 +529,13 @@ export async function mockSidecar(
           case "clear_key":
             if (String(args.params?.provider) === "claude") claudeKey = null;
             return { keys: keyRows() };
+          case "terminal_traces":
+            return {
+              traces: [
+                { at: "2026-11-12T10:01:00Z", tool: "Bash", detail: "rm notes.md", status: "failed" },
+                { at: "2026-11-12T10:00:00Z", tool: "mcp__vault__read_note", detail: "MAIN.md", status: "done" },
+              ],
+            };
           case "terminal_command":
             // No program is running in tests; the id says which run of the backend answered.
             return { command: null, status: null, boot: bootId() };

@@ -55,6 +55,15 @@ test("an added agent runs in the same terminal, and block tools restarts it", as
   expect((await own())[2]).toMatchObject({ block_tools: true });
   // The old screen is gone: one terminal in the box, not two drawn over each other.
   await expect(screen.locator(".xterm")).toHaveCount(1);
+
+  // Traces lists what the agent ran, with the result; Messages lists its own messages.
+  await page.getByRole("tab", { name: "Traces" }).click();
+  const traces = page.getByRole("list", { name: "Tool calls by Ada" });
+  await expect(traces.getByRole("listitem").first()).toContainText("failed");
+  await expect(traces).toContainText("rm notes.md");
+  await expect(traces).toContainText("read_note");
+  await page.getByRole("tab", { name: "Messages" }).click();
+  await expect(page.getByText("No messages yet")).toBeVisible();
 });
 
 test("TALK on the main agent's card puts the cursor in its message box", async ({ page }) => {

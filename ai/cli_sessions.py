@@ -319,6 +319,42 @@ def _newest_tool_call(found: Path) -> str | None:
     return None
 
 
+def tool_trace(agent: str, limit: int = 100) -> list[dict[str, Any]]:
+    """The agent's recent tool calls, newest first: when, which tool, what it was asked, and whether it failed.
+
+    Read from the agent's Claude Code session file. Other CLIs keep no file this can read, so they give no rows.
+    """
+    found = _transcript(agent)
+    if found is None:
+        return []
+    try:
+        lines = found.read_text(encoding="utf-8").splitlines()[-2000:]
+    except OSError:
+        return []
+    calls: dict[str, dict[str, Any]] = {}
+    for line in lines:
+        try:
+            row = json.loads(line)
+            content = row.get("message", {}).get("content")
+        except (ValueError, AttributeError):
+            continue
+        for block in content if isinstance(content, list) else []:
+            if not isinstance(block, dict):
+                continue
+            if block.get("type") == "tool_use":
+                inputs = block.get("input") if isinstance(block.get("input"), dict) else {}
+                detail = inputs.get("command") or inputs.get("description") or inputs.get("file_path") or inputs.get("path") or inputs.get("query") or ""
+                calls[str(block.get("id"))] = {
+                    "at": row.get("timestamp"),
+                    "tool": str(block.get("name")),
+                    "detail": str(detail)[:300],
+                    "status": "running",
+                }
+            elif block.get("type") == "tool_result" and str(block.get("tool_use_id")) in calls:
+                calls[str(block.get("tool_use_id"))]["status"] = "failed" if block.get("is_error") else "done"
+    return list(calls.values())[::-1][:limit]
+
+
 def last_tool_call(agent: str) -> str | None:
     """The newest tool call the agent made, finished or not, as "name: detail"; None before any."""
     found = _transcript(agent)
