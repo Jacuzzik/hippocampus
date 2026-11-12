@@ -11,7 +11,7 @@
   import Dropdown from "../controls/Dropdown.svelte";
   import StatusCard from "../controls/StatusCard.svelte";
   import Tabs from "../controls/Tabs.svelte";
-  import { crashLog } from "../crashLog.svelte.ts";
+  import { crashLog, type CrashRow } from "../crashLog.svelte.ts";
   import { FONT_MAX, FONT_MIN, prefs, type Motion } from "../prefs.svelte.ts";
   import { SETTINGS_PAGES, type SettingsPage } from "./model";
 
@@ -43,6 +43,24 @@
     const first = items[0];
     if (query.trim() && first && !items.some((i) => i.id === page)) page = first.id as SettingsPage;
   });
+
+  // The error log on disk, newest first. An older backend without it falls back to this window's rows.
+  let diskRows = $state<CrashRow[] | null>(null);
+  const errorRows = $derived(diskRows ?? [...crashLog.rows].reverse());
+  $effect(() => {
+    if (page !== "Privacy and data") return;
+    invoke<{ crashes: CrashRow[] }>("sidecar_call", { method: "crashes" }).then(
+      (value) => (diskRows = value.crashes),
+      () => (diskRows = null),
+    );
+  });
+  function clearErrors(): void {
+    crashLog.clear();
+    invoke<{ crashes: CrashRow[] }>("sidecar_call", { method: "clear_crashes" }).then(
+      (value) => (diskRows = value.crashes),
+      () => (diskRows = null),
+    );
+  }
 
   onMount(async () => {
     getVersion().then(
@@ -168,12 +186,18 @@
               <div><b>Your data</b><p>Sign out or remove your data in Setup and account, on the left ribbon.</p></div>
             </div>
             <div class="setting">
-              <div><b>UI error log</b><p>Kept in this window only, never sent. Newest last, at most 50.</p></div>
-              <code>{crashLog.rows.length} recorded</code>
+              <div>
+                <b>Error log</b>
+                <p>Errors from this window and the backend, kept on this computer in <code>crashes.jsonl</code>. Never sent.</p>
+              </div>
+              <span class="row">
+                <code>{errorRows.length} recorded</code>
+                <button type="button" disabled={errorRows.length === 0} onclick={clearErrors}>Clear</button>
+              </span>
             </div>
-            {#if crashLog.rows.length}
-              <ul class="log" aria-label="UI errors">
-                {#each crashLog.rows.slice(-10) as row (row.at + row.message)}
+            {#if errorRows.length}
+              <ul class="log" aria-label="Recorded errors">
+                {#each errorRows.slice(0, 10) as row, index (index)}
                   <li><span class="muted">{row.at.slice(0, 19).replace("T", " ")}</span> <b>{row.source}</b> {row.message}</li>
                 {/each}
               </ul>

@@ -1,5 +1,8 @@
 // A local record of UI errors, so a failure leaves a trace instead of a blank panel.
-// Kept in this window's storage only: nothing is sent anywhere.
+// Kept on this computer only: in this window's storage, and in the backend's crashes.jsonl
+// file so it survives a restart. Nothing is sent anywhere.
+
+import { invoke } from "@tauri-apps/api/core";
 
 export type CrashRow = { at: string; source: string; message: string };
 
@@ -38,6 +41,12 @@ export function recordError(source: string, cause: unknown): void {
   } catch {
     /* storage full or blocked: the row stays in memory */
   }
+  // Also on disk. If the backend is the thing that is down, the copy above still holds the row.
+  try {
+    invoke("sidecar_call", { method: "record_crash", params: row }).catch(() => {});
+  } catch {
+    /* no bridge (a test page): nothing to do */
+  }
 }
 
 /** Catches errors that no component handled: thrown in handlers, timers and rejected promises. */
@@ -55,5 +64,15 @@ export const crashLog = {
   },
   dismiss(): void {
     fresh = 0;
+  },
+  /** Forgets the rows in this window. The copy on disk is cleared by the backend's clear_crashes. */
+  clear(): void {
+    rows = [];
+    fresh = 0;
+    try {
+      localStorage.removeItem(KEY);
+    } catch {
+      /* storage blocked: the rows are gone from memory, which is what was asked */
+    }
   },
 };

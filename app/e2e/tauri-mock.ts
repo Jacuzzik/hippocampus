@@ -36,6 +36,7 @@ export async function mockSidecar(
       // The Claude key is kept here, never sent back to the page: account reports only yes or no.
       let claudeKey: string | null = opts.signedIn ? "sk-saved" : null;
       const workspaceFolders = ["IT"];
+      let crashRows: { at: string; source: string; message: string }[] = [];
 
       // The note text the drawer reads through the "read" method.
       const texts: Record<string, string> = {
@@ -400,6 +401,18 @@ export async function mockSidecar(
             return { clis: [] };
           case "local_status":
             return { servers: [] };
+          case "record_crash":
+            crashRows.unshift({
+              at: String(args.params?.at),
+              source: String(args.params?.source),
+              message: String(args.params?.message),
+            });
+            return { ok: true };
+          case "crashes":
+            return { crashes: crashRows };
+          case "clear_crashes":
+            crashRows = [];
+            return { crashes: [] };
           case "workspaces":
             return { root: "/home/me/workspaces", folders: workspaceFolders };
           case "create_workspace":

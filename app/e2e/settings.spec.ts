@@ -22,7 +22,7 @@ test("settings has a page per category and each one opens", async ({ page }) => 
     "Models and keys": "Keys and secrets",
     Connectors: "Working on this computer",
     Memory: "Memory size per agent",
-    "Privacy and data": "UI error log",
+    "Privacy and data": "Error log",
     Advanced: "Backend (Python sidecar)",
     About: "Hippocampus",
   };
@@ -71,4 +71,19 @@ test("searching settings jumps to the matching page", async ({ page }) => {
   await dialog.getByLabel("Search settings").fill("slack");
   await expect(dialog.getByRole("tab")).toHaveText(["Connectors"]);
   await expect(dialog.getByRole("heading", { name: "Connectors" })).toBeVisible();
+});
+
+test("an error is recorded on disk, listed under Privacy and data, and Clear removes it", async ({ page }) => {
+  await mockSidecar(page);
+  await page.goto("/");
+  await page.evaluate(() => window.dispatchEvent(new ErrorEvent("error", { error: new Error("boom in a handler") })));
+  await expect(page.getByRole("status").filter({ hasText: "1 UI error recorded" })).toBeVisible();
+  const dialog = await openSettings(page);
+  await dialog.getByRole("tab", { name: "Privacy and data" }).click();
+  const log = dialog.getByRole("list", { name: "Recorded errors" });
+  await expect(log).toContainText("boom in a handler");
+  await expect(dialog.getByText("1 recorded")).toBeVisible();
+  await dialog.getByRole("button", { name: "Clear" }).click();
+  await expect(dialog.getByText("0 recorded")).toBeVisible();
+  await expect(log).toHaveCount(0);
 });
