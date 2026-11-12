@@ -73,7 +73,12 @@
     if (!term || !fit || !screen) return;
     // A hidden or mid-animation panel reports a tiny width; telling the CLI that makes it redraw one or two characters per line.
     if (screen.clientWidth < 200 || screen.clientHeight < 80) return;
-    fit.fit();
+    try {
+      fit.fit();
+    } catch {
+      // The terminal was closed or has not drawn yet; the next size change tries again.
+      return;
+    }
     if (trimRow && term.rows > 1) term.resize(term.cols, term.rows - 1);
     const { rows, cols } = term;
     if (restore !== "redraw" || sized) {
