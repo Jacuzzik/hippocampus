@@ -25,3 +25,16 @@ def network_open() -> Iterator[None]:
     network.set_mode("open")
     yield
     network.set_mode("off")
+
+
+@pytest.fixture(autouse=True)
+def own_hive(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Every test gets its own hive folder. Without this a Session reads and writes the real
+    ~/.hippocampus/hive, so a test could send messages to the user's running agents."""
+    from core import __main__ as sidecar
+    from core import settings
+
+    hive = tmp_path / "hive-home" / "hive"
+    monkeypatch.setattr(settings, "HIVE_DIR", hive)
+    monkeypatch.setattr(sidecar, "HIVE_DIR", hive)
+    return hive

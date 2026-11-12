@@ -49,6 +49,11 @@ class Terminals:
         # The recent output of each terminal, so a reopened terminal shows what was on screen.
         self.screens: dict[str, bytearray] = {}
         self.lock = threading.Lock()
+        # One typed line at a time per agent. Two lines typed at once (the start-up inbox and the remote
+        # control command) landed in the same input bar and were sent to the model as one message.
+        self._type_locks: dict[str, threading.Lock] = {}
+        self._type_guard = threading.Lock()
+        self.last_typed: dict[str, float] = {}
         # Agents whose terminal the app stopped on purpose (no error line for those).
         self.stopping: set[str] = set()
         # Agents whose old CLI was replaced by a new start, so its late exit is not shown.
@@ -203,17 +208,21 @@ class Terminals:
             self._log_event(agent, "remote control skipped: CLI stopped before it was sent")
             return
         # A busy Claude queues typed text without submitting it, so wait until the terminal is Idle (no output for 10 seconds).
+        # The check and the typing happen under one lock, so another typed line (the start-up inbox) cannot slip in between.
         idle_deadline = time.time() + REMOTE_CONTROL_IDLE_MAX_S
-        while time.time() < idle_deadline and self.info(agent)["status"] == "Working":
+        while time.time() < idle_deadline:
             if proc.poll() is not None or self.procs.get(agent, (None, None))[1] != master:
                 self._log_event(agent, "remote control skipped: CLI stopped before it was sent")
                 return
-            time.sleep(2)
-        try:
-            self.send_line(agent, f"/remote-control hipcmps-{agent}")
-            self._log_event(agent, "remote control sent")
-        except (OSError, RuntimeError) as cause:
-            self._log_event(agent, f"remote control failed: {cause}")
+            try:
+                if self.send_line_when_quiet(agent, f"/remote-control hipcmps-{agent}"):
+                    self._log_event(agent, "remote control sent")
+                    return
+            except (OSError, RuntimeError) as cause:
+                self._log_event(agent, f"remote control failed: {cause}")
+                return
+            time.sleep(REMOTE_CONTROL_RETRY_S)
+        self._log_event(agent, "remote control skipped: the CLI stayed busy")
 
     def _write_briefing(self, agent: str, text: str) -> str:
         """The briefing is written to a file and passed by path, so its text is not on the command line or in the shown command."""
@@ -235,9 +244,32 @@ class Terminals:
 
     def send_line(self, agent: str, text: str) -> None:
         """Types the text, then presses Enter as its own write. A TUI such as Claude Code reads text and a trailing Enter in one write as a paste, so the Enter is ignored and the text sits in the input bar unsent."""
+        with self._type_lock(agent):
+            self._type(agent, text)
+
+    def send_line_when_quiet(self, agent: str, text: str) -> bool:
+        """Types the line only if the CLI is idle and nothing was typed in the last few seconds.
+
+        Returns False without typing when it is busy, so the caller can try again later. A command
+        such as /remote-control typed while the CLI is busy is queued as a chat message instead.
+        """
+        with self._type_lock(agent):
+            if self.info(agent)["status"] == "Working":
+                return False
+            if time.time() - self.last_typed.get(agent, 0.0) < TYPE_GAP_S:
+                return False
+            self._type(agent, text)
+            return True
+
+    def _type_lock(self, agent: str) -> threading.Lock:
+        with self._type_guard:
+            return self._type_locks.setdefault(agent, threading.Lock())
+
+    def _type(self, agent: str, text: str) -> None:
         self.write(agent, text)
         time.sleep(SUBMIT_DELAY_S)
         self.write(agent, "\r")
+        self.last_typed[agent] = time.time()
 
     def resize(self, agent: str, rows: int, cols: int) -> None:
         running = self.procs.get(agent)
@@ -438,6 +470,9 @@ BRIEFING_DELAY_S = 6.0
 BRIEFING_WAIT_MAX_S = 60.0
 # Gap between typing a message and pressing Enter, so the CLI reads them as typing and not as one paste.
 SUBMIT_DELAY_S = 0.5
+# A line typed this recently means the CLI is about to be busy, even before it prints.
+TYPE_GAP_S = 10.0
+REMOTE_CONTROL_RETRY_S = 2.0
 # A Claude terminal gets /remote-control this long after it first draws.
 REMOTE_CONTROL_DELAY_S = 15.0
 # How long to wait for an idle Claude terminal before typing /remote-control anyway.

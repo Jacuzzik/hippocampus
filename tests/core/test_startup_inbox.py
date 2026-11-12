@@ -14,9 +14,10 @@ def test_lists_own_waiting_messages_only(tmp_path: Path) -> None:
     inbox.send(hive, "hippoherman", "Brooke#1", "Make notes", "Summarise the call")
     inbox.send(hive, "hippoherman", "Walter#2", "Other task", "not for Brooke")
     text = startup_inbox.build(hive, "Brooke#1", AGENTS)
-    assert "Make notes" in text
-    assert "Summarise the call" in text
-    assert "not for Brooke" not in text
+    assert "request from hippoherman: Make notes" in text
+    # The body is typed in full by the delivery loop, so it is not repeated here.
+    assert "Summarise the call" not in text
+    assert "Other task" not in text
 
 
 def test_lists_other_agents_not_self(tmp_path: Path) -> None:
@@ -29,6 +30,8 @@ def test_report_and_send_instructions_present(tmp_path: Path) -> None:
     text = startup_inbox.build(tmp_path / "hive", "Brooke#1", AGENTS)
     assert "DONE:" in text and "BLOCKED:" in text and "QUESTION:" in text
     assert '"to"' in text and '"subject"' in text and '"body"' in text
+    # The format and the example come from the schema, so they cannot drift from it.
+    assert inbox.FORMAT_HELP in text and '"act": "done"' in text
 
 
 def test_main_agent_gets_reading_policy(tmp_path: Path) -> None:

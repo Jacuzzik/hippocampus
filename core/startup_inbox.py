@@ -3,6 +3,7 @@
 It holds what the agent must know before it acts: its waiting messages, the agents it can message, how to send a message and how to report back.
 """
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -19,10 +20,10 @@ def build(hive: Path, agent: str, agents: list[dict[str, Any]]) -> str:
     lines = [f"# Start-up inbox for {agent}", "", "## Waiting messages"]
     waiting = inbox.pending(hive, agent)
     if waiting:
+        # Only the headline: the app types each message in full right after this, so the body is not sent twice.
         for _, message in waiting:
-            lines += [
-                f"- From {message.get('from')} | {message.get('subject')} | {message.get('body')}",
-            ]
+            lines.append(f"- {message.get('act') or 'request'} from {message.get('from')}: {message.get('subject') or '(no subject)'}")
+        lines.append("Each one is typed to you in full next. Act on each once.")
     else:
         lines.append("- None.")
     lines += ["", "## Agents you can message"]
@@ -40,8 +41,9 @@ def build(hive: Path, agent: str, agents: list[dict[str, Any]]) -> str:
         "",
         "## How to send a message",
         f"Your outbox folder is {hive / agent / 'outbox'}.",
-        "Write one JSON file into it with the keys \"to\", \"subject\" and \"body\".",
-        "The app moves it into the receiver's inbox.",
+        inbox.FORMAT_HELP,
+        f"Example: {json.dumps(inbox.EXAMPLE)}",
+        "The app checks it and moves it into the receiver's inbox. You send only as yourself.",
         "",
         "## How to report back",
         "When a task is done, blocked, or you need a decision, send one message to hippoherman.",

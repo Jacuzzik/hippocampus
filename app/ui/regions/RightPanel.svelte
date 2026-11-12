@@ -84,7 +84,7 @@
       .then((value) => (waiting.asks = value.asks.length))
       .catch(() => {});
     invoke<{ messages: { state: string }[] }>("sidecar_call", { method: "inbox" })
-      .then((value) => (waiting.inbox = value.messages.filter((m) => m.state === "pending").length))
+      .then((value) => (waiting.inbox = value.messages.filter((m) => m.state === "queued").length))
       .catch(() => {});
   }
   // The views sit in rows of four, as in the picture. A selected agent adds its own tab at the end.

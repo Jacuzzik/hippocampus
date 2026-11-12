@@ -41,6 +41,12 @@ export async function mockSidecar(
         graph.nodes.push({ id: "delta.md", title: "Delta", tags: [] });
       let vaultOpen = !opts.noVault;
       // Every terminal start and stop, in order, for tests to read.
+      // Messages between agents, in the backend's schema; a sent message is added at the top.
+      const inboxRows: Record<string, string>[] = [
+        { id: "m-1", from: "hippoherman", to: "kevin", act: "request", subject: "Research the plan", body: "Read the audit and list the gaps.", work: "T-1", thread: "m-1", priority: "normal", created_at: "2026-10-29T12:30:00+00:00", state: "queued" },
+        { id: "m-2", from: "kevin", to: "hippoherman", act: "done", subject: "Research done", body: "Three gaps found.", work: "T-1", thread: "m-1", priority: "normal", created_at: "2026-10-29T13:10:00+00:00", state: "delivered" },
+        { id: "m-3", from: "kevin", to: "zed", act: "request", subject: "Lost message", body: "x", work: "", thread: "m-3", priority: "normal", created_at: "2026-10-28T09:00:00+00:00", state: "failed", failed: 'No agent has the id "zed".' },
+      ];
       const terminalCalls: Record<string, unknown>[] = [];
       (window as unknown as { __terminalCalls: unknown }).__terminalCalls = terminalCalls;
       let savedAgents: unknown[] = [];
@@ -248,12 +254,22 @@ export async function mockSidecar(
               ],
             };
           case "inbox":
-            return {
-              messages: [
-                { id: "m-1", from: "god", to: "kevin", act: "task", subject: "Research the plan", created_at: "2026-10-29T12:30:00Z", state: "pending" },
-                { id: "m-2", from: "kevin", to: "god", act: "done", subject: "Research done", created_at: "2026-10-29T11:10:00Z", state: "done" },
-              ],
-            };
+            return { messages: inboxRows, acts: ["request", "inform", "note", "propose", "query", "agree", "refuse", "done"] };
+          case "inbox_search": {
+            const words = String(args.params?.query ?? "").toLowerCase();
+            return { messages: inboxRows.filter((m) => `${m.subject} ${m.body} ${m.from} ${m.to}`.toLowerCase().includes(words)) };
+          }
+          case "inbox_thread":
+            return { messages: inboxRows.filter((m) => m.thread === args.params?.thread), markdown: "# Research the plan\n" };
+          case "task_send": {
+            const targets = args.params?.to === "all" ? ["hippoherman"] : [String(args.params?.to)];
+            const ids = targets.map((to, i) => {
+              const id = `m-new-${inboxRows.length + i}`;
+              inboxRows.unshift({ id, from: "user", to, act: "request", subject: String(args.params?.subject ?? ""), body: String(args.params?.body ?? ""), work: "", thread: id, priority: String(args.params?.priority ?? "normal"), created_at: "2026-11-12T08:00:00+00:00", state: "queued" });
+              return id;
+            });
+            return { id: ids[0], ids };
+          }
           case "settings":
             return {
               general: { vault: "data/brains/Hippocampus", network: "off" },
