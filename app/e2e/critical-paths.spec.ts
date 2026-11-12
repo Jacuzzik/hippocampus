@@ -6,86 +6,10 @@ test.beforeEach(async ({ page }) => {
   await page.goto("/");
 });
 
-// The in-app chat pane (orb, approval cards, tool log) is no longer mounted: the Control Room
-// sends messages to the main agent's terminal instead. The tests that drive that pane are marked
-// fixme until the pane is either removed from the code or shown again.
-
 test("the brain graph loads and the main agent starts idle", async ({ page }) => {
   await expect(page.getByRole("main", { name: "Brain graph" })).toBeVisible();
   await expect(page.getByLabel("Agents").getByText("Idle").first()).toBeVisible();
   await expect(page.getByText("Could not load the vault")).toHaveCount(0);
-});
-
-test.fixme("a question is answered and the tool log shows the read", async ({
-  page,
-}) => {
-  await page
-    .getByLabel("Message the assistant")
-    .fill("search my notes for alpha");
-  await page.getByRole("button", { name: "Send" }).click();
-  await expect(
-    page.getByText("Found Alpha in projects/alpha.md."),
-  ).toBeVisible();
-  const log = page.getByRole("region", { name: "Tool log" });
-  await expect(log.getByText("search_notes")).toBeVisible();
-  await expect(log.getByText("done")).toBeVisible();
-});
-
-test.fixme("a write waits for approval, shows the exact change, then runs", async ({
-  page,
-}) => {
-  await page.getByLabel("Message the assistant").fill("make a new idea note");
-  await page.getByRole("button", { name: "Send" }).click();
-  const card = page.getByRole("group", { name: "Approval needed" });
-  await expect(card).toContainText("+# New idea");
-  await expect(
-    page.getByRole("status", { name: "Assistant: Waiting for you" }).first(),
-  ).toBeVisible();
-  await card.getByRole("button", { name: "Approve" }).click();
-  await expect(page.getByText("Created ideas/new.md.")).toBeVisible();
-  await expect(card).toHaveCount(0);
-});
-
-test.fixme("declining a write leaves the note uncreated", async ({ page }) => {
-  await page.getByLabel("Message the assistant").fill("make a new idea note");
-  await page.getByRole("button", { name: "Send" }).click();
-  await page
-    .getByRole("group", { name: "Approval needed" })
-    .getByRole("button", { name: "Decline" })
-    .click();
-  await expect(page.getByText("Okay, I did not create it.")).toBeVisible();
-});
-
-test.fixme("Stop ends a running chat at once", async ({ page }) => {
-  await page.getByLabel("Message the assistant").fill("a long task");
-  await page.getByRole("button", { name: "Send" }).click();
-  const stop = page.getByRole("button", { name: "Stop" });
-  await expect(stop).toBeEnabled();
-  const started = Date.now();
-  await stop.click();
-  await expect(page.getByText("Stopped.")).toBeVisible();
-  expect(Date.now() - started).toBeLessThan(1000);
-  await expect(
-    page.getByRole("status", { name: "Assistant: Idle" }).first(),
-  ).toBeVisible();
-});
-
-test.fixme("Escape is the keyboard stop", async ({ page }) => {
-  await page.getByLabel("Message the assistant").fill("a long task");
-  await page.getByRole("button", { name: "Send" }).click();
-  await expect(page.getByRole("button", { name: "Stop" })).toBeEnabled();
-  await page.keyboard.press("Escape");
-  await expect(page.getByText("Stopped.")).toBeVisible();
-});
-
-test.fixme("reduced motion turns off the orb pulse", async ({ page }) => {
-  await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.getByLabel("Message the assistant").fill("a long task");
-  await page.getByRole("button", { name: "Send" }).click();
-  const orb = page.locator(".orb[data-state='thinking']").first();
-  await expect(orb).toBeVisible();
-  await expect(orb).toHaveCSS("animation-name", "none");
-  await page.getByRole("button", { name: "Stop" }).click();
 });
 
 test("a note in the list opens in the graph drawer", async ({ page }) => {
@@ -202,25 +126,3 @@ test("a tag in the tags pane filters the note list", async ({ page }) => {
   ).toHaveCount(0);
 });
 
-test.fixme("the tool log says why the assistant paused, and Continue resumes it", async ({
-  page,
-}) => {
-  await page.getByLabel("Message the assistant").fill("do many things");
-  await page.getByRole("button", { name: "Send" }).click();
-  const log = page.getByRole("region", { name: "Tool log" });
-  await expect(
-    log.getByText(
-      "Stopped after 20 tool calls in one request. Continue to let it go on.",
-    ),
-  ).toBeVisible();
-  await log.getByRole("button", { name: "Continue" }).click();
-  await expect(page.getByText("Carried on to the end.")).toBeVisible();
-});
-
-test.fixme("the tool log starts with the app start and its time", async ({
-  page,
-}) => {
-  const log = page.getByRole("region", { name: "Tool log" });
-  await expect(log.getByText("App started")).toBeVisible();
-  await expect(log.locator("time").first()).toHaveText(/^\d{2}:\d{2}:\d{2}$/);
-});
