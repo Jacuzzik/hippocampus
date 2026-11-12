@@ -100,6 +100,7 @@ def test_engine_models_match_the_app_list() -> None:
     ).read_text(encoding="utf-8")
     block = source.split("export const AGENT_MODELS", 1)[1].split("\n};", 1)[0]
     listed: dict[str, tuple[str, ...]] = {}
-    for key, items in re.findall(r'^\s*"?([\w.-]+)"?:\s*\[(.*?)\],?\s*$', block, re.M):
+    # A list may be wrapped over several lines by the formatter, so match across lines.
+    for key, items in re.findall(r'^\s*"?([\w.-]+)"?:\s*\[(.*?)\]', block, re.M | re.S):
         listed[key] = tuple(re.findall(r'"([^"]*)"', items))
     assert listed == ENGINE_MODELS
