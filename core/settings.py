@@ -13,7 +13,8 @@ from ai.providers.openai_compat import PRESETS
 ROOT = Path(__file__).resolve().parent.parent
 SETTINGS_PATH = ROOT / "config" / "settings.toml"
 # The hive (agent inboxes and outboxes) lives outside the app folder, so agents' Edit denial for the app folder does not block their outbox.
-HIVE_DIR = Path.home() / ".hippocampus" / "hive"
+# HIPPOCAMPUS_HIVE moves it, so a test (or a second copy of the app) never shares the real one.
+HIVE_DIR = Path(os.environ.get("HIPPOCAMPUS_HIVE") or Path.home() / ".hippocampus" / "hive")
 
 
 # Token cap windows, shortest first. five_hour is a rolling 5 hours back from now.

@@ -35,6 +35,8 @@ def own_hive(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     from core import settings
 
     hive = tmp_path / "hive-home" / "hive"
+    # A backend started as a separate process by a test reads the folder from the environment.
+    monkeypatch.setenv("HIPPOCAMPUS_HIVE", str(hive))
     monkeypatch.setattr(settings, "HIVE_DIR", hive)
     monkeypatch.setattr(sidecar, "HIVE_DIR", hive)
     return hive
