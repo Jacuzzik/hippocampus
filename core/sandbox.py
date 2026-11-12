@@ -45,9 +45,9 @@ def wrap(
     readonly: list[Path] | None = None,
     cwd: Path | None = None,
 ) -> list[str]:
-    """The same command, started inside the sandbox. Later rules win over earlier ones, so the
-    order below is the policy: home is writable, then the app and the read-only list are closed
-    again, then the few writable folders inside them are opened."""
+    """The same command, started inside the sandbox. The home folder is writable; the app folder and
+    the `readonly` list are closed; each `writable` folder is opened. A rule for a deeper folder
+    wins over one for a folder that holds it."""
     binary = shutil.which("bwrap")
     if binary is None:
         raise RuntimeError("bubblewrap (bwrap) is not installed, so the agent sandbox cannot start.")
@@ -60,15 +60,23 @@ def wrap(
         "--dev-bind", "/dev", "/dev",
         "--proc", "/proc",
         "--tmpfs", "/tmp",
-        "--bind", str(home), str(home),
-        "--ro-bind", str(app_root), str(app_root),
     ]  # fmt: skip
-    for path in readonly or []:
-        if path.exists():
-            args += ["--ro-bind", str(path), str(path)]
+    app_root = app_root.resolve()
+    rules: list[tuple[Path, str]] = [(home.resolve(), "--bind"), (app_root, "--ro-bind")]
+    rules += [(path.resolve(), "--ro-bind") for path in readonly or [] if path.exists()]
     for path in writable or []:
-        if path.exists():
-            args += ["--bind", str(path), str(path)]
+        if not path.exists():
+            continue
+        path = path.resolve()
+        # A writable folder that holds the app (the home folder, say) must not reopen it, and the app
+        # folder itself is never writable. Deeper rules are applied last, so they win.
+        if path == app_root:
+            continue
+        rules.append((path, "--bind"))
+    # Shallow paths first: a rule for a folder inside another always wins over the outer one,
+    # whatever order the caller listed them in.
+    for path, flag in sorted(rules, key=lambda rule: len(rule[0].parts)):
+        args += [flag, str(path), str(path)]
     for name in PRIVATE:
         path = home / name
         if path.is_dir():

@@ -71,3 +71,21 @@ def test_the_switch_is_saved_and_the_rules_are_reported_in_plain_words(tmp_path:
         session.dispatch({"method": "set_agent_shell", "on": "yes"})
     save_agent_shell(False, path)
     assert load_settings(path).agent_shell is False
+
+
+def test_a_working_folder_inside_the_app_or_the_hive_is_not_made_writable(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    hive = tmp_path / "hive"
+    monkeypatch.setattr(terminal, "HIVE_DIR", hive)
+    (hive / "bob" / "inbox").mkdir(parents=True)
+
+    def binds(folder: Path, vault: Path | None = None) -> list[str]:
+        argv = terminal._sandboxed(["claude"], "ada", str(folder), str(vault) if vault else None)
+        return [argv[i + 1] for i, flag in enumerate(argv) if flag == "--bind"]
+
+    assert str(ROOT / "app") not in binds(ROOT / "app")  # app code
+    assert str(ROOT) not in binds(ROOT)
+    assert str(hive / "bob" / "inbox") not in binds(hive / "bob" / "inbox")  # another agent's inbox
+    vault = ROOT / "data" / "brains"
+    if vault.is_dir():
+        assert str(vault) in binds(vault, vault)  # the vault is the one place inside the app an agent writes
+    assert str(tmp_path) in binds(tmp_path)  # an ordinary folder outside both

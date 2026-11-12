@@ -30,13 +30,14 @@ def world(tmp_path: Path) -> dict[str, Path]:
     return paths
 
 
-def run(world: dict[str, Path], script: str) -> subprocess.CompletedProcess[str]:
+def run(world: dict[str, Path], script: str, extra_writable: list[Path] | None = None) -> subprocess.CompletedProcess[str]:
     argv = sandbox.wrap(
         ["sh", "-c", script],
         app_root=world["app"],
         home=world["home"],
         readonly=[world["hive"]],
-        writable=[world["index"], world["outbox"]],
+        # Listed in an awkward order on purpose: the result must not depend on it.
+        writable=[*(extra_writable or []), world["index"], world["outbox"]],
         cwd=world["folder"],
     )
     return subprocess.run(argv, capture_output=True, text=True, timeout=30, check=False)
@@ -67,6 +68,15 @@ def test_nothing_the_agent_runs_can_change_the_app_or_the_system(world: dict[str
     assert done.returncode != 0
     assert (world["app"] / "main.py").read_text() == "print('app')\n"
     assert not (world["app"] / "new.py").exists() and not (world["other"] / "fake.json").exists()
+
+
+@pytest.mark.parametrize("which", ["home", "app"])
+def test_a_writable_folder_that_holds_the_app_or_is_the_app_does_not_reopen_it(world: dict[str, Path], which: str) -> None:
+    # An agent whose working folder is the home folder, or the app folder itself.
+    done = run(world, f"echo x > {world['app']}/new.py; echo x > {world['other']}/fake.json; echo done", [world[which]])
+    assert "done" in done.stdout
+    assert not (world["app"] / "new.py").exists(), "the app folder was writable"
+    assert not (world["other"] / "fake.json").exists(), "another agent's inbox was writable"
 
 
 def test_private_folders_are_empty_inside(world: dict[str, Path]) -> None:

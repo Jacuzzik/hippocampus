@@ -494,18 +494,31 @@ def sandbox_for(provider: str) -> bool:
     return provider == "claude" and sandbox.available()
 
 
+def _inside(path: Path, parent: Path) -> bool:
+    return path == parent or parent in path.parents
+
+
 def _sandboxed(argv: list[str], agent: str, folder: str | None, vault: str | None) -> list[str]:
     """The agent's command inside the sandbox: the app and the hive read-only, its own outbox and the note index writable."""
     outbox = HIVE_DIR / agent / "outbox"
     outbox.mkdir(parents=True, exist_ok=True)
     index = ROOT / "data" / "storage" / "index"
+    vault_dir = Path(vault).resolve() if vault else None
+    writable = [outbox, index, *([vault_dir] if vault_dir else [])]
+    work = Path(folder).resolve() if folder else None
+    # The agent's own folder is writable, unless that would open the app or the hive: a folder inside the
+    # app (other than the vault) or inside the hive stays read-only.
+    if work is not None:
+        in_vault = vault_dir is not None and _inside(work, vault_dir)
+        if in_vault or not (_inside(work, ROOT) or _inside(work, HIVE_DIR.resolve())):
+            writable.append(work)
     return sandbox.wrap(
         argv,
         app_root=ROOT,
         home=Path.home(),
         readonly=[HIVE_DIR, HIVE_DIR.parent / "briefings"],
-        writable=[outbox, index, *([Path(vault)] if vault else []), *([Path(folder)] if folder else [])],
-        cwd=Path(folder) if folder else None,
+        writable=writable,
+        cwd=work,
     )
 
 
