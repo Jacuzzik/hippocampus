@@ -14,6 +14,11 @@ from core.settings import Settings
 logger = logging.getLogger("hippocampus.ai")
 
 
+NO_PRIMARY = (
+    "No Claude login or key is set up (Settings, Models and keys) and no other provider is ready; "
+)
+
+
 class Router:
     def __init__(self, primary: Provider | None, fallback: Provider) -> None:
         self.primary = primary
@@ -21,7 +26,9 @@ class Router:
 
     async def chat(self, messages: list[dict[str, Any]], tools: list[ToolSpec]) -> Reply:
         failure = ""
-        if self.primary is not None:
+        if self.primary is None:
+            failure = NO_PRIMARY
+        else:
             try:
                 return await self.primary.chat(messages, tools)
             except ProviderError as exc:
@@ -31,6 +38,13 @@ class Router:
             return await self.fallback.chat(messages, tools)
         except ProviderError as exc:
             raise ProviderError(f"{failure}{self.fallback.name} failed: {exc}") from exc
+
+
+def primary_ready(settings: Settings, api_key: str | None) -> bool:
+    """Whether a cloud or CLI model is set up; false means replies depend on Ollama running."""
+    if settings.provider != "claude" and settings.provider not in PRESETS:
+        return False  # terminal-only providers (Codex, Gemini CLI) have no chat path here
+    return _primary(settings, api_key) is not None
 
 
 def model_name(settings: Settings, api_key: str | None) -> str:

@@ -49,7 +49,7 @@ from ai import chat_history, cli_sessions, network
 from ai.agent import Agent, AgentPaused
 from ai.keys import clear_api_key, clear_key, get_api_key, get_key, key_hint, set_api_key, set_key
 from ai.providers.openai_compat import PRESETS
-from ai.router import build_router, model_name
+from ai.router import build_router, model_name, primary_ready
 from core import (
     __version__,
     added_agents,
@@ -186,6 +186,7 @@ class Session(
         return {
             "claude": api_key is not None,
             "model": model_name(self.settings, api_key),
+            "ready": primary_ready(self.settings, api_key),
             "provider": self.settings.provider,
         }
 

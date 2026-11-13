@@ -7,7 +7,7 @@ from keyring.errors import KeyringError
 
 from ai import keys
 from ai.providers.base import ProviderError, Reply
-from ai.router import Router, build_router, model_name
+from ai.router import Router, build_router, model_name, primary_ready
 from core.settings import Settings
 
 
@@ -45,6 +45,19 @@ def test_both_failing_names_both() -> None:
     router = Router(Fake("claude", error="HTTP 500"), Fake("ollama", error="not running"))
     with pytest.raises(ProviderError, match="claude failed: HTTP 500.*ollama failed: not running"):
         ask(router)
+
+
+def test_no_model_set_up_and_no_ollama_names_the_one_missing_thing() -> None:
+    router = Router(None, Fake("ollama", error="not running"))
+    with pytest.raises(ProviderError, match="No Claude login or key is set up.*ollama failed"):
+        ask(router)
+
+
+def test_primary_ready_follows_the_login_or_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("ai.router.cli_ready", lambda: False)
+    settings = Settings()
+    assert primary_ready(settings, None) is False
+    assert primary_ready(settings, "k") is True
 
 
 def test_build_router_picks_claude_only_with_a_key(monkeypatch: pytest.MonkeyPatch) -> None:

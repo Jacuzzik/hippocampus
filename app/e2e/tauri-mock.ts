@@ -473,6 +473,7 @@ export async function mockSidecar(
               claude: claudeKey !== null,
               model: claudeKey !== null ? "claude-sonnet-5-5" : "qwen2.5:1.5b",
               provider: claudeKey !== null ? "claude" : "ollama",
+              ready: claudeKey !== null,
             };
           case "sign_in":
             if (!String(args.params?.key ?? "").trim())

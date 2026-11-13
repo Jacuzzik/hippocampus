@@ -38,10 +38,12 @@ def test_sign_in_saves_the_key_and_status_never_returns_it(
     s = session(tmp_path)
     account = s.dispatch({"method": "account"})
     assert (account["claude"], account["model"]) == (False, "qwen2.5:1.5b")
+    assert account["ready"] is False  # nothing set up: replies depend on Ollama
     assert s.dispatch({"method": "sign_in", "key": " sk-test "}) == {"claude": True}
     assert keychain.key == "sk-test"
     account = s.dispatch({"method": "account"})
     assert (account["claude"], account["model"]) == (True, "claude-sonnet-5-5")
+    assert account["ready"] is True
     assert "sk-test" not in str(s.dispatch({"method": "account"}))
 
 
