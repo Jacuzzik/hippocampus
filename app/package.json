@@ -14,7 +14,7 @@
     "prebuild": "npm run tokens",
     "build": "vite build",
     "check": "npm run tokens && svelte-check --tsconfig ./tsconfig.json",
-    "test": "node scripts/require-node24.mjs && node --test scripts/check-tokens.mjs scripts/graph-model.test.mjs scripts/markdown.test.mjs scripts/assistant-model.test.mjs scripts/contrast.test.mjs scripts/allowlist.test.mjs scripts/control.test.mjs scripts/ascii-model.test.mjs scripts/health.test.mjs scripts/design-doc.test.mjs scripts/spend.test.mjs",
+    "test": "node scripts/require-node24.mjs && node --test scripts/check-tokens.mjs scripts/graph-model.test.mjs scripts/markdown.test.mjs scripts/assistant-model.test.mjs scripts/contrast.test.mjs scripts/allowlist.test.mjs scripts/control.test.mjs scripts/ascii-model.test.mjs scripts/health.test.mjs scripts/design-doc.test.mjs scripts/spend.test.mjs scripts/poll.test.mjs",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

@@ -394,6 +394,15 @@
                 onchange={(next) => (prefs.motion = next as Motion)}
               />
             </SettingRow>
+            <SettingRow title="Quiet mode"
+              >{#snippet help()}Turns movement off and slows the background
+                refresh of the tabs to one fifth. Good on a battery.{/snippet}
+              <Toggle
+                bind:checked={prefs.quiet}
+                ariaLabel="Quiet mode"
+                label={prefs.quiet ? "On" : "Off"}
+              />
+            </SettingRow>
             <SettingRow title="Start-up logo"
               >{#snippet help()}How long the logo stays once the app has loaded.
                 Applies from the next start.{/snippet}

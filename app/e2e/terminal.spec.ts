@@ -125,3 +125,40 @@ test("the terminal's state is a live region a screen reader announces", async ({
   await expect(state).toHaveText(/running|idle/);
   await expect(state).toHaveAttribute("role", "status");
 });
+
+test("focus mode dims the notes and the graph around the selected agent, and Escape leaves", async ({
+  page,
+}) => {
+  await page
+    .getByLabel("Agents")
+    .getByRole("button", { name: "+ Add agent" })
+    .click();
+  const add = page.getByRole("dialog", { name: "Add agent" });
+  await add.getByRole("textbox", { name: "Name", exact: true }).fill("Ada");
+  await add.getByRole("button", { name: "Next" }).click();
+  await add.getByLabel("Folder in workspaces").selectOption("IT");
+  await add.getByRole("button", { name: "Next" }).click();
+  await add.getByRole("button", { name: "claude-sonnet-5-5" }).click();
+  await add.getByRole("button", { name: "Next" }).click();
+  await add
+    .getByRole("textbox", { name: "Goal", exact: true })
+    .fill("Tidy the inbox notes");
+  await add.getByRole("button", { name: "Spawn" }).click();
+  const opacity = () =>
+    page
+      .locator("main.graph")
+      .evaluate((node) => getComputedStyle(node).opacity);
+  const focus = async (): Promise<void> => {
+    await page.keyboard.press("Control+p");
+    await page.getByRole("combobox").fill("Focus on the selected agent");
+    await page.keyboard.press("Enter");
+  };
+  // With no agent selected, the command does nothing.
+  await focus();
+  expect(await opacity()).toBe("1");
+  await page.getByRole("button", { name: "TALK" }).last().click();
+  await focus();
+  await expect.poll(opacity).toBe("0.3");
+  await page.keyboard.press("Escape");
+  await expect.poll(opacity).toBe("1");
+});

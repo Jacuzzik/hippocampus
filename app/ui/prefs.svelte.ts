@@ -1,12 +1,15 @@
 // Settings that belong to this window, not to the backend: text size, motion, the last open tab.
 // Saved in the window's own storage, so they survive a restart and need no backend call.
 
+import { setQuiet } from "./poll.ts";
+
 export type Motion = "system" | "on" | "off";
 /** Dark is the app's own look; System follows the computer. */
 export type Theme = "dark" | "light" | "system";
 /** How long the logo stays over the app once it has loaded: 10 seconds, 1 second, or not at all. */
 export type Intro = "long" | "short" | "off";
 type Prefs = {
+  quiet: boolean;
   terminalFontSize: number;
   motion: Motion;
   theme: Theme;
@@ -20,6 +23,7 @@ const KEY = "hippocampus.prefs";
 export const FONT_MIN = 10;
 export const FONT_MAX = 20;
 const DEFAULTS: Prefs = {
+  quiet: false,
   terminalFontSize: 12,
   motion: "system",
   theme: "dark",
@@ -49,6 +53,7 @@ function read(): Prefs {
           : "dark",
       intro:
         saved.intro === "short" || saved.intro === "off" ? saved.intro : "long",
+      quiet: saved.quiet === true,
       rememberTab: saved.rememberTab !== false,
       lastTab:
         typeof saved.lastTab === "string" ? saved.lastTab : DEFAULTS.lastTab,
@@ -76,7 +81,9 @@ function save(): void {
 
 /** Puts the motion choice on the page, where global.css reads it. "system" follows the computer's setting. */
 export function applyMotion(): void {
-  document.documentElement.dataset.motion = state.motion;
+  // Quiet mode turns movement off whatever the Motion setting says.
+  document.documentElement.dataset.motion = state.quiet ? "off" : state.motion;
+  setQuiet(state.quiet);
 }
 
 const systemLight =
@@ -99,6 +106,14 @@ export function applyTheme(): void {
 systemLight?.addEventListener("change", applyTheme);
 
 export const prefs = {
+  get quiet(): boolean {
+    return state.quiet;
+  },
+  set quiet(value: boolean) {
+    state.quiet = value;
+    applyMotion();
+    save();
+  },
   get terminalFontSize(): number {
     return state.terminalFontSize;
   },

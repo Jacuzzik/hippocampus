@@ -20,6 +20,7 @@
   import SettingsDialog from "./control/SettingsDialog.svelte";
   import CommandBox, { type Item } from "./overlays/CommandBox.svelte";
   import type { GraphData } from "./graph/model.ts";
+  import { selection } from "./owner/addedAgents.svelte.ts";
   import { SETTINGS_PAGES, type SettingsPage } from "./control/model.ts";
   import { tick } from "svelte";
 
@@ -90,6 +91,11 @@
   let settingsStart = $state<SettingsPage>("General");
   // Full screen layout from the top bar: only the terminal and the agent cards show.
   let terminalOnly = $state(false);
+  // Focus mode: with an agent selected, everything but its terminal and card dims. Escape leaves.
+  let focusOn = $state(false);
+  $effect(() => {
+    if (selection.id === null) focusOn = false;
+  });
 
   // Ctrl on Linux and Windows, Cmd on macOS. Both shortcuts take over the browser default.
   // F11 toggles full screen, as in browsers. Needs the window fullscreen permissions in capabilities.
@@ -99,6 +105,10 @@
   }
 
   function onKey(e: KeyboardEvent): void {
+    if (e.key === "Escape" && focusOn) {
+      focusOn = false;
+      return;
+    }
     if (e.key === "F11" && !e.altKey && !e.ctrlKey && !e.metaKey) {
       e.preventDefault();
       void toggleFullscreen();
@@ -146,6 +156,11 @@
       id: "account",
       label: "Setup and account",
       run: () => (setupOpen = true),
+    },
+    {
+      id: "focus",
+      label: "Focus on the selected agent (Escape leaves)",
+      run: () => (focusOn = selection.id !== null),
     },
     {
       id: "tools",
@@ -319,6 +334,7 @@
   class:no-sidebar={!sidebarOpen}
   class:no-panel={!panelOpen}
   class:terminal-only={terminalOnly}
+  class:focus={focusOn}
 >
   <Ribbon
     bind:sidebarOpen
@@ -467,6 +483,22 @@
   }
 
   /* Full screen layout: the graph column shrinks to its top bar, the terminal takes the rest. */
+  /* Focus mode: the notes and the graph step back; the right panel and the agent cards stay. */
+  .shell > :global(.sidebar),
+  .shell > :global(.graph),
+  .shell > :global(.right-panel) {
+    transition: opacity var(--duration-base) var(--ease-standard);
+  }
+
+  .shell.focus > :global(.sidebar),
+  .shell.focus > :global(.graph) {
+    opacity: 0.3;
+  }
+
+  .shell.focus :global(.chip:not(.selected)) {
+    opacity: 0.4;
+  }
+
   .shell.terminal-only {
     grid-template-columns: var(--layout-ribbon-width) auto minmax(0, 1fr);
     grid-template-areas:

@@ -372,3 +372,25 @@ test("Privacy and data lists everything that leaves the computer, and says nothi
     await expect(panel).toContainText(row);
   await expect(panel).toContainText("Nothing is collected or sent");
 });
+
+test("Quiet mode turns movement off, is kept after a reload, and can be turned back off", async ({
+  page,
+}) => {
+  await mockSidecar(page);
+  await page.goto("/");
+  const motion = () =>
+    page.evaluate(() => document.documentElement.dataset.motion);
+  expect(await motion()).toBe("system");
+  let dialog = await openSettings(page);
+  await dialog.getByRole("tab", { name: "Appearance" }).click();
+  await dialog.getByRole("checkbox", { name: "Quiet mode" }).check();
+  expect(await motion()).toBe("off");
+  await page.reload();
+  expect(await motion()).toBe("off");
+  dialog = await openSettings(page);
+  await dialog.getByRole("tab", { name: "Appearance" }).click();
+  const box = dialog.getByRole("checkbox", { name: "Quiet mode" });
+  await expect(box).toBeChecked();
+  await box.uncheck();
+  expect(await motion()).toBe("system");
+});
