@@ -32,7 +32,7 @@ class MemoryPart:
                 }
             )
         rows.sort(key=lambda r: r["updated_at"], reverse=True)
-        return {"notes": rows}
+        return {"notes": rows, "max_bytes": self.settings.memory_max_bytes}
 
     def _memory_texts(self) -> dict[str, str]:
         """Every assistant memory note's text, keyed by vault path."""

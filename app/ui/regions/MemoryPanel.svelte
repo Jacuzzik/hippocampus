@@ -9,6 +9,7 @@
   type Note = { agent: string; bytes: number; updated_at: string };
 
   let notes = $state<Note[]>([]);
+  let cap = $state(32000);
   let failed = $state(false);
   // False until the first answer (or failure), so an empty list is not shown while it is still loading.
   let loaded = $state(false);
@@ -16,9 +17,12 @@
   // Read again every few seconds while this tab is open, so it does not go stale.
   async function load(): Promise<void> {
     try {
-      notes = (
-        await invoke<{ notes: Note[] }>("sidecar_call", { method: "memory" })
-      ).notes;
+      const found = await invoke<{ notes: Note[]; max_bytes?: number }>(
+        "sidecar_call",
+        { method: "memory" },
+      );
+      notes = found.notes;
+      cap = found.max_bytes ?? cap;
       failed = false;
       loaded = true;
     } catch (cause) {
@@ -46,11 +50,23 @@
         <li>
           <span class="agent">{note.agent}</span>
           <small
-            >{(note.bytes / 1024).toFixed(1)} KB · {note.updated_at.replace(
+            >{(note.bytes / 1024).toFixed(1)} of {(cap / 1024).toFixed(1)} KB · {note.updated_at.replace(
               "T",
               " ",
             )}</small
           >
+          <meter
+            class:full={note.bytes >= cap * 0.8}
+            min="0"
+            max={cap}
+            value={note.bytes}
+            aria-label="{note.agent} memory size"
+          ></meter>
+          {#if note.bytes >= cap * 0.8}
+            <span class="near"
+              >{note.bytes >= cap ? "Full" : "Nearly full"}</span
+            >
+          {/if}
         </li>
       {/each}
     </ul>
@@ -87,6 +103,16 @@
   li small {
     margin-left: auto;
     color: var(--color-md-text-muted);
+  }
+
+  meter {
+    flex-basis: 100%;
+    width: 100%;
+    height: var(--space-2);
+  }
+
+  .near {
+    color: var(--color-ds-warning);
   }
 
   .muted {

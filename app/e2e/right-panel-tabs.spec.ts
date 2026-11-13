@@ -114,3 +114,33 @@ test("the skills tab can be searched by name or by what a skill does", async ({
   await expect(region).not.toContainText("tidy-notes");
   await expect(region).toContainText('No skill matches "zebra".');
 });
+
+test("the activity tab filters by kind and by a word, and can be paused", async ({
+  page,
+}) => {
+  await page.getByRole("tab", { name: "activity" }).click();
+  const region = page.getByRole("region", { name: "Activity" });
+  await expect(region).toContainText("search_notes");
+  await region.getByLabel("Filter by kind").selectOption("approval");
+  await expect(region).not.toContainText("search_notes");
+  await expect(region).toContainText("create_note");
+  await region.getByLabel("Filter by kind").selectOption("all");
+  await region.getByLabel("Search activity").fill("zzzz");
+  await expect(region).toContainText("Nothing matches.");
+  await region.getByLabel("Search activity").fill("");
+  await region.getByRole("checkbox", { name: "Pause" }).check();
+  await expect(region.getByRole("checkbox", { name: "Pause" })).toBeChecked();
+});
+
+test("the memory tab shows a size meter against the cap and warns near it", async ({
+  page,
+}) => {
+  await page.getByRole("tab", { name: "memory" }).click();
+  const region = page.getByRole("region", { name: "Memory" });
+  await expect(region.getByLabel("god memory size")).toHaveAttribute(
+    "max",
+    "32000",
+  );
+  await expect(region).toContainText("4.0 of 31.3 KB");
+  await expect(region).toContainText("Nearly full");
+});

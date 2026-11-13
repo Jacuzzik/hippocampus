@@ -5,6 +5,7 @@
   import { every } from "../poll.ts";
   import { flagOn } from "../flags.svelte.ts";
   import { invoke } from "@tauri-apps/api/core";
+  import Toggle from "../controls/Toggle.svelte";
 
   type Row = {
     ts: string;
@@ -20,9 +21,15 @@
   let failed = $state(false);
   // False until the first answer (or failure), so an empty list is not shown while it is still loading.
   let loaded = $state(false);
+  // Filters: a kind (all by default), a word in the line, and a pause switch that stops the refresh.
+  let kind = $state("all");
+  let word = $state("");
+  let paused = $state(false);
+  const kinds = $derived([...new Set(rows.map((row) => row.kind))].sort());
 
   // Read again every few seconds while this tab is open, so it does not go stale.
   async function load(): Promise<void> {
+    if (paused && loaded) return;
     try {
       rows = (
         await invoke<{ rows: Row[] }>("sidecar_call", { method: "activity" })
@@ -45,6 +52,13 @@
     [row.tool, row.tier, row.approved ? "approved" : row.status]
       .filter(Boolean)
       .join(" · ");
+  const shown = $derived(
+    rows.filter(
+      (row) =>
+        (kind === "all" || row.kind === kind) &&
+        label(row).toLowerCase().includes(word.trim().toLowerCase()),
+    ),
+  );
 </script>
 
 <section class="activity" aria-label="Activity">
@@ -55,8 +69,24 @@
   {:else if rows.length === 0}
     <p class="muted">No activity yet.</p>
   {:else}
+    <div class="filters">
+      <select aria-label="Filter by kind" bind:value={kind}>
+        <option value="all">All kinds</option>
+        {#each kinds as k (k)}<option value={k}>{k}</option>{/each}
+      </select>
+      <input
+        type="search"
+        aria-label="Search activity"
+        placeholder="Search activity"
+        bind:value={word}
+      />
+      <Toggle bind:checked={paused} label="Pause" />
+    </div>
+    {#if shown.length === 0}
+      <p class="muted">Nothing matches.</p>
+    {/if}
     <ul>
-      {#each rows as row (row.ts + row.kind + label(row))}
+      {#each shown as row (row.ts + row.kind + label(row))}
         <li>
           <span class="kind {row.kind}">{row.kind}</span>
           <span class="text">{label(row)}</span>
@@ -73,6 +103,19 @@
     font-size: var(--font-size-xs);
     color: var(--color-md-text);
     overflow-y: auto;
+  }
+
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    align-items: center;
+    padding-bottom: var(--space-2);
+  }
+
+  .filters input[type="search"] {
+    flex: 1;
+    min-width: 0;
   }
 
   ul {

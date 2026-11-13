@@ -460,7 +460,13 @@ export async function mockSidecar(
               notes: [
                 { agent: "god", bytes: 4096, updated_at: "2026-10-29T13:30" },
                 { agent: "kevin", bytes: 2048, updated_at: "2026-10-28T09:12" },
+                {
+                  agent: "oscar",
+                  bytes: 30000,
+                  updated_at: "2026-10-27T08:00",
+                },
               ],
+              max_bytes: 32000,
             };
           case "account":
             return {
