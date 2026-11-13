@@ -674,6 +674,14 @@ export async function mockSidecar(
           case "clear_key":
             if (String(args.params?.provider) === "claude") claudeKey = null;
             return { keys: keyRows() };
+          case "link_doctor":
+            return {
+              notes: 3,
+              broken_count: 1,
+              lonely_count: 1,
+              broken: [{ note: "Alpha.md", link: "Missing note" }],
+              lonely: ["Gamma.md"],
+            };
           case "settings_export":
             return { text: '[network]\nmode = "ask"\n', path: "/mock" };
           case "settings_import":

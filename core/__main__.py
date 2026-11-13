@@ -61,6 +61,7 @@ from core import (
     crash_log,
     doctor,
     inbox,
+    link_doctor,
     note_actions,
     safe_write,
     sandbox,
@@ -699,6 +700,12 @@ class Session:
                 if target is None
             )
         return f"{broken} broken link(s)"
+
+    def link_doctor(self) -> dict[str, Any]:
+        with self.lock:
+            if self.indexer is None:
+                raise ValueError("no vault is open")
+            return link_doctor.report(self.indexer.store)
 
     def helpers_state(self) -> dict[str, Any]:
         return {"helpers": self.helpers.list(), "limit": 4}
@@ -1527,6 +1534,7 @@ class Session:
             "local_status": self.local_status,
             "doctor": self.doctor,
             "settings_export": self.settings_export,
+            "link_doctor": self.link_doctor,
             "crashes": self.crashes,
             "clear_crashes": self.clear_crashes,
         }

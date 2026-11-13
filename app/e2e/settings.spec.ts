@@ -223,3 +223,18 @@ test("settings can be imported as text, and a bad text is refused with the reaso
   await dialog.getByRole("button", { name: "Import" }).click();
   await expect(dialog.getByRole("status")).toContainText("Settings imported");
 });
+
+test("Doctor lists broken links and notes with no links", async ({ page }) => {
+  await mockSidecar(page);
+  await page.goto("/");
+  const dialog = await openSettings(page);
+  await dialog.getByRole("tab", { name: "Doctor" }).click();
+  const links = dialog.getByRole("region", { name: "Link doctor" });
+  await expect(links).toContainText("3 notes, 1 broken link, 1 with no links");
+  await expect(links.getByRole("list", { name: "Broken links" })).toContainText(
+    'links to "Missing note"',
+  );
+  await expect(
+    links.getByRole("list", { name: "Notes with no links" }),
+  ).toContainText("Gamma.md");
+});

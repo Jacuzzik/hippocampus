@@ -198,7 +198,27 @@
   }
   $effect(() => {
     if (page === "Doctor" && doctor === null && !doctorError) void readDoctor();
+    if (page === "Doctor" && links === null && !linksError) void readLinks();
   });
+
+  // Link doctor: links that point at no note, and notes nothing links to. Read only.
+  type Links = {
+    notes: number;
+    broken_count: number;
+    lonely_count: number;
+    broken: { note: string; link: string }[];
+    lonely: string[];
+  };
+  let links = $state<Links | null>(null);
+  let linksError = $state<string | null>(null);
+  async function readLinks(): Promise<void> {
+    linksError = null;
+    try {
+      links = await invoke<Links>("sidecar_call", { method: "link_doctor" });
+    } catch (cause) {
+      linksError = String(cause);
+    }
+  }
 
   // The backend log file, newest lines last. Read when the Advanced page opens and on Refresh.
   let logLines = $state<string[] | null>(null);
@@ -699,6 +719,51 @@
                       <p>{check.found}</p>
                       {#if check.fix}<p class="fix">{check.fix}</p>{/if}
                     </div>
+                  </li>
+                {/each}
+              </ul>
+            {/if}
+          </section>
+          <section class="control-section" aria-label="Link doctor">
+            <h3>Links in your notes</h3>
+            <div class="setting">
+              <div>
+                <b
+                  >{links
+                    ? `${links.notes} notes, ${links.broken_count} broken ${links.broken_count === 1 ? "link" : "links"}, ${links.lonely_count} with no links`
+                    : linksError
+                      ? "Not checked"
+                      : "Checking…"}</b
+                >
+                <p>
+                  A broken link points at a note that does not exist. Nothing is
+                  repaired here; open the note to fix it.
+                </p>
+              </div>
+              <button type="button" onclick={() => void readLinks()}
+                >Check again</button
+              >
+            </div>
+            {#if linksError}<p class="error" role="alert">{linksError}</p>{/if}
+            {#if links && links.broken.length > 0}
+              <ul class="checks" aria-label="Broken links">
+                {#each links.broken as row, i (i)}
+                  <li>
+                    <span class="state bad">Fix</span>
+                    <div>
+                      <b>{row.note}</b>
+                      <p>links to "{row.link}", which is not a note.</p>
+                    </div>
+                  </li>
+                {/each}
+              </ul>
+            {/if}
+            {#if links && links.lonely.length > 0}
+              <ul class="checks" aria-label="Notes with no links">
+                {#each links.lonely as path (path)}
+                  <li>
+                    <span class="state warn">Look</span>
+                    <div><b>{path}</b></div>
                   </li>
                 {/each}
               </ul>
