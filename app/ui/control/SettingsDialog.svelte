@@ -1,4 +1,5 @@
 <script lang="ts">
+  import PlannedSection from "./PlannedSection.svelte";
   import SettingRow from "../controls/SettingRow.svelte";
   import Toggle from "../controls/Toggle.svelte";
   import { dialogFocus } from "../controls/dialogFocus.ts";
@@ -614,6 +615,8 @@
               </tbody>
             </table>
           </section>
+        {:else if page === "Planned"}
+          <PlannedSection />
         {:else if page === "Doctor"}
           <section class="control-section">
             <h3>Doctor</h3>

@@ -148,6 +148,11 @@ export const SETTINGS_PAGES = [
       "backend sidecar logs log file feature switches flags dictation meeting prerequisites",
   },
   {
+    id: "Planned",
+    words:
+      "planned features not built yet roadmap worktree dictation languages telemetry",
+  },
+  {
     id: "Doctor",
     words:
       "health check problems installed signed in vault disk sandbox prerequisites fix",

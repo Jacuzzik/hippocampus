@@ -26,6 +26,7 @@ test("settings has a page per category and each one opens", async ({
     Memory: "Memory size per agent",
     "Privacy and data": "Error log",
     Advanced: "Backend (Python sidecar)",
+    Planned: "Planned features",
     Doctor: "Doctor",
     Keyboard: "Open the command palette",
     About: "Hippocampus",
@@ -318,4 +319,20 @@ test("the graph switches are the shared switch and still hide orphans and names"
   await expect(names).toBeChecked();
   await names.uncheck();
   await expect(names).not.toBeChecked();
+});
+
+test("Planned features are cards that say what is missing, never dead buttons", async ({
+  page,
+}) => {
+  await mockSidecar(page);
+  await page.goto("/");
+  const dialog = await openSettings(page);
+  await dialog.getByRole("tab", { name: "Planned", exact: true }).click();
+  const cards = dialog.getByRole("tabpanel").locator("article");
+  await expect(cards).toHaveCount(15);
+  for (const card of await cards.all()) {
+    await expect(card).toContainText("Planned");
+    await expect(card.locator("p.reason")).not.toBeEmpty();
+    await expect(card.getByRole("button")).toHaveCount(0);
+  }
 });
