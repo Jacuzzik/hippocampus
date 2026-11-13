@@ -3,6 +3,7 @@
 from datetime import datetime
 from typing import Any
 
+from ai import cli_sessions
 from core import (
     added_agents,
     briefing,
@@ -85,3 +86,20 @@ class TerminalPart:
         else:
             self.terminals.stop(agent)
         return {"ok": True}
+
+    def terminal_context(self, request: dict[str, Any]) -> dict[str, Any]:
+        return {"percent": cli_sessions.context_percent(request["agent"])}
+
+    def terminal_traces(self, request: dict[str, Any]) -> dict[str, Any]:
+        """What the agent ran, newest first: every tool call with its time and outcome, shell commands included."""
+        return {"traces": cli_sessions.tool_trace(request["agent"])}
+
+    def terminal_command(self, request: dict[str, Any]) -> dict[str, Any]:
+        # "boot" changes each time the backend starts, so the window can tell a restart from a quiet moment
+        # and start the agents' programs again (they stop with the backend).
+        who = str(request.get("agent") or "")
+        return {
+            **self.terminals.info(who),
+            "boot": self.boot,
+            "briefing": self.briefing_stamps.get(who),
+        }

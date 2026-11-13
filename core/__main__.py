@@ -36,11 +36,9 @@ import signal
 import subprocess
 import sys
 import threading
-import tomllib
-import urllib.request
 import uuid
 from collections.abc import Callable
-from dataclasses import asdict, replace
+from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 from typing import Any, TextIO
@@ -57,12 +55,8 @@ from core import (
     added_agents,
     app_log,
     crash_log,
-    doctor,
     inbox,
-    note_actions,
-    safe_write,
-    sandbox,
-    share,
+    migrate,
     skills,
 )
 from core import activity as journal
@@ -70,40 +64,42 @@ from core import budget as budgets
 from core import memory as memory_notes
 from core.cards import CardStore
 from core.helpers import Helpers
+from core.session_agents import AgentsPart
+from core.session_budget import BudgetPart
+from core.session_dispatch import DispatchPart
 from core.session_hive import HivePart
 from core.session_jobs import JobsPart
+from core.session_memory import MemoryPart
+from core.session_notes import NotesPart
 from core.session_records import RecordsPart
+from core.session_settings import SettingsPart
 from core.session_shared import (
-    DEFAULT_HIVE_DIR,
     DEFAULT_STORAGE,
     DEFAULT_TASKS_FILE,
     KEYCHAIN_MISSING,
     SCHEDULE_SECONDS,
     SKILLS_DIR,
     Emit,
+    _whole,
     logger,
 )
 from core.session_terminal import TerminalPart
 from core.settings import (
     CAP_WINDOWS,
     HIVE_DIR,
-    ROOT,
     SETTINGS_PATH,
     Caps,
     Settings,
     load_settings,
-    save_agent_shell,
     save_allowed_tools,
     save_budget,
-    save_engine,
     save_network_mode,
     save_vault,
 )
 from core.system_stats import SystemStats
-from core.terminal import Terminals, engine_problem, sandbox_for
+from core.terminal import Terminals
 from core.vault import Indexer, open_index
 from core.vault.changes import ChangeFlag
-from core.vault.scanner import iter_notes
 from core.vault.watcher import VaultWatcher
 from tools.agent_tools import agent_tools
 from tools.gate import AskQueue, ConfirmGate, KillSwitch, Stopped
@@ -111,7 +107,18 @@ from tools.registry import CONFIRM_TIERS
 from tools.vault_tools import vault_tools
 
 
-class Session(JobsPart, HivePart, RecordsPart, TerminalPart):
+class Session(
+    JobsPart,
+    HivePart,
+    RecordsPart,
+    TerminalPart,
+    NotesPart,
+    MemoryPart,
+    AgentsPart,
+    SettingsPart,
+    BudgetPart,
+    DispatchPart,
+):
     """The vault the serve loop has open, the assistant, and the requests they answer.
 
     `lock` guards the SQLite store, which the chat's tools share with the requests.
@@ -125,6 +132,8 @@ class Session(JobsPart, HivePart, RecordsPart, TerminalPart):
         settings_path: Path = SETTINGS_PATH,
     ) -> None:
         self.storage = storage
+        # Bring an older data folder up to this version (after a backup); refuse one from a newer app.
+        migrate.migrate(storage)
         # The sessions and chat history live in the app's storage folder, which survives restarts.
         cli_sessions.FILE = storage / "claude_sessions.json"
         chat_history.FILE = storage / "chat_history.json"
@@ -168,19 +177,6 @@ class Session(JobsPart, HivePart, RecordsPart, TerminalPart):
         self.ledger = budgets.Ledger(storage / "usage.jsonl")
         self.helpers = Helpers(self._helper_run, lambda e: self.note("handoff", text=e["text"]))
         network.set_mode(self.settings.network_mode)
-
-    def open(self, vault: Path) -> dict[str, Any]:
-        if not vault.is_dir():
-            raise ValueError(f"vault folder not found: {vault}")
-        with self.lock:
-            self.close()
-            self.indexer = open_index(vault, self.storage)
-            # Started before the sync, so an edit made during it is not missed.
-            self.vault_changes = ChangeFlag(vault)
-            stats = self.indexer.full_sync()
-            self.trim_memory()
-            status = {f"{k}_files": getattr(stats, k) for k in stats.__slots__}
-            return {"vault": str(vault.resolve()), **self.indexer.store.counts(), **status}
 
     def account(self) -> dict[str, Any]:
         # Only whether a key is saved and the model name; the key itself never leaves the keychain.
@@ -230,46 +226,6 @@ class Session(JobsPart, HivePart, RecordsPart, TerminalPart):
             str(a["id"]) for a in added_agents.load(self.agents_path) if a.get("id")
         }
 
-    def memory_notes(self) -> dict[str, Any]:
-        # Read-only list of each agent's memory.md: size and last update, newest first.
-        agents = Path(os.environ.get("MD_HIVE_DIR", DEFAULT_HIVE_DIR)) / "agents"
-        rows: list[dict[str, Any]] = []
-        for file in agents.glob("*/memory.md"):
-            try:
-                stat = file.stat()
-            except OSError:
-                continue
-            rows.append(
-                {
-                    "agent": file.parent.name,
-                    "bytes": stat.st_size,
-                    "updated_at": datetime.fromtimestamp(stat.st_mtime).isoformat(
-                        timespec="minutes"
-                    ),
-                }
-            )
-        rows.sort(key=lambda r: r["updated_at"], reverse=True)
-        return {"notes": rows}
-
-    def settings_view(self) -> dict[str, Any]:
-        # Read-only view of the saved settings. API keys are never included.
-        s = self.settings
-        return {
-            "general": {"vault": str(s.vault) if s.vault else None, "network": s.network_mode},
-            "agents": {
-                "provider": s.provider,
-                "model": s.provider_model or s.claude_model,
-                "ollama": s.ollama_model,
-            },
-            "budgets": {
-                "app": asdict(s.budget),
-                "assistant": asdict(s.assistant_budget),
-                "max_tool_calls": s.max_tool_calls,
-            },
-            "memory": {"max_bytes": s.memory_max_bytes},
-            "shell": self.shell_state(),
-        }
-
     def sign_in(self, request: dict[str, Any]) -> dict[str, Any]:
         key = request.get("key")
         if not isinstance(key, str) or not key.strip():
@@ -295,62 +251,7 @@ class Session(JobsPart, HivePart, RecordsPart, TerminalPart):
             shutil.rmtree(index)
         return self.sign_out()
 
-    def graph(self) -> dict[str, Any]:
-        with self.lock:
-            if self.indexer is None:
-                raise ValueError("no vault is open")
-            # Notes changed on disk (by the agents or the user) are picked up here. The vault is walked only
-            # when the watch saw a change, not on every poll.
-            if self.vault_changes is None or self.vault_changes.take():
-                self.indexer.full_sync()
-            return self.indexer.store.graph()
-
-    def read(self, request: dict[str, Any]) -> dict[str, Any]:
-        """Return a note's text. The path checks are the ones `read_note` uses."""
-        path = request.get("path")
-        with self.lock:
-            if self.indexer is None:
-                raise ValueError("no vault is open")
-            text = vault_tools(self.indexer, self.lock)["read_note"].run({"path": path})
-        return {"id": path, "text": text}
-
-    def _open_vault(self) -> None:
-        if self.indexer is None:
-            raise ValueError("no vault is open")
-
     # The graph's right-click actions. The app asks for each one after the user picks it; deletes are confirmed there.
-    def note_text(self, request: dict[str, Any]) -> dict[str, Any]:
-        self._open_vault()
-        path = request.get("path")
-        return {"id": path, "text": note_actions.read_full(self.indexer, self.lock, path)}
-
-    def note_save(self, request: dict[str, Any]) -> dict[str, Any]:
-        self._open_vault()
-        text = request.get("text")
-        if not isinstance(text, str):
-            raise ValueError('"note_save" needs the note "text"')
-        saved = vault_tools(self.indexer, self.lock)["edit_note"].run(
-            {"path": request.get("path"), "content": text}
-        )
-        return {"saved": saved}
-
-    def note_delete(self, request: dict[str, Any]) -> dict[str, Any]:
-        self._open_vault()
-        deleted = note_actions.delete(
-            self.indexer, self.lock, request.get("path"), str(request.get("scope"))
-        )
-        return {"deleted": deleted}
-
-    def note_colour(self, request: dict[str, Any]) -> dict[str, Any]:
-        self._open_vault()
-        changed = note_actions.colour(
-            self.indexer,
-            self.lock,
-            request.get("path"),
-            str(request.get("scope")),
-            request.get("status"),
-        )
-        return {"changed": changed}
 
     def chat(self, request: dict[str, Any]) -> dict[str, Any]:
         text = request.get("text")
@@ -481,28 +382,6 @@ class Session(JobsPart, HivePart, RecordsPart, TerminalPart):
         elif status in ("done", "failed", "refused"):
             self.note("tool", tool=name, tier=tier, status=status, call=call)
 
-    def budget_overrun(self) -> budgets.Overrun | None:
-        return self.ledger.first_overrun(
-            {
-                "app": (self.settings.budget, None),
-                "assistant": (self.settings.assistant_budget, "assistant"),
-            }
-        )
-
-    def budget(self) -> dict[str, Any]:
-        """Each cap, and the tokens used so far in each window, for the app and the assistant."""
-        now = datetime.now().astimezone()
-        scopes = {
-            "app": (self.settings.budget, None),
-            "assistant": (self.settings.assistant_budget, "assistant"),
-        }
-        used = {
-            scope: {w: self.ledger.used(w, now, agent) for w in CAP_WINDOWS}
-            for scope, (_caps, agent) in scopes.items()
-        }
-        caps = {scope: asdict(caps) for scope, (caps, _agent) in scopes.items()}
-        return {"caps": caps, "used": used, "allowance": self.allowance}
-
     def set_budget(self, request: dict[str, Any]) -> dict[str, Any]:
         caps = {}
         for scope in ("app", "assistant"):
@@ -516,15 +395,6 @@ class Session(JobsPart, HivePart, RecordsPart, TerminalPart):
         )
         self.note("setting", text="token budget caps changed")
         return self.budget()
-
-    def budget_allow(self) -> dict[str, Any]:
-        """Let the next request past a cap through, once."""
-        self.allowance = True
-        self.note("setting", text="one request allowed past a budget cap")
-        return {"allowance": True}
-
-    def network_state(self) -> dict[str, Any]:
-        return {"mode": self.settings.network_mode, "modes": list(network.MODES)}
 
     def set_vault(self, request: dict[str, Any]) -> dict[str, Any]:
         # Opens the folder first, so a bad path is never saved.
@@ -548,35 +418,6 @@ class Session(JobsPart, HivePart, RecordsPart, TerminalPart):
         self.note("setting", text=f"network set to {mode}")
         return self.network_state()
 
-    def shell_state(self) -> dict[str, Any]:
-        """Whether every agent has a shell, whether the sandbox can run here, and the rules in plain words."""
-        on = self.settings.agent_shell
-        usable = sandbox.available()
-        return {
-            "on": on,
-            "sandbox_available": usable,
-            "main": sandbox.policy_lines(
-                shell=True, sandboxed=on and usable, blocked=False, app_root=ROOT
-            ),
-            "agents": sandbox.policy_lines(
-                shell=on and usable, sandboxed=on and usable, blocked=False, app_root=ROOT
-            ),
-            "note": (
-                "Applies to agents on Claude Code. Other programs (Codex, Gemini, OpenCode) keep their own rules until each is tested in the sandbox."
-                if sandbox_for("claude")
-                else "The sandbox (bubblewrap) cannot start on this computer, so normal agents get no shell."
-            ),
-        }
-
-    def set_agent_shell(self, request: dict[str, Any]) -> dict[str, Any]:
-        on = request.get("on")
-        if not isinstance(on, bool):
-            raise ValueError('"set_agent_shell" needs "on": true or false')
-        save_agent_shell(on, self.settings_path)
-        self.settings = replace(self.settings, agent_shell=on)
-        self.note("setting", text=f"shell for all agents turned {'on' if on else 'off'}")
-        return self.shell_state()
-
     def activity(self, request: dict[str, Any]) -> dict[str, Any]:
         kind = request.get("kind")
         if kind is not None and kind not in journal.KINDS:
@@ -588,34 +429,6 @@ class Session(JobsPart, HivePart, RecordsPart, TerminalPart):
 
     def asks_waiting(self) -> dict[str, Any]:
         return {"asks": [{"call": call, "question": q} for call, q in self.asks.waiting()]}
-
-    def _memory_texts(self) -> dict[str, str]:
-        """Every assistant memory note's text, keyed by vault path."""
-        if self.indexer is None:
-            raise ValueError("no vault is open")
-        notes = {}
-        for note in iter_notes(self.indexer.vault):
-            text = (self.indexer.vault / note.path).read_text(encoding="utf-8", errors="replace")
-            if memory_notes.is_memory(text):
-                notes[note.path] = text
-        return notes
-
-    def memory_search(self, request: dict[str, Any]) -> dict[str, Any]:
-        mode = request.get("mode", "text")
-        query = request.get("query")
-        if not isinstance(query, str):
-            raise ValueError('"query" must be text')
-        with self.lock:
-            notes = self._memory_texts()
-        if mode == "text":
-            return {"mode": mode, "hits": memory_notes.search_text(notes, query)}
-        if mode != "meaning":
-            raise ValueError('"mode" is "text" or "meaning"')
-        ranked = memory_notes.search_meaning(notes, query, self.embedder)
-        return {"mode": mode, "hits": [{"path": p, "score": round(s, 3)} for p, s in ranked]}
-
-    def memory_status(self) -> dict[str, Any]:
-        return {**memory_notes.status(self.embedder), "max_bytes": self.settings.memory_max_bytes}
 
     def skills_state(self) -> dict[str, Any]:
         return {"skills": skills.list_skills(SKILLS_DIR)}
@@ -642,235 +455,10 @@ class Session(JobsPart, HivePart, RecordsPart, TerminalPart):
         self.note("tool", tool="open_skill_folder", tier="open", status="done")
         return self.skills_state()
 
-    def agents_state(self) -> dict[str, Any]:
-        return {"agents": added_agents.load(self.agents_path)}
-
-    def provider_status(self) -> dict[str, Any]:
-        # Is each CLI installed, and is its login file there? Only file names are checked, never contents.
-        # logged_in is None where the login file is not known for this CLI.
-        home = Path.home()
-        clis = [
-            (
-                "claude",
-                "claude",
-                "Claude Code",
-                home / ".claude" / ".credentials.json",
-                "Run `claude` in a terminal and log in.",
-            ),
-            (
-                "codex",
-                "codex",
-                "Codex",
-                home / ".codex" / "auth.json",
-                "Run `codex login` in a terminal and finish the browser step.",
-            ),
-            (
-                "gemini-cli",
-                "gemini",
-                "Gemini CLI",
-                None,
-                "Run `gemini` in a terminal and pick a login method.",
-            ),
-            ("antigravity", "agy", "Antigravity", None, "Run `agy` in a terminal and sign in."),
-        ]
-        rows = []
-        for provider, binary, label, login_file, login_steps in clis:
-            installed = shutil.which(binary) is not None
-            logged_in = None if login_file is None else login_file.exists()
-            if not installed:
-                steps = f"Install {label} first. {login_steps}"
-            elif logged_in is False:
-                steps = login_steps
-            else:
-                steps = ""
-            rows.append(
-                {
-                    "provider": provider,
-                    "label": label,
-                    "installed": installed,
-                    "logged_in": logged_in,
-                    "steps": steps,
-                }
-            )
-        return {"clis": rows}
-
-    def settings_export(self) -> dict[str, Any]:
-        """The settings file as text, to carry to another computer. Keys are never in it: they live in the keychain."""
-        path = self.settings_path
-        return {
-            "text": path.read_text(encoding="utf-8") if path.is_file() else "",
-            "path": str(path),
-        }
-
-    def settings_import(self, request: dict[str, Any]) -> dict[str, Any]:
-        """Replace the settings file with the given text. A text that does not load is refused and nothing changes."""
-        text = request.get("text")
-        if not isinstance(text, str) or not text.strip():
-            raise ValueError('"settings_import" needs the settings "text"')
-        check = self.settings_path.with_name(self.settings_path.name + ".check")
-        try:
-            check.write_text(text, encoding="utf-8")
-            loaded = load_settings(check)  # raises with the reason when a value is wrong
-        except tomllib.TOMLDecodeError as error:
-            raise ValueError(f"This is not a settings file: {error}") from error
-        finally:
-            check.unlink(missing_ok=True)
-        safe_write.write_text(self.settings_path, text)
-        self.settings = loaded
-        self.note("setting", text="settings imported")
-        return {
-            "imported": True,
-            "restart": "Restart the app so every part reads the new settings.",
-        }
-
-    def doctor(self) -> dict[str, Any]:
-        """Everything the app needs, checked in one go, with the next step for each gap."""
-        vault = self.settings.vault
-        notes = self.indexer.store.counts().get("notes") if self.indexer is not None else None
-        rows = [
-            doctor.row("Backend", "ok", f"Running, version {__version__}."),
-            doctor.check_vault(Path(vault) if vault else None, notes),
-            doctor.check_disk(self.storage),
-            *doctor.check_clis(self.provider_status()["clis"]),
-            doctor.check_sandbox(sandbox.available(), self.settings.agent_shell),
-            doctor.check_log(app_log.path(self.storage)),
-        ]
-        errors = len(crash_log.recent(self.storage, 50))
-        rows.append(
-            doctor.row("Recorded errors", "ok", "None.")
-            if errors == 0
-            else doctor.row(
-                "Recorded errors",
-                "warn",
-                f"{errors} in the error log.",
-                "Settings > Privacy and data lists them; clear the list once you have read it.",
-            )
-        )
-        return {"checks": rows, "summary": doctor.summary(rows)}
-
-    def local_status(self) -> dict[str, Any]:
-        # Is each local model server answering on this computer? Only a quick look at the loopback address.
-        servers = [
-            ("ollama", "http://127.0.0.1:11434/api/tags"),
-            ("lmstudio", "http://127.0.0.1:1234/v1/models"),
-            ("vllm", "http://127.0.0.1:8000/v1/models"),
-        ]
-        rows = []
-        for provider, url in servers:
-            try:
-                with urllib.request.urlopen(url, timeout=1):
-                    running = True
-            except OSError:
-                running = False
-            rows.append({"provider": provider, "running": running})
-        return {"servers": rows}
-
-    def save_agents(self, request: dict[str, Any]) -> dict[str, Any]:
-        agents = request.get("agents")
-        previous = added_agents.load(self.agents_path)
-        added_agents.save(self.agents_path, agents)
-        # Archived ids come from the app's own list; without them, the last saved set is kept.
-        archived_path = self.storage / "agents_archived.json"
-        if isinstance(request.get("archived"), list):
-            archived_path.write_text(
-                json.dumps([str(x) for x in request["archived"]]), encoding="utf-8"
-            )
-        archived = (
-            set(json.loads(archived_path.read_text(encoding="utf-8")))
-            if archived_path.exists()
-            else set()
-        )
-        self._write_agent_list(previous, agents, archived)
-        return {"agents": agents}
-
-    def _write_agent_list(
-        self, previous: list[dict[str, Any]], current: list[dict[str, Any]], archived: set[str]
-    ) -> None:
-        # Keeps the Agent Lists note in step with the app: active agents, and every agent removed since it was added.
-        removed_path = self.storage / "agents_removed.json"
-        removed = (
-            json.loads(removed_path.read_text(encoding="utf-8")) if removed_path.exists() else []
-        )
-        now_ids = {a["id"] for a in current}
-        known = {r["id"] for r in removed}
-        stamp = datetime.now().date().isoformat()
-        removed += [
-            {"id": a["id"], "name": a["name"], "removed": stamp}
-            for a in previous
-            if a["id"] not in now_ids and a["id"] not in known
-        ]
-        safe_write.write_text(removed_path, json.dumps(removed, indent=2))
-        vault = self.settings.vault
-        if not vault or not Path(vault).is_dir():
-            return
-        active = [a for a in current if a["id"] not in archived]
-        hidden = [a for a in current if a["id"] in archived]
-        lines = [
-            "# Agent Lists",
-            "",
-            "Every agent in the app: what it does, its status and where its memory is kept. One note per agent, linked here. Only the user can edit, delete or remove these notes.",
-            "",
-            "## Active",
-        ]
-        # Tokens are counted per folder this month, so two agents in one folder share a figure.
-        lines += [
-            f"- {a['name']}: {a.get('description') or 'no description yet'} ({a.get('provider', 'no provider')}, model {a.get('model') or 'default'}, folder {a.get('folder') or 'not set'}, tokens this month {cli_sessions.folder_tokens(a['folder']) if a.get('folder') else 0})"
-            for a in active
-        ] or ["- None yet."]
-        lines += ["", "## Archived"]
-        lines += [
-            f"- {a['name']}: {a.get('description') or 'no description yet'}" for a in hidden
-        ] or ["- None."]
-        lines += ["", "## Deleted"]
-        lines += [f"- {r['name']}, removed {r['removed']}" for r in removed] or ["- None."]
-        (Path(vault) / "Agent Lists.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
-
-    @property
-    def agents_path(self) -> Path:
-        return self.storage / "agents.json"
-
     @property
     def hive_path(self) -> Path:
         # One folder per agent, with an inbox and an outbox for task messages. Kept outside the app folder.
         return HIVE_DIR
-
-    def task_send(self, request: dict[str, Any]) -> dict[str, Any]:
-        """Send a message to one agent, or to all of them with to "all". `from` is "user" for the human's own
-        compose box; anything else is sent as the main agent."""
-        to = str(request.get("to") or "").strip()
-        if not to:
-            raise ValueError('"task_send" needs a "to" agent id')
-        sender = inbox.USER if request.get("from") == inbox.USER else "hippoherman"
-        known = self._agent_ids()
-        targets = sorted(known - {sender}) if to == "all" else [to]
-        if to != "all" and to not in known:
-            raise ValueError(f'No agent has the id "{to}".')
-        fields = {
-            "act": str(request.get("act") or "request"),
-            "work": str(request.get("work") or ""),
-            "reply_to": str(request.get("replyTo") or ""),
-            "priority": str(request.get("priority") or "normal"),
-        }
-        ids = [
-            inbox.send(
-                self.hive_path,
-                sender,
-                target,
-                str(request.get("subject") or ""),
-                str(request.get("body") or ""),
-                **fields,
-            )
-            for target in targets
-        ]
-        return {"id": ids[0] if ids else None, "ids": ids}
-
-    def share_note(self, request: dict[str, Any]) -> dict[str, Any]:
-        password = request.get("password")
-        if not isinstance(password, str):
-            raise ValueError('"password" must be text')
-        minutes = _whole(request.get("minutes", share.DEFAULT_MINUTES), "minutes")
-        share.request_link(password, minutes)  # always raises until a share host is set up
-        return {}
 
     def keys(self) -> dict[str, Any]:
         rows = [{"provider": "claude", "label": "Claude (Anthropic)"}]
@@ -909,255 +497,6 @@ class Session(JobsPart, HivePart, RecordsPart, TerminalPart):
             raise ValueError(KEYCHAIN_MISSING) from error
         return self.keys()
 
-    def dispatch(self, request: dict[str, Any]) -> dict[str, Any]:
-        method = request.get("method")
-        if method == "graph":
-            return self.graph()
-        if method == "open":
-            vault = request.get("vault")
-            if not isinstance(vault, str) or not vault:
-                raise ValueError('"open" needs a "vault" folder path')
-            return self.open(Path(vault))
-        if method == "read":
-            return self.read(request)
-        if method == "note_text":
-            return self.note_text(request)
-        if method == "note_save":
-            return self.note_save(request)
-        if method == "note_delete":
-            return self.note_delete(request)
-        if method == "note_colour":
-            return self.note_colour(request)
-        if method == "account":
-            return self.account()
-        if method == "tasks":
-            return self.tasks()
-        if method == "inbox":
-            return self.inbox()
-        if method == "settings":
-            return self.settings_view()
-        if method == "memory":
-            return self.memory_notes()
-        if method == "sign_in":
-            return self.sign_in(request)
-        if method == "sign_out":
-            return self.sign_out()
-        if method == "remove_data":
-            return self.remove_data()
-        if method == "chat":
-            return self.chat(request)
-        if method == "workspaces":
-            # Folders an agent can work in: each one inside the app's workspaces folder.
-            root = self.storage.parent / "workspaces"
-            root.mkdir(parents=True, exist_ok=True)
-            names = sorted(
-                p.name for p in root.iterdir() if p.is_dir() and not p.name.startswith(".")
-            )
-            return {"root": str(root.resolve()), "folders": names}
-        if method == "create_workspace":
-            # A plain folder name only, so the new folder always lands directly inside workspaces.
-            name = str(request.get("name") or "").strip()
-            if not name or len(name) > 64 or name.startswith(".") or "/" in name or "\\" in name:
-                raise ValueError("Use a folder name without slashes, up to 64 characters.")
-            root = self.storage.parent / "workspaces"
-            folder = root / name
-            if folder.exists():
-                raise ValueError(f'A folder named "{name}" already exists.')
-            folder.mkdir(parents=True)
-            return {
-                "root": str(root.resolve()),
-                "folders": sorted(p.name for p in root.iterdir() if p.is_dir()),
-            }
-        if method == "agent_session":
-            agent = request.get("agent")
-            if not isinstance(agent, str) or not agent:
-                raise ValueError('"agent_session" needs an "agent" id')
-            # The agent's folder is created here; a relative name is made inside the vault.
-            folder = str(request.get("folder") or "").strip()
-            resolved = None
-            if folder:
-                path = Path(folder).expanduser()
-                if not path.is_absolute():
-                    path = (self.settings.vault or Path.home()) / path
-                path.mkdir(parents=True, exist_ok=True)
-                resolved = str(path.resolve())
-            return {"session": cli_sessions.get(agent)["id"], "folder": resolved}
-        if method == "terminal_context":
-            agent = request.get("agent")
-            if not isinstance(agent, str) or not agent:
-                raise ValueError('"terminal_context" needs an "agent" id')
-            return {"percent": cli_sessions.context_percent(agent)}
-        if method == "terminal_traces":
-            # What the agent ran, newest first: every tool call with its time and outcome, shell commands included.
-            who = str(request.get("agent") or "")
-            if not who:
-                raise ValueError('"terminal_traces" needs an "agent" id')
-            return {"traces": cli_sessions.tool_trace(who)}
-        if method == "terminal_command":
-            # "boot" changes each time the backend starts, so the window can tell a restart from a quiet moment
-            # and start the agents' programs again (they stop with the backend).
-            who = str(request.get("agent") or "")
-            return {
-                **self.terminals.info(who),
-                "boot": self.boot,
-                "briefing": self.briefing_stamps.get(who),
-            }
-        if method in ("terminal_start", "terminal_input", "terminal_resize", "terminal_stop"):
-            return self.terminal(method, request)
-        if method == "git_status":
-            # The short git status of an agent's folder, for its Git view.
-            folder = request.get("folder")
-            if not isinstance(folder, str) or not os.path.isdir(folder):
-                raise ValueError("the agent's folder does not exist yet")
-            done = subprocess.run(
-                ["git", "-C", folder, "status", "--short", "--branch"],
-                capture_output=True,
-                text=True,
-                timeout=10,
-            )
-            if done.returncode != 0:
-                return {"text": "This folder is not a git repository."}
-            return {"text": done.stdout.strip() or "Nothing to commit."}
-        if method == "open_folder":
-            # Opens an agent's folder in the file manager ("file") or in VS Code ("ide").
-            folder = request.get("folder")
-            if not isinstance(folder, str) or not os.path.isdir(folder):
-                raise ValueError("the agent's folder does not exist yet")
-            command = "code" if request.get("app") == "ide" else "xdg-open"
-            binary = shutil.which(command)
-            if binary is None:
-                raise RuntimeError(f"{command} is not installed on this computer")
-            subprocess.Popen(
-                [binary, folder],
-                start_new_session=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
-            return {"ok": True}
-        if method == "chat_history":
-            agent = request.get("agent")
-            if not isinstance(agent, str) or not agent:
-                raise ValueError('"chat_history" needs an "agent" id')
-            return {"sessions": chat_history.load(agent)}
-        if method == "chat_history_save":
-            agent = request.get("agent")
-            if not isinstance(agent, str) or not agent:
-                raise ValueError('"chat_history_save" needs an "agent" id')
-            chat_history.save(agent, request.get("sessions"))
-            return {"saved": True}
-        if method == "current_session":
-            # The agent's existing Claude session, kept as it is. Used when the chat window opens with no saved history.
-            agent = request.get("agent")
-            if not isinstance(agent, str) or not agent:
-                raise ValueError('"current_session" needs an "agent" id')
-            return {"session": cli_sessions.get(agent)["id"]}
-        if method == "new_session":
-            agent = request.get("agent")
-            if not isinstance(agent, str) or not agent:
-                raise ValueError('"new_session" needs an "agent" id')
-            cli_sessions.switch(agent)
-            return {"session": cli_sessions.get(agent)["id"]}
-        if method == "confirm":
-            return self.confirm(request)
-        if method == "answer":
-            return self.answer(request)
-        if method == "tools":
-            return self.tools()
-        if method == "set_tools":
-            return self.set_tools(request)
-        if method == "cards":
-            return self.card_list()
-        if method == "card_create":
-            return self.card_create(request)
-        if method == "card_update":
-            return self.card_update(request)
-        if method == "issues":
-            return _issues(request.get("folder"))
-        if method == "tokens":
-            folders = [str(f) for f in request.get("folders") or [] if f]
-            return {
-                "folders": {f: cli_sessions.folder_tokens(f) for f in folders},
-                "activity": {f: cli_sessions.folder_activity(f) for f in folders},
-            }
-        if method == "set_engine":
-            provider, model = str(request.get("provider") or ""), str(request.get("model") or "")
-            # The provider must be usable here (CLI installed, key saved, server running); otherwise nothing changes.
-            problem = engine_problem(provider) if provider else None
-            if problem:
-                return {"ok": False, "error": problem}
-            try:
-                save_engine(provider, model, self.settings_path)
-                self.settings = load_settings(self.settings_path)
-            except ValueError as exc:
-                return {"ok": False, "error": str(exc)}
-            return {
-                "ok": True,
-                "message": f"Saved: main agent now uses {provider} {model}. Its terminal restarts with it.",
-            }
-        if method == "engine":
-            ai = self.settings
-            return {
-                "provider": ai.provider,
-                "model": ai.claude_model if ai.provider == "claude" else ai.provider_model,
-                "folder": str(ai.vault or ""),
-            }
-        if method == "stop":
-            self.kill.trigger()
-            return {"stopped": True}
-        simple = {
-            "network": self.network_state,
-            "budget": self.budget,
-            "budget_allow": self.budget_allow,
-            "asks": self.asks_waiting,
-            "memory_status": self.memory_status,
-            "jobs": self.jobs,
-            "helpers": self.helpers_state,
-            "watchers": self.watchers_state,
-            "system": self.system_state,
-            "skills": self.skills_state,
-            "keys": self.keys,
-            "webhooks": self.webhooks_state,
-            "agents": self.agents_state,
-            "provider_status": self.provider_status,
-            "local_status": self.local_status,
-            "doctor": self.doctor,
-            "settings_export": self.settings_export,
-            "link_doctor": self.link_doctor,
-            "crashes": self.crashes,
-            "clear_crashes": self.clear_crashes,
-        }
-        if method in simple:
-            return simple[method]()
-        extra = {
-            "set_network": self.set_network,
-            "set_vault": self.set_vault,
-            "set_budget": self.set_budget,
-            "activity": self.activity,
-            "memory_search": self.memory_search,
-            "set_job": self.set_job,
-            "start_helper": self.start_helper,
-            "remove_skill": self.remove_skill,
-            "install_skill": self.install_skill,
-            "open_skill_folder": self.open_skill_folder,
-            "share": self.share_note,
-            "save_agents": self.save_agents,
-            "save_key": self.save_key,
-            "clear_key": self.clear_key,
-            "save_webhook": self.save_webhook,
-            "delete_webhook": self.delete_webhook,
-            "run_webhook": self.run_webhook,
-            "record_crash": self.record_crash,
-            "set_agent_shell": self.set_agent_shell,
-            "task_send": self.task_send,
-            "settings_import": self.settings_import,
-            "inbox_search": self.inbox_search,
-            "inbox_thread": self.inbox_thread,
-            "logs": self.logs,
-        }
-        if method in extra:
-            return extra[method](request)
-        raise ValueError(f"unknown method: {method!r}")
-
     def close(self) -> None:
         with self.lock:
             if self.vault_changes is not None:
@@ -1166,44 +505,6 @@ class Session(JobsPart, HivePart, RecordsPart, TerminalPart):
             if self.indexer is not None:
                 self.indexer.store.close()
                 self.indexer = None
-
-
-def _issues(folder: object) -> dict[str, Any]:
-    """Open GitHub issues of the repo in a folder, read with the gh CLI the user is logged in to."""
-    if not isinstance(folder, str) or not Path(folder).is_dir():
-        return {"error": "That folder does not exist."}
-    if shutil.which("gh") is None:
-        return {"error": "The gh CLI is not installed."}
-    try:
-        done = subprocess.run(
-            [
-                "gh",
-                "issue",
-                "list",
-                "--state",
-                "open",
-                "--limit",
-                "30",
-                "--json",
-                "number,title,url",
-            ],
-            cwd=folder,
-            capture_output=True,
-            text=True,
-            timeout=30,
-            check=False,
-        )
-    except subprocess.TimeoutExpired:
-        return {"error": "GitHub took too long to answer."}
-    if done.returncode != 0:
-        return {"error": done.stderr.strip() or "gh could not list the issues."}
-    return {"issues": json.loads(done.stdout or "[]")}
-
-
-def _whole(value: object, name: str) -> int:
-    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
-        raise ValueError(f'"{name}" must be a whole number, 0 or more')
-    return value
 
 
 def record_thread_errors(storage: Path) -> Callable[[], None]:

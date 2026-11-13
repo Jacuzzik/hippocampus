@@ -1,6 +1,9 @@
 """Names every part of the session uses: limits, default folders and the prompts typed into terminals."""
 
+import json
 import logging
+import shutil
+import subprocess
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -36,3 +39,41 @@ COMPACT_PROMPT = (
     "/compact Keep the current task, recent decisions, open questions, and file paths in play. "
     "Drop resolved tangents. Read {agent}-PriorityNotes."
 )
+
+
+def _whole(value: object, name: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        raise ValueError(f'"{name}" must be a whole number, 0 or more')
+    return value
+
+
+def issues_in(folder: object) -> dict[str, Any]:
+    """Open GitHub issues of the repo in a folder, read with the gh CLI the user is logged in to."""
+    if not isinstance(folder, str) or not Path(folder).is_dir():
+        return {"error": "That folder does not exist."}
+    if shutil.which("gh") is None:
+        return {"error": "The gh CLI is not installed."}
+    try:
+        done = subprocess.run(
+            [
+                "gh",
+                "issue",
+                "list",
+                "--state",
+                "open",
+                "--limit",
+                "30",
+                "--json",
+                "number,title,url",
+            ],
+            cwd=folder,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        return {"error": "GitHub took too long to answer."}
+    if done.returncode != 0:
+        return {"error": done.stderr.strip() or "gh could not list the issues."}
+    return {"issues": json.loads(done.stdout or "[]")}

@@ -43,11 +43,11 @@ def test_every_program_and_web_call_has_a_time_limit() -> None:
     assert [line for file in files for line in _unbounded(file)] == []
 
 
-def test_no_backend_file_grows_past_1500_lines() -> None:
+def test_no_backend_file_grows_past_1000_lines() -> None:
     # The session was once one 1,900-line file. New work goes into its own module (core/session_*.py).
     sizes = {
         file.relative_to(ROOT).as_posix(): len(file.read_text(encoding="utf-8").splitlines())
         for folder in ("core", "ai", "tools")
         for file in (ROOT / folder).rglob("*.py")
     }
-    assert {name: size for name, size in sizes.items() if size > 1500} == {}
+    assert {name: size for name, size in sizes.items() if size > 1000} == {}
