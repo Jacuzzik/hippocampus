@@ -50,3 +50,24 @@ test("Tauri window minimum size matches layout tokens", () => {
   assert.equal(`${window.minWidth}px`, layout["window-min-width"].$value);
   assert.equal(`${window.minHeight}px`, layout["window-min-height"].$value);
 });
+
+// A font named in a component would bypass the bundled face. Fonts come from the --font-* tokens only.
+const RAW_FONT =
+  /font(?:-family)?\s*[:=][^;]*\b(?:monospace|sans-serif|serif|Arial|Helvetica|Inter|Courier)\b|px (?:monospace|sans-serif|serif)\b/;
+
+test("UI source names no font of its own", () => {
+  const offenders = readdirSync(UI_DIR, { recursive: true })
+    .filter(
+      (file) =>
+        /\.(svelte|css|ts)$/.test(file) &&
+        !file.endsWith("tokens.css") &&
+        !file.endsWith("cssToken.ts"),
+    )
+    .flatMap((file) =>
+      readFileSync(join(UI_DIR, file), "utf8")
+        .split("\n")
+        .map((line, i) => ({ file, line: i + 1, text: line.trim() }))
+        .filter(({ text }) => RAW_FONT.test(text) && !text.startsWith("//")),
+    );
+  assert.deepEqual(offenders, []);
+});

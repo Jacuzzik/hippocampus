@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Dropdown from "../controls/Dropdown.svelte";
   import { matchFilter, tagCounts, type GraphData } from "../graph/model";
 
   // Search, tag and memory filters and note list. The graph reads the same state through props.
@@ -50,16 +51,15 @@
     aria-pressed={memory}
     onclick={() => (memory = !memory)}>Memory only</button
   >
-  <select
+  <Dropdown
+    label="Filter by tag"
     value={tag ?? ""}
-    onchange={(e) => (tag = e.currentTarget.value || null)}
-    aria-label="Filter by tag"
-  >
-    <option value="">All tags</option>
-    {#each tags as [t] (t)}
-      <option value={t}>#{t}</option>
-    {/each}
-  </select>
+    options={[
+      { value: "", label: "All tags" },
+      ...tags.map(([t]) => ({ value: t, label: `#${t}` })),
+    ]}
+    onchange={(next) => (tag = next || null)}
+  />
 
   <details class="tags-pane" open>
     <summary>Tags</summary>
@@ -130,8 +130,7 @@
     font-size: var(--font-size-xs);
   }
 
-  input,
-  select {
+  input {
     font: inherit;
     min-width: 0;
     color: var(--color-text);
@@ -139,12 +138,6 @@
     border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
     padding: var(--space-1) var(--space-2);
-  }
-
-  /* Native dropdown: option text in our colours, so "All tags" is readable in either theme. */
-  select option {
-    color: var(--color-text);
-    background: var(--color-bg-0);
   }
 
   .memory {

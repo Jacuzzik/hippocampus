@@ -17,6 +17,8 @@ body {
   font-family: var(--font-ui);
   font-size: var(--font-size-sm);
   line-height: 1.5;
+  /* Digits share one width, so a changing number does not shift the text beside it. */
+  font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
 }
@@ -27,6 +29,14 @@ h2,
 h3 {
   line-height: 1.3;
   font-weight: 600;
+}
+
+/* Buttons and fields do not take the page font on their own; this gives every one of them the app's face. */
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
 }
 
 /* Code and paths use the monospace face, as notes app does. */

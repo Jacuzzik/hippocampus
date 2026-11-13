@@ -78,6 +78,33 @@ jobs:
       - name: Pytest, including slow tests
         run: uv run pytest -m ""
 
+  audit:
+    name: Known vulnerabilities in dependencies
+    runs-on: ubuntu-latest
+    # Reports only: a new advisory in a dependency must not block unrelated work.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v10.3.0
+
+      - name: Python packages
+        run: uv export --locked --no-hashes --no-emit-project | uvx pip-audit -r /dev/stdin
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Node packages
+        working-directory: app
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Rust crates
+        working-directory: app/src-tauri
+        run: |
+          cargo install cargo-audit --locked
+          cargo audit
+
   node:
     name: Node (Prettier, ESLint, svelte-check, build) on ${{ matrix.os }}
     strategy:

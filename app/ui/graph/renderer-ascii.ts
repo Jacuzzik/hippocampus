@@ -1,4 +1,5 @@
 // The ASCII look for the brain graph, drawn on a 2D canvas in world space: "%" cores, "+" bodies, links as "+" runs.
+import { fontToken } from "../cssToken.ts";
 import { ballCells, cellOf, CELL, CELL_H, HUB_DEG } from "./ascii-model.ts";
 
 /** Opacity of the notes and links that are not focused (hovered, else selected). */
@@ -32,7 +33,7 @@ export function drawAscii(
   ctx.globalAlpha = 1;
   ctx.fillStyle = colours.bg;
   ctx.fillRect(0, 0, width, height);
-  ctx.font = `bold ${CELL * z * 1.3}px monospace`;
+  ctx.font = `bold ${CELL * z * 1.3}px ${fontToken("mono")}`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   // Cell of a note at time t: its world position in cells, plus its orbit, so every glyph sits on the grid.

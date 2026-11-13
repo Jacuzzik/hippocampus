@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Dropdown from "../controls/Dropdown.svelte";
   import { dialogFocus } from "../controls/dialogFocus.ts";
   import { report } from "../notices.svelte.ts";
   import { invoke } from "@tauri-apps/api/core";
@@ -248,14 +249,18 @@
           </p>{/if}
       {/if}
     {:else if step === 2}
-      <label>
-        Provider
-        <select bind:value={draft.provider} onchange={() => (draft.model = "")}>
-          {#each AGENT_PROVIDERS as p (p.id)}
-            <option value={p.id}>{p.label}</option>
-          {/each}
-        </select>
-      </label>
+      <div class="field">
+        <span>Provider</span>
+        <Dropdown
+          label="Provider"
+          bind:value={draft.provider}
+          options={AGENT_PROVIDERS.map((p) => ({
+            value: p.id,
+            label: p.label,
+          }))}
+          onchange={() => (draft.model = "")}
+        />
+      </div>
       <label
         >Model <input
           type="text"
@@ -461,6 +466,7 @@
   }
 
   label,
+  .field,
   .picker {
     display: block;
     margin-top: var(--space-2);
