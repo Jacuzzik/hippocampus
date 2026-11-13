@@ -3,6 +3,7 @@
 import json
 import stat
 import subprocess
+import sys
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
@@ -58,24 +59,37 @@ def test_a_host_that_is_not_http_is_an_error_not_a_call() -> None:
     assert connectors.ollama("file:///etc/passwd", "x")["state"] == "Error"
 
 
-def fake_gh(tmp_path: Path, exit_code: int, text: str) -> Path:
-    script = tmp_path / "gh"
-    script.write_text(f"#!/bin/sh\necho '{text}'\nexit {exit_code}\n", encoding="utf-8")
-    script.chmod(script.stat().st_mode | stat.S_IEXEC)
-    return script
+def fake_run(code: int, text: str):
+    """A stand-in for subprocess.run that answers like `gh auth status`; works on every system."""
+
+    def run(command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
+        assert command[1:] == ["auth", "status"]
+        return subprocess.CompletedProcess(command, code, stdout=text, stderr="")
+
+    return run
 
 
-def test_github_connected_shows_the_account(tmp_path: Path) -> None:
-    gh = fake_gh(tmp_path, 0, "Logged in to github.com account octo (keyring)")
-    got = connectors.github(which=lambda _name: str(gh))
+def test_github_connected_shows_the_account() -> None:
+    run = fake_run(0, "Logged in to github.com account octo (keyring)")
+    got = connectors.github(which=lambda _name: "gh", run=run)
     assert got["state"] == "Connected"
     assert got["reason"] == "Logged in to github.com as octo."
 
 
-def test_github_not_logged_in_says_the_command(tmp_path: Path) -> None:
-    gh = fake_gh(tmp_path, 1, "You are not logged into any GitHub hosts")
-    got = connectors.github(which=lambda _name: str(gh))
+def test_github_not_logged_in_says_the_command() -> None:
+    run = fake_run(1, "You are not logged into any GitHub hosts")
+    got = connectors.github(which=lambda _name: "gh", run=run)
     assert got["state"] == "Not connected" and "gh auth login" in got["reason"]
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="the fake gh is a shell script")
+def test_github_runs_the_real_program_it_finds(tmp_path: Path) -> None:
+    script = tmp_path / "gh"
+    script.write_text(
+        "#!/bin/sh\necho 'Logged in to github.com account octo'\nexit 0\n", encoding="utf-8"
+    )
+    script.chmod(script.stat().st_mode | stat.S_IEXEC)
+    assert connectors.github(which=lambda _name: str(script))["state"] == "Connected"
 
 
 def test_github_missing_and_github_too_slow() -> None:
