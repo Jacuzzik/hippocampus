@@ -1,12 +1,16 @@
 """A resize must reach the CLI: it runs with no controlling terminal, so the app sends the signal itself."""
 
 import os
-import pty
 import select
 import subprocess
 import sys
 
+import pytest
+
 from core.terminal import Terminals
+
+# Pseudo-terminals are a Linux and macOS thing; on Windows this file is skipped.
+pty = pytest.importorskip("pty", exc_type=ImportError)
 
 CHILD = """
 import os, signal, sys, time

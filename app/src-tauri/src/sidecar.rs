@@ -127,8 +127,13 @@ impl Sidecar {
         // The state lock is released while waiting, so a stop request can get through.
         let answer = answer_rx.recv().map_err(|_| CallError::Dead(pid))?;
         if let Some(error) = answer.get("error") {
+            let message = error.as_str().unwrap_or("sidecar error");
+            // The backend adds the next step when it knows one; the window shows both.
             return Err(CallError::Failed(
-                error.as_str().unwrap_or("sidecar error").to_string(),
+                match answer.get("hint").and_then(Value::as_str) {
+                    Some(hint) => format!("{message} {hint}"),
+                    None => message.to_string(),
+                },
             ));
         }
         Ok(answer.get("result").cloned().unwrap_or(Value::Null))

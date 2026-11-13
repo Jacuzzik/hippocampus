@@ -139,5 +139,15 @@ jobs:
       - name: rustfmt
         run: cargo fmt --check
 
+      # The build checks that the bundled backend exists. The real one is built for a release; an empty file is enough to lint.
+      - name: Placeholder for the bundled backend
+        shell: bash
+        run: |
+          triple=$(rustc -vV | sed -n 's/^host: //p')
+          suffix=""
+          if [ "$RUNNER_OS" = "Windows" ]; then suffix=".exe"; fi
+          mkdir -p binaries
+          touch "binaries/hippocampus-sidecar-$triple$suffix"
+
       - name: Clippy
         run: cargo clippy --locked -- -D warnings

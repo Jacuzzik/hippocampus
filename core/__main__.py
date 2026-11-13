@@ -7,7 +7,8 @@ Requests: {"id": ..., "method": "graph"}, {"id": ..., "method": "open", "vault":
 {"method": "account"} answers {"claude": true|false}; {"method": "sign_in", "key": "<key>"} saves
 the Claude key in the keychain and {"method": "sign_out"} removes it. Neither ever returns the key.
 {"method": "remove_data"} deletes the index cache and the key; the vault is never touched.
-Answers: {"id": ..., "result": ...} or {"id": ..., "error": "<message>"}. A bad line gets an
+Answers: {"id": ..., "result": ...} or {"id": ..., "error": "<message>", "code": "<kind>"}, with a
+"hint" (the next step) when one is known. A bad line gets an
 error answer and the loop keeps going. It runs until stdin closes. No network listener.
 
 `serve` also answers {"method": "chat", "chat": <id>, "text": ...} with the assistant's
@@ -1159,7 +1160,14 @@ class Session:
         if request.get("approve") is not True:
             raise ValueError("running a webhook needs the user's approval")
         hook = webhooks.find(webhooks.load(self.webhooks_path), request.get("id"))
-        result = {"link_check": self._link_check}[hook["kind"]]()
+        kinds = {"link_check": self._link_check}
+        run = kinds.get(hook.get("kind"))
+        if run is None:
+            raise ValueError(
+                f"This webhook has the kind {hook.get('kind')!r}, which this app cannot run. "
+                f"It can run: {', '.join(kinds)}."
+            )
+        result = run()
         self.note("approval", tool="run_webhook", tier="act", approved=True, by="card")
         self.note("handoff", text=result)
         return {"result": result}
@@ -1597,6 +1605,25 @@ def record_thread_errors(storage: Path) -> Callable[[], None]:
     return restore
 
 
+# What to do next, by the kind of failure. The window shows it after the message.
+ERROR_HINTS = {
+    "NotSetUp": "Open Settings, then Doctor, to see what is missing.",
+    "KeyringError": "The system keychain did not answer. Check that a keyring service is running.",
+    "NetworkBlocked": "Network use is switched off. Turn it on in Settings to use this.",
+    "TimeoutExpired": "The program took too long to answer. Try again.",
+}
+
+
+def error_answer(request_id: object, exc: Exception) -> dict[str, Any]:
+    """One shape for every failure: the message, a stable code, and the next step when one is known."""
+    names = [kind.__name__ for kind in type(exc).__mro__]
+    answer: dict[str, Any] = {"id": request_id, "error": str(exc), "code": names[0]}
+    hint = next((ERROR_HINTS[name] for name in names if name in ERROR_HINTS), None)
+    if hint:
+        answer["hint"] = hint
+    return answer
+
+
 def handle(session: Session, line: str) -> dict[str, Any]:
     """Answer one request line. Never raises: every failure becomes an error answer."""
     try:
@@ -1611,7 +1638,7 @@ def handle(session: Session, line: str) -> dict[str, Any]:
     except Exception as exc:
         logger.exception("Request %r failed", request_id)
         session.note("error", method=str(request.get("method")), text=str(exc)[:300])
-        return {"id": request_id, "error": str(exc)}
+        return error_answer(request_id, exc)
 
 
 class Writer:

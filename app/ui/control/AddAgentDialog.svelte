@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { report } from "../notices.svelte.ts";
   import { invoke } from "@tauri-apps/api/core";
   import { onMount } from "svelte";
   import { addAgent } from "../owner/addedAgents.svelte";
@@ -71,7 +72,7 @@
         })
       ).clis;
     } catch (cause) {
-      console.error("Could not check the CLI logins", cause);
+      report("Could not check the CLI logins", cause);
     }
     try {
       servers = (
@@ -81,7 +82,7 @@
         )
       ).servers;
     } catch (cause) {
-      console.error("Could not check the local model servers", cause);
+      report("Could not check the local model servers", cause);
     }
   }
 
@@ -97,7 +98,7 @@
         { method: "workspaces" },
       );
     } catch (cause) {
-      console.error("Could not list the workspaces", cause);
+      report("Could not list the workspaces", cause);
     }
   }
 

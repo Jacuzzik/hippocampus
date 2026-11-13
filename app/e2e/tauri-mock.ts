@@ -14,6 +14,8 @@ export async function mockSidecar(
     noVault?: boolean;
     signedIn?: boolean;
     intro?: boolean;
+    /** Methods that fail, to test what the user is told. */
+    fail?: string[];
   } = {},
 ): Promise<void> {
   await page.addInitScript(
@@ -22,6 +24,7 @@ export async function mockSidecar(
       noVault: boolean;
       signedIn: boolean;
       intro: boolean;
+      fail: string[];
     }) => {
       // Tests skip the start-up logo (Settings > Appearance), which otherwise covers the app for 12 seconds.
       try {
@@ -301,6 +304,8 @@ export async function mockSidecar(
         method: string;
         params?: Record<string, unknown>;
       }): Promise<unknown> {
+        if (opts.fail.includes(args.method))
+          throw new Error(`mock: ${args.method} is set to fail`);
         switch (args.method) {
           case "agents":
             return { agents: savedAgents };
@@ -560,6 +565,8 @@ export async function mockSidecar(
             };
           case "chat_history":
             return { sessions: [] };
+          case "current_session":
+            return { session: "mock-session" };
           case "chat_history_save":
             return { saved: true };
           case "agent_session":
@@ -753,6 +760,7 @@ export async function mockSidecar(
       noVault: options.noVault === true,
       signedIn: options.signedIn === true,
       intro: options.intro === true,
+      fail: options.fail ?? [],
     },
   );
 }

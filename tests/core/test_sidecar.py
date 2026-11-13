@@ -85,7 +85,7 @@ def test_serve_graph_without_a_vault_is_an_error_not_a_crash(storage: Path) -> N
         settings=Settings(),
     )
     lines = [json.loads(line) for line in out.getvalue().splitlines()]
-    assert lines[1] == {"id": 7, "error": "no vault is open"}
+    assert lines[1] == {"id": 7, "error": "no vault is open", "code": "ValueError"}
 
 
 def test_bad_json_gets_an_error_line_and_the_loop_keeps_going(
@@ -96,7 +96,7 @@ def test_bad_json_gets_an_error_line_and_the_loop_keeps_going(
     lines = serve_with(stdin, str(vault), storage=str(storage))
     assert lines[1]["id"] is None and lines[1]["error"].startswith("invalid JSON")
     assert lines[2] == {"id": None, "error": "request must be a JSON object"}
-    assert lines[3] == {"id": 3, "error": "unknown method: 'nope'"}
+    assert lines[3] == {"id": 3, "error": "unknown method: 'nope'", "code": "ValueError"}
     assert lines[4]["id"] == 4 and "result" in lines[4]
 
 
@@ -104,7 +104,11 @@ def test_open_rejects_a_missing_folder(storage: Path, tmp_path: Path) -> None:
     missing = tmp_path / "missing"
     stdin = json.dumps({"id": 1, "method": "open", "vault": str(missing)}) + "\n"
     lines = serve_with(stdin, storage=str(storage))
-    assert lines[1] == {"id": 1, "error": f"vault folder not found: {missing}"}
+    assert lines[1] == {
+        "id": 1,
+        "error": f"vault folder not found: {missing}",
+        "code": "ValueError",
+    }
 
 
 def test_serve_reads_the_settings_file_it_is_given(

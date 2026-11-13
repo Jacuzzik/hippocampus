@@ -5,6 +5,7 @@
 </script>
 
 <script lang="ts">
+  import { report } from "../notices.svelte.ts";
   import { cssToken, fontToken } from "../cssToken.ts";
   import { invoke } from "@tauri-apps/api/core";
   import { listen } from "@tauri-apps/api/event";
@@ -123,9 +124,7 @@
       invoke("sidecar_call", {
         method: "terminal_input",
         params: { agent: agentId, data },
-      }).catch((cause) =>
-        console.error("Could not send to the terminal", cause),
-      );
+      }).catch((cause) => report("Could not send to the terminal", cause));
     });
     unlisten = await listen<{
       event?: string;

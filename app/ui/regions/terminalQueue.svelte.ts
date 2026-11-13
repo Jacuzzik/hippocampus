@@ -2,6 +2,7 @@
 // messages wait in a queue and are sent one by one when it is done.
 // When an agent's context is 70% full and it is idle, the app queues a compact prompt. It also
 // tells the agent to read its priority notes, so the notes survive the compact.
+import { report } from "../notices.svelte.ts";
 import { invoke } from "@tauri-apps/api/core";
 
 // Claude Code prints this line only while it is working; it can pause without other output.
@@ -40,7 +41,7 @@ export function createTerminalQueue(agentId: () => string) {
           params: { agent, data: "\r" },
         }),
       )
-      .catch((cause) => console.error("Could not send to the terminal", cause));
+      .catch((cause) => report("Could not send to the terminal", cause));
   }
 
   function checkContext(): void {

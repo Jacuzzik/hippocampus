@@ -1,4 +1,5 @@
 // The assistant's live state, shared by the chat panel and the orb. Talks to the sidecar through the Tauri bridge.
+import { report } from "../notices.svelte.ts";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import {
@@ -50,7 +51,7 @@ function persist(): void {
   invoke("sidecar_call", {
     method: "chat_history_save",
     params: { agent: AGENT, sessions: saved },
-  }).catch((cause) => console.error("Could not save the chat history", cause));
+  }).catch((cause) => report("Could not save the chat history", cause));
 }
 
 export const assistant = {
@@ -95,7 +96,7 @@ export const assistant = {
         messages: sessions[sessions.length - 1]?.messages ?? [],
       };
     } catch (cause) {
-      console.error("Could not load the chat history", cause);
+      report("Could not load the chat history", cause);
     }
   },
 

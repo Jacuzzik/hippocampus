@@ -10,6 +10,7 @@
   import AccountDialog from "./overlays/AccountDialog.svelte";
   import LoadingScreen from "./overlays/LoadingScreen.svelte";
   import HealthBar from "./overlays/HealthBar.svelte";
+  import Notices from "./overlays/Notices.svelte";
   import PanelBoundary from "./controls/PanelBoundary.svelte";
   import { every } from "./poll.ts";
   import { bootTask, boot } from "./owner/bootTasks.svelte.ts";
@@ -280,6 +281,7 @@
 
 <LoadingScreen ready={booted && !boot.busy} />
 <HealthBar backendDown={booted && error !== null && /sidecar/i.test(error)} />
+<Notices />
 
 <div
   class="shell"

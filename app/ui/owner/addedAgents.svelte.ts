@@ -1,5 +1,6 @@
 // Agents the user created in the add-agent form. The sidecar keeps them in data/storage/agents.json;
 // localStorage mirrors the list and is what loads when the sidecar cannot answer.
+import { report } from "../notices.svelte.ts";
 import { invoke } from "@tauri-apps/api/core";
 import { SvelteSet } from "svelte/reactivity";
 import type { AgentDraft } from "../control/model";
@@ -13,7 +14,7 @@ function readLocal(): SavedAgent[] {
   try {
     return JSON.parse(localStorage.getItem(KEY) ?? "[]");
   } catch (cause) {
-    console.error("Could not read the saved agents", cause);
+    report("Could not read the saved agents", cause);
     return [];
   }
 }
@@ -22,7 +23,7 @@ function writeLocal(list: SavedAgent[]): void {
   try {
     localStorage.setItem(KEY, JSON.stringify(list));
   } catch (cause) {
-    console.error("Could not save the agents", cause);
+    report("Could not save the agents", cause);
   }
 }
 
@@ -35,7 +36,7 @@ async function persist(list: SavedAgent[]): Promise<void> {
       params: { agents: list },
     });
   } catch (cause) {
-    console.error("Could not save the agents to the sidecar", cause);
+    report("Could not save the agents to the backend", cause);
   }
 }
 
@@ -50,7 +51,7 @@ function readArchived(): string[] {
   try {
     return JSON.parse(localStorage.getItem(ARCHIVE_KEY) ?? "[]");
   } catch (cause) {
-    console.error("Could not read the archived agents", cause);
+    report("Could not read the archived agents", cause);
     return [];
   }
 }
@@ -64,15 +65,13 @@ export function setArchived(id: string, on: boolean): void {
   try {
     localStorage.setItem(ARCHIVE_KEY, JSON.stringify(archived.ids));
   } catch (cause) {
-    console.error("Could not save the archived agents", cause);
+    report("Could not save the archived agents", cause);
   }
   // The sidecar keeps the archived ids too, so Agent Lists can show them as archived.
   invoke("sidecar_call", {
     method: "save_agents",
     params: { agents: addedAgents.list, archived: archived.ids },
-  }).catch((cause) =>
-    console.error("Could not sync the archived agents", cause),
-  );
+  }).catch((cause) => report("Could not sync the archived agents", cause));
 }
 
 import { bootTask } from "./bootTasks.svelte.ts";
@@ -93,8 +92,8 @@ async function load(): Promise<void> {
     addedAgents.list = agents;
     writeLocal(agents);
   } catch (cause) {
-    console.error(
-      "Could not load the agents from the sidecar; using the local copy",
+    report(
+      "Could not load the agents; the copy saved in this window is used",
       cause,
     );
   }
@@ -130,8 +129,7 @@ export function addAgent(draft: AgentDraft): SavedAgent {
           ),
         );
     },
-    (cause) =>
-      console.error("Could not create the agent's session or folder", cause),
+    (cause) => report("Could not create the agent's session or folder", cause),
   );
   return agent;
 }
