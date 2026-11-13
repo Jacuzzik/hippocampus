@@ -48,6 +48,8 @@ def test_the_sandboxed_command_closes_the_app_and_opens_only_the_agents_own_outb
 ) -> None:
     hive = tmp_path / "hive"
     monkeypatch.setattr(terminal, "HIVE_DIR", hive)
+    # The rules are built the same with or without bubblewrap on this machine.
+    monkeypatch.setattr(sandbox.shutil, "which", lambda name: f"/usr/bin/{name}")
     argv = terminal._sandboxed(["claude"], "ada", str(tmp_path), None)
     assert argv[-2:] == ["--", "claude"]
     text = " ".join(argv)
@@ -88,6 +90,8 @@ def test_a_working_folder_inside_the_app_or_the_hive_is_not_made_writable(
 ) -> None:
     hive = tmp_path / "hive"
     monkeypatch.setattr(terminal, "HIVE_DIR", hive)
+    # The rules are built the same with or without bubblewrap on this machine.
+    monkeypatch.setattr(sandbox.shutil, "which", lambda name: f"/usr/bin/{name}")
     (hive / "bob" / "inbox").mkdir(parents=True)
 
     def binds(folder: Path, vault: Path | None = None) -> list[str]:

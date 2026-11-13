@@ -301,7 +301,10 @@ fn write_hubs(vault: &Path) -> Result<(), String> {
         ("About User", 0xFACC15),
     ];
     const MAIN: (&str, u32) = ("MAIN", 0xFFFFFF);
-    let links: String = GROUPS.iter().map(|(name, _)| format!("- [[{name}]]\n")).collect();
+    let links: String = GROUPS
+        .iter()
+        .map(|(name, _)| format!("- [[{name}]]\n"))
+        .collect();
     let main = format!(
         "# MAIN\n\nInstructions for all agents. Read this first.\n\n- Work in your own folder and the vault. Do not change other agents' notes.\n- Before you compact, save your notes and a summary to your own note.\n- If you do not know something, search the vault before you ask.\n- Only the user deletes a note linked to a group.\n\nGroups:\n\n{links}"
     );

@@ -4,15 +4,12 @@ Claude uses the agent's Claude Code session (ai/cli_sessions.py), so the termina
 """
 
 import codecs
-import fcntl
 import json
 import os
-import pty
 import shutil
 import signal
 import struct
 import subprocess
-import termios
 import threading
 import time
 from collections.abc import Callable
@@ -23,6 +20,13 @@ from ai import cli_sessions
 from core import sandbox
 from core.settings import HIVE_DIR, ROOT
 from tools.vault_mcp import VAULT_TOOLS, mcp_config
+
+try:  # Unix only. On Windows this module still loads, and starting a terminal says why it cannot.
+    import fcntl
+    import pty
+    import termios
+except ImportError:  # pragma: no cover - Windows
+    fcntl = pty = termios = None  # type: ignore[assignment]
 
 # How much recent output a terminal keeps for replay on reopen.
 SCREEN_BYTES = 200_000
@@ -139,6 +143,10 @@ class Terminals:
                 agent, provider, model, brief_path, vault, block_tools, resume, shell=sandboxed
             )
             run_argv = _sandboxed(argv, agent, folder, vault) if sandboxed else argv
+            if pty is None:
+                raise RuntimeError(
+                    "Agent terminals need Linux or macOS; Windows is not supported yet."
+                )
             master, slave = pty.openpty()
             self._resize(slave, rows, cols)
             try:

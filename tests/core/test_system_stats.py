@@ -3,7 +3,14 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 from core.system_stats import SystemStats, _swap_percent, cpu_percent
+
+# The numbers come from /proc, which only Linux has.
+linux_only = pytest.mark.skipif(
+    sys.platform != "linux", reason="system numbers are read from /proc"
+)
 
 
 def test_cpu_percent_is_the_busy_share_between_two_samples() -> None:
@@ -18,6 +25,7 @@ def test_swap_percent_is_used_swap_and_zero_without_swap() -> None:
     assert _swap_percent({"SwapTotal": 0, "SwapFree": 0}) == 0.0
 
 
+@linux_only
 def test_read_gives_percentages_in_range_and_disk_free_in_gb(tmp_path: Path) -> None:
     stats = SystemStats().read(tmp_path)
     assert set(stats) == {"cpu", "ram", "swap", "disk", "disk_free"}
@@ -25,6 +33,7 @@ def test_read_gives_percentages_in_range_and_disk_free_in_gb(tmp_path: Path) -> 
     assert stats["disk_free"] >= 0
 
 
+@linux_only
 def test_serve_answers_system_with_the_three_numbers(storage: Path) -> None:
     result = subprocess.run(
         [sys.executable, "-m", "core", "serve", "--storage", str(storage)],

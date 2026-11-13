@@ -44,7 +44,8 @@ jobs:
 
   sqlite-floor:
     name: Python on SQLite 3.35.0 (minimum)
-    runs-on: ubuntu-latest
+    # Pinned: this job needs the runner's own /usr/bin/python3.12, which newer images do not ship.
+    runs-on: ubuntu-24.04
     env:
       SQLITE_ZIP: sqlite-amalgamation-3350000.zip
       SQLITE_SHA256: d5c7f8d3df3d7b115ff13a7fb383a3d221b60fde03b55aebe6c06f42dcb76789
