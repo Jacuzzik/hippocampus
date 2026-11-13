@@ -1,6 +1,7 @@
 """Reads config/settings.toml. It holds no secrets: API keys live in the OS keychain."""
 
 import json
+import logging
 import os
 import re
 import tomllib
@@ -56,6 +57,123 @@ class Settings:
     # On: every agent gets a fenced shell and its program runs in the operating-system sandbox.
     # Off: only the main agent has a (fenced) shell, as before.
     agent_shell: bool = False
+
+
+logger = logging.getLogger("hippocampus.core")
+
+# One list of every setting the file may hold: its dotted key, type, default and one line of help.
+# `load_settings` warns about a key not listed here, the `settings` call returns the list, and a test checks
+# that every key in config/settings.toml and every Settings field is in it.
+SCHEMA: tuple[dict[str, object], ...] = (
+    {
+        "key": "settings_version",
+        "type": "int",
+        "default": 1,
+        "help": "Version of this file's layout.",
+    },
+    {
+        "key": "vault.path",
+        "type": "path",
+        "default": None,
+        "help": "The notes folder, relative to the app folder or absolute.",
+    },
+    {
+        "key": "ai.provider",
+        "type": "text",
+        "default": "claude",
+        "help": "The provider for the main agent: claude or a preset.",
+    },
+    {
+        "key": "ai.provider_model",
+        "type": "text",
+        "default": "",
+        "help": "A model for the chosen preset; empty uses its first.",
+    },
+    {
+        "key": "ai.claude_model",
+        "type": "text",
+        "default": "claude-sonnet-5-5",
+        "help": "The Claude model.",
+    },
+    {
+        "key": "ai.ollama_host",
+        "type": "text",
+        "default": "http://127.0.0.1:11434",
+        "help": "Where the Ollama server listens.",
+    },
+    {
+        "key": "ai.ollama_model",
+        "type": "text",
+        "default": "qwen2.5:1.5b",
+        "help": "The model Ollama runs.",
+    },
+    {
+        "key": "ai.max_tool_calls",
+        "type": "int",
+        "default": 20,
+        "help": "Tool calls in one request before it pauses.",
+    },
+    {
+        "key": "ai.allowed_tools",
+        "type": "list",
+        "default": None,
+        "help": "Tools the assistant may use; none listed means all.",
+    },
+    {
+        "key": "network.mode",
+        "type": "choice",
+        "default": "converse",
+        "help": "Outbound switch: off, listen, converse or open.",
+    },
+    *(
+        {
+            "key": f"budget.{w}",
+            "type": "int",
+            "default": 0,
+            "help": f"App token cap, {w.replace('_', ' ')} window. 0 is no cap.",
+        }
+        for w in CAP_WINDOWS
+    ),
+    *(
+        {
+            "key": f"budget.assistant.{w}",
+            "type": "int",
+            "default": 0,
+            "help": f"Assistant token cap, {w.replace('_', ' ')} window. 0 is no cap.",
+        }
+        for w in CAP_WINDOWS
+    ),
+    {
+        "key": "memory.max_bytes",
+        "type": "int",
+        "default": 32000,
+        "help": "A memory note longer than this has its oldest sections archived.",
+    },
+    {
+        "key": "agents.shell",
+        "type": "bool",
+        "default": False,
+        "help": "Give every agent a fenced shell in the sandbox.",
+    },
+)
+SCHEMA_KEYS = frozenset(str(row["key"]) for row in SCHEMA)
+
+
+def dotted_keys(data: dict[str, object], prefix: str = "") -> list[str]:
+    """Every key in a parsed settings file, as dotted paths (`ai.provider`)."""
+    keys: list[str] = []
+    for name, value in data.items():
+        path = f"{prefix}{name}"
+        if isinstance(value, dict):
+            keys += dotted_keys(value, f"{path}.")
+        else:
+            keys.append(path)
+    return keys
+
+
+def unknown_keys(data: dict[str, object]) -> list[str]:
+    """Keys in the file that no setting uses."""
+    return [key for key in dotted_keys(data) if key not in SCHEMA_KEYS]
 
 
 _TOOL_NAME = re.compile(r"[a-z][a-z0-9_]*")
@@ -166,6 +284,8 @@ def _caps(value: object, name: str) -> Caps:
 def load_settings(path: Path = SETTINGS_PATH) -> Settings:
     """Read the settings file. A missing file gives the defaults; a bad one is an error."""
     data = tomllib.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
+    for key in unknown_keys(data):
+        logger.warning("Settings file %s: %s is not a setting and is ignored", path.name, key)
     if data.get("settings_version", Settings.settings_version) != Settings.settings_version:
         raise ValueError(f"settings_version must be {Settings.settings_version}")
     # HIPPOCAMPUS_VAULT wins over the file, so a launcher can pick the vault without editing it.

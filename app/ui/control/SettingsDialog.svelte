@@ -1,4 +1,5 @@
 <script lang="ts">
+  import SettingRow from "../controls/SettingRow.svelte";
   import Toggle from "../controls/Toggle.svelte";
   import { dialogFocus } from "../controls/dialogFocus.ts";
   import "./control.css";
@@ -305,16 +306,11 @@
         {#if page === "General"}
           <section class="control-section">
             <h3>General</h3>
-            <div class="setting">
-              <div>
-                <b>Vault folder</b>
-                <p>
-                  Where your notes live. To change it, type a folder that exists
-                  and open it.
-                </p>
-              </div>
+            <SettingRow title="Vault folder"
+              >{#snippet help()}Where your notes live. To change it, type a
+                folder that exists and open it.{/snippet}
               <code>{saved ? (saved.general.vault ?? "Not chosen") : "…"}</code>
-            </div>
+            </SettingRow>
             <form class="row" onsubmit={changeVault}>
               <input
                 type="text"
@@ -328,29 +324,22 @@
             </form>
             {#if vaultNote}<p class="muted" role="status">{vaultNote}</p>{/if}
             {#if vaultError}<p class="error" role="alert">{vaultError}</p>{/if}
-            <div class="setting">
-              <div>
-                <b>Open on the last tab</b>
-                <p>The Control Room opens on the tab you used last.</p>
-              </div>
+            <SettingRow title="Open on the last tab"
+              >{#snippet help()}The Control Room opens on the tab you used last.{/snippet}
               <Toggle
                 bind:checked={prefs.rememberTab}
                 ariaLabel="Open on the last tab"
                 label={prefs.rememberTab ? "On" : "Off"}
               />
-            </div>
-            <div class="setting">
-              <div>
-                <b>Move settings to another computer</b>
-                <p>
-                  Copy gives the settings as text. Paste that text here on the
-                  other computer and press Import. Keys are never included.
-                </p>
-              </div>
+            </SettingRow>
+            <SettingRow title="Move settings to another computer"
+              >{#snippet help()}Copy gives the settings as text. Paste that text
+                here on the other computer and press Import. Keys are never
+                included.{/snippet}
               <button type="button" onclick={() => void exportSettings()}
                 >Copy settings</button
               >
-            </div>
+            </SettingRow>
             <form class="row" onsubmit={importSettings}>
               <textarea
                 rows="2"
@@ -367,25 +356,18 @@
             {#if transferError}<p class="error" role="alert">
                 {transferError}
               </p>{/if}
-            <div class="setting">
-              <div>
-                <b>Settings file</b>
-                <p>
-                  Backend settings are also in this file. No keys are stored in
-                  it.
-                </p>
-              </div>
+            <SettingRow title="Settings file"
+              >{#snippet help()}Backend settings are also in this file. No keys
+                are stored in it.{/snippet}
               <code>config/settings.toml</code>
-            </div>
+            </SettingRow>
           </section>
         {:else if page === "Appearance"}
           <section class="control-section">
             <h3>Appearance</h3>
-            <div class="setting">
-              <div>
-                <b>Theme</b>
-                <p>System follows your computer's light or dark setting.</p>
-              </div>
+            <SettingRow title="Theme"
+              >{#snippet help()}System follows your computer's light or dark
+                setting.{/snippet}
               <Dropdown
                 label="Theme"
                 value={prefs.theme}
@@ -396,12 +378,10 @@
                 ]}
                 onchange={(next) => (prefs.theme = next as Theme)}
               />
-            </div>
-            <div class="setting">
-              <div>
-                <b>Motion</b>
-                <p>System follows your computer's reduced-motion setting.</p>
-              </div>
+            </SettingRow>
+            <SettingRow title="Motion"
+              >{#snippet help()}System follows your computer's reduced-motion
+                setting.{/snippet}
               <Dropdown
                 label="Motion"
                 value={prefs.motion}
@@ -412,15 +392,10 @@
                 ]}
                 onchange={(next) => (prefs.motion = next as Motion)}
               />
-            </div>
-            <div class="setting">
-              <div>
-                <b>Start-up logo</b>
-                <p>
-                  How long the logo stays once the app has loaded. Applies from
-                  the next start.
-                </p>
-              </div>
+            </SettingRow>
+            <SettingRow title="Start-up logo"
+              >{#snippet help()}How long the logo stays once the app has loaded.
+                Applies from the next start.{/snippet}
               <Dropdown
                 label="Start-up logo"
                 value={prefs.intro}
@@ -431,14 +406,10 @@
                 ]}
                 onchange={(next) => (prefs.intro = next as Intro)}
               />
-            </div>
-            <div class="setting">
-              <div>
-                <b>Terminal text size</b>
-                <p>
-                  Used by every agent terminal. {FONT_MIN} to {FONT_MAX} px.
-                </p>
-              </div>
+            </SettingRow>
+            <SettingRow title="Terminal text size"
+              >{#snippet help()}Used by every agent terminal. {FONT_MIN} to {FONT_MAX}
+                px.{/snippet}
               <span class="stepper">
                 <button
                   type="button"
@@ -454,59 +425,43 @@
                   onclick={() => (prefs.terminalFontSize += 1)}>+</button
                 >
               </span>
-            </div>
-            <div class="setting">
-              <div>
-                <b>Font</b>
-                <p>One monospace face everywhere, bundled with the app.</p>
-              </div>
+            </SettingRow>
+            <SettingRow title="Font"
+              >{#snippet help()}One monospace face everywhere, bundled with the
+                app.{/snippet}
               <code>JetBrains Mono</code>
-            </div>
-            <div class="setting">
-              <div>
-                <b>Reset appearance</b>
-                <p>
-                  Back to the dark theme, 12 px text, system motion and
-                  remembering the last tab.
-                </p>
-              </div>
+            </SettingRow>
+            <SettingRow title="Reset appearance"
+              >{#snippet help()}Back to the dark theme, 12 px text, system
+                motion and remembering the last tab.{/snippet}
               <button type="button" onclick={() => prefs.reset()}>Reset</button>
-            </div>
+            </SettingRow>
           </section>
         {:else if page === "Agents"}
           <section class="control-section">
             <h3>Agents</h3>
-            <div class="setting">
-              <div>
-                <b>Main agent engine</b>
-                <p>Change it on the Monitor tab of the Control Room.</p>
-              </div>
+            <SettingRow title="Main agent engine"
+              >{#snippet help()}Change it on the Monitor tab of the Control
+                Room.{/snippet}
               <code
                 >{saved
                   ? `${saved.agents.provider} · ${saved.agents.model}`
                   : "…"}</code
               >
-            </div>
-            <div class="setting">
-              <div>
-                <b>Tool calls per request</b>
-                <p>The most tools the assistant may call for one request.</p>
-              </div>
+            </SettingRow>
+            <SettingRow title="Tool calls per request"
+              >{#snippet help()}The most tools the assistant may call for one
+                request.{/snippet}
               <code>{saved ? saved.budgets.max_tool_calls : "…"}</code>
-            </div>
+            </SettingRow>
           </section>
           <section class="control-section">
             <h3>Shell and sandbox</h3>
-            <div class="setting">
-              <div>
-                <b>Shell for every agent</b>
-                <p>
-                  On: each agent can run simple shell commands, and its program
-                  runs in a sandbox that keeps the app and the system read-only.
-                  Off: only the main agent has a shell. Applies the next time an
-                  agent starts.
-                </p>
-              </div>
+            <SettingRow title="Shell for every agent"
+              >{#snippet help()}On: each agent can run simple shell commands,
+                and its program runs in a sandbox that keeps the app and the
+                system read-only. Off: only the main agent has a shell. Applies
+                the next time an agent starts.{/snippet}
               <Toggle
                 ariaLabel="Shell for every agent"
                 checked={saved?.shell?.on ?? false}
@@ -514,7 +469,7 @@
                 onchange={(on) => void setShell(on)}
                 label={saved?.shell?.on ? "On" : "Off"}
               />
-            </div>
+            </SettingRow>
             {#if shellError}<p class="error" role="alert">{shellError}</p>{/if}
             {#if saved?.shell}
               <p class="hint">{saved.shell.note}</p>
@@ -538,39 +493,26 @@
         {:else if page === "Memory"}
           <section class="control-section">
             <h3>Memory</h3>
-            <div class="setting">
-              <div>
-                <b>Memory size per agent</b>
-                <p>Notes past this size are condensed.</p>
-              </div>
+            <SettingRow title="Memory size per agent"
+              >{#snippet help()}Notes past this size are condensed.{/snippet}
               <code
                 >{saved
                   ? `${saved.memory.max_bytes.toLocaleString()} bytes`
                   : "…"}</code
               >
-            </div>
+            </SettingRow>
           </section>
           <MemorySection />
         {:else if page === "Privacy and data"}
           <section class="control-section">
             <h3>Privacy and data</h3>
-            <div class="setting">
-              <div>
-                <b>Your data</b>
-                <p>
-                  Sign out or remove your data in Setup and account, on the left
-                  ribbon.
-                </p>
-              </div>
-            </div>
-            <div class="setting">
-              <div>
-                <b>Error log</b>
-                <p>
-                  Errors from this window and the backend, kept on this computer
-                  in <code>crashes.jsonl</code>. Never sent.
-                </p>
-              </div>
+            <SettingRow title="Your data"
+              >{#snippet help()}Sign out or remove your data in Setup and
+                account, on the left ribbon.{/snippet}
+            </SettingRow>
+            <SettingRow title="Error log"
+              >{#snippet help()}Errors from this window and the backend, kept on
+                this computer in <code>crashes.jsonl</code>. Never sent.{/snippet}
               <span class="row">
                 <code>{errorRows.length} recorded</code>
                 <button
@@ -579,7 +521,7 @@
                   onclick={clearErrors}>Clear</button
                 >
               </span>
-            </div>
+            </SettingRow>
             {#if errorRows.length}
               <ul class="log" aria-label="Recorded errors">
                 {#each errorRows.slice(0, 10) as row, index (index)}
@@ -604,13 +546,10 @@
         {:else if page === "Advanced"}
           <section class="control-section">
             <h3>Advanced</h3>
-            <div class="setting">
-              <div>
-                <b>Backend (Python sidecar)</b>
-                <p>Answers every request from this window.</p>
-              </div>
+            <SettingRow title="Backend (Python sidecar)"
+              >{#snippet help()}Answers every request from this window.{/snippet}
               <code>{sidecar}</code>
-            </div>
+            </SettingRow>
           </section>
           <section class="control-section">
             <h3>Feature switches</h3>
@@ -619,34 +558,26 @@
               the next time that part opens.
             </p>
             {#each FLAGS as flag (flag.id)}
-              <div class="setting">
-                <div>
-                  <b>{flag.name}</b>
-                  <p>{flag.what}</p>
-                </div>
+              <SettingRow title={flag.name}>
+                {#snippet help()}{flag.what}{/snippet}
                 <Toggle
                   ariaLabel={flag.name}
                   checked={flagOn(flag.id)}
                   onchange={(on) => setFlag(flag.id, on)}
                   label={flagOn(flag.id) ? "On" : "Off"}
                 />
-              </div>
+              </SettingRow>
             {/each}
           </section>
           <section class="control-section">
             <h3>Backend log</h3>
-            <div class="setting">
-              <div>
-                <b>Newest 200 lines</b>
-                <p>
-                  {logPath ||
-                    "The backend writes one log file and keeps three older copies. Keys are masked."}
-                </p>
-              </div>
+            <SettingRow title="Newest 200 lines"
+              >{#snippet help()}{logPath ||
+                  "The backend writes one log file and keeps three older copies. Keys are masked."}{/snippet}
               <button type="button" onclick={() => void readLogs()}
                 >Refresh</button
               >
-            </div>
+            </SettingRow>
             {#if logError}
               <p class="error" role="alert">{logError}</p>
             {:else if logLines && logLines.length === 0}
@@ -690,18 +621,15 @@
               Everything the app needs, checked in one go. Each gap says what to
               do next. Nothing is changed by looking.
             </p>
-            <div class="setting">
-              <div>
-                <b
-                  >{doctor
-                    ? `${doctor.summary.ok} fine, ${doctor.summary.warn} to look at, ${doctor.summary.bad} to fix`
-                    : "Checking…"}</b
-                >
-              </div>
+            <SettingRow
+              title={doctor
+                ? `${doctor.summary.ok} fine, ${doctor.summary.warn} to look at, ${doctor.summary.bad} to fix`
+                : "Checking…"}
+            >
               <button type="button" onclick={() => void readDoctor()}
                 >Check again</button
               >
-            </div>
+            </SettingRow>
             {#if doctorError}<p class="error" role="alert">
                 {doctorError}
               </p>{/if}
@@ -728,24 +656,19 @@
           </section>
           <section class="control-section" aria-label="Link doctor">
             <h3>Links in your notes</h3>
-            <div class="setting">
-              <div>
-                <b
-                  >{links
-                    ? `${links.notes} notes, ${links.broken_count} broken ${links.broken_count === 1 ? "link" : "links"}, ${links.lonely_count} with no links`
-                    : linksError
-                      ? "Not checked"
-                      : "Checking…"}</b
-                >
-                <p>
-                  A broken link points at a note that does not exist. Nothing is
-                  repaired here; open the note to fix it.
-                </p>
-              </div>
+            <SettingRow
+              title={links
+                ? `${links.notes} notes, ${links.broken_count} broken ${links.broken_count === 1 ? "link" : "links"}, ${links.lonely_count} with no links`
+                : linksError
+                  ? "Not checked"
+                  : "Checking…"}
+            >
+              {#snippet help()}A broken link points at a note that does not
+                exist. Nothing is repaired here; open the note to fix it.{/snippet}
               <button type="button" onclick={() => void readLinks()}
                 >Check again</button
               >
-            </div>
+            </SettingRow>
             {#if linksError}<p class="error" role="alert">{linksError}</p>{/if}
             {#if links && links.broken.length > 0}
               <ul class="checks" aria-label="Broken links">
@@ -774,15 +697,11 @@
         {:else}
           <section class="control-section">
             <h3>About</h3>
-            <div class="setting">
-              <div>
-                <b>Hippocampus</b>
-                <p>
-                  A local notes vault with a graph and real command-line agents.
-                </p>
-              </div>
+            <SettingRow title="Hippocampus"
+              >{#snippet help()}A local notes vault with a graph and real
+                command-line agents.{/snippet}
               <code>{version ? `v${version}` : "…"}</code>
-            </div>
+            </SettingRow>
           </section>
         {/if}
       </div>
@@ -868,32 +787,6 @@
     min-width: 0;
     overflow-y: auto;
     padding-right: var(--space-2);
-  }
-
-  .setting {
-    display: flex;
-    gap: var(--space-4);
-    align-items: center;
-    justify-content: space-between;
-    padding: var(--space-2) 0;
-    border-top: 1px solid var(--color-border);
-  }
-
-  .setting:first-of-type {
-    border-top: 0;
-  }
-
-  .setting p {
-    margin: 0;
-    color: var(--color-text-muted);
-    font-size: var(--font-size-xs);
-  }
-
-  .setting code {
-    max-width: 50%;
-    color: var(--color-text-muted);
-    overflow-wrap: anywhere;
-    text-align: right;
   }
 
   .stepper {

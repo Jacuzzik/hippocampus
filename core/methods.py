@@ -64,7 +64,7 @@ METHODS: dict[str, Method] = {
     "inbox_thread": _m("One inbox conversation."),
     "task_send": _m("Send a task message to an agent."),
     # Settings
-    "settings": _m("The settings the Settings pages show."),
+    "settings": _m("The settings the Settings pages show, and the schema of every key."),
     "settings_export": _m("Settings as text, without keys."),
     "settings_import": _m("Apply exported settings."),
     "set_vault": _m("Change the vault folder."),

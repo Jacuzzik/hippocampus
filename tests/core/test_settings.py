@@ -104,3 +104,78 @@ def test_engine_models_match_the_app_list() -> None:
     for key, items in re.findall(r'^\s*"?([\w.-]+)"?:\s*\[(.*?)\]', block, re.M | re.S):
         listed[key] = tuple(re.findall(r'"([^"]*)"', items))
     assert listed == ENGINE_MODELS
+
+
+def test_every_key_in_the_real_settings_file_is_in_the_schema() -> None:
+    import tomllib
+
+    from core.settings import SETTINGS_PATH, unknown_keys
+
+    data = tomllib.loads(SETTINGS_PATH.read_text(encoding="utf-8"))
+    assert unknown_keys(data) == []
+
+
+def test_every_settings_field_has_a_schema_row_and_defaults_agree() -> None:
+    from dataclasses import fields
+
+    from core.settings import SCHEMA, Settings
+
+    keys = {str(row["key"]): row for row in SCHEMA}
+    assert all(row["help"] and row["type"] for row in SCHEMA)
+    defaults = Settings()
+    # Settings field -> the keys that carry it in the file.
+    by_field = {
+        "settings_version": ["settings_version"],
+        "vault": ["vault.path"],
+        "provider": ["ai.provider"],
+        "provider_model": ["ai.provider_model"],
+        "claude_model": ["ai.claude_model"],
+        "ollama_host": ["ai.ollama_host"],
+        "ollama_model": ["ai.ollama_model"],
+        "max_tool_calls": ["ai.max_tool_calls"],
+        "allowed_tools": ["ai.allowed_tools"],
+        "network_mode": ["network.mode"],
+        "budget": [k for k in keys if k.startswith("budget.") and "assistant" not in k],
+        "assistant_budget": [k for k in keys if k.startswith("budget.assistant.")],
+        "memory_max_bytes": ["memory.max_bytes"],
+        "agent_shell": ["agents.shell"],
+    }
+    assert set(by_field) == {f.name for f in fields(Settings)}, (
+        "a new Settings field needs a schema row"
+    )
+    for field, rows in by_field.items():
+        assert rows and all(k in keys for k in rows), field
+    for field in (
+        "provider",
+        "claude_model",
+        "ollama_host",
+        "max_tool_calls",
+        "memory_max_bytes",
+        "agent_shell",
+        "network_mode",
+    ):
+        key = by_field[field][0]
+        assert keys[key]["default"] == getattr(defaults, field), key
+
+
+def test_an_unknown_key_is_warned_about_not_fatal(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    path = tmp_path / "settings.toml"
+    path.write_text('[ai]\nprovider = "claude"\ncolour = "red"\n', encoding="utf-8")
+    with caplog.at_level("WARNING"):
+        assert load_settings(path).provider == "claude"
+    assert "ai.colour is not a setting" in caplog.text
+
+
+def test_the_settings_call_returns_the_schema(tmp_path: Path) -> None:
+    from core.__main__ import Session
+
+    session = Session(
+        storage=tmp_path / "s", settings=Settings(), settings_path=tmp_path / "x.toml"
+    )
+    schema = session.settings_view()["schema"]
+    assert {"key": "agents.shell", "type": "bool", "default": False}.items() <= next(
+        r for r in schema if r["key"] == "agents.shell"
+    ).items()
+    session.close()

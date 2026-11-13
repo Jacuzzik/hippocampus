@@ -17,6 +17,7 @@ from core import (
 )
 from core.settings import (
     ROOT,
+    SCHEMA,
     load_settings,
     save_agent_shell,
 )
@@ -41,6 +42,7 @@ class SettingsPart:
             },
             "memory": {"max_bytes": s.memory_max_bytes},
             "shell": self.shell_state(),
+            "schema": list(SCHEMA),
         }
 
     def settings_export(self) -> dict[str, Any]:
