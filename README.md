@@ -71,6 +71,8 @@ npm ci
 npm run tauri dev
 ```
 
+`npm run tauri dev` starts two things: Vite (the window's web server, always on port 1420) and the Tauri shell, which opens the window and starts the Python backend. Run it from `app/`. If port 1420 is taken, Vite stops with "Port 1420 is already in use" instead of picking another port, because the shell is told that address; close the other copy first.
+
 The first run compiles the Rust shell, which takes a few minutes. The app opens the vault named in `config/settings.toml` (`data/brains/Hippocampus` by default; the first run creates it with a starter note). To try the sample vault instead, create it with the commands below.
 
 ## Explore your notes

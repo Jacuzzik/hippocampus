@@ -20,7 +20,9 @@ This adds a line like `Signed-off-by: Your Name <you@example.com>` to the commit
 - Include tests for new behavior.
 - Don't include API keys, personal notes, or model weights in commits.
 - Don't add code copied from projects with incompatible licenses (for example GPL code into this MIT codebase).
-- Use the design tokens in `design/tokens.json` for colors and spacing. Don't hardcode new colors in components.
+- Use the design tokens in `design/tokens.json` for colors and spacing. Don't hardcode new colors in components. `design/DESIGN.md` lists every token and is generated: run `npm run tokens` in `app/` after a change.
+- Optional: `git config core.hooksPath .githooks` turns on a pre-commit check (format, lint, tokens). CI runs the same checks.
+- Everyone taking part follows the [code of conduct](CODE_OF_CONDUCT.md).
 
 ## Reporting bugs and security issues
 

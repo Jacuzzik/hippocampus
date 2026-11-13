@@ -1,0 +1,15 @@
+#!/bin/sh
+# Format, lint and token checks before a commit. Turn on once per clone: git config core.hooksPath .githooks
+set -e
+root=$(git rev-parse --show-toplevel)
+cd "$root"
+if git diff --cached --name-only | grep -q '\.py$'; then
+  uv run ruff format --check .
+  uv run ruff check .
+fi
+if git diff --cached --name-only | grep -q '^app/\|^design/'; then
+  cd app
+  npx prettier --check ui e2e scripts
+  node scripts/build-tokens.mjs >/dev/null
+  node --test scripts/check-tokens.mjs scripts/design-doc.test.mjs
+fi

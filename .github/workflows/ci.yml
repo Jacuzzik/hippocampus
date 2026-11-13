@@ -42,6 +42,13 @@ jobs:
       - name: Pytest
         run: uv run pytest
 
+      # Informational: shows how much of the backend the tests reach (75% when this was added).
+      # New code should be covered by its own tests; the number is a guide, not a gate.
+      - name: Coverage report
+        if: matrix.os == 'ubuntu-latest'
+        continue-on-error: true
+        run: uv run --with pytest-cov pytest -q --cov=core --cov=ai --cov=tools --cov-report=term
+
   sqlite-floor:
     name: Python on SQLite 3.35.0 (minimum)
     # Pinned: this job needs the runner's own /usr/bin/python3.12, which newer images do not ship.
