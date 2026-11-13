@@ -21,7 +21,8 @@ A row is "closed" only when a check proves it: a test, a lint rule, or a screens
 | Layout | 7fa98f4 | 4.03 (a long note title takes two lines and shows in full on hover; the column was already resizable), 4.04 (the graph controls have their own strip; names are drawn under it), 4.05 (note and link counts sit next to the agent cards; the cards already scroll), 4.07 (Stop has the red outline), 4.09 (ribbon icons have hover names and an 8 px rhythm), 4.10 (GRAPH caption removed), 4.11 (FREE, and one width per value) | e2e `layout.spec.ts` (73 pass), ESLint 0, svelte-check 0, screenshot |
 | Controls and dialogs | b7ecfda | 5.15 (a test checks every button on the main screen, each Control Room tab, each Settings page and the dialogs: a name and at least 24 px; it found the tag buttons and the Settings close button too small), 3.06 (smallest text is 12 px), 3.13 (one focus ring rule; message boxes now show focus on their border), 5.07 (the message boxes say Enter sends, Shift+Enter adds a line), 3.08 (part: every dialog takes the keyboard when it opens, keeps Tab inside, and gives focus back; before this Escape did nothing until a click) | e2e `buttons.spec.ts`, `dialogs.spec.ts` (79 pass), npm test 73, ESLint 0, svelte-check 0, screenshot |
 | Windows index fix | 05d9fdb | An unreadable index file is closed before it is deleted (Windows refused the delete) | pytest 369; GitHub Actions |
-| Light theme | (this commit) | 3.01 (Dark, Light or System in Settings, Appearance; saved; the graph and the terminals take the new colours at once), 3.14 (17 contrast checks for the light colours run with npm test and fail the build under 4.5:1), M (theme setting) | npm test 90, e2e 80 (`settings.spec.ts` theme test), ESLint 0, svelte-check 0, browser screenshots of the light theme |
+| Light theme | 4c945a7 | 3.01 (Dark, Light or System in Settings, Appearance; saved; the graph and the terminals take the new colours at once), 3.14 (17 contrast checks for the light colours run with npm test and fail the build under 4.5:1), M (theme setting) | npm test 90, e2e 80 (`settings.spec.ts` theme test), ESLint 0, svelte-check 0, browser screenshots of the light theme |
+| Time limits | (this commit) | 11.10 (a test reads the backend code and fails if a program or web call has no time limit; all had one) | pytest 370 |
 
 ## Closed before this phase file existed (checked again this phase)
 
@@ -32,3 +33,8 @@ A row is "closed" only when a check proves it: a test, a lint rule, or a screens
 - D.10: what the scheduler's "obsidian" update should do; who "mr" and "hanis" are.
 - 14.x and 15.x (account system and website): need a hosted sign-in provider, a domain and a security review. Not started.
 - G.03, G.06: installers for Windows and macOS need those machines.
+
+## Found, not yet done
+
+- 11.13 dead-code scan (vulture, knip): unused file `app/ui/regions/GraphPanel.svelte` and `app/playwright.tmp-rp.config.ts`; unused packages `@tauri-apps/plugin-dialog` (check the Rust side first) and `@xterm/addon-unicode11`; 20 unused exports, mostly in `ui/graph/model.ts`; Python: `inbox.held`, `store.note_title`, `store.backlinks`, `store.tagged` (check the tests before removing).
+- Browser preview only (`npm run dev` in a browser): the agents list is read before the test mock is installed, so a notice shows. The desktop app is not affected.
