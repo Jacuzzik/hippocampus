@@ -1,0 +1,84 @@
+name: Installers
+
+# Builds the installers for Linux, macOS and Windows and keeps them as files on the run.
+# Nothing is published: attaching them to a release is a step a person takes (RELEASE-CHECKLIST.md).
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+    # A change to the build itself is tried at once, so a broken installer build is seen early.
+    branches: [hippo-audit-fixes]
+    paths:
+      - ".github/workflows/release.yml"
+      - "scripts/build-sidecar.sh"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: installers-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Installer on ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      UV_PYTHON_PREFERENCE: only-managed
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Tauri system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libxdo-dev
+
+      - uses: astral-sh/setup-uv@v10.3.0
+
+      - name: Install Python 3.12
+        run: uv python install 3.12
+
+      - name: Bundle the backend
+        shell: bash
+        run: |
+          uv sync --locked --python 3.12 --group build
+          bash scripts/build-sidecar.sh
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Build the installers
+        working-directory: app
+        run: |
+          npm ci
+          npx tauri build
+
+      - name: Checksums
+        shell: bash
+        working-directory: app/src-tauri/target/release/bundle
+        run: |
+          find . -type f \( -name "*.AppImage" -o -name "*.deb" -o -name "*.rpm" -o -name "*.dmg" -o -name "*.msi" -o -name "*.exe" \) \
+            -exec sh -c 'sha256sum "$1" 2>/dev/null || shasum -a 256 "$1"' _ {} \; | tee SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: hippocampus-${{ runner.os }}
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            app/src-tauri/target/release/bundle/**/*.AppImage
+            app/src-tauri/target/release/bundle/**/*.deb
+            app/src-tauri/target/release/bundle/**/*.rpm
+            app/src-tauri/target/release/bundle/**/*.dmg
+            app/src-tauri/target/release/bundle/**/*.msi
+            app/src-tauri/target/release/bundle/**/*.exe
+            app/src-tauri/target/release/bundle/SHA256SUMS.txt
