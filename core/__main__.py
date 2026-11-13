@@ -517,7 +517,7 @@ def record_thread_errors(storage: Path) -> Callable[[], None]:
         try:
             name = args.thread.name if args.thread else "?"
             crash_log.record(
-                storage, f"sidecar thread {name}", f"{args.exc_type.__name__}: {args.exc_value}"
+                storage, f"backend thread {name}", f"{args.exc_type.__name__}: {args.exc_value}"
             )
         except Exception:  # the log must never take the sidecar down
             logger.exception("Could not write the crash record")

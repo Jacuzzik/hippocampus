@@ -104,6 +104,13 @@
       what: "Named workflows, such as 'review this folder', that send a briefing and create cards.",
       reason: "Needs a note format for a playbook and a runner.",
     },
+    {
+      id: "G.04",
+      name: "Update check and what's new",
+      what: "Tells you when a new version is out and shows its changelog.",
+      reason:
+        "Checking means a call to a release server, and the app calls out only to your model provider. Until you allow it, get new versions from the Download page.",
+    },
   ] as const;
 </script>
 

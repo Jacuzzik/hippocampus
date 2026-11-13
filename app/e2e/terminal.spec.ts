@@ -117,3 +117,11 @@ test("after the backend restarts, the agent's program is started again", async (
     1,
   );
 });
+
+test("the terminal's state is a live region a screen reader announces", async ({
+  page,
+}) => {
+  const state = page.getByRole("status", { name: "Terminal state" });
+  await expect(state).toHaveText(/running|idle/);
+  await expect(state).toHaveAttribute("role", "status");
+});

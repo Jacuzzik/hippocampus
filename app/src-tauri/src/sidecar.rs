@@ -93,7 +93,7 @@ impl Sidecar {
                 self.restart_if_still(pid)?;
                 self.wait_running()?;
                 self.try_call(method, params).map_err(|error| match error {
-                    CallError::Dead(_) => "the sidecar stopped again".to_string(),
+                    CallError::Dead(_) => "the backend stopped again".to_string(),
                     CallError::Failed(message) => message,
                 })
             }
@@ -104,7 +104,7 @@ impl Sidecar {
         let (answer_rx, pid) = {
             let mut guard = lock(&self.state.0).map_err(CallError::Failed)?;
             let ConnState::Running(link) = &mut *guard else {
-                return Err(CallError::Failed("the sidecar is not running".into()));
+                return Err(CallError::Failed("the backend is not running".into()));
             };
             let pid = link.child.id();
             link.next_id += 1;
@@ -127,7 +127,7 @@ impl Sidecar {
         // The state lock is released while waiting, so a stop request can get through.
         let answer = answer_rx.recv().map_err(|_| CallError::Dead(pid))?;
         if let Some(error) = answer.get("error") {
-            let message = error.as_str().unwrap_or("sidecar error");
+            let message = error.as_str().unwrap_or("backend error");
             // The backend adds the next step when it knows one; the window shows both.
             return Err(CallError::Failed(
                 match answer.get("hint").and_then(Value::as_str) {
@@ -166,7 +166,7 @@ impl Sidecar {
         while matches!(*guard, ConnState::Starting) {
             guard = condvar
                 .wait(guard)
-                .map_err(|_| "sidecar lock poisoned".to_string())?;
+                .map_err(|_| "backend lock poisoned".to_string())?;
         }
         match &*guard {
             ConnState::Down(error) => Err(error.clone()),
@@ -178,7 +178,7 @@ impl Sidecar {
 fn lock<T>(mutex: &Mutex<T>) -> Result<MutexGuard<'_, T>, String> {
     mutex
         .lock()
-        .map_err(|_| "sidecar lock poisoned".to_string())
+        .map_err(|_| "backend lock poisoned".to_string())
 }
 
 fn spawn(app: &AppHandle) -> Result<Link, String> {
@@ -188,8 +188,8 @@ fn spawn(app: &AppHandle) -> Result<Link, String> {
         .stdout(Stdio::piped())
         .spawn()
         .map_err(|e| format!("could not start {:?}: {e}", command.get_program()))?;
-    let stdin = child.stdin.take().ok_or("sidecar has no stdin")?;
-    let mut stdout = BufReader::new(child.stdout.take().ok_or("sidecar has no stdout")?);
+    let stdin = child.stdin.take().ok_or("backend has no stdin")?;
+    let mut stdout = BufReader::new(child.stdout.take().ok_or("backend has no stdout")?);
     let mut ready = String::new();
     let read = stdout.read_line(&mut ready).map_err(|e| e.to_string())?;
     let status = serde_json::from_str::<Value>(&ready).ok();
@@ -197,7 +197,7 @@ fn spawn(app: &AppHandle) -> Result<Link, String> {
         let _ = child.kill();
         let _ = child.wait();
         return Err(
-            "the sidecar did not start; check config/settings.toml and the vault folder".into(),
+            "the backend did not start; check config/settings.toml and the vault folder".into(),
         );
     }
     let waiting: Waiting = Arc::default();

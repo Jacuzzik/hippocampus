@@ -132,6 +132,11 @@ textarea:focus-visible {
   animation: fade-in var(--duration-fast) var(--ease-standard);
 }
 
+/* A row that is new to a list fades in. Every list is keyed, so a row that stays does not play it again. */
+:where(ul, ol) > li {
+  animation: fade-in var(--duration-fast) var(--ease-standard);
+}
+
 /* Every button answers the pointer the same way: colours ease, and a press moves it down one pixel. */
 button,
 [role="tab"] {

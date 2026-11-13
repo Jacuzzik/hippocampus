@@ -25,7 +25,7 @@ test("settings has a page per category and each one opens", async ({
     Connectors: "Checked now",
     Memory: "Memory size per agent",
     "Privacy and data": "Error log",
-    Advanced: "Backend (Python sidecar)",
+    Advanced: "Backend (Python)",
     Planned: "Planned features",
     Doctor: "Doctor",
     Keyboard: "Open the command palette",
@@ -329,10 +329,46 @@ test("Planned features are cards that say what is missing, never dead buttons", 
   const dialog = await openSettings(page);
   await dialog.getByRole("tab", { name: "Planned", exact: true }).click();
   const cards = dialog.getByRole("tabpanel").locator("article");
-  await expect(cards).toHaveCount(15);
+  await expect(cards).toHaveCount(16);
   for (const card of await cards.all()) {
     await expect(card).toContainText("Planned");
     await expect(card.locator("p.reason")).not.toBeEmpty();
     await expect(card.getByRole("button")).toHaveCount(0);
   }
+});
+
+test("no Settings page or Control Room tab says sidecar: it is called the backend", async ({
+  page,
+}) => {
+  await mockSidecar(page);
+  await page.goto("/");
+  const dialog = await openSettings(page);
+  for (const tab of await dialog.getByRole("tab").all()) {
+    await tab.click();
+    expect(await dialog.innerText(), await tab.innerText()).not.toMatch(
+      /sidecar/i,
+    );
+  }
+});
+
+test("Privacy and data lists everything that leaves the computer, and says nothing is collected", async ({
+  page,
+}) => {
+  await mockSidecar(page);
+  await page.goto("/");
+  const dialog = await openSettings(page);
+  await dialog.getByRole("tab", { name: "Privacy and data" }).click();
+  const panel = dialog.getByRole("tabpanel");
+  await expect(
+    panel.getByRole("heading", { name: "What leaves this computer" }),
+  ).toBeVisible();
+  for (const row of [
+    "Messages to your model provider",
+    "Local model (Ollama)",
+    "GitHub issues",
+    "Your notes",
+    "Usage statistics",
+  ])
+    await expect(panel).toContainText(row);
+  await expect(panel).toContainText("Nothing is collected or sent");
 });

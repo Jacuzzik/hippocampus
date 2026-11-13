@@ -12,7 +12,7 @@ from core import (
 
 class RecordsPart:
     def crashes(self) -> dict[str, Any]:
-        """The newest error records kept on disk (UI errors and unhandled sidecar thread errors)."""
+        """The newest error records kept on disk (UI errors and unhandled backend thread errors)."""
         return {"crashes": crash_log.recent(self.storage)}
 
     def record_crash(self, request: dict[str, Any]) -> dict[str, Any]:

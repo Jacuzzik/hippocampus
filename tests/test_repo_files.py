@@ -35,3 +35,8 @@ def test_the_root_has_the_documents_an_open_source_project_carries() -> None:
 
 def test_the_readme_explains_the_fixed_dev_port() -> None:
     assert "Port 1420 is already in use" in (ROOT / "README.md").read_text(encoding="utf-8")
+
+
+def test_the_readme_says_what_the_app_font_cannot_reach() -> None:
+    text = (ROOT / "README.md").read_text(encoding="utf-8")
+    assert "What the app font does not reach" in text and "native dialogs" in text

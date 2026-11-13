@@ -65,5 +65,5 @@ def test_an_unhandled_thread_error_is_recorded(tmp_path: Path) -> None:
         restore()
     assert threading.excepthook is previous
     row = crash_log.recent(tmp_path, 1)[0]
-    assert row["source"] == "sidecar thread worker-x"
+    assert row["source"] == "backend thread worker-x"
     assert "ZeroDivisionError" in row["message"]

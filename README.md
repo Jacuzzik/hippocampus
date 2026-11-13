@@ -75,6 +75,10 @@ npm run tauri dev
 
 The first run compiles the Rust shell, which takes a few minutes. The app opens the vault named in `config/settings.toml` (`data/brains/Hippocampus` by default; the first run creates it with a starter note). To try the sample vault instead, create it with the commands below.
 
+## What the app font does not reach
+
+The whole window uses one font from `design/tokens.json`, and a test fails the build if a screen uses another. Three things belong to the operating system, so the app cannot style them: the window title bar, the tray icon and its menu, and native dialogs such as the folder picker. They follow your system theme and font.
+
 ## Explore your notes
 
 - Search notes in the sidebar, or press `Ctrl+F` (`Cmd+F` on macOS) to open the note list and focus search. Use the Tags list or tag filter to narrow the notes.

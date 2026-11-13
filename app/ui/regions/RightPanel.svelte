@@ -207,7 +207,8 @@
     >
       <div class="live">
         <span class="dot" aria-hidden="true"></span>
-        <span>{hippoState}</span>
+        <!-- A screen reader hears the terminal start or stop: this is the one live region for its state. -->
+        <span role="status" aria-label="Terminal state">{hippoState}</span>
         <span class="size">
           <button
             type="button"

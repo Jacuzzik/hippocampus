@@ -308,7 +308,9 @@
 {/if}
 
 <LoadingScreen ready={booted && !boot.busy} />
-<HealthBar backendDown={booted && error !== null && /sidecar/i.test(error)} />
+<HealthBar
+  backendDown={booted && error !== null && /sidecar|backend/i.test(error)}
+/>
 <Notices />
 
 <div

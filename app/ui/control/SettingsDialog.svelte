@@ -511,6 +511,33 @@
               >{#snippet help()}Sign out or remove your data in Setup and
                 account, on the left ribbon.{/snippet}
             </SettingRow>
+            <h4>What leaves this computer</h4>
+            <SettingRow title="Messages to your model provider"
+              >{#snippet help()}What you type to the assistant or an agent goes
+                to the provider you chose (Claude, OpenAI and so on), with your
+                own key or login, under that provider's terms. The network
+                switch in the Control panel can stop it.{/snippet}
+              <code>Only when you chat</code>
+            </SettingRow>
+            <SettingRow title="Local model (Ollama)"
+              >{#snippet help()}Runs on this computer. Nothing leaves it.{/snippet}
+              <code>Stays here</code>
+            </SettingRow>
+            <SettingRow title="GitHub issues"
+              >{#snippet help()}Asked through the gh tool with your own login.
+                The app stores no GitHub token.{/snippet}
+              <code>Only when you look</code>
+            </SettingRow>
+            <SettingRow title="Your notes"
+              >{#snippet help()}Stay in your vault folder. They leave only when
+                an agent you run reads one and sends it to its provider.{/snippet}
+              <code>Stay here</code>
+            </SettingRow>
+            <SettingRow title="Usage statistics"
+              >{#snippet help()}Nothing is collected or sent about how you use
+                the app.{/snippet}
+              <code>None</code>
+            </SettingRow>
             <SettingRow title="Error log"
               >{#snippet help()}Errors from this window and the backend, kept on
                 this computer in <code>crashes.jsonl</code>. Never sent.{/snippet}
@@ -547,7 +574,7 @@
         {:else if page === "Advanced"}
           <section class="control-section">
             <h3>Advanced</h3>
-            <SettingRow title="Backend (Python sidecar)"
+            <SettingRow title="Backend (Python)"
               >{#snippet help()}Answers every request from this window.{/snippet}
               <code>{sidecar}</code>
             </SettingRow>
