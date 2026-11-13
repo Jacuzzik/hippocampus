@@ -329,7 +329,7 @@ test("Planned features are cards that say what is missing, never dead buttons", 
   const dialog = await openSettings(page);
   await dialog.getByRole("tab", { name: "Planned", exact: true }).click();
   const cards = dialog.getByRole("tabpanel").locator("article");
-  await expect(cards).toHaveCount(16);
+  await expect(cards).toHaveCount(29);
   for (const card of await cards.all()) {
     await expect(card).toContainText("Planned");
     await expect(card.locator("p.reason")).not.toBeEmpty();

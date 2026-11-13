@@ -111,6 +111,95 @@
       reason:
         "Checking means a call to a release server, and the app calls out only to your model provider. Until you allow it, get new versions from the Download page.",
     },
+    {
+      id: "N.02",
+      name: "Graph lenses",
+      what: "Switches the same graph between Notes, Agents, Memory, Tasks and Activity heat, and saves a lens.",
+      reason:
+        "Needs a filter and colour rule per lens in all three graph drawings; not built.",
+    },
+    {
+      id: "N.04",
+      name: "Agent trail notes",
+      what: "At the end of a session each agent writes a short note into the vault: what it read, changed and decided.",
+      reason:
+        "Needs a line in the briefing and a check that the note exists; the briefing text is held until the owner answers.",
+    },
+    {
+      id: "N.05",
+      name: "Briefing builder with preview",
+      what: "Pick the blocks of a briefing and see the exact text and its size before it is sent.",
+      reason:
+        "Needs the briefing split into blocks; the briefing wording is held until the owner answers.",
+    },
+    {
+      id: "N.06",
+      name: "One-click handoff",
+      what: "Asks an agent to write a handoff note, then starts the next session with it loaded.",
+      reason: "Needs a handoff note format shared with the inbox; not built.",
+    },
+    {
+      id: "N.10",
+      name: "Note to card, card to note",
+      what: "Select text in a note to make a card with a link back, and give every card a note page.",
+      reason:
+        "Needs a new selection action in the note editor and a link kind in the graph; not built.",
+    },
+    {
+      id: "N.12",
+      name: "Approvals with the exact command and diff",
+      what: "A risky request shows the command or file change, with approve once, approve for this folder, or deny.",
+      reason:
+        "Needs the shell sandbox to report each request; the sandbox is finished work and is not changed here.",
+    },
+    {
+      id: "N.15",
+      name: "Split terminals",
+      what: "Two agent terminals, or a terminal and a note, side by side.",
+      reason:
+        "Needs a second live terminal in the right panel; the one terminal component is finished work and is not changed here.",
+    },
+    {
+      id: "N.26",
+      name: "Demo vault and first-run tour",
+      what: "A labelled sample vault with a rich graph and a short guided tour.",
+      reason:
+        "Needs sample notes and a tour overlay designed first; not built.",
+    },
+    {
+      id: "M.20",
+      name: "Desktop alerts",
+      what: "An alert for an Ask me question, a blocked card or a finished agent, with quiet hours.",
+      reason:
+        "Needs the system notification service and a permission prompt; off until asked.",
+    },
+    {
+      id: "7.32",
+      name: "Remote control status",
+      what: "A status light and a copyable link when an agent can be driven from another device.",
+      reason:
+        "Needs the agent's own remote link read back from its terminal; today the app only types the command.",
+    },
+    {
+      id: "7.34",
+      name: "Live fleet file",
+      what: "One file with tokens, cost, status and inbox backlog per agent that other programs can read.",
+      reason: "Needs a writer in the backend and a stable format; not built.",
+    },
+    {
+      id: "7.35",
+      name: "File-based requests",
+      what: "Spawn, clear and connect requests as small files the app acts on.",
+      reason:
+        "Optional and needs a watched folder; every agent action today goes through the inbox.",
+    },
+    {
+      id: "7.07",
+      name: "Several vaults in separate windows",
+      what: "Open another vault with its own folder, agents and memory in a second window.",
+      reason:
+        "Needs multi-window support in the shell; the vault switch inside one window works.",
+    },
   ] as const;
 </script>
 
