@@ -62,8 +62,8 @@
       <p>Send this task to {pending.agent}?</p>
       <p class="task">{pending.task}</p>
       <div class="row">
-        <Button variant="primary" onclick={confirm}>Send</Button>
         <Button onclick={() => (pending = null)}>Cancel</Button>
+        <Button variant="primary" onclick={confirm}>Send</Button>
       </div>
     </div>
   {:else}

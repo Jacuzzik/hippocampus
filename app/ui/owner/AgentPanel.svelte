@@ -219,11 +219,11 @@
         {blocked ? "Give the tools back" : "Block shell, file writes and web"} for
         {agent.name}? Its program restarts, and work in progress stops.
       </p>
-      <button type="button" class="send" onclick={toggleBlock}
-        >Restart {blocked ? "with tools" : "without tools"}</button
-      >
       <button type="button" onclick={() => (confirmBlock = false)}
         >Cancel</button
+      >
+      <button type="button" class="send" onclick={toggleBlock}
+        >Restart {blocked ? "with tools" : "without tools"}</button
       >
     </div>
   {/if}

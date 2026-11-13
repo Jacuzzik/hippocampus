@@ -30,3 +30,18 @@ test("Tab stays inside an open dialog", async ({ page }) => {
     expect(inside, `after ${i + 1} Tab presses`).toBe(true);
   }
 });
+
+test("in the Add agent dialog Cancel comes before the action that goes on", async ({
+  page,
+}) => {
+  await mockSidecar(page);
+  await page.goto("/");
+  await page
+    .getByLabel("Agents")
+    .getByRole("button", { name: "+ Add agent" })
+    .click();
+  const dialog = page.getByRole("dialog", { name: "Add agent" });
+  await expect(
+    dialog.getByRole("button", { name: /^(Back|Cancel|Next)$/ }),
+  ).toHaveText(["Back", "Cancel", "Next"]);
+});

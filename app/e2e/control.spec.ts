@@ -219,6 +219,8 @@ test("a dispatch is sent only after the confirm card", async ({ page }) => {
   await dialog.getByRole("button", { name: "Review and send" }).click();
   const card = dialog.getByRole("alertdialog", { name: "Confirm dispatch" });
   await expect(card).toContainText("Tidy the inbox notes");
+  // One order everywhere (4.14): Cancel first, the action last.
+  await expect(card.getByRole("button")).toHaveText(["Cancel", "Send"]);
   await card.getByRole("button", { name: "Cancel" }).click();
   await expect(dialog.getByText("Sent to helper.")).toHaveCount(0);
   await dialog.getByRole("button", { name: "Review and send" }).click();
