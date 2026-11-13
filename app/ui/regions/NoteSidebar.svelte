@@ -87,7 +87,9 @@
           type="button"
           class="note"
           aria-current={node.id === selectedId ? "true" : undefined}
-          onclick={() => (selectedId = node.id)}>{node.title}</button
+          title={node.title}
+          onclick={() => (selectedId = node.id)}
+          ><span class="title">{node.title}</span></button
         >
       </li>
     {:else}
@@ -216,15 +218,22 @@
     width: 100%;
     font: inherit;
     text-align: left;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
     color: var(--color-text);
     background: none;
     border: 0;
     border-radius: var(--radius-sm);
     padding: var(--space-1) var(--space-2);
     cursor: pointer;
+  }
+
+  /* A long title takes a second line before it is cut; the full title shows on hover. */
+  .title {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+    overflow-wrap: anywhere;
   }
 
   .note:hover {

@@ -67,7 +67,8 @@
         >DISK <b>{system ? `${system.disk}%` : "…"}</b></span
       >
       <span title="Free space on the drive that holds the app data"
-        >DISK FREE <b>{system ? `${system.disk_free} GB` : "…"}</b></span
+        >FREE <b class="wide">{system ? `${system.disk_free} GB` : "…"}</b
+        ></span
       >
     </div>
     <div class="icons">
@@ -85,7 +86,6 @@
     </div>
   </header>
   {#if !fullscreen}
-    <span class="label" aria-hidden="true">GRAPH</span>
     <div class="body">
       {#if data}
         {#key viewKey}
@@ -117,18 +117,6 @@
     z-index: 2;
   }
 
-  /* The pane's name in the bottom-left corner: the top corner holds the graph controls. */
-  .label {
-    position: absolute;
-    left: var(--space-3);
-    bottom: var(--space-2);
-    z-index: 2;
-    pointer-events: none;
-    font-family: var(--font-ui);
-    font-size: var(--font-size-tag);
-    color: var(--color-md-text-muted);
-  }
-
   /* The top bar: a strip above the pane, with the icon buttons on the right. */
   .topbar {
     display: flex;
@@ -150,9 +138,17 @@
     color: var(--color-text-muted);
   }
 
+  /* Each value keeps one width, so the row does not shift as the numbers change. */
   .stats b {
+    display: inline-block;
+    min-width: 6ch;
     font-weight: normal;
+    font-variant-numeric: tabular-nums;
     color: var(--color-text);
+  }
+
+  .stats b.wide {
+    min-width: 9ch;
   }
 
   .icons {

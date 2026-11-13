@@ -34,10 +34,10 @@
     white-space: nowrap;
   }
 
+  /* Next to the agent cards and their controls, not alone at the far edge. */
   .counts {
     display: flex;
     gap: var(--space-3);
-    margin-left: auto;
     flex: none;
   }
 </style>

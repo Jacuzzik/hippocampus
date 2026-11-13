@@ -1028,6 +1028,8 @@
 
 <style>
   .brain {
+    /* The strip at the top that holds the graph controls; the drawing starts under it. */
+    --tools-band: var(--layout-tab-header-height);
     position: relative;
     display: flex;
     width: 100%;
@@ -1040,6 +1042,7 @@
     flex: 1;
     min-width: 0;
     height: 100%;
+    padding-top: var(--tools-band);
   }
 
   .canvas {
@@ -1060,16 +1063,16 @@
   /* Sits over the WebGL canvas; clicks pass through to it, so every graph interaction still works. */
   .ascii-layer {
     position: absolute;
-    inset: 0;
+    inset: var(--tools-band) 0 0;
     width: 100%;
-    height: 100%;
+    height: calc(100% - var(--tools-band));
     pointer-events: none;
   }
 
   /* Labels are DOM text over the canvas; they never take pointer events, so clicks reach the graph. */
   .labels {
     position: absolute;
-    inset: 0;
+    inset: var(--tools-band) 0 0;
     overflow: hidden;
     pointer-events: none;
     font-size: var(--font-size-xs);
@@ -1091,14 +1094,15 @@
       0 0 3px var(--color-bg-0);
   }
 
-  /* Top left, clear of the drawer on the right. */
+  /* Its own strip at the top left, clear of the drawer on the right; no note name is drawn under it. */
   .tools {
     position: absolute;
-    top: var(--space-2);
+    top: 0;
     left: var(--space-2);
     z-index: 1;
     display: flex;
     align-items: center;
+    height: var(--tools-band);
     gap: var(--space-2);
     font-size: var(--font-size-xs);
     color: var(--color-text-muted);
