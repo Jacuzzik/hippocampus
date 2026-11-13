@@ -222,7 +222,7 @@
       id="assistant-input"
       rows="2"
       bind:value={draft}
-      placeholder="Message Hippo"
+      placeholder="Message Hippo (Enter sends, Shift+Enter adds a line)"
       onkeydown={(e) => {
         // Enter sends; Shift+Enter starts a new line.
         if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {

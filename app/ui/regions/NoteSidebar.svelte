@@ -193,6 +193,7 @@
     background: var(--color-bg-0);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
+    min-height: 24px; /* the smallest size that can be hit reliably */
     padding: 0 var(--space-1);
     cursor: pointer;
   }

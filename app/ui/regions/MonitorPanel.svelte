@@ -1,5 +1,6 @@
 <!-- What the assistant may reach right now and what it has used, read only. -->
 <script lang="ts">
+  import { dialogFocus } from "../controls/dialogFocus.ts";
   import { every } from "../poll.ts";
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
@@ -282,6 +283,7 @@
                   aria-modal="true"
                   aria-labelledby="engine-confirm-title"
                   tabindex="-1"
+                  use:dialogFocus
                   onclick={(e) => e.stopPropagation()}
                   onkeydown={(e) => e.key === "Escape" && (confirmOpen = false)}
                 >

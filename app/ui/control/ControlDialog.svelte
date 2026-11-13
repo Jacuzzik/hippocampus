@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { dialogFocus } from "../controls/dialogFocus.ts";
   import "./control.css";
   import ActivitySection from "./ActivitySection.svelte";
   import ArchivedAgentsSection from "./ArchivedAgentsSection.svelte";
@@ -44,6 +45,7 @@
     aria-modal="true"
     aria-label="Control panel"
     tabindex="-1"
+    use:dialogFocus
     onkeydown={onKey}
     onmousedown={(e) => e.stopPropagation()}
   >

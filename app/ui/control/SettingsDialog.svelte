@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { dialogFocus } from "../controls/dialogFocus.ts";
   import "./control.css";
   import { invoke } from "@tauri-apps/api/core";
   import { getVersion } from "@tauri-apps/api/app";
@@ -202,6 +203,7 @@
     aria-modal="true"
     aria-label="Settings"
     tabindex="-1"
+    use:dialogFocus
     onkeydown={onKey}
     onmousedown={(e) => e.stopPropagation()}
   >
@@ -683,6 +685,8 @@
   }
 
   .close {
+    min-width: 28px;
+    min-height: 28px;
     padding: 0 var(--space-2);
     color: var(--color-text-muted);
     font-size: var(--font-size-lg);

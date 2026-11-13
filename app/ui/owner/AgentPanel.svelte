@@ -333,7 +333,7 @@
     <textarea
       rows="2"
       bind:value={text}
-      placeholder={`Message ${agent.name}`}
+      placeholder={`Message ${agent.name} (Enter sends, Shift+Enter adds a line)`}
       aria-label={`Message ${agent.name}`}
       onkeydown={(e) => {
         // Enter sends; Shift+Enter starts a new line.

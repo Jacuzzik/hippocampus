@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { dialogFocus } from "../controls/dialogFocus.ts";
   import { report } from "../notices.svelte.ts";
   import { invoke } from "@tauri-apps/api/core";
   import { onMount } from "svelte";
@@ -161,6 +162,7 @@
     aria-modal="true"
     aria-labelledby="add-agent-title"
     tabindex="-1"
+    use:dialogFocus
     onkeydown={onKey}
     onmousedown={(e) => e.stopPropagation()}
   >

@@ -1,5 +1,6 @@
 <!-- The bottom agent row: the main agent first (fixed), then added agents that can be moved. -->
 <script lang="ts">
+  import { dialogFocus } from "../controls/dialogFocus.ts";
   import { backend } from "../backend.svelte.ts";
   import { every } from "../poll.ts";
   import { onMount } from "svelte";
@@ -291,6 +292,7 @@
         ? "Rename agent"
         : "Agent note"}
       tabindex="-1"
+      use:dialogFocus
       onmousedown={(e) => e.stopPropagation()}
     >
       <header>
@@ -331,6 +333,7 @@
       aria-modal="true"
       aria-label="{info.name} details"
       tabindex="-1"
+      use:dialogFocus
       onmousedown={(e) => e.stopPropagation()}
     >
       <header>

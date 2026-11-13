@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { dialogFocus } from "../controls/dialogFocus.ts";
   import { invoke } from "@tauri-apps/api/core";
   import { onMount } from "svelte";
   import { allowlistAfter, type ToolRow } from "./allowlist";
@@ -71,6 +72,7 @@
     aria-modal="true"
     aria-label="Assistant tools"
     tabindex="-1"
+    use:dialogFocus
     onkeydown={onKey}
     onmousedown={(e) => e.stopPropagation()}
   >

@@ -9,6 +9,7 @@
 </script>
 
 <script lang="ts">
+  import { dialogFocus } from "../controls/dialogFocus.ts";
   import { onMount } from "svelte";
   import { fuzzyScore } from "../fuzzy";
 
@@ -76,6 +77,7 @@
     aria-modal="true"
     aria-label={label}
     tabindex="-1"
+    use:dialogFocus
     onmousedown={(e) => e.stopPropagation()}
   >
     <input

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { dialogFocus } from "../controls/dialogFocus.ts";
   import { invoke } from "@tauri-apps/api/core";
 
   // Setup: the brain is the default vault the app creates on first start. Removing data keeps the notes.
@@ -40,6 +41,7 @@
     aria-modal="true"
     aria-label="Setup"
     tabindex="-1"
+    use:dialogFocus
     onkeydown={onKey}
     onmousedown={(e) => e.stopPropagation()}
   >

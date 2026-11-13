@@ -69,9 +69,10 @@ html {
   outline-offset: 2px;
 }
 
-/* Message and note boxes show no outline when selected. */
+/* Message and note boxes show no ring when selected; their border takes the focus colour instead. */
 textarea:focus-visible {
   outline: none;
+  border-color: var(--color-focus-ring);
 }
 
 /* Tablets and touch screens: controls grow to the 44px touch minimum. Wide desktop keeps its sizes. */
