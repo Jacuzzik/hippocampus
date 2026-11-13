@@ -5,6 +5,7 @@ Claude uses the agent's Claude Code session (ai/cli_sessions.py), so the termina
 
 import codecs
 import json
+import logging
 import os
 import shutil
 import signal
@@ -20,6 +21,8 @@ from ai import cli_sessions
 from core import sandbox
 from core.settings import HIVE_DIR, ROOT
 from tools.vault_mcp import VAULT_TOOLS, mcp_config
+
+logger = logging.getLogger("hippocampus.terminal")
 
 try:  # Unix only. On Windows this module still loads, and starting a terminal says why it cannot.
     import fcntl
@@ -43,9 +46,14 @@ CLI_FOR = {
 
 class Terminals:
     def __init__(
-        self, emit: Callable[[dict[str, Any]], None], screen_dir: Path | None = None
+        self,
+        emit: Callable[[dict[str, Any]], None],
+        screen_dir: Path | None = None,
+        on_crash: Callable[[str, int], None] | None = None,
     ) -> None:
         self.emit = emit
+        # Called with the agent and its exit code when a CLI ends with an error we did not ask for.
+        self.on_crash = on_crash
         # Where each terminal's recent output is kept between app restarts.
         self.screen_dir = screen_dir
         self.saved_at: dict[str, float] = {}
@@ -454,6 +462,11 @@ class Terminals:
                 # The old CLI of a replaced terminal: nothing to report. Leaving from here is on purpose.
                 return  # noqa: B012
             if code != 0 and not stopped_by_us:
+                if self.on_crash is not None:
+                    try:
+                        self.on_crash(agent, code)
+                    except Exception:
+                        logger.exception("Could not record the exit of %s", agent)
                 # Says what a failed exit usually means, so the terminal shows an error message, not just a code.
                 self.emit(
                     {

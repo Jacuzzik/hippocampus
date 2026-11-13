@@ -143,7 +143,13 @@ class Session(
         self.settings_path = settings_path
         self.settings = settings if settings is not None else load_settings(settings_path)
         self.emit: Emit = emit or (lambda _event: None)
-        self.terminals = Terminals(lambda event: self.emit(event), storage / "terminals")
+        self.terminals = Terminals(
+            lambda event: self.emit(event),
+            storage / "terminals",
+            lambda agent, code: crash_log.record(
+                storage, f"agent {agent}", f"The CLI stopped with code {code}."
+            ),
+        )
         # Daily compaction: the day it last ran, and agents that were sent the save prompt (name -> time sent).
         # Starting after 03:00 counts today's save as done, so the first save is the next 03:00, not right at startup.
         now = datetime.now()
