@@ -1,0 +1,180 @@
+/* The website's look. Colours match the app (design/tokens.json): dark by default, light when the visitor's system asks for it. */
+:root {
+  --bg: #222229;
+  --bg-raised: #2a2a33;
+  --line: #3a3a44;
+  --text: #dadada;
+  --muted: #a3a3ad;
+  --accent: #a896e3;
+  --accent-on: #222229;
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f6f5f9;
+    --bg-raised: #ffffff;
+    --line: #cfcbdb;
+    --text: #1f1b2a;
+    --muted: #5a5468;
+    --accent: #6a55c2;
+    --accent-on: #ffffff;
+    color-scheme: light;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font:
+    16px/1.6 "JetBrains Mono",
+    ui-monospace,
+    "Cascadia Mono",
+    Menlo,
+    monospace;
+}
+
+.wrap {
+  max-width: 68ch;
+  margin: 0 auto;
+  padding-block: 24px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  align-items: baseline;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+nav .name {
+  margin-right: auto;
+  font-weight: 700;
+  color: var(--text);
+}
+
+a {
+  color: var(--accent);
+  text-underline-offset: 3px;
+}
+
+a:focus-visible,
+.button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+nav a[aria-current="page"] {
+  color: var(--text);
+  text-decoration: none;
+}
+
+h1 {
+  margin: 48px 0 16px;
+  font-size: clamp(1.6rem, 5vw, 2.2rem);
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+h2 {
+  margin: 40px 0 8px;
+  font-size: 1.15rem;
+  text-wrap: balance;
+}
+
+p,
+li {
+  color: var(--muted);
+}
+
+p strong,
+li strong {
+  color: var(--text);
+}
+
+.lead {
+  font-size: 1.05rem;
+  color: var(--text);
+}
+
+.button {
+  display: inline-block;
+  margin: 8px 12px 8px 0;
+  padding: 10px 18px;
+  color: var(--accent-on);
+  background: var(--accent);
+  border-radius: 4px;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.button.quiet {
+  color: var(--text);
+  background: none;
+  border: 1px solid var(--line);
+}
+
+pre {
+  overflow-x: auto;
+  padding: 12px 16px;
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font: inherit;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+code {
+  font: inherit;
+  color: var(--text);
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.cards li {
+  min-width: 0;
+  padding: 12px 16px;
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+}
+
+.cards b {
+  display: block;
+  color: var(--text);
+}
+
+footer {
+  margin-top: 64px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a,
+  .button {
+    transition: opacity 120ms;
+  }
+
+  .button:hover {
+    opacity: 0.85;
+  }
+}

@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>Download Hippocampus</title>
+    <meta
+      name="description"
+      content="How to get Hippocampus: installers and building from source."
+    />
+    <link rel="stylesheet" href="site.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <nav aria-label="Site">
+        <a class="name" href="index.html">Hippocampus</a>
+        <a href="download.html" aria-current="page">Download</a>
+        <a href="docs.html">Docs</a>
+        <a href="changelog.html">Changelog</a>
+        <a href="privacy.html">Privacy</a>
+        <a href="security.html">Security</a>
+      </nav>
+      <main>
+        <h1>Download</h1>
+        <p class="lead">
+          No release has been published yet. Until the first one, build the app
+          from source.
+        </p>
+        <h2>Build from source (Linux)</h2>
+        <p>You need Node 24, Rust, and uv (the Python tool). Then:</p>
+        <pre><code>git clone https://github.com/Jacuzzik/hippocampus.git
+cd hippocampus
+uv sync
+bash scripts/build-sidecar.sh
+cd app
+npm ci
+npx tauri build</code></pre>
+        <p>
+          The installers are written to
+          <code>app/src-tauri/target/release/bundle</code>.
+        </p>
+        <h2>Installers</h2>
+        <p>
+          Each release will list an AppImage, a .deb and an .rpm for Linux, a
+          .dmg for macOS and an .msi for Windows, each with a SHA-256 checksum
+          in <code>SHA256SUMS.txt</code>. Check the checksum before you install.
+        </p>
+        <h2>What the agents need</h2>
+        <p>
+          An agent is a command-line program you install yourself, such as
+          Claude Code. Settings, Doctor in the app shows what is installed and
+          signed in, and the next step for anything missing.
+        </p>
+      </main>
+      <footer>
+        Hippocampus is open source. This site sets no cookies and loads nothing
+        from other sites.
+        <a href="https://github.com/Jacuzzik/hippocampus">Source on GitHub</a>
+      </footer>
+    </div>
+  </body>
+</html>

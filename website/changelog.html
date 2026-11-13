@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>Hippocampus changelog</title>
+    <meta
+      name="description"
+      content="What changed in each version of Hippocampus."
+    />
+    <link rel="stylesheet" href="site.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <nav aria-label="Site">
+        <a class="name" href="index.html">Hippocampus</a>
+        <a href="download.html">Download</a>
+        <a href="docs.html">Docs</a>
+        <a href="changelog.html" aria-current="page">Changelog</a>
+        <a href="privacy.html">Privacy</a>
+        <a href="security.html">Security</a>
+      </nav>
+      <main>
+        <h1>Changelog</h1>
+        <h2>Unreleased</h2>
+        <p><strong>Added</strong></p>
+        <ul>
+          <li>
+            One inbox for agents: messages carry a type, a task id, a reply link
+            and a priority. The Inbox tab
+          </li>
+        </ul>
+        <p>
+          groups them into conversations, filters, searches, and has a box to
+          write to one agent or all.
+        </p>
+        <ul>
+          <li>
+            &quot;Shell for every agent&quot; (Settings &gt; Agents, off by
+            default): each agent gets a fenced shell and its
+          </li>
+        </ul>
+        <p>
+          program runs in a sandbox that keeps the app and the system read-only.
+        </p>
+        <ul>
+          <li>
+            Agent panel: Traces lists every tool call with its result; Messages
+            lists that agent&#x27;s messages.
+          </li>
+          <li>Settings &gt; Advanced: feature switches and the backend log.</li>
+          <li>TALK on a card opens that agent&#x27;s message box.</li>
+          <li>
+            Planned cards say what a feature will do and what is missing, in
+            place of &quot;Not set up&quot;.
+          </li>
+        </ul>
+        <p><strong>Changed</strong></p>
+        <ul>
+          <li>One terminal component for the main agent and added agents.</li>
+          <li>
+            The graph reads the vault only after a file changed, not every five
+            seconds.
+          </li>
+          <li>Control Room panels refresh while open.</li>
+          <li>
+            Each agent&#x27;s briefing ends with the limits in force and a
+            version stamp; a broken briefing stops the
+          </li>
+        </ul>
+        <p>agent before it starts.</p>
+        <p><strong>Fixed</strong></p>
+        <ul>
+          <li>
+            The agents&#x27; programs start again by themselves after the
+            backend restarts.
+          </li>
+          <li>
+            The start-up inbox was typed into every agent again on each window
+            reload.
+          </li>
+          <li>
+            Two lines typed at once could mix in one input, so `/remote-control`
+            was sent to the model as chat.
+          </li>
+          <li>
+            Sending a task from the app never worked (`task_send` was registered
+            without its arguments).
+          </li>
+          <li>Garbled agent terminal after a resize.</li>
+        </ul>
+        <p><strong>Removed</strong></p>
+        <ul>
+          <li>
+            The unused in-app chat pane, and the tests for a phone and tablet
+            layout that does not exist.
+          </li>
+        </ul>
+      </main>
+      <footer>
+        Hippocampus is open source. This site sets no cookies and loads nothing
+        from other sites.
+        <a href="https://github.com/Jacuzzik/hippocampus">Source on GitHub</a>
+      </footer>
+    </div>
+  </body>
+</html>

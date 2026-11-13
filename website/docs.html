@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>Hippocampus docs</title>
+    <meta
+      name="description"
+      content="Getting started with Hippocampus: a vault, an agent, messages and the shell sandbox."
+    />
+    <link rel="stylesheet" href="site.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <nav aria-label="Site">
+        <a class="name" href="index.html">Hippocampus</a>
+        <a href="download.html">Download</a>
+        <a href="docs.html" aria-current="page">Docs</a>
+        <a href="changelog.html">Changelog</a>
+        <a href="privacy.html">Privacy</a>
+        <a href="security.html">Security</a>
+      </nav>
+      <main>
+        <h1>Getting started</h1>
+        <h2>1. Choose a vault</h2>
+        <p>
+          On first run the app asks for a folder. That folder is your vault:
+          every <code>.md</code> file in it is a note. You can change it later
+          in Settings, General.
+        </p>
+        <h2>2. Add an agent</h2>
+        <p>
+          Press <strong>+ Add agent</strong> in the bottom bar. Pick a name, a
+          working folder, and the program and model it runs. The app writes its
+          briefing and starts it in its own terminal.
+        </p>
+        <h2>3. Send a message</h2>
+        <p>
+          Open the <strong>inbox</strong> tab in the Control Room, write a
+          message, and send it to one agent or all of them. A message is typed
+          into the agent's terminal when the terminal is quiet.
+        </p>
+        <h2>4. The shell and the sandbox</h2>
+        <p>
+          By default an added agent has no shell. Settings, Agents has a switch
+          that gives every agent a shell inside a sandbox (bubblewrap on Linux).
+          The sandbox closes the app's own folder and other agents' folders.
+        </p>
+        <h2>5. When something is wrong</h2>
+        <p>
+          Settings, Doctor checks everything the app needs and says what to do
+          for each gap. It also lists broken links between your notes.
+        </p>
+        <h2>Keyboard</h2>
+        <p>
+          <code>Ctrl+P</code> opens the command palette,
+          <code>Ctrl+O</code> jumps to a note, <code>Ctrl+F</code> searches. The
+          full list is in Settings, Keyboard.
+        </p>
+        <h2>More</h2>
+        <p>
+          The
+          <a href="https://github.com/Jacuzzik/hippocampus/blob/main/README.md"
+            >README</a
+          >
+          covers development, and
+          <a
+            href="https://github.com/Jacuzzik/hippocampus/blob/main/ARCHITECTURE.md"
+            >ARCHITECTURE.md</a
+          >
+          explains how the parts fit.
+        </p>
+      </main>
+      <footer>
+        Hippocampus is open source. This site sets no cookies and loads nothing
+        from other sites.
+        <a href="https://github.com/Jacuzzik/hippocampus">Source on GitHub</a>
+      </footer>
+    </div>
+  </body>
+</html>

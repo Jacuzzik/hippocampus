@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>Hippocampus privacy</title>
+    <meta
+      name="description"
+      content="What Hippocampus stores and what leaves your computer."
+    />
+    <link rel="stylesheet" href="site.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <nav aria-label="Site">
+        <a class="name" href="index.html">Hippocampus</a>
+        <a href="download.html">Download</a>
+        <a href="docs.html">Docs</a>
+        <a href="changelog.html">Changelog</a>
+        <a href="privacy.html" aria-current="page">Privacy</a>
+        <a href="security.html">Security</a>
+      </nav>
+      <main>
+        <h1>Privacy</h1>
+        <p class="lead">
+          Hippocampus works fully on your own computer. It has no account, no
+          telemetry and no server of its own.
+        </p>
+        <h2>What is stored, and where</h2>
+        <ul>
+          <li>
+            <strong>Your notes</strong> stay in the vault folder you chose.
+          </li>
+          <li>
+            <strong>A search index</strong> of the notes is kept in the app's
+            data folder. It is a cache; deleting it loses nothing.
+          </li>
+          <li>
+            <strong>API keys</strong>, if you add any, go to your system
+            keychain, never to a file.
+          </li>
+          <li>
+            <strong>An error log</strong> is kept on your computer. Keys are
+            masked in it. Settings, Privacy and data shows and clears it.
+          </li>
+        </ul>
+        <h2>What leaves your computer</h2>
+        <ul>
+          <li>
+            What an agent sends to its own provider (for example Anthropic for
+            Claude Code), under that provider's terms.
+          </li>
+          <li>
+            Nothing else. The network switch in the Control panel can stop model
+            calls altogether.
+          </li>
+        </ul>
+        <h2>This website</h2>
+        <p>
+          It sets no cookies, runs no analytics and loads no files from other
+          sites.
+        </p>
+      </main>
+      <footer>
+        Hippocampus is open source. This site sets no cookies and loads nothing
+        from other sites.
+        <a href="https://github.com/Jacuzzik/hippocampus">Source on GitHub</a>
+      </footer>
+    </div>
+  </body>
+</html>

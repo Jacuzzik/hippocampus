@@ -29,6 +29,8 @@ A row is "closed" only when a check proves it: a test, a lint rule, or a screens
 | Link doctor | (see git log) | N.08 (Doctor page lists broken links and notes with no links; read only) | pytest `test_link_doctor.py`, e2e settings |
 | Backend split 1 | (this commit) | 11.01 (part: `core/__main__.py` from 1,888 to 1,476 lines; jobs, hive delivery, records and terminal calls moved to `core/session_*.py`; a test stops any backend file passing 1,500 lines) | pytest 380, real backend start, live restart and screenshot |
 | Fonts and checks | (this commit) | 6.08 (ASCII graph uses the font token), 6.11 (buttons and fields inherit the app font), 6.12 (part: tag filter and provider use the app dropdown; two native selects remain and follow the theme), 6.13, 6.15 (npm test fails on a font named in a component), 6.17 (tabular digits), 3.09 (graph colours come from tokens), F.05 (CI job scans Python, Node and Rust dependencies), F.04 (SECURITY.md), E.01, E.02, E.06, 9.03, C.01, C.06, A.05, D.01, D.06 (already true; checked) | npm test 91, e2e 87, ESLint 0, svelte-check 0 |
+| Installers | (see git log: "Installers") | G.03, G.06 (part: a workflow builds Linux, macOS and Windows installers with checksums on GitHub's machines; not installed or tested by hand on Windows or macOS), I.05 (release checklist) | GitHub Actions run of `release.yml` |
+| Website and security review | (this commit) | 15.01, 15.02, 15.05, 15.06, 15.07, 15.12 (six static pages in `website/`: home, download, docs, changelog, privacy, security; no scripts or cookies; not deployed, per 15.09), 14.08 (the app needs no account), 14.13 (part: `docs/SECURITY-REVIEW.md`, written before any account code), I.03 | screenshots at 1200 and 400 px, no sideways scroll |
 
 ## Closed before this phase file existed (checked again this phase)
 
@@ -37,7 +39,7 @@ A row is "closed" only when a check proves it: a test, a lint rule, or a screens
 ## Needs the user
 
 - D.10: what the scheduler's "obsidian" update should do; who "mr" and "hanis" are.
-- 14.x and 15.x (account system and website): need a hosted sign-in provider, a domain and a security review. Not started.
+- 14.x and 15.03, 15.04 (sign-in, sign-up, account pages, sync): need the owner to choose a hosted sign-in provider and a domain. The checks to pass first are in `docs/SECURITY-REVIEW.md`.
 - G.03, G.06: installers for Windows and macOS need those machines.
 
 ## Found, not yet done
