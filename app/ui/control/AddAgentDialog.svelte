@@ -497,7 +497,6 @@
     border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
     font: inherit;
-    color-scheme: dark;
   }
 
   label input[type="text"]:focus,

@@ -73,11 +73,26 @@ export function buildVariables(tokens) {
   return vars;
 }
 
+// The light theme's colours: only the ones that differ from the dark default.
+export function buildLightVariables(tokens) {
+  return Object.entries(tokens.color.light ?? {})
+    .filter(([name]) => !name.startsWith("$"))
+    .map(([name, token]) => {
+      if (!(name in tokens.color.semantic))
+        throw new Error(`Light colour has no dark default: ${name}`);
+      return [`--color-${name}`, resolveValue(tokens, token.$value)];
+    });
+}
+
 export function buildCss(tokens) {
   const lines = buildVariables(tokens).map(
     ([name, value]) => `  ${name}: ${value};`,
   );
-  return `/* Generated from design/tokens.json by scripts/build-tokens.mjs. Do not edit. */\n:root {\n${lines.join("\n")}\n}\n`;
+  const light = buildLightVariables(tokens).map(
+    ([name, value]) => `  ${name}: ${value};`,
+  );
+  // color-scheme makes the browser's own parts (scrollbars, pickers, menus) follow the theme.
+  return `/* Generated from design/tokens.json by scripts/build-tokens.mjs. Do not edit. */\n:root {\n  color-scheme: dark;\n${lines.join("\n")}\n}\n\n:root[data-theme="light"] {\n  color-scheme: light;\n${light.join("\n")}\n}\n`;
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {

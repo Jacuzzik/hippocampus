@@ -209,11 +209,15 @@
     // TALK on a card needs the right panel on screen before its message box can take the cursor.
     const onTalk = () => (panelOpen = true);
     window.addEventListener("agent-talk", onTalk);
+    // The graph reads its colours when it is created; a new theme needs a new graph.
+    const onTheme = () => viewKey++;
+    window.addEventListener("theme-changed", onTheme);
     // The browser's own right-click menu is off everywhere; the app's own menus still open from their handlers.
     const noNativeMenu = (e: MouseEvent) => e.preventDefault();
     window.addEventListener("contextmenu", noNativeMenu);
     return () => {
       window.removeEventListener("contextmenu", noNativeMenu);
+      window.removeEventListener("theme-changed", onTheme);
       stopPoll();
       window.removeEventListener("graph-changed", onChanged);
       window.removeEventListener("agent-talk", onTalk);

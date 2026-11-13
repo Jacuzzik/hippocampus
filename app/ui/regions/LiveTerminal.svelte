@@ -59,6 +59,16 @@
   let settle: ReturnType<typeof setTimeout> | undefined;
   let restarting = false;
   let onEngineChanged: ((e: Event) => void) | null = null;
+  // The terminal draws with colours read in code, so a theme change has to be handed to it.
+  const onThemeChanged = (): void => {
+    if (!term) return;
+    const fg = cssToken("md-text");
+    term.options.theme = {
+      background: cssToken("md-bg-0"),
+      foreground: fg,
+      cursor: fg,
+    };
+  };
   // "redraw" only. False until the terminal has been fitted to a visible box: a panel mounted hidden starts
   // its CLI at a default width, so the first output is laid out for that width and not for the real box.
   let sized = false;
@@ -109,6 +119,7 @@
     fit = new FitAddon();
     term.loadAddon(fit);
     term.open(screen);
+    window.addEventListener("theme-changed", onThemeChanged);
     // xterm measures a cell once at open; nudge it after the font loads so cells match the drawn glyphs.
     const opened = term;
     document.fonts?.ready.then(() => {
@@ -215,6 +226,7 @@
     unlisten?.();
     if (onEngineChanged)
       window.removeEventListener("engine-changed", onEngineChanged);
+    window.removeEventListener("theme-changed", onThemeChanged);
     term?.dispose();
     observer = null;
     unlisten = null;

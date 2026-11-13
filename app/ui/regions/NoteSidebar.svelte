@@ -141,11 +141,7 @@
     padding: var(--space-1) var(--space-2);
   }
 
-  /* Native dropdown: dark popup, and option text in our colours so "All tags" is not black on black. */
-  select {
-    color-scheme: dark;
-  }
-
+  /* Native dropdown: option text in our colours, so "All tags" is readable in either theme. */
   select option {
     color: var(--color-text);
     background: var(--color-bg-0);

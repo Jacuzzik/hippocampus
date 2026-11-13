@@ -64,3 +64,39 @@ test("confirm and danger borders meet 3:1 against the panel", () => {
     assert.ok(value >= 3, `${name} on bg-1 is ${value.toFixed(2)}:1`);
   }
 });
+
+// The light theme changes only some colours; the rest keep their dark-theme value.
+const light = {
+  ...semantic,
+  ...Object.fromEntries(
+    Object.entries(tokens.color.light)
+      .filter(([k]) => !k.startsWith("$"))
+      .map(([k, v]) => [k, v.$value]),
+  ),
+};
+const LIGHT_TEXT_PAIRS = [
+  ...TEXT_PAIRS,
+  ["text-subtle", "bg-0"],
+  ["text-subtle", "bg-1"],
+  ["link", "bg-0"],
+  ["confirm", "bg-1"],
+  ["success", "bg-1"],
+  ["pending", "bg-1"],
+  ["md-text", "md-bg-0"],
+  ["md-text-muted", "md-bg-0"],
+  ["md-danger", "md-bg-0"],
+  ["md-accent-on", "md-accent"],
+];
+
+for (const [fg, bg] of LIGHT_TEXT_PAIRS) {
+  test(`light theme: ${fg} on ${bg} meets 4.5:1 for normal text`, () => {
+    const value = ratio(hex(light[fg]), hex(light[bg]));
+    assert.ok(value >= 4.5, `${fg} on ${bg} is ${value.toFixed(2)}:1`);
+  });
+}
+
+test("the light theme only changes colours that exist in the dark theme", () => {
+  for (const name of Object.keys(tokens.color.light))
+    if (!name.startsWith("$"))
+      assert.ok(name in semantic, `${name} has no dark default`);
+});

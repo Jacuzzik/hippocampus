@@ -70,7 +70,8 @@ test("every button in the dialogs has a name and a size that can be hit", async 
   await expect(settings).toBeVisible();
   expect(await audit(page), "Settings").toEqual([]);
   // Every settings page has its own controls.
-  const pages = settings.getByRole("navigation").getByRole("button");
+  const pages = settings.getByRole("tab");
+  expect(await pages.count()).toBeGreaterThan(5);
   for (let i = 0; i < (await pages.count()); i++) {
     await pages.nth(i).click();
     expect(await audit(page), await pages.nth(i).innerText()).toEqual([]);

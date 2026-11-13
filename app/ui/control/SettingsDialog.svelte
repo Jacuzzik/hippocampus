@@ -19,6 +19,7 @@
     prefs,
     type Intro,
     type Motion,
+    type Theme,
   } from "../prefs.svelte.ts";
   import { SETTINGS_PAGES, type SettingsPage } from "./model";
   import { FLAGS, flagOn, setFlag } from "../flags.svelte.ts";
@@ -296,6 +297,22 @@
             <h3>Appearance</h3>
             <div class="setting">
               <div>
+                <b>Theme</b>
+                <p>System follows your computer's light or dark setting.</p>
+              </div>
+              <Dropdown
+                label="Theme"
+                value={prefs.theme}
+                options={[
+                  { value: "dark", label: "Dark" },
+                  { value: "light", label: "Light" },
+                  { value: "system", label: "System" },
+                ]}
+                onchange={(next) => (prefs.theme = next as Theme)}
+              />
+            </div>
+            <div class="setting">
+              <div>
                 <b>Motion</b>
                 <p>System follows your computer's reduced-motion setting.</p>
               </div>
@@ -363,21 +380,13 @@
               <div>
                 <b>Reset appearance</b>
                 <p>
-                  Back to 12 px text, system motion and remembering the last
-                  tab.
+                  Back to the dark theme, 12 px text, system motion and
+                  remembering the last tab.
                 </p>
               </div>
               <button type="button" onclick={() => prefs.reset()}>Reset</button>
             </div>
           </section>
-          <div class="cards">
-            <StatusCard
-              name="Light theme"
-              what="A light set of colours next to the dark one."
-              status="Planned"
-              reason="Every colour is a token now, so this needs a second token set and a contrast pass."
-            />
-          </div>
         {:else if page === "Agents"}
           <section class="control-section">
             <h3>Agents</h3>

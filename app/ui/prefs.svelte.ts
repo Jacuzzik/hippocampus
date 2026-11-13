@@ -2,11 +2,14 @@
 // Saved in the window's own storage, so they survive a restart and need no backend call.
 
 export type Motion = "system" | "on" | "off";
+/** Dark is the app's own look; System follows the computer. */
+export type Theme = "dark" | "light" | "system";
 /** How long the logo stays over the app once it has loaded: 10 seconds, 1 second, or not at all. */
 export type Intro = "long" | "short" | "off";
 type Prefs = {
   terminalFontSize: number;
   motion: Motion;
+  theme: Theme;
   intro: Intro;
   rememberTab: boolean;
   lastTab: string;
@@ -19,6 +22,7 @@ export const FONT_MAX = 20;
 const DEFAULTS: Prefs = {
   terminalFontSize: 12,
   motion: "system",
+  theme: "dark",
   intro: "long",
   rememberTab: true,
   lastTab: "terminal",
@@ -39,6 +43,10 @@ function read(): Prefs {
         saved.motion === "on" || saved.motion === "off"
           ? saved.motion
           : "system",
+      theme:
+        saved.theme === "light" || saved.theme === "system"
+          ? saved.theme
+          : "dark",
       intro:
         saved.intro === "short" || saved.intro === "off" ? saved.intro : "long",
       rememberTab: saved.rememberTab !== false,
@@ -71,6 +79,25 @@ export function applyMotion(): void {
   document.documentElement.dataset.motion = state.motion;
 }
 
+const systemLight =
+  typeof matchMedia === "function"
+    ? matchMedia("(prefers-color-scheme: light)")
+    : null;
+
+/** Puts the theme on the page, where tokens.css reads it, and tells the parts that draw with colours read in code. */
+export function applyTheme(): void {
+  const light =
+    state.theme === "light" ||
+    (state.theme === "system" && systemLight?.matches === true);
+  const next = light ? "light" : "dark";
+  if (document.documentElement.dataset.theme === next) return;
+  document.documentElement.dataset.theme = next;
+  // The graph and the terminals read their colours once; this tells them to read again.
+  window.dispatchEvent(new CustomEvent("theme-changed", { detail: next }));
+}
+// With "System" chosen, the app follows the computer when it changes between light and dark.
+systemLight?.addEventListener("change", applyTheme);
+
 export const prefs = {
   get terminalFontSize(): number {
     return state.terminalFontSize;
@@ -88,6 +115,14 @@ export const prefs = {
   set motion(value: Motion) {
     state.motion = value;
     applyMotion();
+    save();
+  },
+  get theme(): Theme {
+    return state.theme;
+  },
+  set theme(value: Theme) {
+    state.theme = value;
+    applyTheme();
     save();
   },
   get intro(): Intro {
@@ -123,6 +158,7 @@ export const prefs = {
     // Appearance only: the feature flags keep their own switches.
     Object.assign(state, DEFAULTS, { flags: state.flags });
     applyMotion();
+    applyTheme();
     save();
   },
 };

@@ -177,3 +177,31 @@ test("the Doctor page lists each check with what to do about a gap", async ({
   await expect(checks.getByRole("listitem").nth(1)).toContainText("Fix");
   await expect(checks).toContainText("Run `codex login` in a terminal.");
 });
+
+test("the Light theme changes the page colours and is kept after a reload", async ({
+  page,
+}) => {
+  await mockSidecar(page);
+  await page.goto("/");
+  const root = page.locator("html");
+  await expect(root).toHaveAttribute("data-theme", "dark");
+  const darkBg = await root.evaluate((el) =>
+    getComputedStyle(el).getPropertyValue("--color-bg-0").trim(),
+  );
+  const dialog = await openSettings(page);
+  await dialog.getByRole("tab", { name: "Appearance" }).click();
+  await dialog.getByRole("button", { name: "Theme" }).click();
+  await page.getByRole("option", { name: "Light" }).click();
+  await expect(root).toHaveAttribute("data-theme", "light");
+  const lightBg = await root.evaluate((el) =>
+    getComputedStyle(el).getPropertyValue("--color-bg-0").trim(),
+  );
+  expect(lightBg).not.toBe(darkBg);
+  // The graph is drawn again with the new colours, and still shows its notes.
+  await expect(page.locator(".brain .labels")).not.toHaveAttribute(
+    "data-labels",
+    "0",
+  );
+  await page.reload();
+  await expect(root).toHaveAttribute("data-theme", "light");
+});
