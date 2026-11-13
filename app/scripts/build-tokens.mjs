@@ -17,6 +17,8 @@ const SECTIONS = [
   ["radius", "radius"],
   ["font-size", "font-size"],
   ["layout", "layout"],
+  ["duration", "duration"],
+  ["ease", "ease"],
 ];
 
 export function loadTokens(path = TOKENS_PATH) {
@@ -64,6 +66,7 @@ export function buildVariables(tokens) {
   const vars = [];
   for (const [path, prefix] of SECTIONS) {
     for (const [name, token] of Object.entries(lookup(tokens, path))) {
+      if (name.startsWith("$")) continue;
       vars.push([`--${prefix}-${name}`, resolveValue(tokens, token.$value)]);
     }
   }

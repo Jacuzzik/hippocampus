@@ -86,3 +86,68 @@ textarea:focus-visible {
     min-height: var(--layout-touch-target);
   }
 }
+
+/* Motion, in one place. Only opacity, scale and position move, so a weak computer keeps up.
+   Settings, Appearance, Motion turns all of it off; "System" follows the computer (rules above). */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    scale: 0.97;
+  }
+}
+
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/* A dialog fades and grows a little into place; the dimmed page behind it fades in. */
+[role="dialog"] {
+  animation: dialog-in var(--duration-base) var(--ease-standard);
+}
+
+[role="presentation"]:has(> [role="dialog"]) {
+  animation: fade-in var(--duration-base) var(--ease-standard);
+}
+
+/* The content of a tab fades in, so a tab change is not a hard cut. */
+[role="tabpanel"] {
+  animation: fade-in var(--duration-fast) var(--ease-standard);
+}
+
+/* Every button answers the pointer the same way: colours ease, and a press moves it down one pixel. */
+button,
+[role="tab"] {
+  transition:
+    background-color var(--duration-fast) var(--ease-standard),
+    border-color var(--duration-fast) var(--ease-standard),
+    color var(--duration-fast) var(--ease-standard),
+    opacity var(--duration-fast) var(--ease-standard),
+    translate var(--duration-fast) var(--ease-standard);
+}
+
+button:active:not(:disabled) {
+  translate: 0 1px;
+}
+
+/* A grey bar that stands in for text while a list loads; the light moves across it. */
+.skeleton {
+  display: block;
+  height: 1em;
+  background: linear-gradient(
+      90deg,
+      var(--color-surface) 25%,
+      var(--color-border) 50%,
+      var(--color-surface) 75%
+    )
+    0 0 / 200% 100%;
+  border-radius: var(--radius-sm);
+  animation: shimmer 1.2s linear infinite;
+}

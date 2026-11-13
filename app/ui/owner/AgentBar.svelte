@@ -555,6 +555,12 @@
     border-radius: var(--radius-md);
     box-shadow: 2px 2px 0 var(--color-md-shadow);
     white-space: nowrap;
+    transition: translate var(--duration-fast) var(--ease-standard);
+  }
+
+  /* A card lifts a little under the pointer. */
+  .chip:hover {
+    translate: 0 -2px;
   }
 
   .chip img {
