@@ -1,5 +1,6 @@
 <!-- The office task board, read only: tasks grouped by status, as in the office app's Tasks page. -->
 <script lang="ts">
+  import PanelHeader from "../controls/PanelHeader.svelte";
   import Loading from "../controls/Loading.svelte";
   import { onMount } from "svelte";
   import { every } from "../poll.ts";
@@ -57,7 +58,10 @@
     <p class="muted">No tasks yet.</p>
   {:else}
     {#each groups as group (group.status)}
-      <h3>{group.status.toUpperCase()} · {group.items.length}</h3>
+      <PanelHeader
+        title={group.status.toUpperCase()}
+        aside={String(group.items.length)}
+      />
       {#if group.items.length}
         <ul>
           {#each group.items as task (task.id)}
@@ -81,13 +85,6 @@
     font-size: var(--font-size-xs);
     color: var(--color-md-text);
     overflow-y: auto;
-  }
-
-  h3 {
-    margin: var(--space-2) 0 var(--space-1);
-    font-family: var(--font-ui);
-    font-size: var(--font-size-tag);
-    color: var(--color-md-accent);
   }
 
   ul {

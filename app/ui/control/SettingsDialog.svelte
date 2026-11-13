@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Toggle from "../controls/Toggle.svelte";
   import { dialogFocus } from "../controls/dialogFocus.ts";
   import "./control.css";
   import { invoke } from "@tauri-apps/api/core";
@@ -332,11 +333,11 @@
                 <b>Open on the last tab</b>
                 <p>The Control Room opens on the tab you used last.</p>
               </div>
-              <label class="switch"
-                ><input type="checkbox" bind:checked={prefs.rememberTab} /><span
-                  >{prefs.rememberTab ? "On" : "Off"}</span
-                ></label
-              >
+              <Toggle
+                bind:checked={prefs.rememberTab}
+                ariaLabel="Open on the last tab"
+                label={prefs.rememberTab ? "On" : "Off"}
+              />
             </div>
             <div class="setting">
               <div>
@@ -506,15 +507,13 @@
                   agent starts.
                 </p>
               </div>
-              <label class="switch"
-                ><input
-                  type="checkbox"
-                  aria-label="Shell for every agent"
-                  checked={saved?.shell?.on ?? false}
-                  disabled={!saved?.shell?.sandbox_available}
-                  onchange={(e) => void setShell(e.currentTarget.checked)}
-                /><span>{saved?.shell?.on ? "On" : "Off"}</span></label
-              >
+              <Toggle
+                ariaLabel="Shell for every agent"
+                checked={saved?.shell?.on ?? false}
+                disabled={!saved?.shell?.sandbox_available}
+                onchange={(on) => void setShell(on)}
+                label={saved?.shell?.on ? "On" : "Off"}
+              />
             </div>
             {#if shellError}<p class="error" role="alert">{shellError}</p>{/if}
             {#if saved?.shell}
@@ -625,14 +624,12 @@
                   <b>{flag.name}</b>
                   <p>{flag.what}</p>
                 </div>
-                <label class="switch"
-                  ><input
-                    type="checkbox"
-                    aria-label={flag.name}
-                    checked={flagOn(flag.id)}
-                    onchange={(e) => setFlag(flag.id, e.currentTarget.checked)}
-                  /><span>{flagOn(flag.id) ? "On" : "Off"}</span></label
-                >
+                <Toggle
+                  ariaLabel={flag.name}
+                  checked={flagOn(flag.id)}
+                  onchange={(on) => setFlag(flag.id, on)}
+                  label={flagOn(flag.id) ? "On" : "Off"}
+                />
               </div>
             {/each}
           </section>
@@ -899,7 +896,6 @@
     text-align: right;
   }
 
-  .switch,
   .stepper {
     display: inline-flex;
     gap: var(--space-2);

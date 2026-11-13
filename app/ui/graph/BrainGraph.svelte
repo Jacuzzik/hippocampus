@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Toggle from "../controls/Toggle.svelte";
   import { untrack } from "svelte";
   import { SvelteMap, SvelteSet } from "svelte/reactivity";
   import { invoke } from "@tauri-apps/api/core";
@@ -890,16 +891,8 @@
 
   <div class="tools">
     <button type="button" class="fit" onclick={fitAll}>Fit graph</button>
-    <label class="toggle">
-      <input type="checkbox" bind:checked={hideOrphans} />
-      <span class="toggle-track"></span>
-      <span>Hide orphans</span>
-    </label>
-    <label class="toggle">
-      <input type="checkbox" bind:checked={hideNames} />
-      <span class="toggle-track"></span>
-      <span>Hide names</span>
-    </label>
+    <Toggle bind:checked={hideOrphans} label="Hide orphans" />
+    <Toggle bind:checked={hideNames} label="Hide names" />
   </div>
 
   {#if error}
@@ -1117,63 +1110,6 @@
     border-radius: var(--radius-sm);
     padding: var(--space-1) var(--space-2);
     cursor: pointer;
-  }
-
-  /* Switch, as in the design system: a 36x18 track with a knob; accent when on. */
-  .toggle {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-2);
-    cursor: pointer;
-    font-size: var(--font-size-xs);
-  }
-
-  .toggle input {
-    position: absolute;
-    opacity: 0;
-    width: 1px;
-    height: 1px;
-  }
-
-  .toggle-track {
-    position: relative;
-    width: 36px;
-    height: 18px;
-    border-radius: var(--radius-sm);
-    background: var(--color-border);
-    transition: background 120ms ease-out;
-  }
-
-  .toggle-track::after {
-    content: "";
-    position: absolute;
-    top: 3px;
-    left: 3px;
-    width: 12px;
-    height: 12px;
-    border-radius: var(--radius-sm);
-    background: var(--color-bg-0);
-    transition: transform 120ms ease-out;
-  }
-
-  .toggle input:checked + .toggle-track {
-    background: var(--color-accent);
-  }
-
-  .toggle input:checked + .toggle-track::after {
-    transform: translateX(18px);
-  }
-
-  .toggle input:focus-visible + .toggle-track {
-    outline: 2px solid var(--color-accent);
-    outline-offset: 2px;
-  }
-
-  /* Tablets and touch screens: the toggle labels are the touch target, so they take the minimum height. */
-  @media (max-width: 1100px), (pointer: coarse) {
-    .toggle {
-      min-height: var(--layout-touch-target);
-    }
   }
 
   .notice {

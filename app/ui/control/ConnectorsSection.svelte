@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Button from "../controls/Button.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { onMount } from "svelte";
   import StatusCard, { type CardStatus } from "../controls/StatusCard.svelte";
@@ -65,8 +66,8 @@
   {:else}
     <div class="head">
       <h4>Checked now</h4>
-      <button type="button" disabled={testing} onclick={() => void load(true)}
-        >{testing ? "Checking…" : "Test again"}</button
+      <Button size="sm" disabled={testing} onclick={() => void load(true)}
+        >{testing ? "Checking…" : "Test again"}</Button
       >
     </div>
     <div class="grid">

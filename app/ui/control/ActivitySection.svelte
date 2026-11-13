@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Button from "../controls/Button.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { onMount } from "svelte";
   import {
@@ -46,7 +47,7 @@
         onclick={() => (filter = option.id)}>{option.label}</button
       >
     {/each}
-    <button type="button" onclick={load}>Refresh</button>
+    <Button onclick={load}>Refresh</Button>
   </div>
   {#if shown.length === 0}
     <p class="muted">Nothing here yet.</p>

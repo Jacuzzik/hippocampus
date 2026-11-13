@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Button from "../controls/Button.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { onMount } from "svelte";
   import { NETWORK_TEXT, type NetworkMode } from "./model";
@@ -108,13 +109,14 @@
         {#each webhooks as hook (hook.id)}
           <li>
             {hook.name} <span class="muted">runs {hook.kind}</span>
-            <button
-              type="button"
+            <Button
+              variant="danger"
+              size="sm"
               aria-label={confirming === hook.id
                 ? `Confirm remove ${hook.name}`
                 : `Remove ${hook.name}`}
               onclick={() => void remove(hook.id)}
-              >{confirming === hook.id ? "Confirm remove" : "Remove"}</button
+              >{confirming === hook.id ? "Confirm remove" : "Remove"}</Button
             >
           </li>
         {/each}
@@ -138,7 +140,9 @@
           {/each}
         </select>
       </label>
-      <button type="submit" disabled={!newName.trim()}>Add webhook</button>
+      <Button type="submit" variant="primary" disabled={!newName.trim()}
+        >Add webhook</Button
+      >
     </form>
     <p class="muted">
       A webhook runs one local job after you approve it. Nothing listens on a

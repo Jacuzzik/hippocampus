@@ -289,3 +289,33 @@ test("a webhook is added and removed in the Control panel Triggers", async ({
   await expect(page.getByText("Nightly check")).toHaveCount(0);
   await expect(page.getByText("None saved yet.")).toBeVisible();
 });
+
+test("a switch flips with the keyboard and with a click on its words", async ({
+  page,
+}) => {
+  await mockSidecar(page);
+  await page.goto("/");
+  const dialog = await openSettings(page);
+  const box = dialog.getByRole("checkbox", { name: "Open on the last tab" });
+  const before = await box.isChecked();
+  await box.focus();
+  await page.keyboard.press("Space");
+  expect(await box.isChecked()).toBe(!before);
+  await dialog
+    .getByText(before ? "Off" : "On", { exact: true })
+    .first()
+    .click();
+  expect(await box.isChecked()).toBe(before);
+});
+
+test("the graph switches are the shared switch and still hide orphans and names", async ({
+  page,
+}) => {
+  await mockSidecar(page);
+  await page.goto("/");
+  const names = page.getByRole("checkbox", { name: "Hide names" });
+  await names.check();
+  await expect(names).toBeChecked();
+  await names.uncheck();
+  await expect(names).not.toBeChecked();
+});

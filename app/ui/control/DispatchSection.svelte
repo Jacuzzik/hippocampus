@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Button from "../controls/Button.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { dispatchError } from "./model";
 
@@ -61,15 +62,13 @@
       <p>Send this task to {pending.agent}?</p>
       <p class="task">{pending.task}</p>
       <div class="row">
-        <button type="button" class="primary" onclick={confirm}>Send</button>
-        <button type="button" onclick={() => (pending = null)}>Cancel</button>
+        <Button variant="primary" onclick={confirm}>Send</Button>
+        <Button onclick={() => (pending = null)}>Cancel</Button>
       </div>
     </div>
   {:else}
     <div class="row">
-      <button type="button" class="primary" onclick={review}
-        >Review and send</button
-      >
+      <Button variant="primary" onclick={review}>Review and send</Button>
       {#if sent}<span class="muted">{sent}</span>{/if}
     </div>
   {/if}

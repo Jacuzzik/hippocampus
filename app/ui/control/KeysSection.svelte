@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Button from "../controls/Button.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { onMount } from "svelte";
   import { keyStatus } from "./model";
@@ -77,11 +78,11 @@
             autocomplete="off"
             bind:value={drafts[row.provider]}
           />
-          <button type="button" class="primary" onclick={() => save(row)}>
+          <Button variant="primary" onclick={() => save(row)}>
             {row.saved ? "Replace" : "Save"}
-          </button>
-          {#if row.saved}<button type="button" onclick={() => clear(row)}
-              >Remove</button
+          </Button>
+          {#if row.saved}<Button variant="danger" onclick={() => clear(row)}
+              >Remove</Button
             >{/if}
         </div>
       </li>

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Button from "../controls/Button.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { onMount } from "svelte";
   import {
@@ -132,11 +133,9 @@
       </div>
     {/each}
     <div class="row">
-      <button type="button" class="primary" onclick={save}>Save caps</button>
-      <button
-        type="button"
-        disabled={!budget.allowance && !reached}
-        onclick={allowOne}>Allow one more request</button
+      <Button variant="primary" onclick={save}>Save caps</Button>
+      <Button disabled={!budget.allowance && !reached} onclick={allowOne}
+        >Allow one more request</Button
       >
       {#if saved}<span class="muted">Saved.</span>{/if}
     </div>

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Button from "../controls/Button.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { onMount } from "svelte";
 
@@ -77,15 +78,13 @@
             >{/if}
           <p class="mono muted">{skill.path}</p>
           <div class="row">
-            <button type="button" onclick={() => openFolder(skill.name)}>
-              Open folder
-            </button>
-            <button type="button" onclick={() => copy(skill)}>
+            <Button onclick={() => openFolder(skill.name)}>Open folder</Button>
+            <Button onclick={() => copy(skill)}>
               {copied === skill.name ? "Path copied" : "Copy folder path"}
-            </button>
-            <button type="button" onclick={() => remove(skill.name)}>
+            </Button>
+            <Button variant="danger" onclick={() => remove(skill.name)}>
               {armed === skill.name ? "Confirm remove" : "Remove"}
-            </button>
+            </Button>
           </div>
         </li>
       {/each}

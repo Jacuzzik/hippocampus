@@ -1,5 +1,6 @@
 <!-- What the assistant may reach right now and what it has used, read only. -->
 <script lang="ts">
+  import PanelHeader from "../controls/PanelHeader.svelte";
   import Loading from "../controls/Loading.svelte";
   import { dialogFocus } from "../controls/dialogFocus.ts";
   import { every } from "../poll.ts";
@@ -228,9 +229,10 @@
     <p class="muted">Checking…</p>
   {:else}
     <div class="sec">
-      <h3>
-        AGENTS<em>{active.length + 1} active · {hidden.length} archived</em>
-      </h3>
+      <PanelHeader
+        title="AGENTS"
+        aside={`${active.length + 1} active · ${hidden.length} archived`}
+      />
       {#if active.length === 0}
         <p class="muted">No agents yet. Agents you add appear here.</p>
       {/if}
@@ -441,7 +443,7 @@
     {/if}
 
     <div class="sec">
-      <h3>DIRECTORIES & ISSUES</h3>
+      <PanelHeader title="DIRECTORIES & ISSUES" />
       {#if directories.length === 0}
         <p class="muted">No agent folders yet.</p>
       {:else}
