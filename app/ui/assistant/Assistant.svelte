@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { loadDraft, saveDraft } from "../drafts.ts";
   import { onMount } from "svelte";
   import type { ToolStatus } from "./model";
   import { assistant } from "./session.svelte";
@@ -28,7 +29,9 @@
   // shortcut: text files up to 100 KB, read in the browser and sent inline with the next message.
   const MAX_FILE_BYTES = 100_000;
 
-  let draft = $state("");
+  // An unsent message survives a reload (see drafts.ts).
+  let draft = $state(loadDraft("assistant"));
+  $effect(() => saveDraft("assistant", draft));
   let answers = $state<Record<string, string>>({});
   let attached = $state<{ name: string; text: string }[]>([]);
   let fileInput = $state<HTMLInputElement>();

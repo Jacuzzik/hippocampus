@@ -10,6 +10,14 @@
 
   let skills = $state<Skill[]>([]);
   let failed = $state(false);
+  let query = $state("");
+  const shown = $derived(
+    skills.filter((skill) =>
+      `${skill.name} ${skill.description}`
+        .toLowerCase()
+        .includes(query.trim().toLowerCase()),
+    ),
+  );
   // False until the first answer (or failure), so an empty list is not shown while it is still loading.
   let loaded = $state(false);
 
@@ -41,14 +49,25 @@
   {:else if skills.length === 0}
     <p class="muted">No skills installed yet.</p>
   {:else}
-    <ul>
-      {#each skills as skill (skill.name)}
-        <li>
-          <span class="name">{skill.name}</span>
-          <span class="desc">{skill.description}</span>
-        </li>
-      {/each}
-    </ul>
+    <input
+      type="search"
+      class="find"
+      aria-label="Search skills"
+      placeholder="Search skills"
+      bind:value={query}
+    />
+    {#if shown.length === 0}
+      <p class="muted">No skill matches "{query.trim()}".</p>
+    {:else}
+      <ul>
+        {#each shown as skill (skill.name)}
+          <li>
+            <span class="name">{skill.name}</span>
+            <span class="desc">{skill.description}</span>
+          </li>
+        {/each}
+      </ul>
+    {/if}
   {/if}
 </section>
 
@@ -58,6 +77,11 @@
     font-size: var(--font-size-xs);
     color: var(--color-md-text);
     overflow-y: auto;
+  }
+
+  .find {
+    width: 100%;
+    margin-bottom: var(--space-1);
   }
 
   ul {

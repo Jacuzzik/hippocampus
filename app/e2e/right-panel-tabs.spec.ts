@@ -99,3 +99,18 @@ test("a tab already opened stays mounted when you leave it", async ({
 test("a tab never opened is not mounted", async ({ page }) => {
   await expect(page.getByRole("region", { name: "Skills" })).toHaveCount(0);
 });
+
+test("the skills tab can be searched by name or by what a skill does", async ({
+  page,
+}) => {
+  await page.getByRole("tab", { name: "skills" }).click();
+  const region = page.getByRole("region", { name: "Skills" });
+  const find = region.getByLabel("Search skills");
+  await find.fill("TIDY");
+  await expect(region).toContainText("tidy-notes");
+  await find.fill("note list");
+  await expect(region).toContainText("tidy-notes");
+  await find.fill("zebra");
+  await expect(region).not.toContainText("tidy-notes");
+  await expect(region).toContainText('No skill matches "zebra".');
+});

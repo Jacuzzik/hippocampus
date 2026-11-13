@@ -226,12 +226,19 @@
     // The graph reads its colours when it is created; a new theme needs a new graph.
     const onTheme = () => viewKey++;
     window.addEventListener("theme-changed", onTheme);
+    // The spend meter in the status bar opens Settings on the page it names.
+    const onOpenSettings = (event: Event) => {
+      settingsStart = (event as CustomEvent<SettingsPage>).detail;
+      settingsOpen = true;
+    };
+    window.addEventListener("open-settings", onOpenSettings);
     // The browser's own right-click menu is off everywhere; the app's own menus still open from their handlers.
     const noNativeMenu = (e: MouseEvent) => e.preventDefault();
     window.addEventListener("contextmenu", noNativeMenu);
     return () => {
       window.removeEventListener("contextmenu", noNativeMenu);
       window.removeEventListener("theme-changed", onTheme);
+      window.removeEventListener("open-settings", onOpenSettings);
       stopPoll();
       window.removeEventListener("graph-changed", onChanged);
       window.removeEventListener("agent-talk", onTalk);

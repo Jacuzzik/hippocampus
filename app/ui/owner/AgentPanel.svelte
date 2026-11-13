@@ -1,5 +1,6 @@
 <!-- The right-panel tab for a selected added agent, laid out as in Thalha's picture: segmented pill groups, selected in accent. -->
 <script lang="ts">
+  import { loadDraft, saveDraft } from "../drafts.ts";
   import { FONT_MAX, FONT_MIN, prefs } from "../prefs.svelte.ts";
   import Tabs from "../controls/Tabs.svelte";
   import EmptyState from "../controls/EmptyState.svelte";
@@ -16,7 +17,10 @@
   // The app does not report a status or usage for an added agent yet, so these show a dash, not made-up numbers.
   const NO_DATA = "—";
 
-  let text = $state("");
+  // An unsent message to this agent survives a reload (see drafts.ts).
+  // svelte-ignore state_referenced_locally
+  let text = $state(loadDraft(`agent-${agent.id}`));
+  $effect(() => saveDraft(`agent-${agent.id}`, text));
   let error = $state<string | null>(null);
   // One text size for every agent terminal, set here or in Settings > Appearance.
   const fontSize = $derived(prefs.terminalFontSize);

@@ -2,6 +2,7 @@
   import { ORB_LABELS } from "../assistant/model";
   import { assistant } from "../assistant/session.svelte";
   import AgentBar from "../owner/AgentBar.svelte";
+  import SpendMeter from "./SpendMeter.svelte";
   import type { GraphData } from "../graph/model.ts";
 
   let { data = null, onadd }: { data?: GraphData | null; onadd: () => void } =
@@ -16,6 +17,7 @@
     <span>{data?.nodes.length ?? 0} notes</span>
     <span>{links} links</span>
     <span class="assistant-state">{ORB_LABELS[assistant.chat.orb]}</span>
+    <SpendMeter />
   </span>
 </footer>
 

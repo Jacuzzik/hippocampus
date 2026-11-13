@@ -9,6 +9,7 @@ from typing import Any
 
 from core import (
     __version__,
+    added_agents,
     app_log,
     crash_log,
     doctor,
@@ -84,6 +85,7 @@ class SettingsPart:
             doctor.check_disk(self.storage),
             *doctor.check_clis(self.provider_status()["clis"]),
             doctor.check_sandbox(sandbox.available(), self.settings.agent_shell),
+            doctor.check_folders(added_agents.load(self.agents_path)),
             doctor.check_log(app_log.path(self.storage)),
         ]
         errors = len(crash_log.recent(self.storage, 50))

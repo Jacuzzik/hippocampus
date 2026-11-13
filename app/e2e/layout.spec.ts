@@ -50,3 +50,17 @@ test("the system numbers keep one width each, so the row does not shift", async 
     .evaluateAll((all) => all.map((b) => getComputedStyle(b).minWidth));
   expect(widths.every((w) => parseFloat(w) > 0)).toBe(true);
 });
+
+test("the status bar shows tokens used today against the cap, and a click opens Budgets", async ({
+  page,
+}) => {
+  await mockSidecar(page);
+  await page.goto("/");
+  const meter = page.getByRole("button", { name: /Tokens used today/ });
+  await expect(meter).toHaveText("12.4k of 200k today");
+  await meter.click();
+  const dialog = page.getByRole("dialog", { name: "Settings" });
+  await expect(
+    dialog.getByRole("heading", { name: "Token budget" }),
+  ).toBeVisible();
+});

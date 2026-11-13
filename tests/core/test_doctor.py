@@ -76,3 +76,33 @@ def test_the_doctor_method_lists_every_check_with_a_count(tmp_path: Path) -> Non
     assert all(
         r["fix"] for r in report["checks"] if r["state"] == "bad"
     )  # every gap says what to do
+
+
+def test_two_agents_in_one_folder_are_a_warning_not_a_block(tmp_path: Path) -> None:
+    shared = tmp_path / "work"
+    agents = [
+        {"id": "a", "name": "Ada", "folder": str(shared)},
+        {"id": "b", "name": "Bo", "folder": str(shared / ".." / "work")},
+        {"id": "c", "name": "Cy", "folder": str(tmp_path / "other")},
+        {"id": "d", "name": "Di"},
+    ]
+    got = doctor.check_folders(agents)
+    assert got["state"] == "warn"
+    assert "Ada and Bo share" in got["found"] and "Cy" not in got["found"]
+    assert "separate folder" in got["fix"]
+
+
+def test_agents_with_their_own_folders_pass(tmp_path: Path) -> None:
+    agents = [
+        {"id": "a", "folder": str(tmp_path / "a")},
+        {"id": "b", "folder": str(tmp_path / "b")},
+    ]
+    assert doctor.check_folders(agents)["state"] == "ok"
+    assert doctor.check_folders([])["state"] == "ok"
+
+
+def test_the_doctor_call_includes_the_folder_check(tmp_path: Path) -> None:
+    session = sidecar.Session(tmp_path / "s", Settings(), settings_path=tmp_path / "x.toml")
+    names = [row["name"] for row in session.doctor()["checks"]]
+    assert "Agent folders" in names
+    session.close()

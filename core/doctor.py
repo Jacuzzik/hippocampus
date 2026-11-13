@@ -101,6 +101,26 @@ def check_sandbox(available: bool, shell_on: bool) -> Row:
     )
 
 
+def check_folders(agents: list[dict[str, Any]]) -> Row:
+    """Warns when two agents work in the same folder, where they can overwrite each other. Never blocks."""
+    owners: dict[str, list[str]] = {}
+    for agent in agents:
+        folder = agent.get("folder")
+        if isinstance(folder, str) and folder.strip():
+            key = str(Path(folder).expanduser().resolve())
+            owners.setdefault(key, []).append(str(agent.get("name") or agent.get("id") or "?"))
+    shared = {folder: names for folder, names in owners.items() if len(names) > 1}
+    if not shared:
+        return row("Agent folders", "ok", "Each agent has a folder of its own.")
+    found = "; ".join(f"{' and '.join(names)} share {folder}" for folder, names in shared.items())
+    return row(
+        "Agent folders",
+        "warn",
+        f"{found}.",
+        "Give one of them a separate folder (Settings, or its card), so they do not overwrite each other.",
+    )
+
+
 def check_log(path: Path) -> Row:
     if path.is_file():
         return row("Backend log", "ok", f"Written to {path}.")
