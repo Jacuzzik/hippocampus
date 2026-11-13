@@ -161,6 +161,10 @@ export const SETTINGS_PAGES = [
     id: "Keyboard",
     words: "shortcuts keys hotkeys ctrl enter escape palette",
   },
+  {
+    id: "Design tokens",
+    words: "tokens colours colors spacing radius motion fonts design system",
+  },
   { id: "About", words: "version" },
 ] as const;
 export type SettingsPage = (typeof SETTINGS_PAGES)[number]["id"];

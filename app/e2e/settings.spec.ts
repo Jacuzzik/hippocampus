@@ -29,6 +29,8 @@ test("settings has a page per category and each one opens", async ({
     Planned: "Planned features",
     Doctor: "Doctor",
     Keyboard: "Open the command palette",
+    "Design tokens":
+      "Every colour, size and duration the app uses. This list is read from the generated token file, so it matches what is on screen. Values shown are for the dark theme.",
     About: "Hippocampus",
   };
   await expect(dialog.getByRole("tab")).toHaveText(Object.keys(pages));
@@ -393,4 +395,25 @@ test("Quiet mode turns movement off, is kept after a reload, and can be turned b
   await expect(box).toBeChecked();
   await box.uncheck();
   expect(await motion()).toBe("system");
+});
+
+test("the design tokens page lists colour, spacing, radius and motion from the token file", async ({
+  page,
+}) => {
+  await mockSidecar(page);
+  await page.goto("/");
+  const dialog = await openSettings(page);
+  await dialog.getByRole("tab", { name: "Design tokens", exact: true }).click();
+  for (const [group, token] of [
+    ["Colour", "--color-accent"],
+    ["Spacing", "--space-2"],
+    ["Radius", "--radius-sm"],
+    ["Motion", "--duration-fast"],
+  ]) {
+    await expect(
+      dialog.getByRole("list", { name: group, exact: true }).getByText(token, {
+        exact: true,
+      }),
+    ).toBeVisible();
+  }
 });
