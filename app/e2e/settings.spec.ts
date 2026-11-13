@@ -27,6 +27,7 @@ test("settings has a page per category and each one opens", async ({
     "Privacy and data": "Error log",
     Advanced: "Backend (Python sidecar)",
     Doctor: "Doctor",
+    Keyboard: "Open the command palette",
     About: "Hippocampus",
   };
   await expect(dialog.getByRole("tab")).toHaveText(Object.keys(pages));
@@ -204,4 +205,21 @@ test("the Light theme changes the page colours and is kept after a reload", asyn
   );
   await page.reload();
   await expect(root).toHaveAttribute("data-theme", "light");
+});
+
+test("settings can be imported as text, and a bad text is refused with the reason", async ({
+  page,
+}) => {
+  await mockSidecar(page);
+  await page.goto("/");
+  const dialog = await openSettings(page);
+  const box = dialog.getByLabel("Settings text to import");
+  await box.fill("nonsense");
+  await dialog.getByRole("button", { name: "Import" }).click();
+  await expect(dialog.getByRole("alert")).toContainText(
+    "This is not a settings file",
+  );
+  await box.fill('[network]\nmode = "ask"\n');
+  await dialog.getByRole("button", { name: "Import" }).click();
+  await expect(dialog.getByRole("status")).toContainText("Settings imported");
 });

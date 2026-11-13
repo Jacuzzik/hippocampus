@@ -9,6 +9,8 @@ import math
 from pathlib import Path
 from typing import Protocol
 
+from core import safe_write
+
 MEMORY_LINE = "created_by: assistant"
 ARCHIVE_SUFFIX = "-archive"
 NOT_SET_UP = (
@@ -82,7 +84,7 @@ def trim_memory_file(vault: Path, path: Path, limit: int) -> Path | None:
     else:
         head = f"---\n{MEMORY_LINE}\n---\n# {path.stem} archive\n\n"
         archive.write_text(head + moved, encoding="utf-8")
-    path.write_text(kept, encoding="utf-8")
+    safe_write.write_text(path, kept)
     return archive
 
 

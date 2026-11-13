@@ -22,6 +22,7 @@
     type Theme,
   } from "../prefs.svelte.ts";
   import { SETTINGS_PAGES, type SettingsPage } from "./model";
+  import { SHORTCUTS } from "../shortcuts.ts";
   import { FLAGS, flagOn, setFlag } from "../flags.svelte.ts";
 
   // Settings as pages: a list of categories on the left, one short page on the right.
@@ -61,6 +62,37 @@
   let sidecar = $state("Checking…");
   let saved = $state<Saved | null>(null);
   let version = $state("");
+
+  // Settings as text, to move them to another computer. Keys live in the keychain and are never part of it.
+  let importDraft = $state("");
+  let transferNote = $state<string | null>(null);
+  let transferError = $state<string | null>(null);
+  async function exportSettings(): Promise<void> {
+    transferNote = transferError = null;
+    try {
+      const found = await invoke<{ text: string }>("sidecar_call", {
+        method: "settings_export",
+      });
+      await navigator.clipboard.writeText(found.text);
+      transferNote = "Settings copied.";
+    } catch (cause) {
+      transferError = String(cause);
+    }
+  }
+  async function importSettings(event: SubmitEvent): Promise<void> {
+    event.preventDefault();
+    transferNote = transferError = null;
+    try {
+      const done = await invoke<{ restart: string }>("sidecar_call", {
+        method: "settings_import",
+        params: { text: importDraft },
+      });
+      importDraft = "";
+      transferNote = `Settings imported. ${done.restart}`;
+    } catch (cause) {
+      transferError = String(cause);
+    }
+  }
   let query = $state("");
 
   const items = $derived(
@@ -281,6 +313,34 @@
                 ></label
               >
             </div>
+            <div class="setting">
+              <div>
+                <b>Move settings to another computer</b>
+                <p>
+                  Copy gives the settings as text. Paste that text here on the
+                  other computer and press Import. Keys are never included.
+                </p>
+              </div>
+              <button type="button" onclick={() => void exportSettings()}
+                >Copy settings</button
+              >
+            </div>
+            <form class="row" onsubmit={importSettings}>
+              <textarea
+                rows="2"
+                aria-label="Settings text to import"
+                placeholder="Paste settings text here"
+                bind:value={importDraft}></textarea>
+              <button type="submit" disabled={!importDraft.trim()}
+                >Import</button
+              >
+            </form>
+            {#if transferNote}<p class="muted" role="status">
+                {transferNote}
+              </p>{/if}
+            {#if transferError}<p class="error" role="alert">
+                {transferError}
+              </p>{/if}
             <div class="setting">
               <div>
                 <b>Settings file</b>
@@ -583,6 +643,24 @@
               reason="No speech-to-text source is set up in this build."
             />
           </div>
+        {:else if page === "Keyboard"}
+          <section class="control-section">
+            <h3>Keyboard</h3>
+            <table class="keys">
+              <thead>
+                <tr><th>Keys</th><th>What it does</th><th>Where</th></tr>
+              </thead>
+              <tbody>
+                {#each SHORTCUTS as row (row.keys + row.where)}
+                  <tr>
+                    <td><kbd>{row.keys}</kbd></td>
+                    <td>{row.does}</td>
+                    <td>{row.where}</td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </section>
         {:else if page === "Doctor"}
           <section class="control-section">
             <h3>Doctor</h3>
@@ -852,6 +930,31 @@
     font-size: var(--font-size-xs);
     white-space: pre;
     background: var(--color-bg-0);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+  }
+
+  .keys {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--font-size-sm);
+  }
+
+  .keys th,
+  .keys td {
+    padding: var(--space-2);
+    text-align: left;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .keys th {
+    color: var(--color-text-muted);
+    font-weight: normal;
+  }
+
+  kbd {
+    padding: 0 var(--space-1);
+    font: inherit;
     border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
   }

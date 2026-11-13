@@ -37,6 +37,7 @@ import subprocess
 import sys
 import threading
 import time
+import tomllib
 import urllib.request
 import uuid
 from collections.abc import Callable
@@ -61,6 +62,7 @@ from core import (
     doctor,
     inbox,
     note_actions,
+    safe_write,
     sandbox,
     share,
     skills,
@@ -828,6 +830,35 @@ class Session:
             )
         return {"clis": rows}
 
+    def settings_export(self) -> dict[str, Any]:
+        """The settings file as text, to carry to another computer. Keys are never in it: they live in the keychain."""
+        path = self.settings_path
+        return {
+            "text": path.read_text(encoding="utf-8") if path.is_file() else "",
+            "path": str(path),
+        }
+
+    def settings_import(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Replace the settings file with the given text. A text that does not load is refused and nothing changes."""
+        text = request.get("text")
+        if not isinstance(text, str) or not text.strip():
+            raise ValueError('"settings_import" needs the settings "text"')
+        check = self.settings_path.with_name(self.settings_path.name + ".check")
+        try:
+            check.write_text(text, encoding="utf-8")
+            loaded = load_settings(check)  # raises with the reason when a value is wrong
+        except tomllib.TOMLDecodeError as error:
+            raise ValueError(f"This is not a settings file: {error}") from error
+        finally:
+            check.unlink(missing_ok=True)
+        safe_write.write_text(self.settings_path, text)
+        self.settings = loaded
+        self.note("setting", text="settings imported")
+        return {
+            "imported": True,
+            "restart": "Restart the app so every part reads the new settings.",
+        }
+
     def doctor(self) -> dict[str, Any]:
         """Everything the app needs, checked in one go, with the next step for each gap."""
         vault = self.settings.vault
@@ -904,7 +935,7 @@ class Session:
             for a in previous
             if a["id"] not in now_ids and a["id"] not in known
         ]
-        removed_path.write_text(json.dumps(removed, indent=2), encoding="utf-8")
+        safe_write.write_text(removed_path, json.dumps(removed, indent=2))
         vault = self.settings.vault
         if not vault or not Path(vault).is_dir():
             return
@@ -1495,6 +1526,7 @@ class Session:
             "provider_status": self.provider_status,
             "local_status": self.local_status,
             "doctor": self.doctor,
+            "settings_export": self.settings_export,
             "crashes": self.crashes,
             "clear_crashes": self.clear_crashes,
         }
@@ -1521,6 +1553,7 @@ class Session:
             "record_crash": self.record_crash,
             "set_agent_shell": self.set_agent_shell,
             "task_send": self.task_send,
+            "settings_import": self.settings_import,
             "inbox_search": self.inbox_search,
             "inbox_thread": self.inbox_thread,
             "logs": self.logs,

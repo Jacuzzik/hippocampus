@@ -11,6 +11,8 @@ from dataclasses import asdict, dataclass, replace
 from datetime import datetime, timedelta
 from pathlib import Path
 
+from core import safe_write
+
 logger = logging.getLogger("hippocampus.jobs")
 KINDS = ("link_check",)
 DEFAULTS = (
@@ -47,8 +49,7 @@ def load(path: Path) -> list[Job]:
 
 def save(path: Path, jobs: list[Job]) -> None:
     with _lock:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps([asdict(job) for job in jobs], indent=2), encoding="utf-8")
+        safe_write.write_text(path, json.dumps([asdict(job) for job in jobs], indent=2))
 
 
 def set_job(jobs: list[Job], job_id: str, enabled: bool, every_days: int | None) -> list[Job]:

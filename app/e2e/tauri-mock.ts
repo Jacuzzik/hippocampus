@@ -674,6 +674,12 @@ export async function mockSidecar(
           case "clear_key":
             if (String(args.params?.provider) === "claude") claudeKey = null;
             return { keys: keyRows() };
+          case "settings_export":
+            return { text: '[network]\nmode = "ask"\n', path: "/mock" };
+          case "settings_import":
+            if (!String(args.params?.text).includes("["))
+              throw new Error("This is not a settings file: no section found");
+            return { imported: true, restart: "Restart the app." };
           case "doctor":
             return {
               checks: [

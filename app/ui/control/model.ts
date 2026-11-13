@@ -152,6 +152,10 @@ export const SETTINGS_PAGES = [
     words:
       "health check problems installed signed in vault disk sandbox prerequisites fix",
   },
+  {
+    id: "Keyboard",
+    words: "shortcuts keys hotkeys ctrl enter escape palette",
+  },
   { id: "About", words: "version" },
 ] as const;
 export type SettingsPage = (typeof SETTINGS_PAGES)[number]["id"];
