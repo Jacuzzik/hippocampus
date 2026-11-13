@@ -78,6 +78,7 @@ METHODS: dict[str, Method] = {
     "engine": _m("The main agent's provider and model."),
     "provider_status": _m("Which providers are usable here."),
     "local_status": _m("Whether the local model server answers."),
+    "connectors": _m("Every connector as a row: state, reason and what it needs."),
     "doctor": _m("Health checks with what to do about each gap."),
     "link_doctor": _m("Broken links and notes with no links."),
     "logs": _m("The newest lines of the backend log."),

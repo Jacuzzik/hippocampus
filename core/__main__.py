@@ -66,6 +66,7 @@ from core.cards import CardStore
 from core.helpers import Helpers
 from core.session_agents import AgentsPart
 from core.session_budget import BudgetPart
+from core.session_connectors import ConnectorsPart
 from core.session_dispatch import DispatchPart
 from core.session_hive import HivePart
 from core.session_jobs import JobsPart
@@ -118,6 +119,7 @@ class Session(
     SettingsPart,
     BudgetPart,
     DispatchPart,
+    ConnectorsPart,
 ):
     """The vault the serve loop has open, the assistant, and the requests they answer.
 

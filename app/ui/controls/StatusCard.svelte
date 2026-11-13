@@ -4,6 +4,8 @@
     | "Local only"
     | "Not connected"
     | "Needs attention"
+    | "Needs setup"
+    | "Error"
     | "Planned";
 </script>
 
@@ -28,9 +30,9 @@
   const tone = $derived(
     status === "Connected" || status === "Local only"
       ? "ok"
-      : status === "Needs attention"
+      : status === "Needs attention" || status === "Error"
         ? "bad"
-        : status === "Planned"
+        : status === "Planned" || status === "Needs setup"
           ? "plan"
           : "off",
   );

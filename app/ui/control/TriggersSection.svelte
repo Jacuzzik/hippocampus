@@ -4,6 +4,7 @@
   import { NETWORK_TEXT, type NetworkMode } from "./model";
   import StatusCard from "../controls/StatusCard.svelte";
   import Loading from "../controls/Loading.svelte";
+  import { report } from "../notices.svelte.ts";
 
   // What starts work without you: the network state, scheduled jobs, context compaction and webhooks.
   type Job = { enabled: boolean };
@@ -39,6 +40,46 @@
   }
 
   onMount(() => void load());
+
+  // The only job a webhook can run today is the link check (core/jobs.py KINDS).
+  const KINDS = [{ id: "link_check", label: "Link check" }];
+  let newName = $state("");
+  let newKind = $state(KINDS[0]?.id ?? "link_check");
+  let confirming = $state<string | null>(null);
+
+  async function add(): Promise<void> {
+    const name = newName.trim();
+    if (!name) return;
+    try {
+      webhooks = (
+        await invoke<{ webhooks: Webhook[] }>("sidecar_call", {
+          method: "save_webhook",
+          params: { name, kind: newKind },
+        })
+      ).webhooks;
+      newName = "";
+    } catch (cause) {
+      report("Could not save the webhook", cause);
+    }
+  }
+
+  async function remove(id: string): Promise<void> {
+    if (confirming !== id) {
+      confirming = id;
+      return;
+    }
+    confirming = null;
+    try {
+      webhooks = (
+        await invoke<{ webhooks: Webhook[] }>("sidecar_call", {
+          method: "delete_webhook",
+          params: { id },
+        })
+      ).webhooks;
+    } catch (cause) {
+      report("Could not remove the webhook", cause);
+    }
+  }
 </script>
 
 <section class="control-section" aria-labelledby="control-triggers">
@@ -65,10 +106,44 @@
     {:else}
       <ul>
         {#each webhooks as hook (hook.id)}
-          <li>{hook.name} <span class="muted">runs {hook.kind}</span></li>
+          <li>
+            {hook.name} <span class="muted">runs {hook.kind}</span>
+            <button
+              type="button"
+              aria-label={confirming === hook.id
+                ? `Confirm remove ${hook.name}`
+                : `Remove ${hook.name}`}
+              onclick={() => void remove(hook.id)}
+              >{confirming === hook.id ? "Confirm remove" : "Remove"}</button
+            >
+          </li>
         {/each}
       </ul>
     {/if}
+    <form
+      class="add"
+      onsubmit={(e) => {
+        e.preventDefault();
+        void add();
+      }}
+    >
+      <label
+        >Name <input type="text" bind:value={newName} maxlength="80" /></label
+      >
+      <label
+        >Runs
+        <select bind:value={newKind}>
+          {#each KINDS as kind (kind.id)}
+            <option value={kind.id}>{kind.label}</option>
+          {/each}
+        </select>
+      </label>
+      <button type="submit" disabled={!newName.trim()}>Add webhook</button>
+    </form>
+    <p class="muted">
+      A webhook runs one local job after you approve it. Nothing listens on a
+      network port, so no outside service can call it yet.
+    </p>
   {/if}
   {#if error}<p class="error" role="alert">{error}</p>{/if}
 </section>
@@ -97,5 +172,27 @@
   ul {
     margin: 0;
     padding-left: var(--space-4);
+  }
+
+  li {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .add {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    gap: var(--space-2);
+    margin-top: var(--space-2);
+  }
+
+  .add label {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
   }
 </style>

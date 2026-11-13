@@ -114,6 +114,7 @@ class DispatchPart:
             "inbox_search": self.inbox_search,
             "inbox_thread": self.inbox_thread,
             "logs": self.logs,
+            "connectors": self.connectors,
         }
 
     def stop(self) -> dict[str, Any]:

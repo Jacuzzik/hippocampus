@@ -260,6 +260,43 @@ export async function mockSidecar(
           text: "network set to converse",
         },
       ];
+      const hookRows: { id: string; name: string; kind: string }[] = [];
+      const connectorRows = [
+        {
+          id: "ollama",
+          kind: "check",
+          name: "Local model (Ollama)",
+          what: "Runs a model on this computer, with no key and no network.",
+          state: "Connected",
+          reason:
+            "Answered at http://127.0.0.1:11434. Model in use: qwen2.5:1.5b.",
+          needs: "",
+          details: ["qwen2.5:1.5b", "llama3.2:3b"],
+          checked: "2026-11-13T20:00:00+00:00",
+        },
+        {
+          id: "github",
+          kind: "check",
+          name: "GitHub",
+          what: "Open issues for an agent's folder, shown on the Monitor tab.",
+          state: "Not connected",
+          reason: "You are not logged in. Run `gh auth login`.",
+          needs: "gh login",
+          details: [],
+          checked: "2026-11-13T20:00:00+00:00",
+        },
+        {
+          id: "slack",
+          kind: "card",
+          name: "Slack",
+          what: "One bot that answers in chosen channels and replies in threads.",
+          state: "Needs setup",
+          reason: "No Slack calls are built yet.",
+          needs: "A token store and a message bridge in the backend",
+          details: [],
+          checked: "2026-11-13T20:00:00+00:00",
+        },
+      ];
       const jobRows = [
         {
           id: "link-check",
@@ -621,7 +658,22 @@ export async function mockSidecar(
           case "terminal_resize":
             return { ok: true };
           case "webhooks":
-            return { webhooks: [] };
+            return { webhooks: hookRows };
+          case "save_webhook":
+            hookRows.push({
+              id: `hook-${hookRows.length + 1}`,
+              name: String(args.params?.name),
+              kind: String(args.params?.kind),
+            });
+            return { webhooks: hookRows };
+          case "delete_webhook": {
+            const at = hookRows.findIndex((h) => h.id === args.params?.id);
+            if (at < 0) throw new Error("no webhook with that id");
+            hookRows.splice(at, 1);
+            return { webhooks: hookRows };
+          }
+          case "connectors":
+            return { connectors: connectorRows };
           case "jobs":
             return { jobs: jobRows };
           case "set_job": {

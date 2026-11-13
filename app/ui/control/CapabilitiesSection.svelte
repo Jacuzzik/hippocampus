@@ -78,7 +78,7 @@
     name="MCP servers"
     what="Outside tools the assistant can call through the Model Context Protocol (MCP), such as a calendar or a database."
     status="Planned"
-    reason="Servers are not read from disk yet, so none can be installed or removed here."
+    reason="Settings, Connectors lists the servers found in your command-line tools' config (read only). Adding, removing and turning one on per agent is not built yet."
   />
   <StatusCard
     name="Plugins"

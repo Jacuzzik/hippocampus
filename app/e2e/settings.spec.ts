@@ -22,7 +22,7 @@ test("settings has a page per category and each one opens", async ({
     Agents: "Main agent engine",
     Budgets: "Token budget",
     "Models and keys": "Keys and secrets",
-    Connectors: "Working on this computer",
+    Connectors: "Checked now",
     Memory: "Memory size per agent",
     "Privacy and data": "Error log",
     Advanced: "Backend (Python sidecar)",
@@ -65,7 +65,7 @@ test("the terminal text size is kept between 10 and 20 and survives a reload", a
   await expect(dialog.getByText("10px")).toBeVisible();
 });
 
-test("a connector that is not built yet is a Planned card with its reason", async ({
+test("a connector that is not built yet is a Needs setup card with its reason and what it needs", async ({
   page,
 }) => {
   await mockSidecar(page);
@@ -73,11 +73,8 @@ test("a connector that is not built yet is a Planned card with its reason", asyn
   const dialog = await openSettings(page);
   await dialog.getByRole("tab", { name: "Connectors" }).click();
   const slack = dialog.getByRole("article").filter({ hasText: "Slack" });
-  await expect(slack).toContainText("Planned");
-  await expect(slack).toContainText("Needs a token store");
-  await expect(
-    dialog.getByRole("article").filter({ hasText: "Webhooks" }).first(),
-  ).toContainText("0 webhooks saved.");
+  await expect(slack).toContainText("Needs setup");
+  await expect(slack).toContainText("Needs: A token store");
 });
 
 test("searching settings jumps to the matching page", async ({ page }) => {
@@ -252,4 +249,43 @@ test("the command palette opens Settings on the page that was named", async ({
   await expect(
     dialog.getByRole("heading", { name: "Doctor", exact: true }),
   ).toBeVisible();
+});
+
+test("Connectors shows each connector's state and reason from the backend", async ({
+  page,
+}) => {
+  await mockSidecar(page);
+  await page.goto("/");
+  const dialog = await openSettings(page);
+  await dialog.getByRole("tab", { name: "Connectors" }).click();
+  const panel = dialog.getByRole("tabpanel");
+  const ollama = panel.locator("article", { hasText: "Local model (Ollama)" });
+  await expect(ollama).toContainText("Connected");
+  await expect(ollama.getByRole("list", { name: /details/ })).toContainText(
+    "llama3.2:3b",
+  );
+  const github = panel.locator("article", { hasText: "GitHub" });
+  await expect(github).toContainText("Not connected");
+  await expect(github).toContainText("gh auth login");
+  const slack = panel.locator("article", { hasText: "Slack" });
+  await expect(slack).toContainText("Needs setup");
+  await expect(slack).toContainText("No Slack calls are built yet");
+  await expect(panel.getByRole("button", { name: "Test again" })).toBeEnabled();
+});
+
+test("a webhook is added and removed in the Control panel Triggers", async ({
+  page,
+}) => {
+  await mockSidecar(page);
+  await page.goto("/");
+  await page.getByRole("tab", { name: "triggers" }).click();
+  await page.getByLabel("Name", { exact: true }).last().fill("Nightly check");
+  await page.getByRole("button", { name: "Add webhook" }).click();
+  await expect(page.getByText("Nightly check")).toBeVisible();
+  await page.getByRole("button", { name: "Remove Nightly check" }).click();
+  await page
+    .getByRole("button", { name: "Confirm remove Nightly check" })
+    .click();
+  await expect(page.getByText("Nightly check")).toHaveCount(0);
+  await expect(page.getByText("None saved yet.")).toBeVisible();
 });
