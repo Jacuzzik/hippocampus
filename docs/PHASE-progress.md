@@ -26,6 +26,8 @@ A row is "closed" only when a check proves it: a test, a lint rule, or a screens
 | Motion | 0f1 (see git log: "Motion in one place") | 12.02, 12.03 (three durations and one easing as tokens), 12.04 (dialogs fade and grow in, backdrops fade), 12.05 (tab content fades in), 12.07 (card lift, button press), 12.12 (skeleton shimmer), 12.14 (only opacity, scale and position move), 12.15 (Motion setting), 11.13 (part: unused file, config and two packages removed) | e2e `motion.spec.ts` |
 | Loading | (see git log: "Lists show a loading placeholder") | 13.04 (one Loading component), 13.05 (shown only after 300 ms), 13.08 (a failure replaces the placeholder with the reason), 13.09 (skeleton rows in eight panels), 13.10 (aria-busy, tests) | e2e `loading.spec.ts` |
 | Settings transfer and keyboard | (this commit) | M.23 (Keyboard page from one shortcut list), M.28 (settings and app data are written to a temporary file, then renamed), M.29 (export and import settings as text; a bad text is refused; keys never included), M.31 (tests), M.02, M.05, M.09 (rail of pages with search, done earlier), M.24, M.25 (Advanced and About pages), N.20 (Doctor page) | pytest 377, e2e settings 15 pass |
+| Link doctor | (see git log) | N.08 (Doctor page lists broken links and notes with no links; read only) | pytest `test_link_doctor.py`, e2e settings |
+| Backend split 1 | (this commit) | 11.01 (part: `core/__main__.py` from 1,888 to 1,476 lines; jobs, hive delivery, records and terminal calls moved to `core/session_*.py`; a test stops any backend file passing 1,500 lines) | pytest 380, real backend start, live restart and screenshot |
 
 ## Closed before this phase file existed (checked again this phase)
 

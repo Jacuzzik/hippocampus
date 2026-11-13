@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from core import __main__ as sidecar
-from core import inbox
+from core import inbox, session_shared
 from core.settings import Settings
 
 KNOWN = {"hippoherman", "ada", "bob"}
@@ -237,7 +237,7 @@ def test_a_message_that_waited_too_long_is_sent_even_to_a_busy_terminal(tmp_path
     session = session_at(tmp_path)
     inbox.send(session.hive_path, "hippoherman", "ada", "Task 8", "Do it")
     [(path, message)] = inbox.pending(session.hive_path, "ada")
-    message["at"] = time.time() - sidecar.DELIVERY_MAX_WAIT_S - 1
+    message["at"] = time.time() - session_shared.DELIVERY_MAX_WAIT_S - 1
     session.terminals.quiet = False
     assert session._deliver("ada", path, message) is True
 

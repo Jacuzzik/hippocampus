@@ -36,7 +36,6 @@ import signal
 import subprocess
 import sys
 import threading
-import time
 import tomllib
 import urllib.request
 import uuid
@@ -57,25 +56,34 @@ from core import (
     __version__,
     added_agents,
     app_log,
-    briefing,
     crash_log,
     doctor,
     inbox,
-    link_doctor,
     note_actions,
     safe_write,
     sandbox,
     share,
     skills,
-    startup_inbox,
-    webhooks,
 )
 from core import activity as journal
 from core import budget as budgets
-from core import jobs as job_store
 from core import memory as memory_notes
 from core.cards import CardStore
-from core.helpers import HelperLimit, Helpers
+from core.helpers import Helpers
+from core.session_hive import HivePart
+from core.session_jobs import JobsPart
+from core.session_records import RecordsPart
+from core.session_shared import (
+    DEFAULT_HIVE_DIR,
+    DEFAULT_STORAGE,
+    DEFAULT_TASKS_FILE,
+    KEYCHAIN_MISSING,
+    SCHEDULE_SECONDS,
+    SKILLS_DIR,
+    Emit,
+    logger,
+)
+from core.session_terminal import TerminalPart
 from core.settings import (
     CAP_WINDOWS,
     HIVE_DIR,
@@ -92,7 +100,7 @@ from core.settings import (
     save_vault,
 )
 from core.system_stats import SystemStats
-from core.terminal import OPENCODE_FOR, Terminals, engine_problem, sandbox_for
+from core.terminal import Terminals, engine_problem, sandbox_for
 from core.vault import Indexer, open_index
 from core.vault.changes import ChangeFlag
 from core.vault.scanner import iter_notes
@@ -102,40 +110,8 @@ from tools.gate import AskQueue, ConfirmGate, KillSwitch, Stopped
 from tools.registry import CONFIRM_TIERS
 from tools.vault_tools import vault_tools
 
-# The office task board the Tasks tab reads; MD_TASKS_FILE overrides it.
-DEFAULT_TASKS_FILE = "~/.hippocampus/office/tasks.json"
-DEFAULT_HIVE_DIR = "~/.hippocampus/office"
-# Seconds a terminal must have been running before its waiting inbox messages are typed in.
-INBOX_SETTLE_S = 8.0
-# How much of a message body is typed into a terminal, and how long a message waits for a busy CLI.
-DELIVERY_BODY_MAX = 1500
-DELIVERY_MAX_WAIT_S = 120.0
 
-logger = logging.getLogger("hippocampus.core")
-
-DEFAULT_STORAGE = Path(__file__).resolve().parent.parent / "data" / "storage"
-SKILLS_DIR = Path(__file__).resolve().parent.parent / "skills"
-SCHEDULE_SECONDS = 60
-KEYCHAIN_MISSING = (
-    "the OS keychain is not available. Install a Secret Service keyring "
-    "(for example GNOME Keyring or KWallet), then try again."
-)
-
-
-Emit = Callable[[dict[str, Any]], None]
-
-
-COMPACT_SAVE_PROMPT = (
-    "Before you compact: save your notes and a short summary of today to your note {agent}-PriorityNotes in the vault, "
-    "link it from the Summaries note, then reply Saved."
-)
-COMPACT_PROMPT = (
-    "/compact Keep the current task, recent decisions, open questions, and file paths in play. "
-    "Drop resolved tangents. Read {agent}-PriorityNotes."
-)
-
-
-class Session:
+class Session(JobsPart, HivePart, RecordsPart, TerminalPart):
     """The vault the serve loop has open, the assistant, and the requests they answer.
 
     `lock` guards the SQLite store, which the chat's tools share with the requests.
@@ -641,125 +617,6 @@ class Session:
     def memory_status(self) -> dict[str, Any]:
         return {**memory_notes.status(self.embedder), "max_bytes": self.settings.memory_max_bytes}
 
-    def trim_memory(self) -> list[str]:
-        """Move the oldest sections of long memory notes to archive notes. Runs on each open."""
-        if self.indexer is None:
-            return []
-        changed: list[Path] = []
-        for note in iter_notes(self.indexer.vault):
-            path = self.indexer.vault / note.path
-            archive = memory_notes.trim_memory_file(
-                self.indexer.vault, path, self.settings.memory_max_bytes
-            )
-            if archive is not None:
-                changed += [path, archive]
-                self.note("setting", text=f"trimmed {note.path} into {archive.name}")
-        if changed:
-            with self.lock:
-                self.indexer.apply_changes(changed)
-        return [p.name for p in changed]
-
-    def jobs(self) -> dict[str, Any]:
-        return {"jobs": [asdict(j) for j in job_store.load(self.jobs_path)]}
-
-    def set_job(self, request: dict[str, Any]) -> dict[str, Any]:
-        job_id = request.get("id")
-        if not isinstance(job_id, str) or not isinstance(request.get("enabled"), bool):
-            raise ValueError('"set_job" needs an "id" and "enabled"')
-        every = request.get("every_days")
-        jobs = job_store.set_job(job_store.load(self.jobs_path), job_id, request["enabled"], every)
-        job_store.save(self.jobs_path, jobs)
-        return self.jobs()
-
-    @property
-    def jobs_path(self) -> Path:
-        return self.storage / "jobs.json"
-
-    def run_jobs(self, now: datetime | None = None) -> list[str]:
-        """Run each enabled job that is due. Called on a timer by `serve`."""
-        if self.indexer is None:
-            return []
-        runners = {"link_check": self._link_check}
-        jobs, results = job_store.run_due(
-            job_store.load(self.jobs_path), now or datetime.now().astimezone(), runners
-        )
-        job_store.save(self.jobs_path, jobs)
-        for line in results:
-            self.note("handoff", text=line)
-        return results
-
-    def _link_check(self) -> str:
-        with self.lock:
-            if self.indexer is None:
-                raise ValueError("no vault is open")
-            store = self.indexer.store
-            broken = sum(
-                1
-                for path in store.note_states()
-                for _raw, target in store.outgoing(path)
-                if target is None
-            )
-        return f"{broken} broken link(s)"
-
-    def link_doctor(self) -> dict[str, Any]:
-        with self.lock:
-            if self.indexer is None:
-                raise ValueError("no vault is open")
-            return link_doctor.report(self.indexer.store)
-
-    def helpers_state(self) -> dict[str, Any]:
-        return {"helpers": self.helpers.list(), "limit": 4}
-
-    def watchers_state(self) -> dict[str, Any]:
-        """Background watchers, read only. `watch` runs VaultWatcher, not `serve`, so the
-        vault row is always stopped here; the minute timer runs triggers only with a vault."""
-        rows: list[dict[str, str | None]] = []
-        if self.indexer is not None:
-            rows.append(_watcher(self.indexer.vault.name, "vault watcher", "stopped"))
-        for job in job_store.load(self.jobs_path):
-            on = "running" if job.enabled and self.indexer is not None else "stopped"
-            rows.append(_watcher(job.name, "trigger", on, job.last_run))
-        for hook in webhooks.load(self.webhooks_path):  # saved only: nothing listens for them
-            rows.append(_watcher(hook["name"], "webhook", "stopped"))
-        status = {"running": "running", "done": "stopped", "failed": "error"}
-        for job in self.helpers.list():
-            name = f"helper {job['id']}: {job['prompt'][:40]}"
-            rows.append(_watcher(name, "helper", status[job["status"]]))
-        # Every agent with a terminal: running or stopped, and when it last started or stopped.
-        for agent in sorted(set(self.terminals.events) | set(self.terminals.procs)):
-            running = (
-                agent in self.terminals.procs and self.terminals.procs[agent][0].poll() is None
-            )
-            last = self.terminals.events.get(agent)
-            last_event = f"{datetime.fromtimestamp(last[0]):%H:%M} {last[1]}" if last else None
-            # "hippoherman" is the main agent's terminal id; show it by its name.
-            shown = "Hippoherman (main agent)" if agent == "hippoherman" else agent
-            rows.append(_watcher(shown, "agent", "running" if running else "stopped", last_event))
-        return {"watchers": rows}
-
-    def system_state(self) -> dict[str, Any]:
-        """CPU, RAM and disk use in percent. Disk is the drive that holds the app data."""
-        return self.system.read(self.storage)
-
-    def start_helper(self, request: dict[str, Any]) -> dict[str, Any]:
-        prompt = request.get("prompt")
-        if not isinstance(prompt, str):
-            raise ValueError('"prompt" must be text')
-        over = self.ledger.first_overrun({"app": (self.settings.budget, None)})
-        if over is not None and not self.allowance:
-            raise ValueError(f"the app {over.window} token cap is used; allow a request first")
-        try:
-            self.helpers.start(prompt)
-        except HelperLimit as exc:
-            raise ValueError(str(exc)) from exc
-        return self.helpers_state()
-
-    def _helper_run(self, prompt: str) -> str:
-        router = build_router(self.settings, get_api_key())
-        reply = asyncio.run(router.chat([{"role": "user", "content": prompt}], []))
-        self.ledger.add("helper", reply.tokens)
-        return reply.text
-
     def skills_state(self) -> dict[str, Any]:
         return {"skills": skills.list_skills(SKILLS_DIR)}
 
@@ -1007,146 +864,6 @@ class Session:
         ]
         return {"id": ids[0] if ids else None, "ids": ids}
 
-    def _hubs_present(self) -> None:
-        # Re-creates any missing hub note straight away, so a deleted hub comes back without a restart.
-        vault = self.settings.vault
-        if not vault or not Path(vault).is_dir():
-            return
-        groups = ["Projects", "Summaries", "Agent Lists", "Contacts", "Socials", "About User"]
-        links = "".join(f"- [[{name}]]\n" for name in groups)
-        main = f"# MAIN\n\nInstructions for all agents. Read this first.\n\n- Work in your own folder and the vault. Do not change other agents' notes.\n- Before you compact, save your notes and a summary to your own note.\n- When the user gives a rule or instruction to keep for good, write it into your own -PriorityNotes note in the vault, creating the note if it does not exist.\n- If you do not know something, search the vault before you ask.\n- Only the user deletes a note linked to a group.\n\nGroups:\n\n{links}"
-        bodies = {
-            "Projects": "Active projects: the goal, the status, and links to the notes for it. One note per project, linked here.",
-            "Summaries": "Daily summaries that each agent saves before it compacts: what it did, what it decided, what is still open. One note per day, linked here.",
-            "Agent Lists": "Every agent in the app: what it does, its status (active, archived or deleted) and where its memory is kept. One note per agent, linked here. Only the user can edit, delete or remove these notes.",
-            "Contacts": "People the user works with. Each contact has a name, a phone number (if they have one), an optional label, and a line on who they are. A phone number always needs a name: if you do not have one, ask the user for it. One note per person, linked here.",
-            "Socials": "The user's accounts on every platform: platform, account name or handle, profile link, and purpose. Never store passwords, logins or keys here.",
-            "About User": "Facts about the user that agents need: role, preferences and how they like replies. Change it only when the user says so.",
-        }
-        notes = {"MAIN": main}
-        notes.update({name: f"# {name}\n\n{bodies[name]}\n" for name in groups})
-        for name, body in notes.items():
-            path = Path(vault) / f"{name}.md"
-            if not path.exists():
-                path.write_text(body, encoding="utf-8")
-
-    def _daily_compact(self) -> None:
-        # Once a day, from 03:00: every running agent is asked to save its notes, then compacts once it is idle again.
-        now = datetime.now()
-        if (
-            self.compact_day != now.date().isoformat()
-            and now.hour >= 3
-            and not self.compact_waiting
-        ):
-            self.compact_day = now.date().isoformat()
-            for agent in list(self.terminals.procs):
-                if self.terminals.info(agent)["status"] is None:
-                    continue
-                try:
-                    self.terminals.send_line(agent, COMPACT_SAVE_PROMPT.format(agent=agent))
-                    self.compact_waiting[agent] = time.time()
-                except RuntimeError:
-                    continue
-        for agent, sent_at in list(self.compact_waiting.items()):
-            # Wait at least 20 seconds so the save has started, and only compact when the agent is Idle.
-            if time.time() - sent_at >= 20 and self.terminals.info(agent)["status"] == "Idle":
-                try:
-                    self.terminals.send_line(agent, COMPACT_PROMPT.format(agent=agent))
-                except RuntimeError:
-                    pass
-                del self.compact_waiting[agent]
-
-    def _write_all_inboxes(self) -> None:
-        """Writes the start-up inbox file for every added agent and for the main agent."""
-        agents = added_agents.load(self.agents_path)
-        for agent in ["hippoherman", *[a["id"] for a in agents if a.get("id")]]:
-            try:
-                startup_inbox.write(self.hive_path, agent, agents)
-            except OSError:
-                logging.exception("Could not write the start-up inbox for %s", agent)
-
-    def _deliver_loop(self) -> None:
-        # Every few seconds: move agent replies into inboxes, then type each waiting message into its running terminal.
-        while True:
-            time.sleep(3)
-            try:
-                self._hubs_present()
-                self._daily_compact()
-                inbox.collect_outboxes(self.hive_path, self._agent_ids())
-                # Once a day, old delivered messages move into one compressed file per month.
-                if time.time() - self.last_archive > 86400:
-                    self.last_archive = time.time()
-                    inbox.archive_old(self.hive_path)
-                if not self.hive_path.is_dir():
-                    continue
-                for agent, inbox_file in list(self.inbox_pending.items()):
-                    if time.time() - self.terminals.started_at.get(agent, 0.0) < INBOX_SETTLE_S:
-                        continue
-                    path = Path(inbox_file)
-                    text = startup_inbox.for_chat(
-                        path.read_text(encoding="utf-8") if path.is_file() else "", path
-                    )
-                    try:
-                        self.terminals.send_line(agent, text)
-                    except RuntimeError:
-                        pass
-                    self.inbox_pending.pop(agent, None)
-                for folder in self.hive_path.iterdir():
-                    if not folder.is_dir():
-                        continue
-                    # A terminal that has just started is still drawing: messages typed before it is ready are lost, so they wait for it to settle.
-                    if (
-                        time.time() - self.terminals.started_at.get(folder.name, 0.0)
-                        < INBOX_SETTLE_S
-                    ):
-                        continue
-                    for path, message in inbox.pending(self.hive_path, folder.name):
-                        if not self._deliver(folder.name, path, message):
-                            break
-            except Exception:
-                logging.exception("Could not deliver agent messages")
-
-    def _deliver(self, agent: str, path: Path, message: dict[str, Any]) -> bool:
-        """Type one queued message into the agent's terminal and file it. False means stop for now:
-        the terminal is busy or closed, or the two agents are being held apart."""
-        sender = str(message.get("from") or "")
-        if not self.loop_guard.allow(sender, agent):
-            pair = (min(sender, agent), max(sender, agent))
-            # One alert per hold, not one per poll.
-            if time.time() - self.loop_alerts.get(pair, 0.0) > self.loop_guard.cooldown:
-                self.loop_alerts[pair] = time.time()
-                minutes = round(self.loop_guard.cooldown / 60)
-                text = f"{sender} and {agent} sent each other more than {self.loop_guard.limit} messages in a minute. Their messages are held for {minutes} minutes."
-                self.note("error", text=text)
-                self.emit({"event": "message_loop", "agents": list(pair), "text": text})
-            return False
-        urgent = " (urgent)" if message.get("priority") == "urgent" else ""
-        work = f" Task {message.get('work')}." if message.get("work") else ""
-        body = str(message.get("body") or "")
-        if len(body) > DELIVERY_BODY_MAX:
-            body = body[:DELIVERY_BODY_MAX] + " ...(cut: the full text is in the app's Inbox tab)"
-        # Wording follows the start-up inbox: the app files the message, and an acknowledgement-only reply is not wanted.
-        text = (
-            f"New {message.get('act') or 'request'}{urgent} from {sender}. Subject: {message.get('subject')}.{work} "
-            f"{body} "
-            f'To answer, put "replyTo": "{message.get("id")}" in your message. '
-            "The app files it for you, so do not open or move the inbox files. Act on it; reply only if your work needs it."
-        )
-        text = " ".join(text.split())
-        try:
-            waited = time.time() - float(message.get("at") or time.time())
-            # A busy CLI can drop or mangle typed text, so wait for it to go quiet. A CLI that never
-            # goes quiet (some redraw all the time) still gets the message after a while.
-            if waited < DELIVERY_MAX_WAIT_S:
-                if not self.terminals.send_line_when_quiet(agent, text):
-                    return False
-            else:
-                self.terminals.send_line(agent, text)
-        except RuntimeError:
-            return False  # the terminal is not running: the message stays queued
-        inbox.mark_done(path)
-        return True
-
     def share_note(self, request: dict[str, Any]) -> dict[str, Any]:
         password = request.get("password")
         if not isinstance(password, str):
@@ -1154,65 +871,6 @@ class Session:
         minutes = _whole(request.get("minutes", share.DEFAULT_MINUTES), "minutes")
         share.request_link(password, minutes)  # always raises until a share host is set up
         return {}
-
-    def crashes(self) -> dict[str, Any]:
-        """The newest error records kept on disk (UI errors and unhandled sidecar thread errors)."""
-        return {"crashes": crash_log.recent(self.storage)}
-
-    def record_crash(self, request: dict[str, Any]) -> dict[str, Any]:
-        crash_log.record(
-            self.storage, request.get("source"), request.get("message"), request.get("at")
-        )
-        return {"ok": True}
-
-    def clear_crashes(self) -> dict[str, Any]:
-        crash_log.clear(self.storage)
-        return self.crashes()
-
-    def logs(self, request: dict[str, Any]) -> dict[str, Any]:
-        """The newest lines of the backend log file, for Settings > Advanced. Keys are masked when written."""
-        limit = request.get("limit", 200)
-        if isinstance(limit, bool) or not isinstance(limit, int):
-            raise ValueError("limit must be a whole number")
-        return {"path": str(app_log.path(self.storage)), "lines": app_log.tail(self.storage, limit)}
-
-    def webhooks_state(self) -> dict[str, Any]:
-        return {"webhooks": webhooks.load(self.webhooks_path)}
-
-    def save_webhook(self, request: dict[str, Any]) -> dict[str, Any]:
-        hooks = webhooks.add(
-            webhooks.load(self.webhooks_path), request.get("name"), request.get("kind")
-        )
-        webhooks.save(self.webhooks_path, hooks)
-        return self.webhooks_state()
-
-    def delete_webhook(self, request: dict[str, Any]) -> dict[str, Any]:
-        hook_id = request.get("id")
-        if not isinstance(hook_id, str):
-            raise ValueError('"delete_webhook" needs an "id"')
-        kept = webhooks.remove(webhooks.load(self.webhooks_path), hook_id)
-        webhooks.save(self.webhooks_path, kept)
-        return self.webhooks_state()
-
-    def run_webhook(self, request: dict[str, Any]) -> dict[str, Any]:
-        if request.get("approve") is not True:
-            raise ValueError("running a webhook needs the user's approval")
-        hook = webhooks.find(webhooks.load(self.webhooks_path), request.get("id"))
-        kinds = {"link_check": self._link_check}
-        run = kinds.get(hook.get("kind"))
-        if run is None:
-            raise ValueError(
-                f"This webhook has the kind {hook.get('kind')!r}, which this app cannot run. "
-                f"It can run: {', '.join(kinds)}."
-            )
-        result = run()
-        self.note("approval", tool="run_webhook", tier="act", approved=True, by="card")
-        self.note("handoff", text=result)
-        return {"result": result}
-
-    @property
-    def webhooks_path(self) -> Path:
-        return self.storage / "webhooks.json"
 
     def keys(self) -> dict[str, Any]:
         rows = [{"provider": "claude", "label": "Claude (Anthropic)"}]
@@ -1250,76 +908,6 @@ class Session:
         except KeyringError as error:
             raise ValueError(KEYCHAIN_MISSING) from error
         return self.keys()
-
-    def terminal(self, method: str, request: dict[str, Any]) -> dict[str, Any]:
-        """The agent's live terminal: start its CLI, send it keys, resize it, stop it."""
-        agent = request.get("agent")
-        if not isinstance(agent, str) or not agent:
-            raise ValueError(f'"{method}" needs an "agent" id')
-        rows, cols = int(request.get("rows") or 24), int(request.get("cols") or 80)
-        if method == "terminal_start":
-            provider = str(request.get("provider") or "")
-            model = str(request.get("model") or "")
-            if provider == "ollama" and not model:
-                model = self.settings.ollama_model
-            elif provider in OPENCODE_FOR and not model:
-                # An API provider runs the model saved in the engine switch.
-                model = self.settings.provider_model
-            elif provider == "claude" and not model:
-                # Claude runs the model saved in the engine switch, so a model change reaches its CLI.
-                model = self.settings.claude_model
-            folder = request.get("folder") if isinstance(request.get("folder"), str) else None
-            if folder is None and self.settings.vault:
-                folder = str(self.settings.vault)
-            saved = next(
-                (a for a in added_agents.load(self.agents_path) if a.get("id") == agent), {}
-            )
-            # The wording lives in core/briefing.py; the parts that differ per agent are filled in there.
-            if agent == "hippoherman":
-                text = briefing.main_briefing(self.settings.vault)
-            else:
-                text = briefing.agent_briefing(
-                    agent, saved, folder, self.settings.vault, self.hive_path / agent / "outbox"
-                )
-            vault = str(self.settings.vault) if self.settings.vault else None
-            block_tools = bool(request.get("block_tools", False))
-            # The start-up inbox is written each time a terminal starts, so a new agent gets it as soon as its terminal opens.
-            agents = added_agents.load(self.agents_path)
-            inbox_path = startup_inbox.write(self.hive_path, agent, agents)
-            shell = self.settings.agent_shell
-            # The real rules for this start, computed from the switches, so the briefing cannot disagree with them.
-            sandboxed = shell and sandbox_for(provider)
-            limits = sandbox.policy_lines(
-                shell=agent == "hippoherman" or sandboxed,
-                sandboxed=sandboxed,
-                blocked=block_tools,
-                app_root=ROOT,
-            )
-            text, mark = briefing.finish(text, inbox_path, limits)
-            problems = briefing.lint(text)
-            if problems:
-                # Stops before the agent starts: an agent with a broken briefing would run without its rules.
-                raise ValueError("This agent cannot start. " + " ".join(problems))
-            self.briefing_stamps[agent] = {
-                **mark,
-                "at": datetime.now().isoformat(timespec="seconds"),
-            }
-            started = self.terminals.start(
-                agent, provider, rows, cols, model, folder, text, vault, block_tools, shell
-            )
-            # The start-up inbox is sent into the terminal chat by the delivery loop, once the terminal has settled.
-            # Only a CLI that has just started gets it: reopening the window reattaches to a running CLI, and
-            # typing the inbox in again each time spent the agent's tokens on a message it had already read.
-            if not started.get("reattached"):
-                self.inbox_pending[agent] = str(inbox_path)
-            return started
-        if method == "terminal_input":
-            self.terminals.write(agent, str(request.get("data") or ""))
-        elif method == "terminal_resize":
-            self.terminals.resize(agent, rows, cols)
-        else:
-            self.terminals.stop(agent)
-        return {"ok": True}
 
     def dispatch(self, request: dict[str, Any]) -> dict[str, Any]:
         method = request.get("method")
@@ -1578,12 +1166,6 @@ class Session:
             if self.indexer is not None:
                 self.indexer.store.close()
                 self.indexer = None
-
-
-def _watcher(
-    name: str, kind: str, status: str, last_event: str | None = None
-) -> dict[str, str | None]:
-    return {"name": name, "kind": kind, "status": status, "last_event": last_event}
 
 
 def _issues(folder: object) -> dict[str, Any]:
