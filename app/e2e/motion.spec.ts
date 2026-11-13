@@ -78,3 +78,28 @@ test("a row in a list fades in, and not at all with Motion off", async ({
       .evaluate((node) => getComputedStyle(node).animationName),
   ).toBe("none");
 });
+
+test("the content of a tab fades in, and not at all with Motion off", async ({
+  page,
+}) => {
+  await mockSidecar(page);
+  await page.goto("/");
+  await page.getByRole("tab", { name: "skills" }).click();
+  const panel = page.getByRole("tabpanel");
+  expect(
+    await panel.evaluate((node) => getComputedStyle(node).animationName),
+  ).toBe("fade-in");
+  await page.evaluate(() =>
+    localStorage.setItem(
+      "hippocampus.prefs",
+      JSON.stringify({ motion: "off", intro: "off" }),
+    ),
+  );
+  await page.reload();
+  await page.getByRole("tab", { name: "skills" }).click();
+  expect(
+    await page
+      .getByRole("tabpanel")
+      .evaluate((node) => getComputedStyle(node).animationName),
+  ).toBe("none");
+});

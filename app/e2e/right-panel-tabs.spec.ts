@@ -22,6 +22,21 @@ test("the history tab lists past events but not tool runs", async ({
   await expect(region).not.toContainText("search_notes");
 });
 
+test("the history tab can be searched", async ({ page }) => {
+  await page.getByRole("tab", { name: "history" }).click();
+  const region = page.getByRole("region", { name: "History" });
+  await expect(region).toContainText("paused: assistant daily cap reached");
+  await region
+    .getByRole("searchbox", { name: "Search history" })
+    .fill("nomatch-zzz");
+  await expect(region).not.toContainText("paused: assistant daily cap reached");
+  await expect(region).toContainText('No event matches "nomatch-zzz"');
+  await region
+    .getByRole("searchbox", { name: "Search history" })
+    .fill("DAILY cap");
+  await expect(region).toContainText("paused: assistant daily cap reached");
+});
+
 test("the skills tab lists installed skills", async ({ page }) => {
   await page.getByRole("tab", { name: "skills" }).click();
   await expect(page.getByRole("region", { name: "Skills" })).toContainText(

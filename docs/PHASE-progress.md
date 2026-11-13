@@ -46,6 +46,7 @@ A row is "closed" only when a check proves it: a test, a lint rule, or a screens
 | Memory and activity tabs | (this commit) | L.22 (part: each agent's memory shows a size meter against the cap, "Nearly full" from 80% and "Full" at the cap; the condense button is not built), L.23 (part: Activity filters by kind and by a word and has a Pause switch; no filter by agent or by tool, rows do not carry them) | pytest 420, e2e right-panel-tabs, owner-panel, buttons, notices (27 pass), ESLint 0, svelte-check 0 |
 | More planned cards | (this commit) | N.02, N.04, N.05, N.06, N.10, N.12, N.15, N.26, M.20, 7.32, 7.34, 7.35, 7.07 (decided: **card**, each needs a service, a design or a finished area that is not changed here; Settings, Planned features shows 29 cards, each with what it will do and what is missing; the existing test checks every card says Planned, gives a reason and has no button) | e2e settings, ESLint 0, svelte-check 0 |
 | First-run chat error | (this commit) | 2.09 (when no Claude login, key or other provider is set up and Ollama does not answer, the chat error now starts with "No Claude login or key is set up (Settings, Models and keys)"; the `account` call also returns `ready`; the window's chat panel only sends to terminals today, so the sentence shows in the error notice, not as a separate screen) | pytest 422, ruff clean |
+| History search and tab fade | (this commit) | L.21 (part: the History tab has a search box over kind and text; no open or resume of a past session, the tab lists office events), L.27 (part: a tab's content fades in with the shared fast duration and not at all with Motion off or reduced motion, now tested; the tabs are filled pills, so there is no sliding underline) | e2e right-panel-tabs and motion (18 pass), ESLint 0, svelte-check 0 |
 
 ## Closed before this phase file existed (checked again this phase)
 
@@ -58,6 +59,8 @@ A row is "closed" only when a check proves it: a test, a lint rule, or a screens
 - G.03, G.06: hand-testing the Windows and macOS installers is **on hold** by the owner (2026-11-13). Do not work on it.
 
 ## Found, not yet done
+
+- L.21 History: open and resume a past session (the tab lists events only). L.27: sliding underline (tabs have no underline).
 
 - N.24 Quiet mode: pausing background refresh entirely, and turning on by itself on battery power.
 
