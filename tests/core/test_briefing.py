@@ -33,9 +33,8 @@ def test_both_briefings_pass_their_own_lint() -> None:
 
 def test_the_name_job_goal_and_folder_reach_the_agents_briefing() -> None:
     saved = {"name": "Ada", "description": "Breaks big tasks down", "goal": "Tidy the inbox notes"}
-    text = briefing.agent_briefing(
-        "ada#1", saved, "/work/ada", "/vault", Path("/hive/ada#1/outbox")
-    )
+    outbox = Path("/hive/ada#1/outbox")
+    text = briefing.agent_briefing("ada#1", saved, "/work/ada", "/vault", outbox)
     for part in (
         "You are Ada,",
         "Breaks big tasks down",
@@ -46,7 +45,7 @@ def test_the_name_job_goal_and_folder_reach_the_agents_briefing() -> None:
     ):
         assert part in text
     # The message format and the example are the inbox schema's own text.
-    assert inbox.FORMAT_HELP in text and '"act": "done"' in text and "/hive/ada#1/outbox" in text
+    assert inbox.FORMAT_HELP in text and '"act": "done"' in text and str(outbox) in text
 
 
 def test_the_stamp_changes_when_the_text_does() -> None:

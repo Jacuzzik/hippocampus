@@ -1,6 +1,7 @@
 """Deleting or damaging the index must always be safe: it is rebuilt from the vault."""
 
 import logging
+import sys
 from pathlib import Path
 
 import pytest
@@ -91,6 +92,7 @@ def test_unrelated_sqlite_file_rebuilds(tmp_path: Path) -> None:
     store.close()
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="Windows does not let an open file be deleted")
 def test_deleted_while_open_is_detected(tmp_path: Path) -> None:
     store, _ = build(tmp_path)
     assert not store.reopen_if_deleted()

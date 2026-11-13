@@ -131,7 +131,12 @@ class Store:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         try:
             conn = self._connect()
-            if self._is_current(conn):
+            try:
+                current = self._is_current(conn)
+            except sqlite3.DatabaseError:
+                conn.close()  # Windows cannot delete a file that is still open
+                raise
+            if current:
                 self._conn = conn
                 self.rebuilt = False
                 return
@@ -151,9 +156,13 @@ class Store:
 
     def _connect(self) -> sqlite3.Connection:
         conn = sqlite3.connect(self.db_path, isolation_level=None, check_same_thread=False)
-        conn.execute("PRAGMA journal_mode = WAL")
-        conn.execute("PRAGMA foreign_keys = ON")
-        conn.execute("PRAGMA synchronous = NORMAL")
+        try:
+            conn.execute("PRAGMA journal_mode = WAL")
+            conn.execute("PRAGMA foreign_keys = ON")
+            conn.execute("PRAGMA synchronous = NORMAL")
+        except sqlite3.DatabaseError:
+            conn.close()  # an unreadable file: close it so it can be deleted and rebuilt
+            raise
         return conn
 
     def _is_current(self, conn: sqlite3.Connection) -> bool:

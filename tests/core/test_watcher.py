@@ -1,5 +1,6 @@
 import asyncio
 import os
+import sys
 import time
 from collections.abc import AsyncIterator, Callable, Iterator
 from contextlib import asynccontextmanager
@@ -129,6 +130,7 @@ async def test_burst_of_edits(sample_vault: tuple[Path, dict[str, Any]], indexer
         await eventually(lambda: len(indexer.store.tagged("burst")) == 50)
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="Windows does not let an open file be deleted")
 async def test_index_deleted_while_watching_is_rebuilt(
     sample_vault: tuple[Path, dict[str, Any]], indexer: Indexer
 ) -> None:
