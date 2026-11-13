@@ -99,7 +99,7 @@ async function load(): Promise<void> {
   }
 }
 // The agent list is start-up work too: the loading screen waits for it, so every terminal can start.
-const doneAgents = bootTask();
+const doneAgents = bootTask("Agent list");
 void load().finally(doneAgents);
 
 /** A readable, unique id: the agent's name and a 4-digit number, e.g. "Brooke#9716". Its notes are "<id>-PriorityNotes". */

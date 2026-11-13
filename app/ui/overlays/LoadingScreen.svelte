@@ -5,6 +5,7 @@
   // A 2-minute safety cap lifts it even if something hangs.
   import logo from "../assets/brand/hippocampus-mark-mask.png";
   import { prefs } from "../prefs.svelte.ts";
+  import { boot } from "../owner/bootTasks.svelte.ts";
 
   let { ready }: { ready: boolean } = $props();
 
@@ -58,6 +59,21 @@
       <div class="logo" style="--mark: url({logo})" aria-hidden="true"></div>
       <span class="name">Hippocampus</span>
     </div>
+    <div class="progress" class:fading={phase === "fading"}>
+      <progress
+        max={Math.max(boot.total, 1)}
+        value={boot.finished}
+        aria-label="Start-up progress"
+      ></progress>
+      <ul aria-label="Start-up steps">
+        {#each boot.steps as step, i (i)}
+          <li class:done={step.done}>
+            {step.done ? "✓" : "…"}
+            {step.name}
+          </li>
+        {/each}
+      </ul>
+    </div>
   </div>
 {/if}
 
@@ -109,6 +125,41 @@
     letter-spacing: -0.01em;
     color: var(--color-on-strong);
     white-space: nowrap;
+  }
+  /* Real start-up steps and a bar: the vault, the agent list and each terminal, as they finish. */
+  .progress {
+    position: absolute;
+    bottom: var(--space-6);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1;
+    width: min(360px, 90%);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    font-family: var(--font-ui);
+    font-size: var(--font-size-xs);
+    color: var(--color-on-strong);
+    transition: opacity var(--fade-ms) ease;
+  }
+  .progress.fading {
+    opacity: 0;
+  }
+  .progress progress {
+    width: 100%;
+    height: var(--space-1);
+    accent-color: var(--color-on-strong);
+  }
+  .progress ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 6em;
+    overflow: hidden;
+    opacity: 0.8;
+  }
+  .progress li.done {
+    opacity: 0.6;
   }
   /* The mark is a mask, so it takes white and sits with no box of its own. */
   .logo {

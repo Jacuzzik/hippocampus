@@ -3,11 +3,14 @@
   import { invoke } from "@tauri-apps/api/core";
   import { onDestroy, onMount } from "svelte";
   import type { AskCard } from "../assistant/model";
+  import Loading from "../controls/Loading.svelte";
 
   // Questions the assistant cannot answer alone, from every chat, in one place.
   let asks = $state<AskCard[]>([]);
   let answers = $state<Record<string, string>>({});
   let error = $state<string | null>(null);
+  // False until the first answer (or failure).
+  let loaded = $state(false);
   let stopPoll: (() => void) | undefined;
 
   async function load(): Promise<void> {
@@ -18,6 +21,8 @@
       asks = result.asks;
     } catch (cause) {
       error = String(cause);
+    } finally {
+      loaded = true;
     }
   }
 
@@ -49,7 +54,9 @@
   <p class="hint">
     Questions the assistant is waiting on. Answer here or in its chat.
   </p>
-  {#if asks.length === 0}
+  {#if !loaded}
+    <Loading what="the questions" />
+  {:else if asks.length === 0}
     <p class="muted">No questions are waiting.</p>
   {:else}
     <ul aria-label="Waiting questions">

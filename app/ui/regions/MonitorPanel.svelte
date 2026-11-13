@@ -38,7 +38,7 @@
   // Per directory: the issues fetched on request, or the reason they could not be read.
   let issues = $state<Record<string, { list?: Issue[]; error?: string }>>({});
   let selectedFolder = $state("");
-  // The main agent's engine as the app has it set (read only: no call changes it yet).
+  // The main agent's engine as the app has it set (the switch below saves it with set_engine).
   type Engine = { provider: string; model: string; folder: string };
   type Activity = {
     tool_calls: number;

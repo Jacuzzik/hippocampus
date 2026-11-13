@@ -83,8 +83,8 @@
     ) ?? null,
   );
 
-  // Only the terminal is built; the rest of the grid is shown and stays disabled.
-  // Names match the office app's Command Center tabs.
+  // Names match the office app's Command Center tabs. The terminal is mounted at launch; the other views mount
+  // the first time they are opened and then stay (see `visited`).
   const TABS = [
     "terminal",
     "monitor",
@@ -98,6 +98,12 @@
     "skills",
     "temps",
   ];
+  const VIEWS = TABS.filter((id) => id !== "terminal");
+  let visited = $state<string[]>([]);
+  $effect(() => {
+    if (VIEWS.includes(tab) && !visited.includes(tab))
+      visited = [...visited, tab];
+  });
   // Counts shown on the tabs: questions waiting for an answer, and inbox messages not handled yet.
   let waiting = $state({ asks: 0, inbox: 0 });
   function readCounts(): void {
@@ -238,36 +244,40 @@
         <AgentPanel agent={item} />
       </div>
     {/each}
-    {#if tab !== "terminal" && tab !== "agent"}
-      <div
-        class="pane"
-        id="control-room-panel"
-        role="tabpanel"
-        aria-labelledby={`control-room-tab-${tab.replace(/\W+/g, "-")}`}
-      >
-        {#if tab === "tasks"}
-          <TasksPanel />
-        {:else if tab === "inbox"}
-          <InboxPanel />
-        {:else if tab === "memory"}
-          <MemoryPanel />
-        {:else if tab === "monitor"}
-          <MonitorPanel />
-        {:else if tab === "ask me"}
-          <AsksSection />
-        {:else if tab === "triggers"}
-          <TriggersSection />
-        {:else if tab === "activity"}
-          <ActivityPanel />
-        {:else if tab === "skills"}
-          <SkillsPanel />
-        {:else if tab === "temps"}
-          <TempsPanel />
-        {:else if tab === "history"}
-          <HistoryPanel />
-        {/if}
-      </div>
-    {/if}
+    <!-- A tab opened once stays mounted (hidden) so a switch does not reload its list or lose its scroll. -->
+    {#each VIEWS as view (view)}
+      {#if visited.includes(view)}
+        <div
+          class="pane"
+          id={tab === view ? "control-room-panel" : undefined}
+          role="tabpanel"
+          aria-labelledby={`control-room-tab-${view.replace(/\W+/g, "-")}`}
+          hidden={tab !== view}
+        >
+          {#if view === "tasks"}
+            <TasksPanel />
+          {:else if view === "inbox"}
+            <InboxPanel />
+          {:else if view === "memory"}
+            <MemoryPanel />
+          {:else if view === "monitor"}
+            <MonitorPanel />
+          {:else if view === "ask me"}
+            <AsksSection />
+          {:else if view === "triggers"}
+            <TriggersSection />
+          {:else if view === "activity"}
+            <ActivityPanel />
+          {:else if view === "skills"}
+            <SkillsPanel />
+          {:else if view === "temps"}
+            <TempsPanel />
+          {:else if view === "history"}
+            <HistoryPanel />
+          {/if}
+        </div>
+      {/if}
+    {/each}
   </div>
 </div>
 

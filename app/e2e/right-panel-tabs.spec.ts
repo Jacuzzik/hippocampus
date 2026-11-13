@@ -81,3 +81,21 @@ test("arrow keys move between the Control Room tabs", async ({ page }) => {
   await page.keyboard.press("Home");
   await expect(terminal).toHaveAttribute("aria-selected", "true");
 });
+
+test("a tab already opened stays mounted when you leave it", async ({
+  page,
+}) => {
+  await page.getByRole("tab", { name: "skills" }).click();
+  const region = page.getByRole("region", { name: "Skills" });
+  await expect(region).toContainText("tidy-notes");
+  // Mark the live element; a remount would drop the mark.
+  await region.evaluate((el) => el.setAttribute("data-kept", "yes"));
+  await page.getByRole("tab", { name: "activity" }).click();
+  await expect(region).toBeHidden();
+  await page.getByRole("tab", { name: "skills" }).click();
+  await expect(region).toHaveAttribute("data-kept", "yes");
+});
+
+test("a tab never opened is not mounted", async ({ page }) => {
+  await expect(page.getByRole("region", { name: "Skills" })).toHaveCount(0);
+});

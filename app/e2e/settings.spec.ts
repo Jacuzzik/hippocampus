@@ -238,3 +238,18 @@ test("Doctor lists broken links and notes with no links", async ({ page }) => {
     links.getByRole("list", { name: "Notes with no links" }),
   ).toContainText("Gamma.md");
 });
+
+test("the command palette opens Settings on the page that was named", async ({
+  page,
+}) => {
+  await mockSidecar(page);
+  await page.goto("/");
+  await page.keyboard.press("Control+p");
+  const palette = page.getByRole("dialog", { name: "Command palette" });
+  await palette.getByRole("combobox").fill("Settings: Doctor");
+  await page.keyboard.press("Enter");
+  const dialog = page.getByRole("dialog", { name: "Settings" });
+  await expect(
+    dialog.getByRole("heading", { name: "Doctor", exact: true }),
+  ).toBeVisible();
+});

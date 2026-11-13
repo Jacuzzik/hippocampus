@@ -20,6 +20,7 @@
   import SettingsDialog from "./control/SettingsDialog.svelte";
   import CommandBox, { type Item } from "./overlays/CommandBox.svelte";
   import type { GraphData } from "./graph/model.ts";
+  import { SETTINGS_PAGES, type SettingsPage } from "./control/model.ts";
   import { tick } from "svelte";
 
   let data = $state<GraphData | null>(null);
@@ -86,6 +87,7 @@
   let addOpen = $state(false);
   // The settings: six tabs, from the command palette or the control panel.
   let settingsOpen = $state(false);
+  let settingsStart = $state<SettingsPage>("General");
   // Full screen layout from the top bar: only the terminal and the agent cards show.
   let terminalOnly = $state(false);
 
@@ -158,8 +160,20 @@
     {
       id: "settings",
       label: "Settings",
-      run: () => (settingsOpen = true),
+      run: () => {
+        settingsStart = "General";
+        settingsOpen = true;
+      },
     },
+    // One entry per Settings page, so the palette jumps straight to it.
+    ...SETTINGS_PAGES.map((entry) => ({
+      id: `settings-${entry.id}`,
+      label: `Settings: ${entry.id}`,
+      run: () => {
+        settingsStart = entry.id;
+        settingsOpen = true;
+      },
+    })),
   ];
 
   const noteItems = $derived<Item[]>(
@@ -201,7 +215,7 @@
   // The graph menu and sidebar fire this after a change, so it redraws at once rather than at the next poll.
   onMount(() => {
     // The first graph load (the vault) counts as start-up work; later polls do not.
-    const doneVault = bootTask();
+    const doneVault = bootTask("Notes and graph");
     void load().finally(doneVault);
     const stopPoll = every(() => void load(), 5000);
     const onChanged = () => void load();
@@ -269,7 +283,10 @@
 
 {#if settingsOpen}
   <PanelBoundary name="Settings"
-    ><SettingsDialog onclose={() => (settingsOpen = false)} /></PanelBoundary
+    ><SettingsDialog
+      start={settingsStart}
+      onclose={() => (settingsOpen = false)}
+    /></PanelBoundary
   >
 {/if}
 

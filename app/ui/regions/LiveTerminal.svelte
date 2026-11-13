@@ -265,7 +265,7 @@
 
   onMount(() => {
     // Counted as start-up work so the loading screen waits for this terminal.
-    const done = bootTask();
+    const done = bootTask(`Terminal: ${agentId}`);
     startTerminal().finally(done);
   });
 

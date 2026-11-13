@@ -3,6 +3,7 @@
   import { onMount } from "svelte";
   import { NETWORK_TEXT, type NetworkMode } from "./model";
   import StatusCard from "../controls/StatusCard.svelte";
+  import Loading from "../controls/Loading.svelte";
 
   // What starts work without you: the network state, scheduled jobs, context compaction and webhooks.
   type Job = { enabled: boolean };
@@ -12,6 +13,8 @@
   let jobs = $state<Job[]>([]);
   let webhooks = $state<Webhook[]>([]);
   let error = $state<string | null>(null);
+  // False until the first answer (or failure).
+  let loaded = $state(false);
   const on = $derived(jobs.filter((job) => job.enabled).length);
 
   async function load(): Promise<void> {
@@ -30,6 +33,8 @@
       ).webhooks;
     } catch (cause) {
       error = String(cause);
+    } finally {
+      loaded = true;
     }
   }
 
@@ -39,27 +44,31 @@
 <section class="control-section" aria-labelledby="control-triggers">
   <h3 id="control-triggers">Triggers</h3>
   <p class="hint">What can start work on its own, without you asking.</p>
-  <dl class="facts">
-    <dt>Network</dt>
-    <dd>{mode ? `${mode}: ${NETWORK_TEXT[mode]}` : "Checking…"}</dd>
-    <dt>Scheduled jobs</dt>
-    <dd>{jobs.length} set, {on} on</dd>
-  </dl>
-  <StatusCard
-    name="Context compaction"
-    what="Shortens a long chat on its own, so the assistant keeps working without losing the thread."
-    status="Planned"
-    reason="The assistant does not shorten its context yet."
-  />
-  <h4>Webhooks</h4>
-  {#if webhooks.length === 0}
-    <p class="muted">None saved yet.</p>
+  {#if !loaded}
+    <Loading what="the triggers" />
   {:else}
-    <ul>
-      {#each webhooks as hook (hook.id)}
-        <li>{hook.name} <span class="muted">runs {hook.kind}</span></li>
-      {/each}
-    </ul>
+    <dl class="facts">
+      <dt>Network</dt>
+      <dd>{mode ? `${mode}: ${NETWORK_TEXT[mode]}` : "Checking…"}</dd>
+      <dt>Scheduled jobs</dt>
+      <dd>{jobs.length} set, {on} on</dd>
+    </dl>
+    <StatusCard
+      name="Context compaction"
+      what="Shortens a long chat on its own, so the assistant keeps working without losing the thread."
+      status="Planned"
+      reason="The assistant does not shorten its context yet."
+    />
+    <h4>Webhooks</h4>
+    {#if webhooks.length === 0}
+      <p class="muted">None saved yet.</p>
+    {:else}
+      <ul>
+        {#each webhooks as hook (hook.id)}
+          <li>{hook.name} <span class="muted">runs {hook.kind}</span></li>
+        {/each}
+      </ul>
+    {/if}
   {/if}
   {#if error}<p class="error" role="alert">{error}</p>{/if}
 </section>

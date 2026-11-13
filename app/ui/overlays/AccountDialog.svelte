@@ -39,13 +39,13 @@
     class="box"
     role="dialog"
     aria-modal="true"
-    aria-label="Setup"
+    aria-label="Setup and account"
     tabindex="-1"
     use:dialogFocus
     onkeydown={onKey}
     onmousedown={(e) => e.stopPropagation()}
   >
-    <h2>Setup</h2>
+    <h2>Setup and account</h2>
 
     <div class="section">
       <h3>Your data</h3>

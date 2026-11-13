@@ -27,7 +27,10 @@
 
   // Settings as pages: a list of categories on the left, one short page on the right.
   // Each setting has one home. Day-to-day controls (dispatch, jobs, questions) stay in the Control panel.
-  let { onclose }: { onclose: () => void } = $props();
+  let {
+    onclose,
+    start = "General",
+  }: { onclose: () => void; start?: SettingsPage } = $props();
 
   type Saved = {
     general: { vault: string | null; network: string };
@@ -58,7 +61,9 @@
     }
   }
 
-  let page = $state<SettingsPage>("General");
+  // `start` is only the first page; later changes of the prop are not followed.
+  // svelte-ignore state_referenced_locally
+  let page = $state<SettingsPage>(start);
   let sidecar = $state("Checking…");
   let saved = $state<Saved | null>(null);
   let version = $state("");
