@@ -375,6 +375,9 @@ Stop the slice, leave the code working, and write the question in your final rep
   This covers all of **14.x**, website pages **15.03 and 15.04**, **15.08 to 15.11**, deploying `website/`,
   creating a release, and testing installers by hand on Windows or macOS (**G.03, G.06**: the installers
   build on GitHub; nobody has installed one).
+  Owner decisions on 2026-11-13: sign-in will be **Google account sign-in**, but it stays blocked until
+  the owner supplies a Google OAuth client ID and a domain; Windows and macOS installer testing is
+  **on hold**, so skip G.03 and G.06 without asking.
 - Two items contradict each other, or an item contradicts section 2 or 3.
 - A fix would need deleting user data, changing the vault's notes, or changing how keys are stored.
 - You would have to change a file in section 3 beyond adding to it.

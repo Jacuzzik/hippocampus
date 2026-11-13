@@ -40,8 +40,8 @@ A row is "closed" only when a check proves it: a test, a lint rule, or a screens
 ## Needs the user
 
 - D.10: what the scheduler's "obsidian" update should do; who "mr" and "hanis" are.
-- 14.x and 15.03, 15.04 (sign-in, sign-up, account pages, sync): need the owner to choose a hosted sign-in provider and a domain. The checks to pass first are in `docs/SECURITY-REVIEW.md`.
-- G.03, G.06: installers for Windows and macOS need those machines.
+- 14.x and 15.03, 15.04 (sign-in, sign-up, account pages, sync): the owner chose **Google account sign-in** (2026-11-13). Still needed before any account code: a Google OAuth client ID (the owner creates it in Google Cloud) and a domain. The checks to pass first are in `docs/SECURITY-REVIEW.md`.
+- G.03, G.06: hand-testing the Windows and macOS installers is **on hold** by the owner (2026-11-13). Do not work on it.
 
 ## Found, not yet done
 
