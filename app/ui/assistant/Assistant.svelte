@@ -46,7 +46,27 @@
     const input = event.currentTarget as HTMLInputElement;
     const picked = Array.from(input.files ?? []);
     input.value = "";
+    await addFiles(picked);
+  }
+
+  // Files dropped on the message box are attached the same way as the + files button.
+  let dragging = $state(false);
+  function onDrop(event: DragEvent): void {
+    event.preventDefault();
+    dragging = false;
+    if (assistant.busy) return;
+    void addFiles(Array.from(event.dataTransfer?.files ?? []));
+  }
+
+  async function addFiles(picked: File[]): Promise<void> {
     for (const file of picked) {
+      if (
+        !file.type.startsWith("text/") &&
+        !/\.(md|txt|csv|json)$/i.test(file.name)
+      ) {
+        notice = `${file.name} is not a text file, so it was not attached.`;
+        continue;
+      }
       if (file.size > MAX_FILE_BYTES) {
         notice = `${file.name} is larger than 100 KB, so it was not attached.`;
         continue;
@@ -194,7 +214,17 @@
     </section>
   {/if}
 
-  <form class="composer" onsubmit={submit}>
+  <form
+    class="composer"
+    class:dragging
+    onsubmit={submit}
+    ondragover={(e) => {
+      e.preventDefault();
+      dragging = true;
+    }}
+    ondragleave={() => (dragging = false)}
+    ondrop={onDrop}
+  >
     <span class="queue-label">Queue</span>
     {#if queued.length > 0}
       <div class="queued" aria-label="Queued messages">
@@ -309,6 +339,10 @@
 
   .tools > .muted {
     margin: 0 0 var(--space-2);
+  }
+
+  .composer.dragging {
+    outline: 2px dashed var(--color-focus-ring);
   }
 
   .muted {

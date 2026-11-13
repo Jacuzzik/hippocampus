@@ -35,3 +35,30 @@ test("a blocked storage does not stop the message box from working", async ({
   await box.fill("still typing");
   await expect(box).toHaveValue("still typing");
 });
+
+test("a text file dropped on the message box is attached, and a non-text file is refused", async ({
+  page,
+}) => {
+  await mockSidecar(page);
+  await page.goto("/");
+  const composer = page.locator("form.composer");
+  const drop = async (name: string, type: string): Promise<void> => {
+    const data = await page.evaluateHandle(
+      ([n, t]) => {
+        const transfer = new DataTransfer();
+        transfer.items.add(new File(["hello"], n, { type: t }));
+        return transfer;
+      },
+      [name, type],
+    );
+    await composer.dispatchEvent("drop", { dataTransfer: data });
+  };
+  await drop("notes.md", "text/markdown");
+  await expect(
+    page.getByRole("list", { name: "Attached files" }),
+  ).toContainText("notes.md");
+  await drop("photo.png", "image/png");
+  await expect(composer.getByRole("status")).toContainText(
+    "photo.png is not a text file",
+  );
+});
