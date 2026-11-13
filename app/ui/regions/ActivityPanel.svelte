@@ -1,5 +1,6 @@
 <!-- The live activity log, read only: tool runs, approvals and errors, newest first. -->
 <script lang="ts">
+  import Loading from "../controls/Loading.svelte";
   import { onMount } from "svelte";
   import { every } from "../poll.ts";
   import { flagOn } from "../flags.svelte.ts";
@@ -17,6 +18,8 @@
 
   let rows = $state<Row[]>([]);
   let failed = $state(false);
+  // False until the first answer (or failure), so an empty list is not shown while it is still loading.
+  let loaded = $state(false);
 
   // Read again every few seconds while this tab is open, so it does not go stale.
   async function load(): Promise<void> {
@@ -25,8 +28,10 @@
         await invoke<{ rows: Row[] }>("sidecar_call", { method: "activity" })
       ).rows;
       failed = false;
+      loaded = true;
     } catch (cause) {
       failed = true;
+      loaded = true;
       console.error("Could not read the activity log", cause);
     }
   }
@@ -43,7 +48,9 @@
 </script>
 
 <section class="activity" aria-label="Activity">
-  {#if failed}
+  {#if !loaded}
+    <Loading what="the activity log" />
+  {:else if failed}
     <p class="muted">Could not read the activity log.</p>
   {:else if rows.length === 0}
     <p class="muted">No activity yet.</p>

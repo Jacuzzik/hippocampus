@@ -1,5 +1,6 @@
 <!-- Each agent's memory notes, read only: size and last update, newest first. -->
 <script lang="ts">
+  import Loading from "../controls/Loading.svelte";
   import { onMount } from "svelte";
   import { every } from "../poll.ts";
   import { flagOn } from "../flags.svelte.ts";
@@ -9,6 +10,8 @@
 
   let notes = $state<Note[]>([]);
   let failed = $state(false);
+  // False until the first answer (or failure), so an empty list is not shown while it is still loading.
+  let loaded = $state(false);
 
   // Read again every few seconds while this tab is open, so it does not go stale.
   async function load(): Promise<void> {
@@ -17,8 +20,10 @@
         await invoke<{ notes: Note[] }>("sidecar_call", { method: "memory" })
       ).notes;
       failed = false;
+      loaded = true;
     } catch (cause) {
       failed = true;
+      loaded = true;
       console.error("Could not read the memory notes", cause);
     }
   }
@@ -29,7 +34,9 @@
 </script>
 
 <section class="memory" aria-label="Memory">
-  {#if failed}
+  {#if !loaded}
+    <Loading what="the memory notes" />
+  {:else if failed}
     <p class="muted">Could not read the memory notes.</p>
   {:else if notes.length === 0}
     <p class="muted">No memory notes yet.</p>

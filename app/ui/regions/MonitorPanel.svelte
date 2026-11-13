@@ -1,5 +1,6 @@
 <!-- What the assistant may reach right now and what it has used, read only. -->
 <script lang="ts">
+  import Loading from "../controls/Loading.svelte";
   import { dialogFocus } from "../controls/dialogFocus.ts";
   import { every } from "../poll.ts";
   import { onMount } from "svelte";
@@ -164,6 +165,8 @@
 
   let budget = $state<Budget | null>(null);
   let failed = $state(false);
+  // False until the first answer (or failure), so an empty list is not shown while it is still loading.
+  let loaded = $state(false);
   // Tokens per agent folder this month, from each agent's Claude Code sessions (real transcripts).
   let folderTokens = $state<Record<string, number>>({});
   const agentTokens = $derived(
@@ -198,6 +201,7 @@
   onMount(async () => {
     try {
       budget = await invoke<Budget>("sidecar_call", { method: "budget" });
+      loaded = true;
       // Kept apart so an old helper without this call does not hide the rest of the monitor.
       invoke<Engine>("sidecar_call", { method: "engine" }).then(
         (value) => {
@@ -209,13 +213,16 @@
       );
     } catch (cause) {
       failed = true;
+      loaded = true;
       console.error("Could not read the monitor", cause);
     }
   });
 </script>
 
 <section class="monitor" aria-label="Monitor">
-  {#if failed}
+  {#if !loaded}
+    <Loading what="the monitor" />
+  {:else if failed}
     <p class="muted">Could not read the monitor.</p>
   {:else if !budget}
     <p class="muted">Checking…</p>

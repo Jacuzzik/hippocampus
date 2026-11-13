@@ -1,5 +1,6 @@
 <!-- Past office events, read only: settings changes, budget pauses, handoffs and errors. Tool runs stay in Activity. -->
 <script lang="ts">
+  import Loading from "../controls/Loading.svelte";
   import { onMount } from "svelte";
   import { every } from "../poll.ts";
   import { flagOn } from "../flags.svelte.ts";
@@ -11,6 +12,8 @@
 
   let rows = $state<Row[]>([]);
   let failed = $state(false);
+  // False until the first answer (or failure), so an empty list is not shown while it is still loading.
+  let loaded = $state(false);
 
   // Read again every few seconds while this tab is open, so it does not go stale.
   async function load(): Promise<void> {
@@ -20,8 +23,10 @@
       ).rows;
       rows = all.filter((row) => PAST.includes(row.kind));
       failed = false;
+      loaded = true;
     } catch (cause) {
       failed = true;
+      loaded = true;
       console.error("Could not read the history", cause);
     }
   }
@@ -32,7 +37,9 @@
 </script>
 
 <section class="history" aria-label="History">
-  {#if failed}
+  {#if !loaded}
+    <Loading what="the history" />
+  {:else if failed}
     <p class="muted">Could not read the history.</p>
   {:else if rows.length === 0}
     <p class="muted">No history yet.</p>

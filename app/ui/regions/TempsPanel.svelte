@@ -1,5 +1,6 @@
 <!-- Short-lived helper jobs (temps), read only: each prompt, its status and its result. At most four run at once. -->
 <script lang="ts">
+  import Loading from "../controls/Loading.svelte";
   import { onMount } from "svelte";
   import { every } from "../poll.ts";
   import { flagOn } from "../flags.svelte.ts";
@@ -9,6 +10,8 @@
 
   let temps = $state<Temp[]>([]);
   let failed = $state(false);
+  // False until the first answer (or failure), so an empty list is not shown while it is still loading.
+  let loaded = $state(false);
 
   // Read again every few seconds while this tab is open, so it does not go stale.
   async function load(): Promise<void> {
@@ -17,8 +20,10 @@
         await invoke<{ helpers: Temp[] }>("sidecar_call", { method: "helpers" })
       ).helpers;
       failed = false;
+      loaded = true;
     } catch (cause) {
       failed = true;
+      loaded = true;
       console.error("Could not read the temps", cause);
     }
   }
@@ -29,7 +34,9 @@
 </script>
 
 <section class="temps" aria-label="Temps">
-  {#if failed}
+  {#if !loaded}
+    <Loading what="the temps" />
+  {:else if failed}
     <p class="muted">Could not read the temps.</p>
   {:else if temps.length === 0}
     <p class="muted">No temps yet.</p>

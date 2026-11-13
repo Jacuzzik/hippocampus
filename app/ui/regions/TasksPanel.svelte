@@ -1,5 +1,6 @@
 <!-- The office task board, read only: tasks grouped by status, as in the office app's Tasks page. -->
 <script lang="ts">
+  import Loading from "../controls/Loading.svelte";
   import { onMount } from "svelte";
   import { every } from "../poll.ts";
   import { flagOn } from "../flags.svelte.ts";
@@ -17,6 +18,8 @@
 
   let tasks = $state<Task[]>([]);
   let failed = $state(false);
+  // False until the first answer (or failure), so an empty list is not shown while it is still loading.
+  let loaded = $state(false);
 
   // Read again every few seconds while this tab is open, so it does not go stale.
   async function load(): Promise<void> {
@@ -25,8 +28,10 @@
         await invoke<{ tasks: Task[] }>("sidecar_call", { method: "tasks" })
       ).tasks;
       failed = false;
+      loaded = true;
     } catch (cause) {
       failed = true;
+      loaded = true;
       console.error("Could not read the task board", cause);
     }
   }
@@ -44,7 +49,9 @@
 </script>
 
 <section class="tasks" aria-label="Tasks">
-  {#if failed}
+  {#if !loaded}
+    <Loading what="the task board" />
+  {:else if failed}
     <p class="muted">Could not read the task board.</p>
   {:else if tasks.length === 0}
     <p class="muted">No tasks yet.</p>

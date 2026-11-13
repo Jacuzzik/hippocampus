@@ -1,5 +1,6 @@
 <!-- The installed skills, read only: name, what it does and where it lives. -->
 <script lang="ts">
+  import Loading from "../controls/Loading.svelte";
   import { onMount } from "svelte";
   import { every } from "../poll.ts";
   import { flagOn } from "../flags.svelte.ts";
@@ -9,6 +10,8 @@
 
   let skills = $state<Skill[]>([]);
   let failed = $state(false);
+  // False until the first answer (or failure), so an empty list is not shown while it is still loading.
+  let loaded = $state(false);
 
   // Read again every few seconds while this tab is open, so it does not go stale.
   async function load(): Promise<void> {
@@ -17,8 +20,10 @@
         await invoke<{ skills: Skill[] }>("sidecar_call", { method: "skills" })
       ).skills;
       failed = false;
+      loaded = true;
     } catch (cause) {
       failed = true;
+      loaded = true;
       console.error("Could not read the skills", cause);
     }
   }
@@ -29,7 +34,9 @@
 </script>
 
 <section class="skills" aria-label="Skills">
-  {#if failed}
+  {#if !loaded}
+    <Loading what="the skills" />
+  {:else if failed}
     <p class="muted">Could not read the skills.</p>
   {:else if skills.length === 0}
     <p class="muted">No skills installed yet.</p>

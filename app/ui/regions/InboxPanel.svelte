@@ -1,5 +1,6 @@
 <!-- Messages between this app's agents: conversations grouped by thread, with state, filters, search and a box to write one. -->
 <script lang="ts">
+  import Loading from "../controls/Loading.svelte";
   import { onMount } from "svelte";
   import { every } from "../poll.ts";
   import { flagOn } from "../flags.svelte.ts";
@@ -33,6 +34,8 @@
 
   let messages = $state<Message[]>([]);
   let failed = $state(false);
+  // False until the first answer (or failure), so an empty list is not shown while it is still loading.
+  let loaded = $state(false);
   let query = $state("");
   let agentFilter = $state("all");
   let stateFilter = $state("all");
@@ -51,8 +54,10 @@
         )
       ).messages;
       failed = false;
+      loaded = true;
     } catch (cause) {
       failed = true;
+      loaded = true;
       console.error("Could not read the inboxes", cause);
     }
   }
@@ -222,7 +227,9 @@
     {threads.length === 1 ? "conversation" : "conversations"}
   </p>
 
-  {#if failed}
+  {#if !loaded}
+    <Loading what="the messages" />
+  {:else if failed}
     <EmptyState
       title="Could not read the inboxes"
       text="The backend did not answer. It is asked again in a few seconds."
