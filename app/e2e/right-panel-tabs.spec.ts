@@ -221,3 +221,21 @@ test("an answered question moves to the answered list with what was said", async
   await expect(done).toContainText("Which folder should the new note go in?");
   await expect(done).toContainText("ideas");
 });
+
+test("a skill is installed from a folder and removed in the skills tab, each with a second click to confirm", async ({
+  page,
+}) => {
+  await page.getByRole("tab", { name: "skills" }).click();
+  const region = page.getByRole("region", { name: "Skills" });
+  await region.getByLabel("Skill folder to install").fill("/home/me/new-skill");
+  await region.getByRole("button", { name: "Install" }).click();
+  await expect(region.getByText("new-skill")).toHaveCount(0); // the first click only asks
+  await region.getByRole("button", { name: "Confirm install" }).click();
+  await expect(region.getByText("new-skill")).toBeVisible();
+  await region.getByRole("button", { name: "Remove new-skill" }).click();
+  await expect(region.getByText("new-skill")).toBeVisible();
+  await region
+    .getByRole("button", { name: "Confirm: remove new-skill" })
+    .click();
+  await expect(region.getByText("new-skill")).toHaveCount(0);
+});
