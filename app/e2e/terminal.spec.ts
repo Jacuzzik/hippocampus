@@ -162,3 +162,20 @@ test("focus mode dims the notes and the graph around the selected agent, and Esc
   await page.keyboard.press("Escape");
   await expect.poll(opacity).toBe("1");
 });
+
+test("the terminal's state says crashed when its program ends with an error, and stopped when it is stopped", async ({
+  page,
+}) => {
+  const state = page.getByRole("status", { name: "Terminal state" });
+  await expect(state).toHaveText("idle");
+  const push = (payload: Record<string, unknown>) =>
+    page.evaluate((event) => {
+      (
+        window as unknown as { __sidecarEvent?: (payload: unknown) => void }
+      ).__sidecarEvent?.({ event: "terminal", agent: "hippoherman", ...event });
+    }, payload);
+  await push({ exit: 1 });
+  await expect(state).toHaveText("crashed");
+  await push({ exit: 0, stopped: true });
+  await expect(state).toHaveText("stopped");
+});

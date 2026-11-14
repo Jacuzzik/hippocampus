@@ -26,7 +26,21 @@
     command: null,
     status: null,
   });
-  const hippoState = $derived(hippoInfo.command ? "running" : "idle");
+  // What the terminal itself last reported: null until its program has started.
+  let screenState = $state<{
+    state: TerminalState;
+    code: number | null;
+  } | null>(null);
+  // One word for the terminal: starting, then running (its program is working) or idle (waiting for you);
+  // stopped when it was closed on purpose or ended cleanly, crashed when it ended with an error.
+  const hippoState = $derived.by(() => {
+    if (!screenState) return "starting";
+    if (screenState.state === "failed") return "could not start";
+    if (screenState.state === "stopped") return "stopped";
+    if (screenState.state === "exited")
+      return screenState.code ? "crashed" : "stopped";
+    return hippoInfo.command ? "running" : "idle";
+  });
   function readHippo(): void {
     invoke<{ command: string | null; status: string | null }>("sidecar_call", {
       method: "terminal_command",
@@ -65,7 +79,7 @@
   import TempsPanel from "./TempsPanel.svelte";
   import HistoryPanel from "./HistoryPanel.svelte";
   import AgentPanel from "../owner/AgentPanel.svelte";
-  import LiveTerminal from "./LiveTerminal.svelte";
+  import LiveTerminal, { type TerminalState } from "./LiveTerminal.svelte";
   import {
     addedAgents,
     archived,
@@ -206,7 +220,13 @@
       hidden={tab !== "terminal"}
     >
       <div class="live">
-        <span class="dot" aria-hidden="true"></span>
+        <span
+          class="dot"
+          class:bad={hippoState === "crashed" ||
+            hippoState === "could not start"}
+          class:off={hippoState === "stopped" || hippoState === "starting"}
+          aria-hidden="true"
+        ></span>
         <!-- A screen reader hears the terminal start or stop: this is the one live region for its state. -->
         <span role="status" aria-label="Terminal state">{hippoState}</span>
         <span class="size">
@@ -233,6 +253,7 @@
             {fontSize}
             followEngine
             onoutput={queue.output}
+            onstate={(state, code) => (screenState = { state, code })}
           />
         {/key}
       </div>
@@ -322,6 +343,14 @@
     height: 6px;
     border-radius: 50%;
     background: var(--color-md-accent);
+  }
+
+  .dot.bad {
+    background: var(--color-danger);
+  }
+
+  .dot.off {
+    background: var(--color-md-text-subtle);
   }
 
   .size {
