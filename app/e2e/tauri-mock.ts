@@ -163,6 +163,11 @@ export async function mockSidecar(
           callbacks.get(id)?.({ event: name, payload, id });
       };
 
+      // Tests call this to act out an event pushed by the backend.
+      (
+        window as unknown as { __sidecarEvent?: (payload: unknown) => void }
+      ).__sidecarEvent = (payload) => emit("sidecar-event", payload);
+
       const diff =
         "--- /dev/null\n+++ b/ideas/new.md\n@@ -0,0 +1 @@\n+# New idea\n";
 
@@ -590,7 +595,20 @@ export async function mockSidecar(
           case "clear_activity":
             return { rows: [] };
           case "activity":
-            return { rows: activityRows };
+            // A test sets window.__newActivity to act out a line written after the tab was read.
+            return {
+              rows: (window as unknown as { __newActivity?: boolean })
+                .__newActivity
+                ? [
+                    {
+                      ts: "2026-10-27T10:00:00+00:00",
+                      kind: "setting",
+                      text: "pushed by an event",
+                    },
+                    ...activityRows,
+                  ]
+                : activityRows,
+            };
           case "asks":
             return {
               asks: [

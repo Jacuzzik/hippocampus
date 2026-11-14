@@ -377,6 +377,11 @@ class Session(
             journal.record(self.storage, kind, **fields)
         except OSError:
             logger.exception("Could not write the activity log")
+        self.changed("activity")
+
+    def changed(self, what: str) -> None:
+        """Tell the window that one kind of data changed, so it reads again now and does not wait for a timer."""
+        self.emit({"event": "changed", "what": what})
 
     def journal_event(self, event: dict[str, Any]) -> None:
         """Turn the assistant's tool events into activity lines: outcomes and approvals."""

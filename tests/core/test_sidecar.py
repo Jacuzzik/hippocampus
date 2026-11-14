@@ -49,7 +49,9 @@ def serve_with(stdin: str, *args: str, storage: str) -> list[dict[str, Any]]:
         check=False,
     )
     assert result.returncode == 0, result.stderr
-    return [json.loads(line) for line in result.stdout.splitlines()]
+    lines = [json.loads(line) for line in result.stdout.splitlines()]
+    # "changed" lines tell the window to read again; they are covered in test_changed_events.py.
+    return [line for line in lines if line.get("event") != "changed"]
 
 
 def test_serve_answers_graph_for_the_vault_it_was_given(
@@ -85,6 +87,7 @@ def test_serve_graph_without_a_vault_is_an_error_not_a_crash(storage: Path) -> N
         settings=Settings(),
     )
     lines = [json.loads(line) for line in out.getvalue().splitlines()]
+    lines = [line for line in lines if line.get("event") != "changed"]
     assert lines[1] == {"id": 7, "error": "no vault is open", "code": "ValueError"}
 
 

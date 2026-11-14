@@ -172,3 +172,22 @@ test("the memory tab shows a size meter against the cap and warns near it", asyn
   await expect(region).toContainText("4.0 of 31.3 KB");
   await expect(region).toContainText("Nearly full");
 });
+
+test("the activity tab reads again when the backend says the log changed, without waiting for a timer", async ({
+  page,
+}) => {
+  await page.getByRole("tab", { name: "activity" }).click();
+  const region = page.getByRole("region", { name: "Activity" });
+  await expect(region).toContainText("search_notes");
+  await expect(region).not.toContainText("pushed by an event");
+  await page.evaluate(() => {
+    const w = window as unknown as {
+      __newActivity?: boolean;
+      __sidecarEvent?: (payload: unknown) => void;
+    };
+    w.__newActivity = true;
+    w.__sidecarEvent?.({ event: "changed", what: "activity" });
+  });
+  // The safety-net timer is 30 seconds; this passes in well under that only because of the event.
+  await expect(region).toContainText("pushed by an event", { timeout: 3000 });
+});

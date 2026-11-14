@@ -118,6 +118,7 @@ class AgentsPart:
             )
             for target in targets
         ]
+        self.changed("inbox")
         return {"id": ids[0] if ids else None, "ids": ids}
 
     def share_note(self, request: dict[str, Any]) -> dict[str, Any]:

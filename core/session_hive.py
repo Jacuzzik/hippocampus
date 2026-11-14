@@ -86,7 +86,8 @@ class HivePart:
             try:
                 self._hubs_present()
                 self._daily_compact()
-                inbox.collect_outboxes(self.hive_path, self._agent_ids())
+                if inbox.collect_outboxes(self.hive_path, self._agent_ids()):
+                    self.changed("inbox")
                 # Once a day, old delivered messages move into one compressed file per month.
                 if time.time() - self.last_archive > 86400:
                     self.last_archive = time.time()
@@ -117,6 +118,7 @@ class HivePart:
                     for path, message in inbox.pending(self.hive_path, folder.name):
                         if not self._deliver(folder.name, path, message):
                             break
+                        self.changed("inbox")
             except Exception:
                 logging.exception("Could not deliver agent messages")
 

@@ -2,7 +2,7 @@
 <script lang="ts">
   import Loading from "../controls/Loading.svelte";
   import { onMount } from "svelte";
-  import { every } from "../poll.ts";
+  import { onChanged } from "../changed.ts";
   import { flagOn } from "../flags.svelte.ts";
   import { invoke } from "@tauri-apps/api/core";
   import Dropdown from "../controls/Dropdown.svelte";
@@ -63,7 +63,7 @@
   }
   onMount(() => {
     void load();
-    return flagOn("panelRefresh") ? every(load, 5000) : undefined;
+    return flagOn("panelRefresh") ? onChanged("inbox", load) : undefined;
   });
 
   const agents = $derived([
