@@ -239,3 +239,12 @@ test("a skill is installed from a folder and removed in the skills tab, each wit
     .click();
   await expect(region.getByText("new-skill")).toHaveCount(0);
 });
+
+test("the monitor tab says whether GitHub is connected, above the issues", async ({
+  page,
+}) => {
+  await page.getByRole("tab", { name: "monitor" }).click();
+  await expect(
+    page.getByRole("status", { name: "GitHub status" }),
+  ).toContainText(/GitHub: (Connected|Not connected|Needs setup|Error)/);
+});

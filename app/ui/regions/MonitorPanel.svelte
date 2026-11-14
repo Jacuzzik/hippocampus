@@ -199,6 +199,19 @@
     return every(() => loadTokens(directories), 60000);
   });
 
+  // Whether the gh tool is logged in, from the same check Settings, Connectors uses. Issues need it.
+  let github = $state<{ state: string; reason: string } | null>(null);
+  onMount(() => {
+    invoke<{ connectors: { id: string; state: string; reason: string }[] }>(
+      "sidecar_call",
+      { method: "connectors" },
+    ).then(
+      (value) =>
+        (github = value.connectors.find((row) => row.id === "github") ?? null),
+      (cause) => console.error("Could not read the GitHub status", cause),
+    );
+  });
+
   onMount(async () => {
     try {
       budget = await invoke<Budget>("sidecar_call", { method: "budget" });
@@ -444,6 +457,12 @@
 
     <div class="sec">
       <PanelHeader title="DIRECTORIES & ISSUES" />
+      {#if github}
+        <p class="muted" role="status" aria-label="GitHub status">
+          GitHub: <b class:bad={github.state !== "Connected"}>{github.state}</b>
+          {github.reason}
+        </p>
+      {/if}
       {#if directories.length === 0}
         <p class="muted">No agent folders yet.</p>
       {:else}
@@ -537,6 +556,10 @@
 
   li {
     padding: var(--space-1) 0;
+  }
+
+  .bad {
+    color: var(--color-danger);
   }
 
   .muted {

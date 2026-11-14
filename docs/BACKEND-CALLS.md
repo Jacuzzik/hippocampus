@@ -39,7 +39,7 @@ A name the file builds at run time is not listed.
 | `ui/regions/InboxPanel.svelte` | `inbox`, `inbox_search`, `inbox_thread`, `task_send` | yes |
 | `ui/regions/LiveTerminal.svelte` | `terminal_input`, `terminal_resize`, `terminal_start` | yes |
 | `ui/regions/MemoryPanel.svelte` | `memory` | yes |
-| `ui/regions/MonitorPanel.svelte` | `budget`, `engine`, `issues`, `set_engine`, `terminal_stop`, `tokens` | yes |
+| `ui/regions/MonitorPanel.svelte` | `budget`, `connectors`, `engine`, `issues`, `set_engine`, `terminal_stop`, `tokens` | yes |
 | `ui/regions/RightPanel.svelte` | `asks`, `engine`, `inbox`, `terminal_command` | no |
 | `ui/regions/SkillsPanel.svelte` | `skills` | yes |
 | `ui/regions/SpendMeter.svelte` | `budget` | no |
