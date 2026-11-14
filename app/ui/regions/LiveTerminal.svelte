@@ -12,6 +12,7 @@
   import { onDestroy, onMount } from "svelte";
   import { bootTask } from "../owner/bootTasks.svelte.ts";
   import { backend } from "../backend.svelte.ts";
+  import { prefs } from "../prefs.svelte.ts";
   import { Terminal } from "@xterm/xterm";
   import { FitAddon } from "@xterm/addon-fit";
   import "@xterm/xterm/css/xterm.css";
@@ -113,6 +114,8 @@
       fontFamily: `"JetBrainsMono Nerd Font Mono", ${fontToken("mono")}`,
       fontSize,
       cursorBlink: true,
+      cursorStyle: prefs.terminalCursor,
+      scrollback: prefs.terminalScrollback,
       convertEol: true,
       theme: { background: bg, foreground: fg, cursor: fg },
     });
@@ -247,6 +250,15 @@
     if (!term) return;
     term.options.fontSize = size;
     sendSize();
+  });
+
+  // Settings, Appearance: scrollback lines and cursor shape apply to terminals that are already open.
+  $effect(() => {
+    const lines = prefs.terminalScrollback;
+    const cursor = prefs.terminalCursor;
+    if (!term) return;
+    term.options.scrollback = lines;
+    term.options.cursorStyle = cursor;
   });
 
   // The agent's program stops when the backend does. When the backend comes back, start it again

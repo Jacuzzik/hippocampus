@@ -8,9 +8,12 @@ export type Motion = "system" | "on" | "off";
 export type Theme = "dark" | "light" | "system";
 /** How long the logo stays over the app once it has loaded: 10 seconds, 1 second, or not at all. */
 export type Intro = "long" | "short" | "off";
+export type Cursor = "block" | "bar" | "underline";
 type Prefs = {
   quiet: boolean;
   terminalFontSize: number;
+  terminalScrollback: number;
+  terminalCursor: Cursor;
   motion: Motion;
   theme: Theme;
   intro: Intro;
@@ -22,9 +25,13 @@ type Prefs = {
 const KEY = "hippocampus.prefs";
 export const FONT_MIN = 10;
 export const FONT_MAX = 20;
+export const SCROLLBACK_MIN = 500;
+export const SCROLLBACK_MAX = 20000;
 const DEFAULTS: Prefs = {
   quiet: false,
   terminalFontSize: 12,
+  terminalScrollback: 5000,
+  terminalCursor: "block",
   motion: "system",
   theme: "dark",
   intro: "long",
@@ -32,6 +39,10 @@ const DEFAULTS: Prefs = {
   lastTab: "terminal",
   flags: {},
 };
+
+function clampScrollback(lines: number): number {
+  return Math.min(SCROLLBACK_MAX, Math.max(SCROLLBACK_MIN, Math.round(lines)));
+}
 
 function read(): Prefs {
   try {
@@ -43,6 +54,13 @@ function read(): Prefs {
       terminalFontSize: Number.isFinite(size)
         ? Math.min(FONT_MAX, Math.max(FONT_MIN, Math.round(size)))
         : DEFAULTS.terminalFontSize,
+      terminalScrollback: Number.isFinite(Number(saved.terminalScrollback))
+        ? clampScrollback(Number(saved.terminalScrollback))
+        : DEFAULTS.terminalScrollback,
+      terminalCursor:
+        saved.terminalCursor === "bar" || saved.terminalCursor === "underline"
+          ? saved.terminalCursor
+          : "block",
       motion:
         saved.motion === "on" || saved.motion === "off"
           ? saved.motion
@@ -122,6 +140,20 @@ export const prefs = {
       FONT_MAX,
       Math.max(FONT_MIN, Math.round(size)),
     );
+    save();
+  },
+  get terminalScrollback(): number {
+    return state.terminalScrollback;
+  },
+  set terminalScrollback(lines: number) {
+    state.terminalScrollback = clampScrollback(lines);
+    save();
+  },
+  get terminalCursor(): Cursor {
+    return state.terminalCursor;
+  },
+  set terminalCursor(value: Cursor) {
+    state.terminalCursor = value;
     save();
   },
   get motion(): Motion {

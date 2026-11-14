@@ -417,3 +417,28 @@ test("the design tokens page lists colour, spacing, radius and motion from the t
     ).toBeVisible();
   }
 });
+
+test("terminal scrollback is kept within its limits and the cursor shape is chosen, both after a reload", async ({
+  page,
+}) => {
+  await mockSidecar(page);
+  await page.goto("/");
+  let dialog = await openSettings(page);
+  await dialog.getByRole("tab", { name: "Appearance" }).click();
+  const lines = dialog.getByLabel("Terminal scrollback lines");
+  await expect(lines).toHaveValue("5000");
+  await lines.fill("99999");
+  await lines.press("Tab");
+  await expect(lines).toHaveValue("20000");
+  await dialog.getByRole("button", { name: "Terminal cursor" }).click();
+  await page.getByRole("option", { name: "Bar" }).click();
+  await page.reload();
+  dialog = await openSettings(page);
+  await dialog.getByRole("tab", { name: "Appearance" }).click();
+  await expect(dialog.getByLabel("Terminal scrollback lines")).toHaveValue(
+    "20000",
+  );
+  await expect(
+    dialog.getByRole("button", { name: "Terminal cursor" }),
+  ).toContainText("Bar");
+});

@@ -21,6 +21,9 @@
     FONT_MAX,
     FONT_MIN,
     prefs,
+    SCROLLBACK_MAX,
+    SCROLLBACK_MIN,
+    type Cursor,
     type Intro,
     type Motion,
     type Theme,
@@ -436,6 +439,33 @@
                   onclick={() => (prefs.terminalFontSize += 1)}>+</button
                 >
               </span>
+            </SettingRow>
+            <SettingRow title="Terminal scrollback"
+              >{#snippet help()}Lines kept above the screen in every agent
+                terminal. {SCROLLBACK_MIN} to {SCROLLBACK_MAX}.{/snippet}
+              <input
+                type="number"
+                aria-label="Terminal scrollback lines"
+                min={SCROLLBACK_MIN}
+                max={SCROLLBACK_MAX}
+                step="500"
+                value={prefs.terminalScrollback}
+                onchange={(e) =>
+                  (prefs.terminalScrollback = Number(e.currentTarget.value))}
+              />
+            </SettingRow>
+            <SettingRow title="Terminal cursor"
+              >{#snippet help()}The shape of the cursor in every agent terminal.{/snippet}
+              <Dropdown
+                label="Terminal cursor"
+                value={prefs.terminalCursor}
+                options={[
+                  { value: "block", label: "Block" },
+                  { value: "bar", label: "Bar" },
+                  { value: "underline", label: "Underline" },
+                ]}
+                onchange={(next) => (prefs.terminalCursor = next as Cursor)}
+              />
             </SettingRow>
             <SettingRow title="Font"
               >{#snippet help()}One monospace face everywhere, bundled with the

@@ -50,6 +50,7 @@ A row is "closed" only when a check proves it: a test, a lint rule, or a screens
 | Crash records for agents | (this commit) | 7.33 (part: a CLI that ends with a non-zero code we did not ask for now writes a row to the crash list, which Doctor and the crash call already read; a stop from the app and a clean exit write nothing; no strip on the agent card) | pytest 424 (two new, pty pump test), ruff clean |
 | Design token page | (this commit) | 3.12 (Settings, Design tokens lists colour, type, spacing, radius, motion and layout tokens with swatches; it reads the generated `tokens.css` at build time, so it cannot drift; dark theme values; not in a Help menu, in Settings) | e2e settings (22 pass), npm test 99, ESLint 0, svelte-check 0 |
 | Drop to attach | (this commit) | 5.08 (part: text files can be dropped on the message box as well as added with + files; a non-text file is refused with a sentence; the box shows a dashed outline while a file is over it; the 100 KB limit stays and there is no progress bar, files are read at once) | e2e drafts and buttons (7 pass), ESLint 0, svelte-check 0 |
+| Terminal scrollback and cursor | (this commit) | M.14 (part: Settings, Appearance sets scrollback lines 500 to 20000 and cursor shape block, bar or underline; both are kept after a reload and apply to terminals already open; font size was already there. Left: copy on select, bell, shell path) | e2e settings + terminal 29 pass, ESLint 0, svelte-check 0 |
 
 ## Closed before this phase file existed (checked again this phase)
 
@@ -62,6 +63,7 @@ A row is "closed" only when a check proves it: a test, a lint rule, or a screens
 - G.03, G.06: hand-testing the Windows and macOS installers is **on hold** by the owner (2026-11-13). Do not work on it.
 
 ## Found, not yet done
+- M.14: copy on select, bell and shell path settings are not built yet.
 
 - 7.33 a crash strip on each agent card (the crash rows are written, the card does not show them).
 
