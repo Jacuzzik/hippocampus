@@ -74,6 +74,10 @@ METHODS: dict[str, Method] = {
     "budget": _m("Token use against the budgets."),
     "budget_allow": _m("Let a paused budget continue."),
     "set_agent_shell": _m("Turn the fenced shell for every agent on or off."),
+    "set_number": _m(
+        "Change one whole-number setting.",
+        ("key", 'the "key" of a setting'),
+    ),
     "set_engine": _m("Choose the main agent's provider and model."),
     "engine": _m("The main agent's provider and model."),
     "provider_status": _m("Which providers are usable here."),

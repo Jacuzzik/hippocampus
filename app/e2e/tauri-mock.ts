@@ -63,6 +63,16 @@ export async function mockSidecar(
       const bootId = () =>
         (window as unknown as { __boot?: string }).__boot ?? "boot-1";
       let shellOn = false;
+      const NUMBER_LIMITS: Record<string, [number, number]> = {
+        "ai.max_tool_calls": [1, 200],
+        "memory.max_bytes": [1000, 1000000],
+        "inbox.delivery_seconds": [1, 60],
+      };
+      const numbers: Record<string, number> = {
+        "ai.max_tool_calls": 20,
+        "memory.max_bytes": 32000,
+        "inbox.delivery_seconds": 3,
+      };
       const shellState = () => ({
         on: shellOn,
         sandbox_available: true,
@@ -447,11 +457,24 @@ export async function mockSidecar(
                   weekly: 0,
                   monthly: 0,
                 },
-                max_tool_calls: 20,
+                max_tool_calls: numbers["ai.max_tool_calls"],
               },
-              memory: { max_bytes: 32000 },
+              memory: { max_bytes: numbers["memory.max_bytes"] },
+              inbox: { delivery_seconds: numbers["inbox.delivery_seconds"] },
+              limits: NUMBER_LIMITS,
               shell: shellState(),
             };
+          case "set_number": {
+            const key = String(args.params?.key);
+            const value = Number(args.params?.value);
+            const limits = NUMBER_LIMITS[key];
+            if (!limits || !(value >= limits[0] && value <= limits[1]))
+              throw new Error(
+                `${key} must be a whole number from ${limits?.[0]} to ${limits?.[1]}`,
+              );
+            numbers[key] = value;
+            return { key, value };
+          }
           case "set_agent_shell":
             shellOn = Boolean(args.params?.on);
             return shellState();

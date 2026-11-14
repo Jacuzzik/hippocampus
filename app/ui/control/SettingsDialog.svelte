@@ -47,7 +47,32 @@
     agents: { provider: string; model: string; ollama: string };
     budgets: { max_tool_calls: number };
     memory: { max_bytes: number };
+    inbox?: { delivery_seconds: number };
+    limits?: Record<string, [number, number]>;
     shell?: Shell;
+  };
+  // One whole-number setting kept by the backend. A value outside its range is refused there, with the reason.
+  let numberError = $state<string | null>(null);
+  async function setNumber(key: string, raw: string): Promise<void> {
+    numberError = null;
+    try {
+      const done = await invoke<{ value: number }>("sidecar_call", {
+        method: "set_number",
+        params: { key, value: Number(raw) },
+      });
+      if (!saved) return;
+      if (key === "ai.max_tool_calls")
+        saved.budgets.max_tool_calls = done.value;
+      if (key === "memory.max_bytes") saved.memory.max_bytes = done.value;
+      if (key === "inbox.delivery_seconds")
+        saved.inbox = { delivery_seconds: done.value };
+    } catch (cause) {
+      numberError = String(cause);
+    }
+  }
+  const range = (key: string): string => {
+    const found = saved?.limits?.[key];
+    return found ? `${found[0]} to ${found[1].toLocaleString()}.` : "";
   };
   // Whether every agent has a shell, and the rules in force, in the backend's own words.
   type Shell = {
@@ -543,9 +568,36 @@
             </SettingRow>
             <SettingRow title="Tool calls per request"
               >{#snippet help()}The most tools the assistant may call for one
-                request.{/snippet}
-              <code>{saved ? saved.budgets.max_tool_calls : "…"}</code>
+                request. {range("ai.max_tool_calls")} Applies after the app restarts.{/snippet}
+              <input
+                type="number"
+                aria-label="Tool calls per request"
+                value={saved?.budgets.max_tool_calls ?? ""}
+                disabled={!saved}
+                onchange={(e) =>
+                  void setNumber("ai.max_tool_calls", e.currentTarget.value)}
+              />
             </SettingRow>
+            <SettingRow title="Message delivery"
+              >{#snippet help()}Seconds between two rounds of delivering
+                messages between agents. {range(
+                  "inbox.delivery_seconds",
+                )}{/snippet}
+              <input
+                type="number"
+                aria-label="Message delivery seconds"
+                value={saved?.inbox?.delivery_seconds ?? ""}
+                disabled={!saved}
+                onchange={(e) =>
+                  void setNumber(
+                    "inbox.delivery_seconds",
+                    e.currentTarget.value,
+                  )}
+              />
+            </SettingRow>
+            {#if numberError}<p class="error" role="alert">
+                {numberError}
+              </p>{/if}
           </section>
           <section class="control-section">
             <h3>Shell and sandbox</h3>
@@ -586,13 +638,23 @@
           <section class="control-section">
             <h3>Memory</h3>
             <SettingRow title="Memory size per agent"
-              >{#snippet help()}Notes past this size are condensed.{/snippet}
-              <code
-                >{saved
-                  ? `${saved.memory.max_bytes.toLocaleString()} bytes`
-                  : "…"}</code
-              >
+              >{#snippet help()}Notes past this size (bytes) have their oldest
+                sections moved to an archive note. {range(
+                  "memory.max_bytes",
+                )}{/snippet}
+              <input
+                type="number"
+                aria-label="Memory size per agent in bytes"
+                step="1000"
+                value={saved?.memory.max_bytes ?? ""}
+                disabled={!saved}
+                onchange={(e) =>
+                  void setNumber("memory.max_bytes", e.currentTarget.value)}
+              />
             </SettingRow>
+            {#if numberError}<p class="error" role="alert">
+                {numberError}
+              </p>{/if}
           </section>
           <MemorySection />
         {:else if page === "Privacy and data"}

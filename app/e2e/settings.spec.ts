@@ -491,3 +491,28 @@ test("text size, density and the terminal bell are chosen in Appearance and kept
     dialog.getByRole("button", { name: "Terminal bell" }),
   ).toContainText("Flash");
 });
+
+test("tool calls, message delivery and memory size are changed in Settings, and a value out of range is refused with the reason", async ({
+  page,
+}) => {
+  await mockSidecar(page);
+  await page.goto("/");
+  const dialog = await openSettings(page);
+  await dialog.getByRole("tab", { name: "Agents" }).click();
+  const delivery = dialog.getByLabel("Message delivery seconds");
+  await expect(delivery).toHaveValue("3");
+  await delivery.fill("10");
+  await delivery.press("Tab");
+  await expect(dialog.getByRole("alert")).toHaveCount(0);
+  const calls = dialog.getByLabel("Tool calls per request");
+  await calls.fill("900");
+  await calls.press("Tab");
+  await expect(dialog.getByRole("alert")).toContainText("from 1 to 200");
+  await dialog.getByRole("tab", { name: "Memory" }).click();
+  const size = dialog.getByLabel("Memory size per agent in bytes");
+  await expect(size).toHaveValue("32000");
+  await size.fill("64000");
+  await size.press("Tab");
+  await dialog.getByRole("tab", { name: "Agents" }).click();
+  await expect(dialog.getByLabel("Message delivery seconds")).toHaveValue("10");
+});

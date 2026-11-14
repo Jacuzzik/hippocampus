@@ -17,10 +17,13 @@ from core import (
     sandbox,
 )
 from core.settings import (
+    NUMBER_FIELDS,
+    NUMBER_LIMITS,
     ROOT,
     SCHEMA,
     load_settings,
     save_agent_shell,
+    save_number,
 )
 from core.terminal import sandbox_for
 
@@ -42,6 +45,8 @@ class SettingsPart:
                 "max_tool_calls": s.max_tool_calls,
             },
             "memory": {"max_bytes": s.memory_max_bytes},
+            "inbox": {"delivery_seconds": s.delivery_seconds},
+            "limits": {key: list(limits) for key, limits in NUMBER_LIMITS.items()},
             "shell": self.shell_state(),
             "schema": list(SCHEMA),
         }
@@ -186,6 +191,16 @@ class SettingsPart:
                 else "The sandbox (bubblewrap) cannot start on this computer, so normal agents get no shell."
             ),
         }
+
+    def set_number(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Change one whole-number setting. A value outside its range is refused and nothing is written."""
+        key = request.get("key")
+        if not isinstance(key, str):
+            raise ValueError('"set_number" needs the "key" of a setting')
+        number = save_number(key, request.get("value"), self.settings_path)
+        self.settings = replace(self.settings, **{NUMBER_FIELDS[key]: number})
+        self.note("setting", text=f"{key} set to {number}")
+        return {"key": key, "value": number}
 
     def set_agent_shell(self, request: dict[str, Any]) -> dict[str, Any]:
         on = request.get("on")

@@ -57,6 +57,8 @@ class Settings:
     # On: every agent gets a fenced shell and its program runs in the operating-system sandbox.
     # Off: only the main agent has a (fenced) shell, as before.
     agent_shell: bool = False
+    # Seconds between two rounds of moving agent messages into inboxes and typing them into terminals.
+    delivery_seconds: int = 3
 
 
 logger = logging.getLogger("hippocampus.core")
@@ -148,6 +150,12 @@ SCHEMA: tuple[dict[str, object], ...] = (
         "type": "int",
         "default": 32000,
         "help": "A memory note longer than this has its oldest sections archived.",
+    },
+    {
+        "key": "inbox.delivery_seconds",
+        "type": "int",
+        "default": 3,
+        "help": "Seconds between two rounds of delivering agent messages.",
     },
     {
         "key": "agents.shell",
@@ -302,7 +310,10 @@ def load_settings(path: Path = SETTINGS_PATH) -> Settings:
     agent_shell = data.get("agents", {}).get("shell", defaults.agent_shell)
     if not isinstance(agent_shell, bool):
         raise ValueError("agents.shell must be true or false")
+    delivery = data.get("inbox", {}).get("delivery_seconds", defaults.delivery_seconds)
+    _in_range("inbox.delivery_seconds", delivery)
     return Settings(
+        delivery_seconds=delivery,
         vault=(path.parent.parent / vault).resolve() if vault else None,
         provider=_provider(ai.get("provider", defaults.provider)),
         provider_model=str(ai.get("provider_model", defaults.provider_model)),
@@ -317,6 +328,53 @@ def load_settings(path: Path = SETTINGS_PATH) -> Settings:
         memory_max_bytes=memory_limit,
         agent_shell=agent_shell,
     )
+
+
+# The whole-number settings the Settings pages may change, with the lowest and highest value allowed.
+NUMBER_LIMITS: dict[str, tuple[int, int]] = {
+    "ai.max_tool_calls": (1, 200),
+    "memory.max_bytes": (1000, 1_000_000),
+    "inbox.delivery_seconds": (1, 60),
+}
+# Where each of those lives on a Settings object.
+NUMBER_FIELDS = {
+    "ai.max_tool_calls": "max_tool_calls",
+    "memory.max_bytes": "memory_max_bytes",
+    "inbox.delivery_seconds": "delivery_seconds",
+}
+
+
+def _in_range(key: str, value: object) -> int:
+    low, high = NUMBER_LIMITS[key]
+    if isinstance(value, bool) or not isinstance(value, int) or not low <= value <= high:
+        raise ValueError(f"{key} must be a whole number from {low} to {high}")
+    return value
+
+
+def save_number(key: str, value: object, path: Path = SETTINGS_PATH) -> int:
+    """Write one whole-number setting, changing only its line. The table is added when the file lacks it."""
+    if key not in NUMBER_LIMITS:
+        raise ValueError(f"{key} is not a number this app lets you change")
+    number = _in_range(key, value)
+    table, name = key.rsplit(".", 1)
+    header = f"[{table}]"
+    lines = _read(path).splitlines()
+    section, start, done = "", None, False
+    for index, line in enumerate(lines):
+        stripped = line.strip()
+        if stripped.startswith("["):
+            section = stripped
+            if section == header:
+                start = index
+        elif section == header and stripped.split("=")[0].strip() == name:
+            lines[index] = f"{name} = {number}"
+            done = True
+    if not done and start is not None:
+        lines.insert(start + 1, f"{name} = {number}")
+    elif not done:
+        lines += ["", header, f"{name} = {number}"]
+    _write(path, "\n".join(lines) + "\n")
+    return number
 
 
 def _replace_sections(text: str, headers: tuple[str, ...], blocks: list[str]) -> str:

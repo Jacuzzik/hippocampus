@@ -139,6 +139,7 @@ def test_every_settings_field_has_a_schema_row_and_defaults_agree() -> None:
         "assistant_budget": [k for k in keys if k.startswith("budget.assistant.")],
         "memory_max_bytes": ["memory.max_bytes"],
         "agent_shell": ["agents.shell"],
+        "delivery_seconds": ["inbox.delivery_seconds"],
     }
     assert set(by_field) == {f.name for f in fields(Settings)}, (
         "a new Settings field needs a schema row"

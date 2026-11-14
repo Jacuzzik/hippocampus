@@ -82,7 +82,7 @@ class HivePart:
     def _deliver_loop(self) -> None:
         # Every few seconds: move agent replies into inboxes, then type each waiting message into its running terminal.
         while True:
-            time.sleep(3)
+            time.sleep(self.settings.delivery_seconds)
             try:
                 self._hubs_present()
                 self._daily_compact()

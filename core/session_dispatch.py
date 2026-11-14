@@ -109,6 +109,7 @@ class DispatchPart:
             "run_webhook": self.run_webhook,
             "record_crash": self.record_crash,
             "set_agent_shell": self.set_agent_shell,
+            "set_number": self.set_number,
             "task_send": self.task_send,
             "settings_import": self.settings_import,
             "inbox_search": self.inbox_search,
