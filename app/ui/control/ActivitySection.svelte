@@ -2,6 +2,7 @@
   import Button from "../controls/Button.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { onMount } from "svelte";
+  import Loading from "../controls/Loading.svelte";
   import {
     ACTIVITY_FILTERS,
     activityText,
@@ -29,7 +30,9 @@
 
   const shown = $derived(filterActivity(rows, filter));
 
-  onMount(() => void load());
+  // False until the first answer, so the loader shows and an empty list is not claimed too early.
+  let loaded = $state(false);
+  onMount(() => void load().finally(() => (loaded = true)));
 </script>
 
 <section class="control-section" aria-labelledby="control-activity">
@@ -49,7 +52,9 @@
     {/each}
     <Button onclick={load}>Refresh</Button>
   </div>
-  {#if shown.length === 0}
+  {#if !loaded}
+    <Loading what="the activity log" />
+  {:else if shown.length === 0}
     <p class="muted">Nothing here yet.</p>
   {:else}
     <ul aria-label="Activity">

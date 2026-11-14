@@ -2,6 +2,7 @@
   import Button from "../controls/Button.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { onMount } from "svelte";
+  import Loading from "../controls/Loading.svelte";
   import {
     WINDOWS,
     WINDOW_LABELS,
@@ -89,7 +90,9 @@
     return null;
   });
 
-  onMount(() => void load());
+  // False until the first answer, so the loader shows and an empty list is not claimed too early.
+  let loaded = $state(false);
+  onMount(() => void load().finally(() => (loaded = true)));
 </script>
 
 <section class="control-section" aria-labelledby="control-budget">
@@ -107,6 +110,7 @@
       )}).
     </p>
   {/if}
+  {#if !loaded}<Loading what="the budgets" />{/if}
   {#if budget}
     {#each SCOPES as key (key)}
       <div class="budget-scope">

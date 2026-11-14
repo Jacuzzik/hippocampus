@@ -2,6 +2,7 @@
   import Button from "../controls/Button.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { onMount } from "svelte";
+  import Loading from "../controls/Loading.svelte";
   import { keyStatus } from "./model";
 
   // Saved keys are kept in the OS keychain. A saved key takes effect on the next request.
@@ -55,7 +56,9 @@
     }
   }
 
-  onMount(() => void load());
+  // False until the first answer, so the loader shows and an empty list is not claimed too early.
+  let loaded = $state(false);
+  onMount(() => void load().finally(() => (loaded = true)));
 </script>
 
 <section class="control-section" aria-labelledby="control-keys">
@@ -64,6 +67,7 @@
     Saved keys take effect at once, with no restart. A key is never shown in
     full: only its last four characters.
   </p>
+  {#if !loaded}<Loading what="the saved keys" />{/if}
   <ul aria-label="Saved keys">
     {#each keys as row (row.provider)}
       <li>

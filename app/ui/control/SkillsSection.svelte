@@ -2,6 +2,7 @@
   import Button from "../controls/Button.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { onMount } from "svelte";
+  import Loading from "../controls/Loading.svelte";
 
   // Installed skills: folders under skills/ that hold a SKILL.md file.
   type Skill = { name: string; description: string; path: string };
@@ -60,13 +61,17 @@
     }
   }
 
-  onMount(() => void load());
+  // False until the first answer, so the loader shows and an empty list is not claimed too early.
+  let loaded = $state(false);
+  onMount(() => void load().finally(() => (loaded = true)));
 </script>
 
 <section class="control-section" aria-labelledby="control-skills">
   <h3 id="control-skills">Skills</h3>
   <p class="hint">Folders in the skills folder that hold a SKILL.md file.</p>
-  {#if skills.length === 0}
+  {#if !loaded}
+    <Loading what="the skills" />
+  {:else if skills.length === 0}
     <p class="muted">No skills are installed.</p>
   {:else}
     <ul aria-label="Installed skills">
