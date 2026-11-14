@@ -147,6 +147,19 @@ test("the activity tab filters by kind and by a word, and can be paused", async 
   await expect(region.getByRole("checkbox", { name: "Pause" })).toBeChecked();
 });
 
+test("the activity tab limits rows to a date range", async ({ page }) => {
+  await page.getByRole("tab", { name: "activity" }).click();
+  const region = page.getByRole("region", { name: "Activity" });
+  await expect(region).toContainText("search_notes");
+  await region.getByLabel("From date").fill("2026-10-28");
+  await expect(region).toContainText("Nothing matches.");
+  await region.getByLabel("From date").fill("2026-10-27");
+  await region.getByLabel("To date").fill("2026-10-27");
+  await expect(region).toContainText("search_notes");
+  await region.getByLabel("To date").fill("2026-10-26");
+  await expect(region).toContainText("Nothing matches.");
+});
+
 test("the memory tab shows a size meter against the cap and warns near it", async ({
   page,
 }) => {

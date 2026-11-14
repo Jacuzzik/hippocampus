@@ -24,6 +24,9 @@
   // Filters: a kind (all by default), a word in the line, and a pause switch that stops the refresh.
   let kind = $state("all");
   let word = $state("");
+  // A date range (YYYY-MM-DD, both ends included); empty means no limit on that side.
+  let from = $state("");
+  let to = $state("");
   let paused = $state(false);
   const kinds = $derived([...new Set(rows.map((row) => row.kind))].sort());
 
@@ -56,6 +59,8 @@
     rows.filter(
       (row) =>
         (kind === "all" || row.kind === kind) &&
+        (!from || row.ts.slice(0, 10) >= from) &&
+        (!to || row.ts.slice(0, 10) <= to) &&
         label(row).toLowerCase().includes(word.trim().toLowerCase()),
     ),
   );
@@ -80,6 +85,16 @@
         placeholder="Search activity"
         bind:value={word}
       />
+      <label class="date"
+        >From <input
+          type="date"
+          aria-label="From date"
+          bind:value={from}
+        /></label
+      >
+      <label class="date"
+        >To <input type="date" aria-label="To date" bind:value={to} /></label
+      >
       <Toggle bind:checked={paused} label="Pause" />
     </div>
     {#if shown.length === 0}
@@ -116,6 +131,13 @@
   .filters input[type="search"] {
     flex: 1;
     min-width: 0;
+  }
+
+  .filters .date {
+    display: flex;
+    gap: var(--space-1);
+    align-items: center;
+    color: var(--color-md-card-muted);
   }
 
   ul {
