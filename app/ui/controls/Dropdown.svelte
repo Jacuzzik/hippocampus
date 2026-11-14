@@ -18,6 +18,11 @@
 
   let open = $state(false);
   let root: HTMLDivElement | undefined = $state();
+  let menu: HTMLUListElement | undefined = $state();
+  // A list that opens at the bottom of a scrolling page is brought into view, so no choice is cut off.
+  $effect(() => {
+    if (open) menu?.scrollIntoView({ block: "nearest" });
+  });
   const shown = $derived(
     options.find((o) => o.value === value)?.label ?? (value || "Choose"),
   );
@@ -61,7 +66,7 @@
     >
   </button>
   {#if open}
-    <ul class="menu" role="listbox" aria-label={label}>
+    <ul class="menu" role="listbox" aria-label={label} bind:this={menu}>
       {#each options as option (option.value)}
         <li role="presentation">
           <button

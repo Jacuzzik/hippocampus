@@ -37,6 +37,11 @@
     font-size: var(--font-size-xs);
   }
 
+  /* A dropdown keeps its width; without this a long help line squeezes it to nothing. */
+  .setting :global(.dd) {
+    flex: 0 0 12em;
+  }
+
   .setting :global(code) {
     max-width: 50%;
     color: var(--color-text-muted);

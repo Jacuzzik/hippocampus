@@ -23,7 +23,10 @@
     prefs,
     SCROLLBACK_MAX,
     SCROLLBACK_MIN,
+    type Bell,
     type Cursor,
+    type Density,
+    type TextSize,
     type Intro,
     type Motion,
     type Theme,
@@ -384,6 +387,32 @@
                 onchange={(next) => (prefs.theme = next as Theme)}
               />
             </SettingRow>
+            <SettingRow title="Text size"
+              >{#snippet help()}All text outside the terminals. The terminals
+                have their own size below.{/snippet}
+              <Dropdown
+                label="Text size"
+                value={prefs.textSize}
+                options={[
+                  { value: "normal", label: "Normal" },
+                  { value: "large", label: "Large" },
+                  { value: "larger", label: "Larger" },
+                ]}
+                onchange={(next) => (prefs.textSize = next as TextSize)}
+              />
+            </SettingRow>
+            <SettingRow title="Density"
+              >{#snippet help()}Compact tightens the gaps between things.{/snippet}
+              <Dropdown
+                label="Density"
+                value={prefs.density}
+                options={[
+                  { value: "comfortable", label: "Comfortable" },
+                  { value: "compact", label: "Compact" },
+                ]}
+                onchange={(next) => (prefs.density = next as Density)}
+              />
+            </SettingRow>
             <SettingRow title="Motion"
               >{#snippet help()}System follows your computer's reduced-motion
                 setting.{/snippet}
@@ -474,6 +503,19 @@
                 bind:checked={prefs.terminalCopyOnSelect}
                 ariaLabel="Copy on select"
                 label={prefs.terminalCopyOnSelect ? "On" : "Off"}
+              />
+            </SettingRow>
+            <SettingRow title="Terminal bell"
+              >{#snippet help()}What an agent terminal does when its program
+                rings the bell. Flash lights the border once; there is no sound.{/snippet}
+              <Dropdown
+                label="Terminal bell"
+                value={prefs.terminalBell}
+                options={[
+                  { value: "off", label: "Off" },
+                  { value: "flash", label: "Flash" },
+                ]}
+                onchange={(next) => (prefs.terminalBell = next as Bell)}
               />
             </SettingRow>
             <SettingRow title="Font"

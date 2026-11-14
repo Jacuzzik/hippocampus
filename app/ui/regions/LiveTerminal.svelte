@@ -138,6 +138,13 @@
       const text = term?.getSelection() ?? "";
       if (text) void navigator.clipboard?.writeText(text).catch(() => {});
     });
+    // Settings, Appearance: with Bell set to Flash, the border flashes once when the program rings the bell.
+    term.onBell(() => {
+      if (prefs.terminalBell !== "flash" || !screen) return;
+      screen.classList.remove("bell");
+      void screen.offsetWidth; // restarts the animation when two bells come close together
+      screen.classList.add("bell");
+    });
     term.onData((data) => {
       // Focus in/out reports are not typing; sent to the CLI they show as ^[[O text on screen.
       if (data === "\x1b[I" || data === "\x1b[O") return;
@@ -302,5 +309,15 @@
     border: 1px solid var(--color-md-border);
     border-radius: var(--radius-sm);
     background: var(--color-md-bg-0);
+  }
+
+  .screen:global(.bell) {
+    animation: bell var(--duration-slow) var(--ease-standard);
+  }
+
+  @keyframes bell {
+    from {
+      border-color: var(--color-md-accent);
+    }
   }
 </style>

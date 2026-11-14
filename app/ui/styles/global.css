@@ -166,3 +166,32 @@ button:active:not(:disabled) {
   border-radius: var(--radius-sm);
   animation: shimmer 1.2s linear infinite;
 }
+
+/* Settings, Appearance: text size. Every size token moves up together; terminals keep their own size. */
+:root[data-text="large"] {
+  --font-size-xs: 13px;
+  --font-size-sm: 14px;
+  --font-size-md: 15px;
+  --font-size-lg: 17px;
+  --font-size-xl: 22px;
+  --font-size-tag: 13px;
+}
+
+:root[data-text="larger"] {
+  --font-size-xs: 14px;
+  --font-size-sm: 15px;
+  --font-size-md: 16px;
+  --font-size-lg: 18px;
+  --font-size-xl: 24px;
+  --font-size-tag: 14px;
+}
+
+/* Settings, Appearance: compact density tightens the gaps. */
+:root[data-density="compact"] {
+  --space-1: 3px;
+  --space-2: 6px;
+  --space-3: 9px;
+  --space-4: 12px;
+  --space-5: 18px;
+  --space-6: 24px;
+}

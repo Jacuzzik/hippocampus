@@ -460,3 +460,34 @@ test("copy on select is off by default and is kept after a reload", async ({
     dialog.getByRole("checkbox", { name: "Copy on select" }),
   ).toBeChecked();
 });
+
+test("text size, density and the terminal bell are chosen in Appearance and kept after a reload", async ({
+  page,
+}) => {
+  await mockSidecar(page);
+  await page.goto("/");
+  let dialog = await openSettings(page);
+  await dialog.getByRole("tab", { name: "Appearance" }).click();
+  const before = await page.evaluate(() =>
+    parseFloat(getComputedStyle(document.body).fontSize),
+  );
+  await dialog.getByRole("button", { name: "Text size" }).click();
+  await page.getByRole("option", { name: "Larger" }).click();
+  const after = await page.evaluate(() =>
+    parseFloat(getComputedStyle(document.body).fontSize),
+  );
+  expect(after).toBeGreaterThan(before);
+  await dialog.getByRole("button", { name: "Density" }).click();
+  await page.getByRole("option", { name: "Compact" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-density", "compact");
+  await dialog.getByRole("button", { name: "Terminal bell" }).click();
+  await page.getByRole("option", { name: "Flash" }).click();
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-text", "larger");
+  await expect(page.locator("html")).toHaveAttribute("data-density", "compact");
+  dialog = await openSettings(page);
+  await dialog.getByRole("tab", { name: "Appearance" }).click();
+  await expect(
+    dialog.getByRole("button", { name: "Terminal bell" }),
+  ).toContainText("Flash");
+});

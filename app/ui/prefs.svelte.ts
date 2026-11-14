@@ -9,12 +9,21 @@ export type Theme = "dark" | "light" | "system";
 /** How long the logo stays over the app once it has loaded: 10 seconds, 1 second, or not at all. */
 export type Intro = "long" | "short" | "off";
 export type Cursor = "block" | "bar" | "underline";
+/** What a terminal does when its program rings the bell: nothing, or a short flash of its border. */
+export type Bell = "off" | "flash";
+/** The size of all text outside the terminals. */
+export type TextSize = "normal" | "large" | "larger";
+/** Compact tightens the gaps between things. */
+export type Density = "comfortable" | "compact";
 type Prefs = {
   quiet: boolean;
   terminalFontSize: number;
   terminalScrollback: number;
   terminalCursor: Cursor;
   terminalCopyOnSelect: boolean;
+  terminalBell: Bell;
+  textSize: TextSize;
+  density: Density;
   motion: Motion;
   theme: Theme;
   intro: Intro;
@@ -34,6 +43,9 @@ const DEFAULTS: Prefs = {
   terminalScrollback: 5000,
   terminalCursor: "block",
   terminalCopyOnSelect: false,
+  terminalBell: "off",
+  textSize: "normal",
+  density: "comfortable",
   motion: "system",
   theme: "dark",
   intro: "long",
@@ -75,6 +87,12 @@ function read(): Prefs {
         saved.intro === "short" || saved.intro === "off" ? saved.intro : "long",
       quiet: saved.quiet === true,
       terminalCopyOnSelect: saved.terminalCopyOnSelect === true,
+      terminalBell: saved.terminalBell === "flash" ? "flash" : "off",
+      textSize:
+        saved.textSize === "large" || saved.textSize === "larger"
+          ? saved.textSize
+          : "normal",
+      density: saved.density === "compact" ? "compact" : "comfortable",
       rememberTab: saved.rememberTab !== false,
       lastTab:
         typeof saved.lastTab === "string" ? saved.lastTab : DEFAULTS.lastTab,
@@ -105,6 +123,12 @@ export function applyMotion(): void {
   // Quiet mode turns movement off whatever the Motion setting says.
   document.documentElement.dataset.motion = state.quiet ? "off" : state.motion;
   setQuiet(state.quiet);
+}
+
+/** Puts the text size and density on the page, where global.css reads them. */
+export function applyLook(): void {
+  document.documentElement.dataset.text = state.textSize;
+  document.documentElement.dataset.density = state.density;
 }
 
 const systemLight =
@@ -166,6 +190,29 @@ export const prefs = {
     state.terminalCopyOnSelect = value;
     save();
   },
+  get terminalBell(): Bell {
+    return state.terminalBell;
+  },
+  set terminalBell(value: Bell) {
+    state.terminalBell = value;
+    save();
+  },
+  get textSize(): TextSize {
+    return state.textSize;
+  },
+  set textSize(value: TextSize) {
+    state.textSize = value;
+    applyLook();
+    save();
+  },
+  get density(): Density {
+    return state.density;
+  },
+  set density(value: Density) {
+    state.density = value;
+    applyLook();
+    save();
+  },
   get motion(): Motion {
     return state.motion;
   },
@@ -216,6 +263,7 @@ export const prefs = {
     Object.assign(state, DEFAULTS, { flags: state.flags });
     applyMotion();
     applyTheme();
+    applyLook();
     save();
   },
 };
