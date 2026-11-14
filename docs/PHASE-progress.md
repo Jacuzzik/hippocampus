@@ -51,6 +51,7 @@ A row is "closed" only when a check proves it: a test, a lint rule, or a screens
 | Design token page | (this commit) | 3.12 (Settings, Design tokens lists colour, type, spacing, radius, motion and layout tokens with swatches; it reads the generated `tokens.css` at build time, so it cannot drift; dark theme values; not in a Help menu, in Settings) | e2e settings (22 pass), npm test 99, ESLint 0, svelte-check 0 |
 | Drop to attach | (this commit) | 5.08 (part: text files can be dropped on the message box as well as added with + files; a non-text file is refused with a sentence; the box shows a dashed outline while a file is over it; the 100 KB limit stays and there is no progress bar, files are read at once) | e2e drafts and buttons (7 pass), ESLint 0, svelte-check 0 |
 | Terminal scrollback and cursor | (this commit) | M.14 (part: Settings, Appearance sets scrollback lines 500 to 20000 and cursor shape block, bar or underline; both are kept after a reload and apply to terminals already open; font size was already there. Left: copy on select, bell, shell path) | e2e settings + terminal 29 pass, ESLint 0, svelte-check 0 |
+| Context bar tween | (this commit) | 12.08 (part: the context bar in the agent card eases to a new value over the shared slow duration; Motion off and reduced motion already cut it to nothing; the percent number still changes at once, no counting) | e2e motion 6 pass, ESLint 0, svelte-check 0 |
 
 ## Closed before this phase file existed (checked again this phase)
 
@@ -64,6 +65,7 @@ A row is "closed" only when a check proves it: a test, a lint rule, or a screens
 
 ## Found, not yet done
 - M.14: copy on select, bell and shell path settings are not built yet.
+- 12.08: the percent number does not count up; only the bar eases.
 
 - 7.33 a crash strip on each agent card (the crash rows are written, the card does not show them).
 

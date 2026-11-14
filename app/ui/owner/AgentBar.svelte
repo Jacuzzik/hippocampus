@@ -730,6 +730,7 @@
     display: block;
     height: 100%;
     background: var(--hippo-purple);
+    transition: width var(--duration-slow) var(--ease-standard);
   }
 
   .chip .pct {

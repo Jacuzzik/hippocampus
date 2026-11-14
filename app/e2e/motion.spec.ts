@@ -103,3 +103,17 @@ test("the content of a tab fades in, and not at all with Motion off", async ({
       .evaluate((node) => getComputedStyle(node).animationName),
   ).toBe("none");
 });
+
+test("the context bar eases to a new value instead of jumping", async ({
+  page,
+}) => {
+  await mockSidecar(page);
+  await page.goto("/");
+  const fill = page.locator(".ctx-fill").first();
+  await expect(fill).toBeAttached();
+  const style = await fill.evaluate((node) => {
+    const css = getComputedStyle(node);
+    return { prop: css.transitionProperty, time: css.transitionDuration };
+  });
+  expect(style).toEqual({ prop: "width", time: "0.32s" });
+});
