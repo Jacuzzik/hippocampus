@@ -94,6 +94,7 @@ class DispatchPart:
             "set_vault": self.set_vault,
             "set_budget": self.set_budget,
             "activity": self.activity,
+            "clear_activity": plain(self.clear_activity),
             "memory_search": self.memory_search,
             "set_job": self.set_job,
             "start_helper": self.start_helper,

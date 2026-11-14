@@ -516,3 +516,23 @@ test("tool calls, message delivery and memory size are changed in Settings, and 
   await dialog.getByRole("tab", { name: "Agents" }).click();
   await expect(dialog.getByLabel("Message delivery seconds")).toHaveValue("10");
 });
+
+test("Settings opens from the ribbon and with Ctrl+comma, and the activity history can be emptied", async ({
+  page,
+}) => {
+  await mockSidecar(page);
+  await page.goto("/");
+  await page
+    .getByRole("navigation", { name: "Panes" })
+    .getByRole("button", { name: "Settings" })
+    .click();
+  const dialog = page.getByRole("dialog", { name: "Settings" });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("tab", { name: "Privacy and data" }).click();
+  await dialog.getByRole("button", { name: "Empty history" }).click();
+  await expect(dialog.getByText("History emptied.")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await page.keyboard.press("Control+,");
+  await expect(dialog).toBeVisible();
+});

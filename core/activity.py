@@ -23,6 +23,13 @@ def record(storage: Path, kind: str, **fields: str | int | bool | None) -> None:
             out.write(json.dumps(row) + "\n")
 
 
+def clear(storage: Path) -> None:
+    """Empty the activity history. The file stays, so the next event is written as usual."""
+    path = storage / "activity.jsonl"
+    if path.is_file():
+        path.write_text("", encoding="utf-8")
+
+
 def read(storage: Path, kind: str | None = None, limit: int = 200) -> list[dict[str, Any]]:
     """Newest first. `kind` None means every kind."""
     path = storage / "activity.jsonl"

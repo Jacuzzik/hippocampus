@@ -118,7 +118,10 @@
     if (e.key === "o") box = "switcher";
     else if (e.key === "p") box = "palette";
     else if (e.key === "f") void focusSearch();
-    else return;
+    else if (e.key === ",") {
+      settingsStart = "General";
+      settingsOpen = true;
+    } else return;
     e.preventDefault();
   }
 
@@ -341,6 +344,10 @@
     bind:panelOpen
     onaccount={() => (setupOpen = true)}
     oncontrol={() => (controlOpen = true)}
+    onsettings={() => {
+      settingsStart = "General";
+      settingsOpen = true;
+    }}
   />
   {#if sidebarOpen && data && !terminalOnly}
     <PanelBoundary name="Notes" area="sidebar">

@@ -5,11 +5,13 @@
     panelOpen = $bindable(true),
     onaccount,
     oncontrol,
+    onsettings,
   }: {
     sidebarOpen?: boolean;
     panelOpen?: boolean;
     onaccount: () => void;
     oncontrol: () => void;
+    onsettings: () => void;
   } = $props();
 </script>
 
@@ -49,6 +51,19 @@
       <line x1="4" y1="17" x2="20" y2="17" />
       <circle cx="9" cy="7" r="2.2" />
       <circle cx="15" cy="17" r="2.2" />
+    </svg>
+  </button>
+  <button
+    type="button"
+    aria-label="Settings"
+    title="Settings (Ctrl+,)"
+    onclick={onsettings}
+  >
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="12" r="3" />
+      <path
+        d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"
+      />
     </svg>
   </button>
   <button

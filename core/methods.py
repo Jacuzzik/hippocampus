@@ -56,6 +56,7 @@ METHODS: dict[str, Method] = {
     # Tasks, cards and the inbox
     "tasks": _m("The office task board."),
     "activity": _m("The tool log and office events."),
+    "clear_activity": _m("Empty the tool log and office events."),
     "cards": _m("The agent cards."),
     "card_create": _m("Add a card."),
     "card_update": _m("Change a card."),

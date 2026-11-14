@@ -193,6 +193,17 @@
       () => (diskRows = null),
     );
   });
+  // The tool log and office events (the Activity and History tabs), emptied on request.
+  let historyNote = $state<string | null>(null);
+  async function clearHistory(): Promise<void> {
+    historyNote = null;
+    try {
+      await invoke("sidecar_call", { method: "clear_activity" });
+      historyNote = "History emptied.";
+    } catch (cause) {
+      historyNote = String(cause);
+    }
+  }
   function clearErrors(): void {
     crashLog.clear();
     invoke<{ crashes: CrashRow[] }>("sidecar_call", {
@@ -703,6 +714,17 @@
                 >
               </span>
             </SettingRow>
+            <SettingRow title="Activity history"
+              >{#snippet help()}The tool log and office events shown on the
+                Activity and History tabs, kept on this computer in
+                <code>activity.jsonl</code>. Never sent.{/snippet}
+              <button type="button" onclick={() => void clearHistory()}
+                >Empty history</button
+              >
+            </SettingRow>
+            {#if historyNote}<p class="muted" role="status">
+                {historyNote}
+              </p>{/if}
             {#if errorRows.length}
               <ul class="log" aria-label="Recorded errors">
                 {#each errorRows.slice(0, 10) as row, index (index)}

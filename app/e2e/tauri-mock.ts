@@ -587,6 +587,8 @@ export async function mockSidecar(
           case "budget_allow":
             allowance = true;
             return { allowance: true };
+          case "clear_activity":
+            return { rows: [] };
           case "activity":
             return { rows: activityRows };
           case "asks":

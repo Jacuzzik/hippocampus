@@ -434,6 +434,11 @@ class Session(
         limit = _whole(request.get("limit", 200), "limit")
         return {"rows": journal.read(self.storage, kind, min(limit, 500))}
 
+    def clear_activity(self) -> dict[str, Any]:
+        """Empty the tool log and office events kept on this computer."""
+        journal.clear(self.storage)
+        return {"rows": []}
+
     # --- Asks, memory, jobs, helpers, skills, share, keys ----------------------------------
 
     def asks_waiting(self) -> dict[str, Any]:
