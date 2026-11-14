@@ -195,3 +195,27 @@ button:active:not(:disabled) {
   --space-5: 18px;
   --space-6: 24px;
 }
+
+/* A visible tooltip for icon-only buttons: put the words (and the shortcut) in data-tip. Shown on hover and on keyboard focus. */
+[data-tip] {
+  position: relative;
+}
+
+[data-tip]:hover::after,
+[data-tip]:focus-visible::after {
+  content: attr(data-tip);
+  position: absolute;
+  left: calc(100% + var(--space-2));
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 60;
+  padding: var(--space-1) var(--space-2);
+  font-family: var(--font-ui);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+  color: var(--color-text);
+  background: var(--color-bg-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  pointer-events: none;
+}

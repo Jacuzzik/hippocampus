@@ -20,7 +20,7 @@
     type="button"
     aria-label="Note list"
     aria-pressed={sidebarOpen}
-    title="Note list"
+    data-tip="Note list"
     onclick={() => (sidebarOpen = !sidebarOpen)}
   >
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -32,7 +32,7 @@
     type="button"
     aria-label="Assistant"
     aria-pressed={panelOpen}
-    title="Assistant"
+    data-tip="Assistant"
     onclick={() => (panelOpen = !panelOpen)}
   >
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -43,7 +43,7 @@
   <button
     type="button"
     aria-label="Control panel"
-    title="Control panel"
+    data-tip="Control panel"
     onclick={oncontrol}
   >
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -56,7 +56,7 @@
   <button
     type="button"
     aria-label="Settings"
-    title="Settings (Ctrl+,)"
+    data-tip="Settings · Ctrl+,"
     onclick={onsettings}
   >
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -69,7 +69,7 @@
   <button
     type="button"
     aria-label="Setup and account"
-    title="Setup and account"
+    data-tip="Setup and account"
     onclick={onaccount}
   >
     <svg viewBox="0 0 24 24" aria-hidden="true">

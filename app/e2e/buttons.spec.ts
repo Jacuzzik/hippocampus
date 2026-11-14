@@ -91,3 +91,24 @@ test("every button in the Add agent and account dialogs has a name and a size th
   await expect(page.getByRole("dialog").first()).toBeVisible();
   expect(await audit(page), "Setup and account").toEqual([]);
 });
+
+test("a ribbon button shows a visible tooltip with its shortcut on hover and on keyboard focus", async ({
+  page,
+}) => {
+  await mockSidecar(page);
+  await page.goto("/");
+  const settings = page
+    .getByRole("navigation", { name: "Panes" })
+    .getByRole("button", { name: "Settings" });
+  const tip = () =>
+    settings.evaluate((el) => getComputedStyle(el, "::after").content);
+  expect(await tip()).toBe("none");
+  await settings.hover();
+  expect(await tip()).toContain("Ctrl+,");
+  await page.mouse.move(600, 400);
+  expect(await tip()).toBe("none");
+  await settings.focus();
+  await page.keyboard.press("Shift+Tab");
+  await page.keyboard.press("Tab");
+  expect(await tip()).toContain("Settings");
+});
