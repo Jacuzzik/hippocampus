@@ -132,6 +132,12 @@
       opened.options.fontSize = size;
       sendSize();
     });
+    // Settings, Appearance: with Copy on select on, a selection goes to the clipboard at once.
+    term.onSelectionChange(() => {
+      if (!prefs.terminalCopyOnSelect) return;
+      const text = term?.getSelection() ?? "";
+      if (text) void navigator.clipboard?.writeText(text).catch(() => {});
+    });
     term.onData((data) => {
       // Focus in/out reports are not typing; sent to the CLI they show as ^[[O text on screen.
       if (data === "\x1b[I" || data === "\x1b[O") return;

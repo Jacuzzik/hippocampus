@@ -467,6 +467,15 @@
                 onchange={(next) => (prefs.terminalCursor = next as Cursor)}
               />
             </SettingRow>
+            <SettingRow title="Copy on select"
+              >{#snippet help()}Selecting text in an agent terminal copies it to
+                the clipboard.{/snippet}
+              <Toggle
+                bind:checked={prefs.terminalCopyOnSelect}
+                ariaLabel="Copy on select"
+                label={prefs.terminalCopyOnSelect ? "On" : "Off"}
+              />
+            </SettingRow>
             <SettingRow title="Font"
               >{#snippet help()}One monospace face everywhere, bundled with the
                 app.{/snippet}

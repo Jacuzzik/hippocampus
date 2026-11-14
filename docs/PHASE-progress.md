@@ -53,6 +53,7 @@ A row is "closed" only when a check proves it: a test, a lint rule, or a screens
 | Terminal scrollback and cursor | (this commit) | M.14 (part: Settings, Appearance sets scrollback lines 500 to 20000 and cursor shape block, bar or underline; both are kept after a reload and apply to terminals already open; font size was already there. Left: copy on select, bell, shell path) | e2e settings + terminal 29 pass, ESLint 0, svelte-check 0 |
 | Context bar tween | (this commit) | 12.08 (part: the context bar in the agent card eases to a new value over the shared slow duration; Motion off and reduced motion already cut it to nothing; the percent number still changes at once, no counting) | e2e motion 6 pass, ESLint 0, svelte-check 0 |
 | Activity date range | (this commit) | 7.14 (part: the activity tab filters by kind, word and a From / To date range; rows carry no agent name and there is no export, see Found) | e2e right-panel-tabs 18 pass (1 skipped existing), ESLint 0, svelte-check 0 |
+| Copy on select | (this commit) | M.14 (part: Settings, Appearance has Copy on select, off by default, kept after a reload; with it on a selection in any agent terminal goes to the clipboard. Left: bell, shell path) | e2e settings 24 pass, ESLint 0, svelte-check 0 |
 
 ## Closed before this phase file existed (checked again this phase)
 

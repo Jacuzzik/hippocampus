@@ -442,3 +442,21 @@ test("terminal scrollback is kept within its limits and the cursor shape is chos
     dialog.getByRole("button", { name: "Terminal cursor" }),
   ).toContainText("Bar");
 });
+
+test("copy on select is off by default and is kept after a reload", async ({
+  page,
+}) => {
+  await mockSidecar(page);
+  await page.goto("/");
+  let dialog = await openSettings(page);
+  await dialog.getByRole("tab", { name: "Appearance" }).click();
+  const toggle = dialog.getByRole("checkbox", { name: "Copy on select" });
+  await expect(toggle).not.toBeChecked();
+  await toggle.check();
+  await page.reload();
+  dialog = await openSettings(page);
+  await dialog.getByRole("tab", { name: "Appearance" }).click();
+  await expect(
+    dialog.getByRole("checkbox", { name: "Copy on select" }),
+  ).toBeChecked();
+});

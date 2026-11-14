@@ -14,6 +14,7 @@ type Prefs = {
   terminalFontSize: number;
   terminalScrollback: number;
   terminalCursor: Cursor;
+  terminalCopyOnSelect: boolean;
   motion: Motion;
   theme: Theme;
   intro: Intro;
@@ -32,6 +33,7 @@ const DEFAULTS: Prefs = {
   terminalFontSize: 12,
   terminalScrollback: 5000,
   terminalCursor: "block",
+  terminalCopyOnSelect: false,
   motion: "system",
   theme: "dark",
   intro: "long",
@@ -72,6 +74,7 @@ function read(): Prefs {
       intro:
         saved.intro === "short" || saved.intro === "off" ? saved.intro : "long",
       quiet: saved.quiet === true,
+      terminalCopyOnSelect: saved.terminalCopyOnSelect === true,
       rememberTab: saved.rememberTab !== false,
       lastTab:
         typeof saved.lastTab === "string" ? saved.lastTab : DEFAULTS.lastTab,
@@ -154,6 +157,13 @@ export const prefs = {
   },
   set terminalCursor(value: Cursor) {
     state.terminalCursor = value;
+    save();
+  },
+  get terminalCopyOnSelect(): boolean {
+    return state.terminalCopyOnSelect;
+  },
+  set terminalCopyOnSelect(value: boolean) {
+    state.terminalCopyOnSelect = value;
     save();
   },
   get motion(): Motion {
