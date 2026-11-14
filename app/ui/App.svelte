@@ -14,10 +14,11 @@
   import PanelBoundary from "./controls/PanelBoundary.svelte";
   import { every } from "./poll.ts";
   import { bootTask, boot } from "./owner/bootTasks.svelte.ts";
-  import ToolsDialog from "./overlays/ToolsDialog.svelte";
-  import ControlDialog from "./control/ControlDialog.svelte";
-  import AddAgentDialog from "./control/AddAgentDialog.svelte";
-  import SettingsDialog from "./control/SettingsDialog.svelte";
+  // The dialogs are loaded when first opened, so their code is not part of the start-up bundle.
+  const ToolsDialog = () => import("./overlays/ToolsDialog.svelte");
+  const ControlDialog = () => import("./control/ControlDialog.svelte");
+  const AddAgentDialog = () => import("./control/AddAgentDialog.svelte");
+  const SettingsDialog = () => import("./control/SettingsDialog.svelte");
   import CommandBox, { type Item } from "./overlays/CommandBox.svelte";
   import type { GraphData } from "./graph/model.ts";
   import { selection } from "./owner/addedAgents.svelte.ts";
@@ -284,34 +285,40 @@
 
 {#if toolsOpen}
   <PanelBoundary name="Tools"
-    ><ToolsDialog onclose={() => (toolsOpen = false)} /></PanelBoundary
+    >{#await ToolsDialog() then { default: Dialog }}<Dialog
+        onclose={() => (toolsOpen = false)}
+      />{/await}</PanelBoundary
   >
 {/if}
 
 {#if controlOpen}
   <PanelBoundary name="Control panel">
-    <ControlDialog
-      onclose={() => (controlOpen = false)}
-      onsettings={() => {
-        controlOpen = false;
-        settingsOpen = true;
-      }}
-    />
+    {#await ControlDialog() then { default: Dialog }}
+      <Dialog
+        onclose={() => (controlOpen = false)}
+        onsettings={() => {
+          controlOpen = false;
+          settingsOpen = true;
+        }}
+      />
+    {/await}
   </PanelBoundary>
 {/if}
 
 {#if addOpen}
   <PanelBoundary name="Add agent"
-    ><AddAgentDialog onclose={() => (addOpen = false)} /></PanelBoundary
+    >{#await AddAgentDialog() then { default: Dialog }}<Dialog
+        onclose={() => (addOpen = false)}
+      />{/await}</PanelBoundary
   >
 {/if}
 
 {#if settingsOpen}
   <PanelBoundary name="Settings"
-    ><SettingsDialog
-      start={settingsStart}
-      onclose={() => (settingsOpen = false)}
-    /></PanelBoundary
+    >{#await SettingsDialog() then { default: Dialog }}<Dialog
+        start={settingsStart}
+        onclose={() => (settingsOpen = false)}
+      />{/await}</PanelBoundary
   >
 {/if}
 

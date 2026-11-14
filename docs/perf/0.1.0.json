@@ -1,0 +1,15 @@
+{
+  "version": "0.1.0",
+  "commit": "736fe11",
+  "measured_at": "2026-11-14T02:46Z",
+  "platform": "linux",
+  "backend_first_answer_ms": {
+    "median": 383,
+    "runs": [
+      380,
+      383,
+      390
+    ]
+  },
+  "backend_memory_mb": 35.4
+}
