@@ -44,5 +44,5 @@ A name the file builds at run time is not listed.
 | `ui/regions/SkillsPanel.svelte` | `skills` | yes |
 | `ui/regions/SpendMeter.svelte` | `budget` | no |
 | `ui/regions/TasksPanel.svelte` | `tasks` | yes |
-| `ui/regions/TempsPanel.svelte` | `helpers` | yes |
+| `ui/regions/TempsPanel.svelte` | `helpers`, `start_helper` | yes |
 | `ui/regions/terminalQueue.svelte.ts` | `terminal_context`, `terminal_input` | no |

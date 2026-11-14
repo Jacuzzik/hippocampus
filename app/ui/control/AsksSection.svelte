@@ -9,6 +9,8 @@
   let asks = $state<AskCard[]>([]);
   let answers = $state<Record<string, string>>({});
   let error = $state<string | null>(null);
+  // What you answered since the app started, newest first, so an answer can be checked after it is sent.
+  let answered = $state<{ question: string; text: string; at: string }[]>([]);
   // False until the first answer (or failure).
   let loaded = $state(false);
   let stopPoll: (() => void) | undefined;
@@ -36,6 +38,14 @@
         params: { call: ask.call, text },
       });
       answers[ask.call] = "";
+      answered = [
+        {
+          question: ask.question,
+          text,
+          at: new Date().toTimeString().slice(0, 5),
+        },
+        ...answered,
+      ].slice(0, 20);
       await load();
     } catch (cause) {
       error = String(cause);
@@ -74,6 +84,17 @@
               >Respond</button
             >
           </div>
+        </li>
+      {/each}
+    </ul>
+  {/if}
+  {#if answered.length}
+    <h4>Answered</h4>
+    <ul aria-label="Answered questions">
+      {#each answered as row, index (index)}
+        <li>
+          <p class="muted">{row.at} · {row.question}</p>
+          <p>{row.text}</p>
         </li>
       {/each}
     </ul>

@@ -191,3 +191,33 @@ test("the activity tab reads again when the backend says the log changed, withou
   // The safety-net timer is 30 seconds; this passes in well under that only because of the event.
   await expect(region).toContainText("pushed by an event", { timeout: 3000 });
 });
+
+test("a temp is started from the temps tab and shows in the list as running", async ({
+  page,
+}) => {
+  await page.getByRole("tab", { name: "temps" }).click();
+  const region = page.getByRole("region", { name: "Temps" });
+  const start = region.getByRole("button", { name: "Start temp" });
+  await expect(start).toBeDisabled();
+  await region
+    .getByLabel("What the temp should do")
+    .fill("Summarise the note Alpha");
+  await start.click();
+  await expect(region.getByRole("listitem").last()).toContainText(
+    "Summarise the note Alpha",
+  );
+  await expect(region.getByRole("listitem").last()).toContainText("running");
+  await expect(region.getByLabel("What the temp should do")).toHaveValue("");
+});
+
+test("an answered question moves to the answered list with what was said", async ({
+  page,
+}) => {
+  await page.getByRole("tab", { name: /^ask me/ }).click();
+  const answer = page.getByLabel(/^Answer: Which folder/);
+  await answer.fill("ideas");
+  await answer.press("Enter");
+  const done = page.getByRole("list", { name: "Answered questions" });
+  await expect(done).toContainText("Which folder should the new note go in?");
+  await expect(done).toContainText("ideas");
+});

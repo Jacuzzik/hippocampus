@@ -30,7 +30,7 @@ const options = (page: Page) => ({
   animations: "disabled" as const,
   caret: "hide" as const,
   mask: moving(page),
-  maxDiffPixelRatio: 0.01,
+  maxDiffPixelRatio: 0.001,
 });
 
 async function open(page: Page, theme: "dark" | "light"): Promise<void> {
@@ -62,6 +62,8 @@ for (const tab of TABS) {
     // A tab with waiting items has a count after its name.
     await page.getByRole("tab", { name: new RegExp(`^${tab}`) }).click();
     const panel = page.locator(".right-panel");
+    // Wait for the tab's first answer, so the loader is never what gets compared.
+    await expect(panel.locator('[aria-busy="true"]:visible')).toHaveCount(0);
     await expect(panel).toHaveScreenshot(
       `tab-${tab.replace(/\W+/g, "-")}.png`,
       options(page),
@@ -80,6 +82,6 @@ test("Settings, Appearance looks the same as its baseline", async ({
   await expect(dialog).toHaveScreenshot("settings-appearance.png", {
     animations: "disabled",
     caret: "hide",
-    maxDiffPixelRatio: 0.01,
+    maxDiffPixelRatio: 0.001,
   });
 });
