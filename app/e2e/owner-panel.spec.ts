@@ -194,3 +194,24 @@ test("the card menu's Rename opens the rename box for that agent", async ({
     "Grace",
   );
 });
+
+test("Add agent previews the briefing from the words typed so far", async ({
+  page,
+}) => {
+  const bar = page.getByLabel("Agents");
+  await bar.getByRole("button", { name: "+ Add agent" }).click();
+  const add = page.getByRole("dialog", { name: "Add agent" });
+  await add.getByRole("textbox", { name: "Name", exact: true }).fill("Grace");
+  await add.getByRole("button", { name: "Next" }).click();
+  await add.getByLabel("Folder in workspaces").selectOption("IT");
+  await add.getByRole("button", { name: "Next" }).click();
+  await add.getByRole("button", { name: "claude-sonnet-5-5" }).click();
+  await add.getByRole("button", { name: "Next" }).click();
+  await add
+    .getByRole("textbox", { name: "Goal", exact: true })
+    .fill("Tidy the notes");
+  await add.getByRole("button", { name: "Preview briefing" }).click();
+  const preview = add.getByLabel("Briefing preview");
+  await expect(preview).toContainText("You are Grace,");
+  await expect(preview).toContainText("Tidy the notes");
+});

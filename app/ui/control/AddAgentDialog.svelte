@@ -88,6 +88,28 @@
     }
   }
 
+  // The briefing this agent would start with, built by the backend from the words typed so far.
+  let preview = $state<{
+    text: string;
+    version: number;
+    characters: number;
+  } | null>(null);
+  async function previewBriefing(): Promise<void> {
+    try {
+      preview = await invoke("sidecar_call", {
+        method: "briefing_preview",
+        params: {
+          name: draft.name,
+          description: draft.description,
+          goal: draft.goal,
+          folder: draft.folder,
+        },
+      });
+    } catch (cause) {
+      report("Could not build the briefing preview", cause);
+    }
+  }
+
   function next(): void {
     error = agentStepError(step, draft);
     if (!error) step += 1;
@@ -317,6 +339,16 @@
           placeholder="The outcome this agent is working toward."></textarea>
       </label>
       <p class="muted count">{draft.goal.length} / 4000</p>
+      <button type="button" onclick={() => void previewBriefing()}
+        >Preview briefing</button
+      >
+      {#if preview}
+        <p class="muted">
+          Briefing v{preview.version}, {preview.characters} characters. Two sections
+          are added when the agent starts: its start-up inbox and the limits in force.
+        </p>
+        <pre class="preview" aria-label="Briefing preview">{preview.text}</pre>
+      {/if}
     {/if}
 
     {#if error}<p class="error" role="alert">{error}</p>{/if}
@@ -557,5 +589,16 @@
     color: var(--color-accent-on);
     background: var(--color-accent);
     border-color: var(--color-accent);
+  }
+
+  .preview {
+    max-height: 16em;
+    overflow: auto;
+    margin: 0;
+    padding: var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    white-space: pre-wrap;
+    font-size: var(--font-size-xs);
   }
 </style>

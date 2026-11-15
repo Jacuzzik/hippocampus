@@ -90,6 +90,26 @@ class TerminalPart:
     def terminal_context(self, request: dict[str, Any]) -> dict[str, Any]:
         return {"percent": cli_sessions.context_percent(request["agent"])}
 
+    def briefing_preview(self, request: dict[str, Any]) -> dict[str, Any]:
+        """The briefing a new agent would start with, from the words typed so far. Nothing is saved or started.
+        The two sections added at start (the start-up inbox and the limits in force) are not in the preview."""
+
+        def words(key: str, limit: int) -> str:
+            value = request.get(key)
+            return value.strip()[:limit] if isinstance(value, str) else ""
+
+        name = words("name", 80) or "New agent"
+        saved = {
+            "name": name,
+            "description": words("description", 100),
+            "goal": words("goal", 4000),
+        }
+        folder = words("folder", 400) or None
+        text = briefing.agent_briefing(
+            "new-agent", saved, folder, self.settings.vault, self.hive_path / "new-agent" / "outbox"
+        )
+        return {"text": text, "version": briefing.VERSION, "characters": len(text)}
+
     def terminal_rebrief(self, request: dict[str, Any]) -> dict[str, Any]:
         """Points a running agent at its briefing again. The briefing file itself is not rewritten."""
         who = request["agent"]

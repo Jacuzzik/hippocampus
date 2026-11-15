@@ -10,7 +10,7 @@ A name the file builds at run time is not listed.
 | `ui/App.svelte` | `graph` | yes |
 | `ui/assistant/session.svelte.ts` | `answer`, `budget_allow`, `chat`, `chat_history`, `chat_history_save`, `confirm`, `current_session`, `new_session`, `stop` | yes |
 | `ui/control/ActivitySection.svelte` | `activity` | yes |
-| `ui/control/AddAgentDialog.svelte` | `create_workspace`, `keys`, `local_status`, `provider_status`, `workspaces` | no |
+| `ui/control/AddAgentDialog.svelte` | `briefing_preview`, `create_workspace`, `keys`, `local_status`, `provider_status`, `workspaces` | no |
 | `ui/control/AsksSection.svelte` | `answer`, `asks` | yes |
 | `ui/control/BudgetSection.svelte` | `budget`, `budget_allow`, `set_budget` | yes |
 | `ui/control/CapabilitiesSection.svelte` | `install_skill`, `remove_skill`, `skills` | no |

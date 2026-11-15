@@ -749,6 +749,10 @@ export async function mockSidecar(
             return { ok: true };
           case "terminal_context":
             return { percent: 42 };
+          case "briefing_preview": {
+            const text = `1. Role\nYou are ${String(args.params?.name)}, an agent in the Hippocampus app. Your goal: ${String(args.params?.goal)}.`;
+            return { text, version: 5, characters: text.length };
+          }
           case "terminal_rebrief": {
             const w = window as unknown as { __rebriefed?: string[] };
             (w.__rebriefed ??= []).push(String(args.params?.agent));
