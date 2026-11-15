@@ -55,6 +55,26 @@ class JobsPart:
         job_store.save(self.jobs_path, jobs)
         return self.jobs()
 
+    def run_job(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Run one scheduled job now. The user's click is the approval; nothing runs without it."""
+        job_id = request.get("id")
+        if not isinstance(job_id, str):
+            raise ValueError('"run_job" needs an "id"')
+        if request.get("approve") is not True:
+            raise ValueError("running a job needs the user's approval")
+        if self.indexer is None:
+            raise ValueError("no vault is open")
+        jobs, result = job_store.run_now(
+            job_store.load(self.jobs_path),
+            job_id,
+            datetime.now().astimezone(),
+            {"link_check": self._link_check},
+        )
+        job_store.save(self.jobs_path, jobs)
+        self.note("approval", tool="run_job", tier="act", approved=True, by="card")
+        self.note("handoff", text=result)
+        return {**self.jobs(), "result": result}
+
     @property
     def jobs_path(self) -> Path:
         return self.storage / "jobs.json"

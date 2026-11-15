@@ -17,7 +17,7 @@ A name the file builds at run time is not listed.
 | `ui/control/ConnectorsSection.svelte` | `connectors` | yes |
 | `ui/control/DispatchSection.svelte` | `start_helper` | no |
 | `ui/control/HelpersSection.svelte` | `helpers`, `start_helper` | no |
-| `ui/control/JobsSection.svelte` | `jobs`, `set_job` | yes |
+| `ui/control/JobsSection.svelte` | `jobs`, `run_job`, `set_job` | yes |
 | `ui/control/KeysSection.svelte` | `clear_key`, `keys`, `local_status`, `save_key` | yes |
 | `ui/control/MemorySection.svelte` | `memory_search`, `memory_status` | no |
 | `ui/control/NetworkSection.svelte` | `network`, `set_network` | no |

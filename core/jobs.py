@@ -88,3 +88,22 @@ def run_due(
             job = replace(job, last_run=now.isoformat(timespec="seconds"))
         out.append(job)
     return out, results
+
+
+def run_now(
+    jobs: list[Job], job_id: str, now: datetime, runners: dict[str, Callable[[], str]]
+) -> tuple[list[Job], str]:
+    """Run one job at once, whether or not it is due or switched on. Returns the updated jobs and its result line."""
+    if not any(job.id == job_id for job in jobs):
+        raise ValueError(f"no job named {job_id}")
+    out, result = [], ""
+    for job in jobs:
+        if job.id == job_id:
+            try:
+                result = f"{job.name}: {runners[job.kind]()}"
+            except Exception:
+                logger.exception("Job %s failed", job.id)
+                result = f"{job.name}: failed"
+            job = replace(job, last_run=now.isoformat(timespec="seconds"))
+        out.append(job)
+    return out, result

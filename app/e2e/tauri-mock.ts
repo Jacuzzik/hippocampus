@@ -768,7 +768,8 @@ export async function mockSidecar(
             });
             return { webhooks: hookRows };
           case "run_webhook":
-            if (args.params?.approve !== true) throw new Error("needs approval");
+            if (args.params?.approve !== true)
+              throw new Error("needs approval");
             return { result: "Link check: 3 links checked, all working." };
           case "delete_webhook": {
             const at = hookRows.findIndex((h) => h.id === args.params?.id);
@@ -787,6 +788,17 @@ export async function mockSidecar(
             if (args.params?.every_days)
               job.every_days = Number(args.params.every_days);
             return { jobs: jobRows };
+          }
+          case "run_job": {
+            const [job] = jobRows;
+            if (!job) throw new Error("mock: no job");
+            if (args.params?.approve !== true)
+              throw new Error("needs approval");
+            job.last_run = "2026-11-15T09:00:00";
+            return {
+              jobs: jobRows,
+              result: `${job.name}: 3 links checked, all working.`,
+            };
           }
           case "helpers":
             return { helpers: helperRows, limit: 4 };
@@ -812,7 +824,8 @@ export async function mockSidecar(
             return { skills: skillRows };
           case "install_skill": {
             const path = String(args.params?.path ?? "");
-            if (path.includes("slow")) await new Promise((r) => setTimeout(r, 4000));
+            if (path.includes("slow"))
+              await new Promise((r) => setTimeout(r, 4000));
             const name = path.split("/").pop() ?? "";
             skillRows = [
               ...skillRows,

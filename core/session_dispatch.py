@@ -101,6 +101,7 @@ class DispatchPart:
             "export_notes": plain(self.export_notes),
             "memory_search": self.memory_search,
             "set_job": self.set_job,
+            "run_job": self.run_job,
             "start_helper": self.start_helper,
             "remove_skill": self.remove_skill,
             "install_skill": self.install_skill,

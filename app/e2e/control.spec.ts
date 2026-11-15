@@ -307,7 +307,9 @@ test("a section whose answer fails shows the reason and a Try again button", asy
   await openControl(page);
   const dialog = page.getByRole("dialog", { name: "Control panel" });
   await dialog.getByRole("tab", { name: "Work" }).click();
-  await expect(dialog.getByRole("alert")).toContainText("webhooks is set to fail");
+  await expect(dialog.getByRole("alert")).toContainText(
+    "webhooks is set to fail",
+  );
   await expect(dialog.getByRole("button", { name: "Try again" })).toBeVisible();
 });
 
@@ -322,4 +324,21 @@ test("the budget lists the tokens each agent used today", async ({ page }) => {
     "assistant: 12,000 tokens",
     "kevin: 3,400 tokens",
   ]);
+});
+
+test("a scheduled job can be run now and shows its result and new last-run time", async ({
+  page,
+}) => {
+  await mockSidecar(page);
+  await page.goto("/");
+  await openControl(page);
+  const dialog = page.getByRole("dialog", { name: "Control panel" });
+  await dialog.getByRole("tab", { name: "Work" }).click();
+  const list = dialog.getByRole("list", { name: "Scheduled jobs" });
+  await expect(list).toContainText("last 2026-10-26 07:00");
+  await list.getByRole("button", { name: /^Run .* now$/ }).click();
+  await expect(list.getByRole("status")).toContainText(
+    "3 links checked, all working.",
+  );
+  await expect(list).toContainText("last 2026-11-15 09:00");
 });

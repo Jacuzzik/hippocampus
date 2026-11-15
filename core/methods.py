@@ -129,6 +129,7 @@ METHODS: dict[str, Method] = {
     # Jobs, helpers, webhooks
     "jobs": _m("Scheduled jobs."),
     "set_job": _m("Turn a scheduled job on or off."),
+    "run_job": _m("Run a scheduled job now."),
     "helpers": _m("Short-lived helper jobs."),
     "start_helper": _m("Start a helper job."),
     "watchers": _m("Folder watchers."),

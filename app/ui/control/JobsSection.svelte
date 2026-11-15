@@ -45,6 +45,23 @@
     }
   }
 
+  // Run now runs the job once, due or not. The click is the user's approval.
+  let ran = $state<{ id: string; text: string } | null>(null);
+  async function runNow(job: Job): Promise<void> {
+    error = null;
+    ran = null;
+    try {
+      const result = await invoke<{ jobs: Job[]; result: string }>(
+        "sidecar_call",
+        { method: "run_job", params: { id: job.id, approve: true } },
+      );
+      jobs = result.jobs;
+      ran = { id: job.id, text: result.result };
+    } catch (cause) {
+      error = String(cause);
+    }
+  }
+
   // False until the first answer, so the loader shows and an empty list is not claimed too early.
   let loaded = $state(false);
   onMount(() => void load().finally(() => (loaded = true)));
@@ -91,8 +108,29 @@
             ? `last ${job.last_run.slice(0, 16).replace("T", " ")}`
             : "not run yet"}</span
         >
+        <button
+          type="button"
+          class="run"
+          aria-label={`Run ${job.name} now`}
+          onclick={() => void runNow(job)}>Run now</button
+        >
+        {#if ran?.id === job.id}
+          <p class="muted" role="status">{ran.text}</p>
+        {/if}
       </li>
     {/each}
   </ul>
   {#if error}<ErrorRow message={error} onretry={load} />{/if}
 </section>
+
+<style>
+  .run {
+    font: inherit;
+    color: inherit;
+    background: none;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: var(--space-1) var(--space-2);
+    cursor: pointer;
+  }
+</style>
