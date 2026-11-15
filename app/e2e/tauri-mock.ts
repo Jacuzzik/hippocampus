@@ -726,9 +726,16 @@ export async function mockSidecar(
                 "2026-11-12 10:00:05 WARNING hippocampus.core: slow call",
               ],
             };
-          case "terminal_input":
+          case "terminal_input": {
+            // A test reads window.__typed to see what was typed into a terminal.
+            const w = window as unknown as { __typed?: string[] };
+            (w.__typed ??= []).push(String(args.params?.data));
+            return { ok: true };
+          }
           case "terminal_resize":
             return { ok: true };
+          case "terminal_context":
+            return { percent: 42 };
           case "webhooks":
             return { webhooks: hookRows };
           case "save_webhook":
@@ -859,7 +866,14 @@ export async function mockSidecar(
             };
           case "terminal_command":
             // No program is running in tests; the id says which run of the backend answered.
-            return { command: null, status: null, boot: bootId() };
+            // A test sets window.__cliCommand to act out a CLI running in every terminal.
+            return {
+              command:
+                (window as unknown as { __cliCommand?: string }).__cliCommand ??
+                null,
+              status: null,
+              boot: bootId(),
+            };
           default:
             throw new Error(`mock: unknown method ${args.method}`);
         }

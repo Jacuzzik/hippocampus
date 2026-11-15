@@ -2,6 +2,7 @@
 <script lang="ts">
   import { dialogFocus } from "../controls/dialogFocus.ts";
   import { backend } from "../backend.svelte.ts";
+  import { report } from "../notices.svelte.ts";
   import { every } from "../poll.ts";
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
@@ -121,6 +122,22 @@
         ? `v${brief.version} · ${brief.hash} · handed over ${brief.at.slice(11, 16)}`
         : "Not handed over in this run",
     };
+  }
+  // Types one line into an agent's terminal and presses Enter. The text and the Enter key go in
+  // separate writes, because a CLI reads both in one write as a paste and does not submit it.
+  function sendLine(agent: string, text: string): void {
+    invoke("sidecar_call", {
+      method: "terminal_input",
+      params: { agent, data: text },
+    })
+      .then(() => new Promise((done) => setTimeout(done, 150)))
+      .then(() =>
+        invoke("sidecar_call", {
+          method: "terminal_input",
+          params: { agent, data: "\r" },
+        }),
+      )
+      .catch((cause) => report("Could not send to the terminal", cause));
   }
   // CMD shows what is running now, else the last command the agent ran.
   const cmdOf = (id: string): string => {
@@ -245,18 +262,37 @@
       type="button"
       role="menuitem"
       onclick={() => {
-        menu = null;
         startEdit(open.id, "note");
+        menu = null;
       }}>Add note</button
     >
     <button
       type="button"
       role="menuitem"
       onclick={() => {
-        menu = null;
         startEdit(open.id, "rename");
+        menu = null;
       }}>Rename</button
     >
+    {#if (live[open.id]?.command ?? "").startsWith("claude")}
+      <button
+        type="button"
+        role="menuitem"
+        onclick={() => {
+          sendLine(open.id, "/compact");
+          menu = null;
+        }}>Compact context</button
+      >
+      <button
+        type="button"
+        role="menuitem"
+        class="danger"
+        onclick={() => {
+          sendLine(open.id, "/clear");
+          menu = null;
+        }}>Clear context</button
+      >
+    {/if}
     <button
       type="button"
       role="menuitem"

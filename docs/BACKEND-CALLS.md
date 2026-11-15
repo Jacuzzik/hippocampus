@@ -30,7 +30,7 @@ A name the file builds at run time is not listed.
 | `ui/overlays/AccountDialog.svelte` | `remove_data` | no |
 | `ui/overlays/HealthBar.svelte` | `system` | no |
 | `ui/overlays/ToolsDialog.svelte` | `set_tools`, `tools` | no |
-| `ui/owner/AgentBar.svelte` | `account`, `terminal_command`, `terminal_context` | yes |
+| `ui/owner/AgentBar.svelte` | `account`, `terminal_command`, `terminal_context`, `terminal_input` | yes |
 | `ui/owner/AgentPanel.svelte` | `git_status`, `inbox`, `open_folder`, `terminal_input`, `terminal_stop`, `terminal_traces` | no |
 | `ui/owner/addedAgents.svelte.ts` | `agent_session`, `agents`, `save_agents` | yes |
 | `ui/regions/ActivityPanel.svelte` | `activity` | yes |
