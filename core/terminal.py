@@ -60,6 +60,8 @@ class Terminals:
         self.procs: dict[str, tuple[subprocess.Popen, int]] = {}
         # How each agent's briefing reached its CLI in this run, in plain words for the card.
         self.briefing_delivery: dict[str, str] = {}
+        # The exit code of each agent's CLI that ended with an error we did not ask for; cleared when it starts again.
+        self.crashed: dict[str, int] = {}
         # The command each agent's terminal was started with; it has no keys or secrets, only the CLI and its flags.
         self.argvs: dict[str, list[str]] = {}
         # The folder each agent works in, and a short cache of its last command (the card refreshes every 3 seconds).
@@ -184,6 +186,7 @@ class Terminals:
             if provider != "claude" or argv[1:2] == ["--session-id"] or argv[1:2] == ["--resume"]:
                 cli_sessions.mark_started(agent)
             self.procs[agent] = (proc, master)
+            self.crashed.pop(agent, None)
             if not brief_path:
                 self.briefing_delivery.pop(agent, None)
             elif provider == "claude":
@@ -373,6 +376,7 @@ class Terminals:
                 "last": self._last_command(agent),
                 "model": cli_sessions.last_model(agent),
                 "delivery": self.briefing_delivery.get(agent),
+                "crashed": self.crashed.get(agent),
             }
         last = self.last_output.get(agent)
         running = cli_sessions.open_tool_calls(agent)
@@ -491,6 +495,7 @@ class Terminals:
                 # The old CLI of a replaced terminal: nothing to report. Leaving from here is on purpose.
                 return  # noqa: B012
             if code != 0 and not stopped_by_us:
+                self.crashed[agent] = code
                 if self.on_crash is not None:
                     try:
                         self.on_crash(agent, code)

@@ -231,3 +231,20 @@ test("HIPPO's details say when its briefing was not delivered", async ({
   await expect(info).toContainText("Not delivered: the CLI stopped first");
   await expect(info).toContainText("Use Resend briefing");
 });
+
+test("a card says Crashed with the exit code when its program ended with an error", async ({
+  page,
+}) => {
+  await page.evaluate(() => {
+    (window as unknown as { __crashed: number }).__crashed = 3;
+  });
+  const bar = page.getByLabel("Agents");
+  // The card's state is read again every 3 seconds.
+  await expect(bar.getByText("Crashed (code 3)").first()).toBeVisible({
+    timeout: 10000,
+  });
+  await bar.getByRole("button", { name: "Info", exact: true }).first().click();
+  await expect(
+    page.getByRole("dialog", { name: "Hippoherman details" }),
+  ).toContainText("Crashed with exit code 3");
+});

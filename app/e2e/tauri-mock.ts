@@ -895,6 +895,9 @@ export async function mockSidecar(
                 null,
               status: null,
               boot: bootId(),
+              // A test sets window.__crashed to act out a CLI that ended with an error.
+              crashed:
+                (window as unknown as { __crashed?: number }).__crashed ?? null,
               // A test sets window.__delivery to act out how the briefing reached the CLI.
               delivery:
                 (window as unknown as { __delivery?: string }).__delivery ??

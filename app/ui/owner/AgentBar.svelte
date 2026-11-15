@@ -107,6 +107,7 @@
         model?: string | null;
         briefing?: Briefing | null;
         delivery?: string | null;
+        crashed?: number | null;
       }
     >
   >({});
@@ -121,7 +122,10 @@
     const now = live[id];
     const brief = now?.briefing;
     return {
-      status: now?.status ?? "Not running",
+      status:
+        now?.crashed != null
+          ? `Crashed with exit code ${now.crashed}. Open its terminal to start it again.`
+          : (now?.status ?? "Not running"),
       ctx: now?.percent != null ? `${now.percent}%` : NO_DATA,
       briefing: brief
         ? `v${brief.version} · ${brief.hash} · handed over ${brief.at.slice(11, 16)}`
@@ -146,6 +150,13 @@
       )
       .catch((cause) => report("Could not send to the terminal", cause));
   }
+  // The one word under a card: Working, Idle, or Crashed when its program ended with an error.
+  const statusOf = (id: string): string =>
+    live[id]?.crashed != null
+      ? `Crashed (code ${live[id]?.crashed})`
+      : live[id]?.status === "Working"
+        ? "Working"
+        : "Idle";
   // Points a running agent at its briefing file again, for a session that drifted or was cleared.
   function resendBriefing(agent: string): void {
     invoke("sidecar_call", {
@@ -210,6 +221,7 @@
           boot?: string;
           briefing?: Briefing | null;
           delivery?: string | null;
+          crashed?: number | null;
         }>("sidecar_call", {
           method: "terminal_command",
           params: { agent: id },
@@ -232,6 +244,7 @@
           model: info.model,
           briefing: info.briefing ?? null,
           delivery: info.delivery ?? null,
+          crashed: info.crashed ?? null,
         };
       } catch {
         live[id] = { command: null, status: null, percent: null };
@@ -426,8 +439,8 @@
         <dd>{info.briefing}</dd>
         <dt>DELIVERY</dt>
         <dd class:undelivered={info.undelivered}>
-          {info.delivery}{#if info.undelivered}. Use Resend briefing in the
-            card menu.{/if}
+          {info.delivery}{#if info.undelivered}. Use Resend briefing in the card
+            menu.{/if}
         </dd>
       </dl>
     </div>
@@ -515,8 +528,8 @@
             ...liveInfo("hippoherman"),
           })}>INFO</button
       >
-      <span class="status"
-        >{live.hippoherman?.status === "Working" ? "Working" : "Idle"}</span
+      <span class="status" class:crashed={live.hippoherman?.crashed != null}
+        >{statusOf("hippoherman")}</span
       >
     </div>
   </div>
@@ -591,8 +604,8 @@
           aria-label="Info"
           onclick={() => showInfo(agent)}>INFO</button
         >
-        <span class="status"
-          >{live[agent.id]?.status === "Working" ? "Working" : "Idle"}</span
+        <span class="status" class:crashed={live[agent.id]?.crashed != null}
+          >{statusOf(agent.id)}</span
         >
       </div>
     </div>
@@ -1036,6 +1049,10 @@
     padding-top: var(--space-2);
     border-top: 1px solid var(--color-border);
     color: var(--color-danger);
+  }
+
+  .status.crashed {
+    color: var(--color-ds-warning);
   }
 
   .undelivered {

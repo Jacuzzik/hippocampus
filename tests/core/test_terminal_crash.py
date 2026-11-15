@@ -37,3 +37,19 @@ def test_a_failed_exit_is_recorded(tmp_path: Path) -> None:
 def test_a_clean_exit_or_a_stop_we_asked_for_is_not(tmp_path: Path) -> None:
     assert run_pump(tmp_path, 0, stopped=False) == []
     assert run_pump(tmp_path, 3, stopped=True) == []
+
+
+def test_the_card_info_carries_the_exit_code_of_a_crashed_cli(tmp_path: Path) -> None:
+    terminals = Terminals(lambda event: None, tmp_path)
+    master, slave = pty.openpty()
+    proc = subprocess.Popen(
+        [sys.executable, "-c", "raise SystemExit(7)"],
+        stdin=slave,
+        stdout=slave,
+        stderr=slave,
+        close_fds=True,
+    )
+    os.close(slave)
+    terminals._pump("a1", proc, master)
+    assert terminals.info("a1")["crashed"] == 7
+    assert terminals.info("never-started")["crashed"] is None
