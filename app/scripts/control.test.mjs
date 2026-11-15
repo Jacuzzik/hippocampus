@@ -185,3 +185,9 @@ test("every avatar is an 8 by 8 grid and every template fills a briefing", () =>
     assert.ok(t.description.length > 0 && t.goal.length > 0, t.id);
   }
 });
+
+test("the job gallery has the five core roles: research, build, review, QA and writer", () => {
+  const ids = AGENT_TEMPLATES.map((t) => t.id);
+  for (const role of ["research", "build", "review", "tests", "docs"])
+    assert.ok(ids.includes(role), `missing the ${role} template`);
+});

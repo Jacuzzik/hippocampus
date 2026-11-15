@@ -381,6 +381,12 @@ export const AGENT_TEMPLATES = [
     goal: "Keep the repo lean so the team can find things fast. Remove stale branches, dead code and stray files each week and list what was removed.",
   },
   {
+    id: "build",
+    label: "Feature builder",
+    description: "Builds one feature at a time, with tests, in small steps.",
+    goal: "Ship working features. Take one task, build it in small steps with tests, run the checks, and report what changed and what is left.",
+  },
+  {
     id: "docs",
     label: "Docs writer",
     description: "Keeps the docs in step with the code.",
