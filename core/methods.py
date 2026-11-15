@@ -115,6 +115,7 @@ METHODS: dict[str, Method] = {
     "git_status": _m("Short git status of an agent's folder."),
     "open_folder": _m("Open an agent's folder in the file manager or VS Code."),
     "issues": _m("Open GitHub issues of a folder."),
+    "ci": _m("The newest CI run of a folder's repo."),
     "tokens": _m("This month's token use per folder."),
     # Terminals
     "terminal_start": _m("Start an agent's program.", _AGENT),

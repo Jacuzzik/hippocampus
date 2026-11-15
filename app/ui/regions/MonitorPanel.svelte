@@ -164,6 +164,22 @@
     }
   }
 
+  // Per directory: the newest CI run, fetched on request, or the reason it could not be read.
+  let ci = $state<
+    Record<string, { state?: string; text?: string; error?: string }>
+  >({});
+  async function checkCi(folder: string): Promise<void> {
+    try {
+      ci[folder] = await invoke("sidecar_call", {
+        method: "ci",
+        params: { folder },
+      });
+    } catch (cause) {
+      console.error("Could not check the CI", cause);
+      ci[folder] = { error: "Could not reach the app's helper." };
+    }
+  }
+
   let budget = $state<Budget | null>(null);
   let failed = $state(false);
   // False until the first answer (or failure), so an empty list is not shown while it is still loading.
@@ -482,7 +498,23 @@
             class="btn solid"
             onclick={() => fetchIssues(selectedFolder)}>Fetch issues</button
           >
+          <button
+            type="button"
+            class="btn"
+            onclick={() => checkCi(selectedFolder)}>Check CI</button
+          >
         </div>
+        {#if ci[selectedFolder]}
+          {@const run = ci[selectedFolder]}
+          <p
+            class="status"
+            class:error={Boolean(run?.error) || run?.state === "failed"}
+            role="status"
+            aria-label="CI status"
+          >
+            {run?.error ?? `Newest CI run: ${run?.text}`}
+          </p>
+        {/if}
         {#if current?.error}
           <p class="status error">{current.error}</p>
         {:else if current?.list && current.list.length > 0}

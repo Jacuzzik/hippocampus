@@ -77,3 +77,44 @@ def issues_in(folder: object) -> dict[str, Any]:
     if done.returncode != 0:
         return {"error": done.stderr.strip() or "gh could not list the issues."}
     return {"issues": json.loads(done.stdout or "[]")}
+
+
+def ci_in(
+    folder: object,
+    which: Callable[[str], str | None] = shutil.which,
+    run: Callable[..., Any] = subprocess.run,
+) -> dict[str, Any]:
+    """The newest CI run of the repo in a folder, read with the gh CLI the user is logged in to.
+
+    Returns {"state": "passed" | "failed" | "running" | "none", "text": ...}, or {"error": ...}.
+    """
+    if not isinstance(folder, str) or not Path(folder).is_dir():
+        return {"error": "That folder does not exist."}
+    if which("gh") is None:
+        return {"error": "The gh CLI is not installed."}
+    try:
+        done = run(
+            ["gh", "run", "list", "--limit", "1", "--json", "name,status,conclusion,headBranch"],
+            cwd=folder,
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+    except subprocess.TimeoutExpired:
+        return {"error": "GitHub took too long to answer."}
+    if done.returncode != 0:
+        return {"error": done.stderr.strip() or "gh could not list the CI runs."}
+    try:
+        runs = json.loads(done.stdout or "[]")
+    except ValueError:
+        return {"error": "gh gave an answer this app could not read."}
+    if not runs or not isinstance(runs[0], dict):
+        return {"state": "none", "text": "This repo has no CI runs."}
+    newest = runs[0]
+    where = f"{newest.get('name') or 'CI'} on {newest.get('headBranch') or 'unknown branch'}"
+    if newest.get("status") != "completed":
+        return {"state": "running", "text": f"{where}: still running."}
+    if newest.get("conclusion") == "success":
+        return {"state": "passed", "text": f"{where}: passed."}
+    return {"state": "failed", "text": f"{where}: {newest.get('conclusion') or 'failed'}."}

@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from core import methods
-from core.session_shared import issues_in
+from core.session_shared import ci_in, issues_in
 
 Handler = Callable[[dict[str, Any]], dict[str, Any]]
 
@@ -89,6 +89,7 @@ class DispatchPart:
             "card_create": self.card_create,
             "card_update": self.card_update,
             "issues": lambda request: issues_in(request.get("folder")),
+            "ci": lambda request: ci_in(request.get("folder")),
             "tokens": self.tokens,
             "set_engine": self.set_engine,
             "stop": plain(self.stop),

@@ -248,3 +248,26 @@ test("a card says Crashed with the exit code when its program ended with an erro
     page.getByRole("dialog", { name: "Hippoherman details" }),
   ).toContainText("Crashed with exit code 3");
 });
+
+test("the monitor tab checks the newest CI run of an agent's folder", async ({
+  page,
+}) => {
+  const bar = page.getByLabel("Agents");
+  await bar.getByRole("button", { name: "+ Add agent" }).click();
+  const add = page.getByRole("dialog", { name: "Add agent" });
+  await add.getByRole("textbox", { name: "Name", exact: true }).fill("Grace");
+  await add.getByRole("button", { name: "Next" }).click();
+  await add.getByLabel("Folder in workspaces").selectOption("IT");
+  await add.getByRole("button", { name: "Next" }).click();
+  await add.getByRole("button", { name: "claude-sonnet-5-5" }).click();
+  await add.getByRole("button", { name: "Next" }).click();
+  await add
+    .getByRole("textbox", { name: "Goal", exact: true })
+    .fill("Tidy the notes");
+  await add.getByRole("button", { name: "Spawn" }).click();
+  await page.getByRole("tab", { name: "monitor" }).click();
+  await page.getByRole("button", { name: "Check CI" }).click();
+  await expect(page.getByRole("status", { name: "CI status" })).toHaveText(
+    "Newest CI run: tests on main: failure.",
+  );
+});
