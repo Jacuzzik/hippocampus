@@ -283,3 +283,18 @@ test("a saved webhook can be tested once and the result is shown", async ({
     "Link check: 3 links checked, all working.",
   );
 });
+
+test("local model servers show whether each answers, and can be checked again", async ({
+  page,
+}) => {
+  await mockSidecar(page);
+  await page.goto("/");
+  await page.getByRole("button", { name: "Settings" }).click();
+  const dialog = page.getByRole("dialog", { name: "Settings" });
+  await dialog.getByRole("tab", { name: "Models and keys" }).click();
+  const list = dialog.getByRole("list", { name: "Local model servers" });
+  await expect(list.getByRole("listitem").nth(0)).toContainText("Answering");
+  await expect(list.getByRole("listitem").nth(1)).toContainText("Not running");
+  await dialog.getByRole("button", { name: "Test servers" }).click();
+  await expect(list.getByRole("listitem").nth(0)).toContainText("Answering");
+});

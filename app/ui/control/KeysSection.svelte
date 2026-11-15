@@ -13,6 +13,27 @@
     hint: string | null;
   };
 
+  // Local model servers on this computer: each one's address and whether it answers now.
+  const SERVERS = [
+    { id: "ollama", label: "Ollama", address: "http://127.0.0.1:11434" },
+    { id: "lmstudio", label: "LM Studio", address: "http://127.0.0.1:1234" },
+    { id: "vllm", label: "vLLM", address: "http://127.0.0.1:8000" },
+  ];
+  let running = $state<Record<string, boolean>>({});
+  let checked = $state(false);
+
+  async function checkServers(): Promise<void> {
+    try {
+      const { servers } = await invoke<{
+        servers: { provider: string; running: boolean }[];
+      }>("sidecar_call", { method: "local_status" });
+      running = Object.fromEntries(servers.map((s) => [s.provider, s.running]));
+      checked = true;
+    } catch (cause) {
+      error = String(cause);
+    }
+  }
+
   let keys = $state<KeyRow[]>([]);
   let drafts = $state<Record<string, string>>({});
   let error = $state<string | null>(null);
@@ -58,7 +79,10 @@
 
   // False until the first answer, so the loader shows and an empty list is not claimed too early.
   let loaded = $state(false);
-  onMount(() => void load().finally(() => (loaded = true)));
+  onMount(() => {
+    void checkServers();
+    void load().finally(() => (loaded = true));
+  });
 </script>
 
 <section class="control-section" aria-labelledby="control-keys">
@@ -92,5 +116,20 @@
       </li>
     {/each}
   </ul>
+  <h4>Local model servers</h4>
+  <ul aria-label="Local model servers">
+    {#each SERVERS as server (server.id)}
+      <li class="row">
+        <strong>{server.label}</strong>
+        <span class="muted">{server.address}</span>
+        <span class="muted">
+          {!checked ? "Checking…" : running[server.id] ? "Answering" : "Not running"}
+        </span>
+      </li>
+    {/each}
+  </ul>
+  <Button variant="secondary" onclick={() => void checkServers()}
+    >Test servers</Button
+  >
   {#if error}<p class="error" role="alert">{error}</p>{/if}
 </section>

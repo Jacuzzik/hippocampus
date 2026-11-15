@@ -18,7 +18,7 @@ A name the file builds at run time is not listed.
 | `ui/control/DispatchSection.svelte` | `start_helper` | no |
 | `ui/control/HelpersSection.svelte` | `helpers`, `start_helper` | no |
 | `ui/control/JobsSection.svelte` | `jobs`, `set_job` | yes |
-| `ui/control/KeysSection.svelte` | `clear_key`, `keys`, `save_key` | yes |
+| `ui/control/KeysSection.svelte` | `clear_key`, `keys`, `local_status`, `save_key` | yes |
 | `ui/control/MemorySection.svelte` | `memory_search`, `memory_status` | no |
 | `ui/control/NetworkSection.svelte` | `network`, `set_network` | no |
 | `ui/control/SettingsDialog.svelte` | `clear_activity`, `clear_crashes`, `crashes`, `doctor`, `export_notes`, `link_doctor`, `logs`, `set_agent_shell`, `set_number`, `set_vault`, `settings`, `settings_export`, `settings_import` | yes |

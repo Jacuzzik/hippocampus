@@ -671,7 +671,13 @@ export async function mockSidecar(
           case "provider_status":
             return { clis: [] };
           case "local_status":
-            return { servers: [] };
+            return {
+              servers: [
+                { provider: "ollama", running: true },
+                { provider: "lmstudio", running: false },
+                { provider: "vllm", running: false },
+              ],
+            };
           case "set_vault":
             if (!String(args.params?.vault).startsWith("/"))
               throw new Error("vault folder not found");
