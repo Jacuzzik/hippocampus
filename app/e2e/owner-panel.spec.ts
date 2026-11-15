@@ -148,6 +148,18 @@ test("a Claude agent's card menu compacts its context by typing /compact into it
   await bar
     .getByRole("button", { name: "Grace options" })
     .click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Resend briefing" }).click();
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as unknown as { __rebriefed?: string[] }).__rebriefed ?? [],
+      ),
+    )
+    .toHaveLength(1);
+  await bar
+    .getByRole("button", { name: "Grace options" })
+    .click({ button: "right" });
   await page.getByRole("menuitem", { name: "Compact context" }).click();
   await expect
     .poll(() =>

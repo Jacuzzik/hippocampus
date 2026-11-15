@@ -123,6 +123,7 @@ METHODS: dict[str, Method] = {
     "terminal_stop": _m("Stop an agent's program.", _AGENT),
     "terminal_context": _m("How full an agent's context is.", _AGENT),
     "terminal_traces": _m("What an agent ran.", _AGENT),
+    "terminal_rebrief": _m("Point a running agent at its briefing again.", _AGENT),
     "terminal_command": _m("An agent's running command and the backend's boot stamp."),
     # Jobs, helpers, webhooks
     "jobs": _m("Scheduled jobs."),

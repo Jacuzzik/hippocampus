@@ -90,6 +90,13 @@ class TerminalPart:
     def terminal_context(self, request: dict[str, Any]) -> dict[str, Any]:
         return {"percent": cli_sessions.context_percent(request["agent"])}
 
+    def terminal_rebrief(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Points a running agent at its briefing again. The briefing file itself is not rewritten."""
+        who = request["agent"]
+        path = self.terminals.resend_briefing(who)
+        self.note("handoff", text=f"briefing sent again to {who}")
+        return {"path": path}
+
     def terminal_traces(self, request: dict[str, Any]) -> dict[str, Any]:
         """What the agent ran, newest first: every tool call with its time and outcome, shell commands included."""
         return {"traces": cli_sessions.tool_trace(request["agent"])}

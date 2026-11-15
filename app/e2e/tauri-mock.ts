@@ -749,6 +749,11 @@ export async function mockSidecar(
             return { ok: true };
           case "terminal_context":
             return { percent: 42 };
+          case "terminal_rebrief": {
+            const w = window as unknown as { __rebriefed?: string[] };
+            (w.__rebriefed ??= []).push(String(args.params?.agent));
+            return { path: "/home/me/.hippocampus/briefings/agent.md" };
+          }
           case "webhooks":
             return { webhooks: hookRows };
           case "save_webhook":

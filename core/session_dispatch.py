@@ -70,6 +70,7 @@ class DispatchPart:
             "agent_session": self.agent_session,
             "terminal_context": self.terminal_context,
             "terminal_traces": self.terminal_traces,
+            "terminal_rebrief": self.terminal_rebrief,
             "terminal_command": self.terminal_command,
             "terminal_start": terminal("terminal_start"),
             "terminal_input": terminal("terminal_input"),

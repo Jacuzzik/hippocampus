@@ -139,6 +139,13 @@
       )
       .catch((cause) => report("Could not send to the terminal", cause));
   }
+  // Points a running agent at its briefing file again, for a session that drifted or was cleared.
+  function resendBriefing(agent: string): void {
+    invoke("sidecar_call", {
+      method: "terminal_rebrief",
+      params: { agent },
+    }).catch((cause) => report("Could not resend the briefing", cause));
+  }
   // CMD shows what is running now, else the last command the agent ran.
   const cmdOf = (id: string): string => {
     const info = live[id];
@@ -274,6 +281,16 @@
         menu = null;
       }}>Rename</button
     >
+    {#if live[open.id]?.command}
+      <button
+        type="button"
+        role="menuitem"
+        onclick={() => {
+          resendBriefing(open.id);
+          menu = null;
+        }}>Resend briefing</button
+      >
+    {/if}
     {#if (live[open.id]?.command ?? "").startsWith("claude")}
       <button
         type="button"

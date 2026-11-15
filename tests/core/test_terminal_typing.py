@@ -48,3 +48,18 @@ def test_a_quiet_line_waits_while_the_cli_is_busy_or_was_just_typed_into(monkeyp
     time.sleep(0.25)
     assert terms.send_line_when_quiet("ada", "/remote-control x") is True
     assert terms.typed == ["inbox text", "\r", "/remote-control x", "\r"]
+
+
+def test_resend_briefing_types_the_pointer_and_needs_a_briefing_file(tmp_path, monkeypatch) -> None:
+    import pytest
+
+    monkeypatch.setattr(terminal, "SUBMIT_DELAY_S", 0.0)
+    terms = Recorder()
+    terms.screen_dir = tmp_path / "screens"
+    with pytest.raises(RuntimeError, match="no briefing yet"):
+        terms.resend_briefing("ada")
+    briefing = tmp_path / "briefings" / "ada.md"
+    briefing.parent.mkdir()
+    briefing.write_text("# Briefing")
+    assert terms.resend_briefing("ada") == str(briefing)
+    assert str(briefing) in terms.typed[0] and terms.typed[1] == "\r"

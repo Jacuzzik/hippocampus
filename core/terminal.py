@@ -286,6 +286,19 @@ class Terminals:
         path.write_text(text, encoding="utf-8")
         return str(path)
 
+    def resend_briefing(self, agent: str) -> str:
+        """Types the briefing pointer into a running CLI again, for a session that has drifted from its rules or was cleared. Returns the briefing's path."""
+        if self.screen_dir is None:
+            raise RuntimeError("This agent has no briefing file to point at.")
+        path = self.screen_dir.parent / "briefings" / f"{agent}.md"
+        if not path.is_file():
+            raise RuntimeError("This agent has no briefing yet. Start its terminal first.")
+        self.send_line(
+            agent, f"Your briefing is in {path}. Read it again now and follow it for this session."
+        )
+        self._log_event(agent, "briefing pointer sent again")
+        return str(path)
+
     def write(self, agent: str, data: str) -> None:
         running = self.procs.get(agent)
         if running is None or running[0].poll() is not None:
