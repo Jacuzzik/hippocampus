@@ -140,6 +140,7 @@ Components use these variables and nothing else: `npm test` fails on a raw colou
 
 | Variable | Value |
 |---|---|
+| `--space-0` | `2px` |
 | `--space-1` | `4px` |
 | `--space-2` | `8px` |
 | `--space-3` | `12px` |

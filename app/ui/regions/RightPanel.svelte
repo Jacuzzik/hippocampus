@@ -393,7 +393,7 @@
     align-self: flex-start;
     align-items: center;
     gap: var(--space-1);
-    padding: 2px var(--space-2);
+    padding: var(--space-0) var(--space-2);
     border: 1px solid var(--color-md-border);
     border-radius: var(--radius-sm);
     background: var(--color-md-surface);
@@ -433,7 +433,7 @@
     letter-spacing: 0.04em;
   }
   .pill {
-    padding: 2px var(--space-2);
+    padding: var(--space-0) var(--space-2);
     border: 1px solid var(--color-md-border);
     border-radius: var(--radius-sm);
     color: var(--color-md-text-muted);
