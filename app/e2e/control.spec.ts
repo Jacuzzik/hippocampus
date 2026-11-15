@@ -298,3 +298,15 @@ test("local model servers show whether each answers, and can be checked again", 
   await dialog.getByRole("button", { name: "Test servers" }).click();
   await expect(list.getByRole("listitem").nth(0)).toContainText("Answering");
 });
+
+test("a section whose answer fails shows the reason and a Try again button", async ({
+  page,
+}) => {
+  await mockSidecar(page, { fail: ["webhooks"] });
+  await page.goto("/");
+  await openControl(page);
+  const dialog = page.getByRole("dialog", { name: "Control panel" });
+  await dialog.getByRole("tab", { name: "Work" }).click();
+  await expect(dialog.getByRole("alert")).toContainText("webhooks is set to fail");
+  await expect(dialog.getByRole("button", { name: "Try again" })).toBeVisible();
+});

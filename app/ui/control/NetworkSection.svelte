@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ErrorRow from "../controls/ErrorRow.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { onMount } from "svelte";
   import { NETWORK_MODES, NETWORK_TEXT, type NetworkMode } from "./model";
@@ -54,5 +55,5 @@
     {/each}
   </div>
   <p class="hint">{NETWORK_TEXT[mode]}</p>
-  {#if error}<p class="error" role="alert">{error}</p>{/if}
+  {#if error}<ErrorRow message={error} onretry={load} />{/if}
 </section>

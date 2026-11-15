@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ErrorRow from "../controls/ErrorRow.svelte";
   import Button from "../controls/Button.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { onMount } from "svelte";
@@ -144,5 +145,5 @@
       {#if saved}<span class="muted">Saved.</span>{/if}
     </div>
   {/if}
-  {#if error}<p class="error" role="alert">{error}</p>{/if}
+  {#if error}<ErrorRow message={error} onretry={load} />{/if}
 </section>

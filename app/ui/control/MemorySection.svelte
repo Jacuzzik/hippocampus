@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ErrorRow from "../controls/ErrorRow.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { onMount } from "svelte";
   import StatusCard from "../controls/StatusCard.svelte";
@@ -94,7 +95,7 @@
       </ul>
     {/if}
   {/if}
-  {#if error}<p class="error" role="alert">{error}</p>{/if}
+  {#if error}<ErrorRow message={error} onretry={load} />{/if}
   {#if status && !status.ready}
     <StatusCard
       name="Search by meaning"
