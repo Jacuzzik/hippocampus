@@ -592,6 +592,15 @@ export async function mockSidecar(
           case "budget_allow":
             allowance = true;
             return { allowance: true };
+          case "save_export":
+            return {
+              path: `/home/me/.hippocampus/exports/20261114-${String(args.params?.name)}`,
+            };
+          case "export_notes":
+            return {
+              path: "/home/me/.hippocampus/exports/20261114-notes.zip",
+              notes: 3,
+            };
           case "clear_activity":
             return { rows: [] };
           case "activity":

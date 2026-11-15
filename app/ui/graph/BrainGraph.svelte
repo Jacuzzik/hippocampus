@@ -1,5 +1,8 @@
 <script lang="ts">
   import Toggle from "../controls/Toggle.svelte";
+  import Dropdown from "../controls/Dropdown.svelte";
+  import { cssToken } from "../cssToken.ts";
+  import { addView, graphSvg, parseViews, type SavedView } from "./export.ts";
   import { untrack } from "svelte";
   import { SvelteMap, SvelteSet } from "svelte/reactivity";
   import { invoke } from "@tauri-apps/api/core";
@@ -377,14 +380,84 @@
     return n;
   }
 
+  // Typing in the note search brings the matching notes into view, so a found note is never off screen.
+  $effect(() => {
+    const words = query.trim();
+    const hits = matched.flatMap((on, i) => (on ? [i] : []));
+    if (!words || hits.length === 0 || hits.length === matched.length) return;
+    untrack(() => fitTo(hits));
+  });
+
+  // The graph as a picture: an SVG file in the app's exports folder; the place is said under the tools.
+  let exportNote = $state<string | null>(null);
+  async function exportSvg(): Promise<void> {
+    exportNote = null;
+    const svg = graphSvg(
+      data.nodes.map((n) => n.title),
+      pos,
+      sim.edges,
+      {
+        bg: cssToken("bg-0"),
+        node: cssToken("accent"),
+        edge: cssToken("text-muted"),
+        text: cssToken("text"),
+      },
+    );
+    try {
+      const saved = await invoke<{ path: string }>("sidecar_call", {
+        method: "save_export",
+        params: { name: "graph.svg", text: svg },
+      });
+      exportNote = `Saved to ${saved.path}`;
+    } catch (cause) {
+      exportNote = `Could not save the picture: ${String(cause)}`;
+    }
+  }
+
+  // Saved views: places in the graph to come back to. Kept per viewer, in this window's storage.
+  const VIEWS_KEY = "graph-views";
+  function loadViews(): SavedView[] {
+    try {
+      return parseViews(localStorage.getItem(VIEWS_KEY));
+    } catch {
+      return [];
+    }
+  }
+  let views = $state<SavedView[]>(loadViews());
+  function storeViews(next: SavedView[]): void {
+    views = next;
+    try {
+      localStorage.setItem(VIEWS_KEY, JSON.stringify(next));
+    } catch {
+      /* storage blocked: the views hold until the window closes */
+    }
+  }
+  function pickView(name: string): void {
+    if (name === "forget") {
+      storeViews([]);
+      return;
+    }
+    const view = views.find((v) => v.name === name);
+    if (!view) return;
+    cam = { x: view.x, y: view.y, zoom: view.zoom };
+    schedule();
+  }
+
   function fitAll(): void {
+    fitTo(null);
+  }
+
+  /** Brings the given notes (or all of them) into view. A few notes are not zoomed past a readable size. */
+  function fitTo(only: number[] | null): void {
     if (!sim.count) return;
     // Every dot fits the view, the core included, so no outlier is cut off.
     let minX = Infinity;
     let maxX = -Infinity;
     let minY = Infinity;
     let maxY = -Infinity;
-    for (let i = 0; i < pos.length; i += 2) {
+    const each = only ? only.map((i) => 2 * i) : null;
+    for (let k = 0; k < (each ? each.length : pos.length / 2); k++) {
+      const i = each ? (each[k] ?? 0) : 2 * k;
       const x = pos[i] ?? 0;
       const y = pos[i + 1] ?? 0;
       minX = Math.min(minX, x);
@@ -393,7 +466,8 @@
       maxY = Math.max(maxY, y);
     }
     const [w, h] = size();
-    const zoom = Math.min(w / (maxX - minX + 40), h / (maxY - minY + 40));
+    let zoom = Math.min(w / (maxX - minX + 40), h / (maxY - minY + 40));
+    if (only) zoom = Math.min(zoom, 2);
     cam = centerOn((minX + maxX) / 2, (minY + maxY) / 2, zoom, w, h);
     schedule();
   }
@@ -893,7 +967,31 @@
     <button type="button" class="fit" onclick={fitAll}>Fit graph</button>
     <Toggle bind:checked={hideOrphans} label="Hide orphans" />
     <Toggle bind:checked={hideNames} label="Hide names" />
+    <button
+      type="button"
+      class="fit"
+      onclick={() => storeViews(addView(views, cam))}>Save view</button
+    >
+    {#if views.length}
+      <span class="views">
+        <Dropdown
+          label="Saved views"
+          value=""
+          options={[
+            ...views.map((v) => ({ value: v.name, label: v.name })),
+            { value: "forget", label: "Forget all views" },
+          ]}
+          onchange={pickView}
+        />
+      </span>
+    {/if}
+    <button type="button" class="fit" onclick={() => void exportSvg()}
+      >Export picture</button
+    >
   </div>
+  {#if exportNote}
+    <p class="export-note" role="status">{exportNote}</p>
+  {/if}
 
   {#if error}
     <p class="notice" role="alert">The graph cannot be drawn: {error}</p>
@@ -1099,6 +1197,25 @@
     gap: var(--space-2);
     font-size: var(--font-size-xs);
     color: var(--color-text-muted);
+  }
+
+  .views {
+    display: flex;
+    width: 9em;
+  }
+
+  .export-note {
+    position: absolute;
+    top: var(--tools-band);
+    left: var(--space-2);
+    z-index: 1;
+    margin: 0;
+    padding: var(--space-1) var(--space-2);
+    font-size: var(--font-size-xs);
+    color: var(--color-text);
+    background: var(--color-bg-1);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
   }
 
   .fit {

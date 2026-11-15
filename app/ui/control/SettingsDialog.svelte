@@ -204,6 +204,20 @@
       historyNote = String(cause);
     }
   }
+  // Every note of the vault, copied into one zip in the app's exports folder. The vault is only read.
+  let notesNote = $state<string | null>(null);
+  async function exportNotes(): Promise<void> {
+    notesNote = null;
+    try {
+      const done = await invoke<{ path: string; notes: number }>(
+        "sidecar_call",
+        { method: "export_notes" },
+      );
+      notesNote = `${done.notes} notes saved to ${done.path}`;
+    } catch (cause) {
+      notesNote = String(cause);
+    }
+  }
   function clearErrors(): void {
     crashLog.clear();
     invoke<{ crashes: CrashRow[] }>("sidecar_call", {
@@ -714,6 +728,14 @@
                 >
               </span>
             </SettingRow>
+            <SettingRow title="Export my notes"
+              >{#snippet help()}Copies every note into one zip file in the app's
+                exports folder. Your vault is not changed.{/snippet}
+              <button type="button" onclick={() => void exportNotes()}
+                >Export notes</button
+              >
+            </SettingRow>
+            {#if notesNote}<p class="muted" role="status">{notesNote}</p>{/if}
             <SettingRow title="Activity history"
               >{#snippet help()}The tool log and office events shown on the
                 Activity and History tabs, kept on this computer in

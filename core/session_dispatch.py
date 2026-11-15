@@ -95,6 +95,8 @@ class DispatchPart:
             "set_budget": self.set_budget,
             "activity": self.activity,
             "clear_activity": plain(self.clear_activity),
+            "save_export": self.save_export,
+            "export_notes": plain(self.export_notes),
             "memory_search": self.memory_search,
             "set_job": self.set_job,
             "start_helper": self.start_helper,

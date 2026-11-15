@@ -536,3 +536,18 @@ test("Settings opens from the ribbon and with Ctrl+comma, and the activity histo
   await page.keyboard.press("Control+,");
   await expect(dialog).toBeVisible();
 });
+
+test("the notes are exported as one zip from Privacy and data, and the place is said", async ({
+  page,
+}) => {
+  await mockSidecar(page);
+  await page.goto("/");
+  const dialog = await openSettings(page);
+  await dialog.getByRole("tab", { name: "Privacy and data" }).click();
+  await dialog.getByRole("button", { name: "Export notes" }).click();
+  await expect(
+    dialog.getByText(
+      "3 notes saved to /home/me/.hippocampus/exports/20261114-notes.zip",
+    ),
+  ).toBeVisible();
+});

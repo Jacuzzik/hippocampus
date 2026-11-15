@@ -57,6 +57,12 @@ METHODS: dict[str, Method] = {
     "tasks": _m("The office task board."),
     "activity": _m("The tool log and office events."),
     "clear_activity": _m("Empty the tool log and office events."),
+    "save_export": _m(
+        "Save a text file into the exports folder.",
+        ("name", 'a file "name"'),
+        ("text", 'the "text"'),
+    ),
+    "export_notes": _m("Zip the notes of the open vault into the exports folder."),
     "cards": _m("The agent cards."),
     "card_create": _m("Add a card."),
     "card_update": _m("Change a card."),

@@ -64,3 +64,30 @@ test("the status bar shows tokens used today against the cap, and a click opens 
     dialog.getByRole("heading", { name: "Token budget" }),
   ).toBeVisible();
 });
+
+test("the graph is exported as a picture, and a saved view brings the same place back", async ({
+  page,
+}) => {
+  await mockSidecar(page);
+  await page.goto("/");
+  const tools = page.locator(".brain .tools");
+  await tools.getByRole("button", { name: "Export picture" }).click();
+  await expect(page.locator(".brain .export-note")).toContainText(
+    "Saved to /home/me/.hippocampus/exports/20261114-graph.svg",
+  );
+  await tools.getByRole("button", { name: "Save view" }).click();
+  const stored = () =>
+    page.evaluate(() => localStorage.getItem("graph-views") ?? "[]");
+  expect(JSON.parse(await stored())).toHaveLength(1);
+  await tools.getByRole("button", { name: "Saved views" }).click();
+  // The option is on top (checked by hit test); a forced click avoids Playwright waiting on the graph's redraws.
+  await page.getByRole("option", { name: "View 1" }).click({ force: true });
+  await tools.getByRole("button", { name: "Saved views" }).click();
+  await page
+    .getByRole("option", { name: "Forget all views" })
+    .click({ force: true });
+  await expect(tools.getByRole("button", { name: "Saved views" })).toHaveCount(
+    0,
+  );
+  expect(JSON.parse(await stored())).toHaveLength(0);
+});

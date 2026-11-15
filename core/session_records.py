@@ -6,6 +6,7 @@ from typing import Any
 from core import (
     app_log,
     crash_log,
+    exports,
     webhooks,
 )
 
@@ -31,6 +32,20 @@ class RecordsPart:
         if isinstance(limit, bool) or not isinstance(limit, int):
             raise ValueError("limit must be a whole number")
         return {"path": str(app_log.path(self.storage)), "lines": app_log.tail(self.storage, limit)}
+
+    def save_export(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Save a text the window made (the graph as a picture) into the exports folder."""
+        path = exports.save_text(self.storage, request.get("name"), request.get("text"))
+        return {"path": str(path)}
+
+    def export_notes(self) -> dict[str, Any]:
+        """Zip every note of the open vault into the exports folder. The vault is only read."""
+        vault = self.settings.vault
+        if vault is None or not Path(vault).is_dir():
+            raise ValueError("no vault is open")
+        path, count = exports.zip_notes(self.storage, Path(vault))
+        self.note("setting", text=f"{count} notes exported to {path.name}")
+        return {"path": str(path), "notes": count}
 
     def webhooks_state(self) -> dict[str, Any]:
         return {"webhooks": webhooks.load(self.webhooks_path)}
