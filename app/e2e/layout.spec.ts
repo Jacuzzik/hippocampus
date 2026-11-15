@@ -91,3 +91,19 @@ test("the graph is exported as a picture, and a saved view brings the same place
   );
   expect(JSON.parse(await stored())).toHaveLength(0);
 });
+
+test("the right panel slides in when opened, and not when motion is off", async ({
+  page,
+}) => {
+  await mockSidecar(page);
+  await page.goto("/");
+  const panel = page.locator(".right-panel");
+  await expect(panel).toBeVisible();
+  const name = (): Promise<string> =>
+    panel.evaluate((el) => getComputedStyle(el).animationName);
+  expect(await name()).toBe("panel-in-right");
+  await page.evaluate(() => {
+    document.documentElement.dataset.motion = "off";
+  });
+  expect(await name()).toBe("none");
+});

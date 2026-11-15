@@ -112,6 +112,21 @@ textarea:focus-visible {
   }
 }
 
+/* A side panel slides a short way into place as it fades in. */
+@keyframes panel-in-right {
+  from {
+    opacity: 0;
+    translate: 12px 0;
+  }
+}
+
+@keyframes panel-in-left {
+  from {
+    opacity: 0;
+    translate: -12px 0;
+  }
+}
+
 @keyframes shimmer {
   to {
     background-position: -200% 0;
@@ -125,6 +140,15 @@ textarea:focus-visible {
 
 [role="presentation"]:has(> [role="dialog"]) {
   animation: fade-in var(--duration-base) var(--ease-standard);
+}
+
+/* The right panel and the note list slide in when they are opened. Hidden panels play nothing. */
+.right-panel:not([hidden]) {
+  animation: panel-in-right var(--duration-base) var(--ease-standard);
+}
+
+aside.sidebar[aria-label="Notes"] {
+  animation: panel-in-left var(--duration-base) var(--ease-standard);
 }
 
 /* The content of a tab fades in, so a tab change is not a hard cut. */
