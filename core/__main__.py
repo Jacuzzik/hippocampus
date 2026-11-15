@@ -108,6 +108,14 @@ from tools.registry import CONFIRM_TIERS
 from tools.vault_tools import vault_tools
 
 
+def _waits_on_human(task: dict[str, Any]) -> bool:
+    """True when the card holds a question for the human that has no answer yet."""
+    asks = task.get("humanQA")
+    if not isinstance(asks, list):
+        return False
+    return any(isinstance(a, dict) and a.get("q") and not a.get("a") for a in asks)
+
+
 class Session(
     JobsPart,
     HivePart,
@@ -204,7 +212,13 @@ class Session(
         except (OSError, ValueError, AttributeError):
             return {"tasks": []}
         keep = ("id", "title", "status", "assignee", "updatedAt")
-        return {"tasks": [{k: t.get(k) for k in keep} for t in raw if isinstance(t, dict)]}
+        return {
+            "tasks": [
+                {**{k: t.get(k) for k in keep}, "waiting": _waits_on_human(t)}
+                for t in raw
+                if isinstance(t, dict)
+            ]
+        }
 
     def inbox(self) -> dict[str, Any]:
         """Every message between this app's agents, with its state. Queued ones first, then newest first."""

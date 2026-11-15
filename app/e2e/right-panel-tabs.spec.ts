@@ -263,3 +263,15 @@ test("a slow skill install shows elapsed time, and Stop waiting hides it without
   await region.getByRole("button", { name: "Stop waiting" }).click();
   await expect(region.getByRole("status")).toHaveCount(0);
 });
+
+test("the tasks tab marks a card that waits on an answer from you", async ({
+  page,
+}) => {
+  await page.getByRole("tab", { name: "tasks" }).click();
+  const region = page.getByRole("region", { name: "Tasks" });
+  const row = region.getByRole("listitem").filter({ hasText: "MDF-3" });
+  await expect(row).toContainText("Waiting on you");
+  await expect(
+    region.getByRole("listitem").filter({ hasText: "MDF-1" }),
+  ).not.toContainText("Waiting on you");
+});

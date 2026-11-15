@@ -389,6 +389,14 @@ export async function mockSidecar(
                   assignee: null,
                   updatedAt: null,
                 },
+                {
+                  id: "MDF-3",
+                  title: "Pick the release date",
+                  status: "blocked",
+                  assignee: "kevin",
+                  updatedAt: null,
+                  waiting: true,
+                },
               ],
             };
           case "inbox":

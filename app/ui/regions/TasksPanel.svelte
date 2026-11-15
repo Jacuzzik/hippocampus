@@ -13,6 +13,7 @@
     status: string;
     assignee: string | null;
     updatedAt: string | null;
+    waiting?: boolean;
   };
 
   const STATUSES = ["todo", "doing", "blocked", "done"];
@@ -68,6 +69,7 @@
             <li>
               <span class="id">{task.id}</span>
               <span>{task.title}</span>
+              {#if task.waiting}<span class="waiting">Waiting on you</span>{/if}
               <small>{task.assignee ?? "unassigned"}</small>
             </li>
           {/each}
@@ -112,5 +114,9 @@
 
   .muted {
     color: var(--color-md-text-muted);
+  }
+
+  .waiting {
+    color: var(--color-ds-warning);
   }
 </style>
