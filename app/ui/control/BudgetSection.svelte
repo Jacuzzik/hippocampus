@@ -19,6 +19,7 @@
     caps: { app: Caps; assistant: Caps };
     used: { app: Caps; assistant: Caps };
     allowance: boolean;
+    by_agent?: Record<string, number>;
   };
   const LABELS = { app: "Whole app", assistant: "Assistant" } as const;
   const SCOPES = ["app", "assistant"] as const;
@@ -137,6 +138,16 @@
         </div>
       </div>
     {/each}
+    <h4>Used today, by agent</h4>
+    {#if Object.keys(budget.by_agent ?? {}).length === 0}
+      <p class="muted">No tokens used today.</p>
+    {:else}
+      <ul aria-label="Tokens used today by agent">
+        {#each Object.entries(budget.by_agent ?? {}) as [agent, tokens] (agent)}
+          <li>{agent}: {tokens.toLocaleString("en-US")} tokens</li>
+        {/each}
+      </ul>
+    {/if}
     <div class="row">
       <Button variant="primary" onclick={save}>Save caps</Button>
       <Button disabled={!budget.allowance && !reached} onclick={allowOne}

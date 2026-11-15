@@ -53,6 +53,26 @@ class Ledger:
             with self.path.open("a", encoding="utf-8") as out:
                 out.write(line + "\n")
 
+    def by_agent(self, window: str, now: datetime) -> dict[str, int]:
+        """Tokens each agent used in the current window, biggest first."""
+        start = window_start(window, now)
+        totals: dict[str, int] = {}
+        with self._lock:
+            lines = (
+                self.path.read_text(encoding="utf-8").splitlines() if self.path.is_file() else []
+            )
+        for line in lines:
+            try:
+                row = json.loads(line)
+                when = datetime.fromisoformat(row["ts"])
+                tokens = int(row.get("tokens", 0))
+            except (ValueError, KeyError, TypeError):
+                continue
+            if when >= start and tokens > 0:
+                name = str(row.get("agent") or "unknown")
+                totals[name] = totals.get(name, 0) + tokens
+        return dict(sorted(totals.items(), key=lambda item: (-item[1], item[0])))
+
     def used(self, window: str, now: datetime, agent: str | None = None) -> int:
         """Tokens used in the current window. `agent` None counts every agent (the app)."""
         start = window_start(window, now)

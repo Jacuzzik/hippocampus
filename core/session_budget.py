@@ -32,7 +32,13 @@ class BudgetPart:
             for scope, (_caps, agent) in scopes.items()
         }
         caps = {scope: asdict(caps) for scope, (caps, _agent) in scopes.items()}
-        return {"caps": caps, "used": used, "allowance": self.allowance}
+        return {
+            "caps": caps,
+            "used": used,
+            "allowance": self.allowance,
+            # Who used what today, so a busy agent is easy to spot.
+            "by_agent": self.ledger.by_agent("daily", now),
+        }
 
     def budget_allow(self) -> dict[str, Any]:
         """Let the next request past a cap through, once."""

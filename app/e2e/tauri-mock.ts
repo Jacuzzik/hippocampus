@@ -600,7 +600,12 @@ export async function mockSidecar(
               modes: ["off", "listen", "converse", "open"],
             };
           case "budget":
-            return { caps: budgetCaps, used: budgetUsed, allowance };
+            return {
+              caps: budgetCaps,
+              used: budgetUsed,
+              allowance,
+              by_agent: { assistant: 12000, kevin: 3400 },
+            };
           case "set_budget":
             budgetCaps = args.params as typeof budgetCaps;
             return { caps: budgetCaps, used: budgetUsed, allowance };

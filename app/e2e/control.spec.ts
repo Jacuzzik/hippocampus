@@ -310,3 +310,16 @@ test("a section whose answer fails shows the reason and a Try again button", asy
   await expect(dialog.getByRole("alert")).toContainText("webhooks is set to fail");
   await expect(dialog.getByRole("button", { name: "Try again" })).toBeVisible();
 });
+
+test("the budget lists the tokens each agent used today", async ({ page }) => {
+  await mockSidecar(page);
+  await page.goto("/");
+  await page.getByRole("button", { name: "Settings" }).click();
+  const dialog = page.getByRole("dialog", { name: "Settings" });
+  await dialog.getByRole("tab", { name: "Budgets" }).click();
+  const list = dialog.getByRole("list", { name: "Tokens used today by agent" });
+  await expect(list.getByRole("listitem")).toHaveText([
+    "assistant: 12,000 tokens",
+    "kevin: 3,400 tokens",
+  ]);
+});
