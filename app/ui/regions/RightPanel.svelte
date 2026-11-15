@@ -1,3 +1,20 @@
+<script module lang="ts">
+  // The right panel's tabs, in order. The command palette lists them too (App.svelte).
+  export const PANEL_TABS = [
+    "terminal",
+    "monitor",
+    "tasks",
+    "inbox",
+    "ask me",
+    "triggers",
+    "history",
+    "memory",
+    "activity",
+    "skills",
+    "temps",
+  ];
+</script>
+
 <script lang="ts">
   import { FONT_MAX, FONT_MIN, prefs } from "../prefs.svelte.ts";
   import { every } from "../poll.ts";
@@ -99,19 +116,7 @@
 
   // Names match the office app's Command Center tabs. The terminal is mounted at launch; the other views mount
   // the first time they are opened and then stay (see `visited`).
-  const TABS = [
-    "terminal",
-    "monitor",
-    "tasks",
-    "inbox",
-    "ask me",
-    "triggers",
-    "history",
-    "memory",
-    "activity",
-    "skills",
-    "temps",
-  ];
+  const TABS = PANEL_TABS;
   const VIEWS = TABS.filter((id) => id !== "terminal");
   let visited = $state<string[]>([]);
   $effect(() => {
@@ -157,6 +162,15 @@
   );
   $effect(() => {
     if (tab !== "agent") prefs.lastTab = tab;
+  });
+  // The command palette asks for a tab by name.
+  onMount(() => {
+    const show = (e: Event): void => {
+      const id = (e as CustomEvent<string>).detail;
+      if (TABS.includes(id)) tab = id;
+    };
+    window.addEventListener("show-tab", show);
+    return () => window.removeEventListener("show-tab", show);
   });
   const fontSize = $derived(prefs.terminalFontSize);
 

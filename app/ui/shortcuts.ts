@@ -15,4 +15,9 @@ export const SHORTCUTS: Shortcut[] = [
   { keys: "Shift+Enter", does: "Add a line", where: "Message boxes" },
   { keys: "↑ ↓", does: "Move through the list", where: "Command palette" },
   { keys: "Enter", does: "Run the chosen entry", where: "Command palette" },
+  {
+    keys: "Ctrl+P, then type",
+    does: "Add an agent, show a tab, change the theme, open a Settings page",
+    where: "Command palette",
+  },
 ];

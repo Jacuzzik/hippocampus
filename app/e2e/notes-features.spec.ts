@@ -32,7 +32,7 @@ test("Ctrl+P lists app actions and Enter runs the one picked", async ({
   await expect(assistant).toBeVisible();
   await page.keyboard.press("Control+p");
   const palette = page.getByRole("dialog", { name: "Command palette" });
-  await expect(palette.getByRole("option")).toHaveCount(9 + 14 + 1);
+  await expect(palette.getByRole("option")).toHaveCount(9 + 14 + 1 + 16); // 16: add agent, 11 tabs, 3 themes, quiet mode
   await page.keyboard.type("toggle assistant");
   await expect(palette.getByRole("option")).toHaveCount(1);
   await page.keyboard.press("Enter");
@@ -82,4 +82,21 @@ test("Escape closes the drawer, and closes the palette without touching the draw
   await expect(drawer(page)).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(drawer(page)).toHaveCount(0);
+});
+
+test("the palette shows a right-panel tab and changes the theme", async ({
+  page,
+}) => {
+  await page.keyboard.press("Control+p");
+  await page.keyboard.type("show tab: memory");
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("region", { name: "Memory" })).toBeVisible();
+  await page.keyboard.press("Control+p");
+  await page.keyboard.type("theme: light");
+  await page.keyboard.press("Enter");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await page.keyboard.press("Control+p");
+  await page.keyboard.type("add an agent");
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("dialog", { name: /agent/i })).toBeVisible();
 });

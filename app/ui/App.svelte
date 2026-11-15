@@ -5,7 +5,8 @@
   import GraphRegion from "./regions/GraphRegion.svelte";
   import NoteSidebar from "./regions/NoteSidebar.svelte";
   import Ribbon from "./regions/Ribbon.svelte";
-  import RightPanel from "./regions/RightPanel.svelte";
+  import RightPanel, { PANEL_TABS } from "./regions/RightPanel.svelte";
+  import { prefs } from "./prefs.svelte.ts";
   import StatusBar from "./regions/StatusBar.svelte";
   import AccountDialog from "./overlays/AccountDialog.svelte";
   import LoadingScreen from "./overlays/LoadingScreen.svelte";
@@ -183,6 +184,26 @@
         settingsStart = "General";
         settingsOpen = true;
       },
+    },
+    { id: "add-agent", label: "Add an agent", run: () => (addOpen = true) },
+    // One entry per right-panel tab, so every view opens from the keyboard.
+    ...PANEL_TABS.map((id) => ({
+      id: `tab-${id}`,
+      label: `Show tab: ${id}`,
+      run: () => {
+        panelOpen = true;
+        window.dispatchEvent(new CustomEvent("show-tab", { detail: id }));
+      },
+    })),
+    ...(["dark", "light", "system"] as const).map((theme) => ({
+      id: `theme-${theme}`,
+      label: `Theme: ${theme}`,
+      run: () => (prefs.theme = theme),
+    })),
+    {
+      id: "quiet",
+      label: "Quiet mode on or off",
+      run: () => (prefs.quiet = !prefs.quiet),
     },
     // One entry per Settings page, so the palette jumps straight to it.
     ...SETTINGS_PAGES.map((entry) => ({
