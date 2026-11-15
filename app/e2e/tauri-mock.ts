@@ -776,6 +776,7 @@ export async function mockSidecar(
             return { skills: skillRows };
           case "install_skill": {
             const path = String(args.params?.path ?? "");
+            if (path.includes("slow")) await new Promise((r) => setTimeout(r, 4000));
             const name = path.split("/").pop() ?? "";
             skillRows = [
               ...skillRows,

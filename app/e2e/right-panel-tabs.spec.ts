@@ -248,3 +248,16 @@ test("the monitor tab says whether GitHub is connected, above the issues", async
     page.getByRole("status", { name: "GitHub status" }),
   ).toContainText(/GitHub: (Connected|Not connected|Needs setup|Error)/);
 });
+
+test("a slow skill install shows elapsed time, and Stop waiting hides it without cancelling", async ({
+  page,
+}) => {
+  await page.getByRole("tab", { name: "skills" }).click();
+  const region = page.getByRole("region", { name: "Skills" });
+  await region.getByLabel("Skill folder to install").fill("/home/me/slow-skill");
+  await region.getByRole("button", { name: "Install" }).click();
+  await region.getByRole("button", { name: "Confirm install" }).click();
+  await expect(region.getByRole("status")).toContainText("Installing a skill");
+  await region.getByRole("button", { name: "Stop waiting" }).click();
+  await expect(region.getByRole("status")).toHaveCount(0);
+});

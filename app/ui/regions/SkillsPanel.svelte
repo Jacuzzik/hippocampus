@@ -1,6 +1,7 @@
 <!-- The installed skills: name and what it does, a box to install one from a folder, and Remove with a second click to confirm. -->
 <script lang="ts">
   import Loading from "../controls/Loading.svelte";
+  import WaitTimer from "../controls/WaitTimer.svelte";
   import { onMount } from "svelte";
   import { every } from "../poll.ts";
   import { flagOn } from "../flags.svelte.ts";
@@ -60,11 +61,14 @@
     )
       installPath = "";
   }
+  // Set while a change is on its way; the timer shows how long it has taken.
+  let working = $state<string | null>(null);
   async function change(
     method: string,
     params: Record<string, unknown>,
   ): Promise<boolean> {
     actionError = null;
+    working = method === "install_skill" ? "Installing a skill" : null;
     try {
       skills = (
         await invoke<{ skills: Skill[] }>("sidecar_call", { method, params })
@@ -73,6 +77,8 @@
     } catch (cause) {
       actionError = String(cause);
       return false;
+    } finally {
+      working = null;
     }
   }
   onMount(() => {
@@ -132,6 +138,9 @@
         >{installArmed ? "Confirm install" : "Install"}</button
       >
     </form>
+    {#if working}
+      <WaitTimer label={working} onstop={() => (working = null)} />
+    {/if}
     {#if actionError}<p class="error" role="alert">{actionError}</p>{/if}
   {/if}
 </section>
