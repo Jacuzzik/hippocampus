@@ -11,6 +11,38 @@ from core.session_shared import (
 )
 from core.vault.scanner import iter_notes
 
+# A memory file larger than this is counted by size only, so one huge file cannot slow the tab.
+MAX_COUNTED_BYTES = 1_000_000
+
+
+def note_counts(text: str) -> dict[str, int]:
+    """How many rules and notes a memory file holds, and how many lines say the same thing twice.
+
+    A rule is a list line under a heading with "Rules" in it; a note is a list line anywhere else.
+    A repeated line is a list line whose text (case and spacing ignored) already appeared.
+    """
+    rules = notes = repeated = 0
+    in_rules = False
+    seen: set[str] = set()
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("#"):
+            in_rules = "rules" in stripped.lower()
+            continue
+        if not stripped.startswith(("- ", "* ")):
+            continue
+        key = " ".join(stripped[2:].lower().split())
+        if not key:
+            continue
+        if key in seen:
+            repeated += 1
+        seen.add(key)
+        if in_rules:
+            rules += 1
+        else:
+            notes += 1
+    return {"rules": rules, "notes": notes, "repeated": repeated}
+
 
 class MemoryPart:
     def memory_notes(self) -> dict[str, Any]:
@@ -22,8 +54,15 @@ class MemoryPart:
                 stat = file.stat()
             except OSError:
                 continue
+            counts = {"rules": 0, "notes": 0, "repeated": 0}
+            if stat.st_size <= MAX_COUNTED_BYTES:
+                try:
+                    counts = note_counts(file.read_text(encoding="utf-8", errors="replace"))
+                except OSError:
+                    pass
             rows.append(
                 {
+                    **counts,
                     "agent": file.parent.name,
                     "bytes": stat.st_size,
                     "updated_at": datetime.fromtimestamp(stat.st_mtime).isoformat(

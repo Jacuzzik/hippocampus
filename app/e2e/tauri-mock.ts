@@ -486,7 +486,14 @@ export async function mockSidecar(
           case "memory":
             return {
               notes: [
-                { agent: "god", bytes: 4096, updated_at: "2026-10-29T13:30" },
+                {
+                  agent: "god",
+                  bytes: 4096,
+                  updated_at: "2026-10-29T13:30",
+                  rules: 4,
+                  notes: 12,
+                  repeated: 2,
+                },
                 { agent: "kevin", bytes: 2048, updated_at: "2026-10-28T09:12" },
                 {
                   agent: "oscar",

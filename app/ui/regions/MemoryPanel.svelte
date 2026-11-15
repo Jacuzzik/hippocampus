@@ -6,7 +6,14 @@
   import { flagOn } from "../flags.svelte.ts";
   import { invoke } from "@tauri-apps/api/core";
 
-  type Note = { agent: string; bytes: number; updated_at: string };
+  type Note = {
+    agent: string;
+    bytes: number;
+    updated_at: string;
+    rules?: number;
+    notes?: number;
+    repeated?: number;
+  };
 
   let notes = $state<Note[]>([]);
   let cap = $state(32000);
@@ -62,6 +69,11 @@
             value={note.bytes}
             aria-label="{note.agent} memory size"
           ></meter>
+          <span class="counts"
+            >{note.rules ?? 0} rules · {note.notes ?? 0} notes{#if (note.repeated ?? 0) > 0}&nbsp;· <span
+                class="near">{note.repeated} repeated</span
+              >{/if}</span
+          >
           {#if note.bytes >= cap * 0.8}
             <span class="near"
               >{note.bytes >= cap ? "Full" : "Nearly full"}</span
@@ -109,6 +121,10 @@
     flex-basis: 100%;
     width: 100%;
     height: var(--space-2);
+  }
+
+  .counts {
+    color: var(--color-md-text-muted);
   }
 
   .near {
