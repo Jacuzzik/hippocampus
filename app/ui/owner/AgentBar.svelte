@@ -83,6 +83,8 @@
     status: string;
     ctx: string;
     briefing: string;
+    delivery: string;
+    undelivered: boolean;
   } | null>(null);
   const NO_DATA = "—";
   // What each added agent's terminal is running and its context use; read every few seconds.
@@ -104,6 +106,7 @@
         last?: string | null;
         model?: string | null;
         briefing?: Briefing | null;
+        delivery?: string | null;
       }
     >
   >({});
@@ -112,6 +115,8 @@
     status: string;
     ctx: string;
     briefing: string;
+    delivery: string;
+    undelivered: boolean;
   } {
     const now = live[id];
     const brief = now?.briefing;
@@ -121,6 +126,8 @@
       briefing: brief
         ? `v${brief.version} · ${brief.hash} · handed over ${brief.at.slice(11, 16)}`
         : "Not handed over in this run",
+      delivery: now?.delivery ?? NO_DATA,
+      undelivered: (now?.delivery ?? "").startsWith("Not delivered"),
     };
   }
   // Types one line into an agent's terminal and presses Enter. The text and the Enter key go in
@@ -202,6 +209,7 @@
           model?: string | null;
           boot?: string;
           briefing?: Briefing | null;
+          delivery?: string | null;
         }>("sidecar_call", {
           method: "terminal_command",
           params: { agent: id },
@@ -223,6 +231,7 @@
           last: info.last,
           model: info.model,
           briefing: info.briefing ?? null,
+          delivery: info.delivery ?? null,
         };
       } catch {
         live[id] = { command: null, status: null, percent: null };
@@ -415,6 +424,11 @@
         <dd>{info.ctx}</dd>
         <dt>BRIEFING</dt>
         <dd>{info.briefing}</dd>
+        <dt>DELIVERY</dt>
+        <dd class:undelivered={info.undelivered}>
+          {info.delivery}{#if info.undelivered}. Use Resend briefing in the
+            card menu.{/if}
+        </dd>
       </dl>
     </div>
   </div>
@@ -1022,5 +1036,9 @@
     padding-top: var(--space-2);
     border-top: 1px solid var(--color-border);
     color: var(--color-danger);
+  }
+
+  .undelivered {
+    color: var(--color-ds-warning);
   }
 </style>

@@ -895,6 +895,10 @@ export async function mockSidecar(
                 null,
               status: null,
               boot: bootId(),
+              // A test sets window.__delivery to act out how the briefing reached the CLI.
+              delivery:
+                (window as unknown as { __delivery?: string }).__delivery ??
+                null,
             };
           default:
             throw new Error(`mock: unknown method ${args.method}`);

@@ -215,3 +215,19 @@ test("Add agent previews the briefing from the words typed so far", async ({
   await expect(preview).toContainText("You are Grace,");
   await expect(preview).toContainText("Tidy the notes");
 });
+
+test("HIPPO's details say when its briefing was not delivered", async ({
+  page,
+}) => {
+  await page.evaluate(() => {
+    (window as unknown as { __delivery: string }).__delivery =
+      "Not delivered: the CLI stopped first";
+  });
+  const bar = page.getByLabel("Agents");
+  // The details read the live state, which is read again every 3 seconds.
+  await page.waitForTimeout(3500);
+  await bar.getByRole("button", { name: "Info", exact: true }).first().click();
+  const info = page.getByRole("dialog", { name: "Hippoherman details" });
+  await expect(info).toContainText("Not delivered: the CLI stopped first");
+  await expect(info).toContainText("Use Resend briefing");
+});

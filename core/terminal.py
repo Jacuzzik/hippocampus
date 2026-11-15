@@ -58,6 +58,8 @@ class Terminals:
         self.screen_dir = screen_dir
         self.saved_at: dict[str, float] = {}
         self.procs: dict[str, tuple[subprocess.Popen, int]] = {}
+        # How each agent's briefing reached its CLI in this run, in plain words for the card.
+        self.briefing_delivery: dict[str, str] = {}
         # The command each agent's terminal was started with; it has no keys or secrets, only the CLI and its flags.
         self.argvs: dict[str, list[str]] = {}
         # The folder each agent works in, and a short cache of its last command (the card refreshes every 3 seconds).
@@ -182,6 +184,14 @@ class Terminals:
             if provider != "claude" or argv[1:2] == ["--session-id"] or argv[1:2] == ["--resume"]:
                 cli_sessions.mark_started(agent)
             self.procs[agent] = (proc, master)
+            if not brief_path:
+                self.briefing_delivery.pop(agent, None)
+            elif provider == "claude":
+                self.briefing_delivery[agent] = "Delivered at start, as a system prompt file"
+            elif provider in OPENCODE_FOR:
+                self.briefing_delivery[agent] = "Delivered at start, as the first prompt"
+            else:
+                self.briefing_delivery[agent] = "Waiting for the CLI to be ready"
             # Only Claude Code takes the briefing as a flag. Every other CLI gets a short first message pointing at the briefing file.
             if brief_path and provider != "claude" and provider not in OPENCODE_FOR:
                 threading.Thread(
@@ -225,6 +235,7 @@ class Terminals:
         while time.time() < deadline:
             if proc.poll() is not None or self.procs.get(agent, (None, None))[1] != master:
                 self._log_event(agent, "briefing pointer skipped: CLI stopped before it was sent")
+                self.briefing_delivery[agent] = "Not delivered: the CLI stopped first"
                 return
             first = self.last_output.get(agent)
             if first is not None and time.time() - started >= BRIEFING_DELAY_S:
@@ -233,6 +244,7 @@ class Terminals:
         # Past the deadline the pointer is still sent if the CLI is running, rather than dropped without a trace.
         if proc.poll() is not None or self.procs.get(agent, (None, None))[1] != master:
             self._log_event(agent, "briefing pointer skipped: CLI stopped before it was sent")
+            self.briefing_delivery[agent] = "Not delivered: the CLI stopped first"
             return
         message = f"Your briefing is in {brief_path}. Read it now and follow it for this session."
         try:
@@ -240,8 +252,10 @@ class Terminals:
             time.sleep(SUBMIT_DELAY_S)
             os.write(master, b"\r")
             self._log_event(agent, "briefing pointer sent")
+            self.briefing_delivery[agent] = "Delivered: typed into the terminal"
         except OSError as cause:
             self._log_event(agent, f"briefing pointer failed: {cause}")
+            self.briefing_delivery[agent] = "Not delivered: typing it in failed"
 
     def _send_remote_control(self, agent: str, proc: subprocess.Popen, master: int) -> None:
         """Types /remote-control hipcmps-<agent> into a Claude terminal once it has drawn. Skipped if that terminal has stopped or been replaced."""
@@ -358,6 +372,7 @@ class Terminals:
                 "status": None,
                 "last": self._last_command(agent),
                 "model": cli_sessions.last_model(agent),
+                "delivery": self.briefing_delivery.get(agent),
             }
         last = self.last_output.get(agent)
         running = cli_sessions.open_tool_calls(agent)
@@ -375,6 +390,7 @@ class Terminals:
             "running": running,
             "last": last_cmd,
             "model": cli_sessions.last_model(agent),
+            "delivery": self.briefing_delivery.get(agent),
         }
 
     def _last_command(self, agent: str) -> str | None:
