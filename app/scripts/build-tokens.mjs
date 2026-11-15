@@ -14,6 +14,7 @@ export const CSS_PATH = fileURLToPath(
 const SECTIONS = [
   ["color.semantic", "color"],
   ["space", "space"],
+  ["size", "size"],
   ["radius", "radius"],
   ["font-size", "font-size"],
   ["layout", "layout"],

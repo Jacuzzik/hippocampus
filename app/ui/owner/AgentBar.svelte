@@ -627,7 +627,7 @@
     align-items: center;
     gap: var(--space-2);
     flex: none;
-    min-height: 64px;
+    min-height: var(--size-64);
     min-width: 180px;
     padding: var(--space-2) var(--space-3);
     background: var(--color-md-card);
@@ -644,8 +644,8 @@
   }
 
   .chip img {
-    width: 40px;
-    height: 40px;
+    width: var(--size-40);
+    height: var(--size-40);
     object-fit: contain;
     flex: none;
   }
@@ -702,8 +702,8 @@
   }
 
   .chip img.face {
-    width: 52px;
-    height: 52px;
+    width: var(--size-52);
+    height: var(--size-52);
     margin-top: 4px;
   }
 
@@ -736,8 +736,8 @@
   }
 
   .chip .provider-logo {
-    width: 12px;
-    height: 12px;
+    width: var(--size-12);
+    height: var(--size-12);
     flex: none;
     background: currentColor;
     -webkit-mask-image: var(--logo);
@@ -823,14 +823,14 @@
     flex: none;
     flex-direction: column;
     gap: 6px;
-    width: 64px;
+    width: var(--size-64);
     align-self: stretch;
   }
 
   .chip .talk,
   .chip .info {
     width: 100%;
-    height: 32px;
+    height: var(--size-32);
     padding: 0;
     border-radius: var(--radius-sm);
     font-family: var(--font-ui);

@@ -348,7 +348,7 @@
   input[type="search"],
   textarea {
     width: 100%;
-    min-height: 32px;
+    min-height: var(--size-32);
     padding: var(--space-1) var(--space-2);
     color: var(--color-md-text);
     font: inherit;
@@ -362,7 +362,7 @@
   }
 
   button {
-    min-height: 32px;
+    min-height: var(--size-32);
     padding: 0 var(--space-2);
     color: var(--color-md-text);
     font: inherit;

@@ -666,8 +666,8 @@
 
   /* Agent picture: the card face image, square, no circle. */
   .pic {
-    width: 32px;
-    height: 32px;
+    width: var(--size-32);
+    height: var(--size-32);
     object-fit: cover;
     border-radius: 0;
     border: none;
@@ -675,8 +675,8 @@
   }
 
   .pic.small {
-    width: 32px;
-    height: 32px;
+    width: var(--size-32);
+    height: var(--size-32);
   }
 
   .pic.letter {
@@ -840,8 +840,8 @@
   }
 
   .pic.big {
-    width: 40px;
-    height: 40px;
+    width: var(--size-40);
+    height: var(--size-40);
   }
 
   /* The last command sits in an accent pill, as in the bottom-bar cards. */
@@ -859,8 +859,8 @@
   }
 
   .pic {
-    width: 22px;
-    height: 22px;
+    width: var(--size-22);
+    height: var(--size-22);
   }
 
   .picker {

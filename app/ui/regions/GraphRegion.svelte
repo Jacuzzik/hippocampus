@@ -161,8 +161,8 @@
   .icons button {
     display: grid;
     place-items: center;
-    width: 28px;
-    height: 28px;
+    width: var(--size-28);
+    height: var(--size-28);
     padding: 0;
     color: var(--color-text-muted);
     background: none;
@@ -178,8 +178,8 @@
   }
 
   .icons svg {
-    width: 16px;
-    height: 16px;
+    width: var(--size-16);
+    height: var(--size-16);
     fill: none;
     stroke: currentColor;
     stroke-width: 1.8;

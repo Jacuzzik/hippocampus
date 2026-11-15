@@ -414,7 +414,7 @@
   /* Tab and action buttons: the main agent's sizes (32px tall, 8px side padding, 1px dividers). */
   .seg > * {
     flex: 1 1 0;
-    min-height: 32px;
+    min-height: var(--size-32);
     cursor: pointer;
     font-family: var(--font-ui);
     font-size: var(--font-size-xs);
@@ -460,8 +460,8 @@
     overflow: hidden;
   }
   .size button {
-    min-width: 36px;
-    min-height: 32px;
+    min-width: var(--size-36);
+    min-height: var(--size-32);
     padding: 0;
     border: none;
     border-radius: 0;
@@ -469,7 +469,7 @@
     color: var(--color-md-text-muted);
   }
   .size output {
-    min-width: 48px;
+    min-width: var(--size-48);
     text-align: center;
     border-left: 1px solid var(--color-md-border);
     border-right: 1px solid var(--color-md-border);
@@ -481,7 +481,7 @@
   }
   button,
   textarea {
-    min-height: 32px;
+    min-height: var(--size-32);
     padding: 0 var(--space-2);
     border: 1px solid var(--color-md-border);
     border-radius: var(--radius-md);
@@ -494,7 +494,7 @@
   }
   textarea {
     width: 100%;
-    min-height: 64px;
+    min-height: var(--size-64);
     padding: var(--space-2);
     resize: vertical;
   }
@@ -537,7 +537,7 @@
   }
   /* Only this box scrolls when several messages wait; the sidebar itself stays put. */
   .queued {
-    max-height: 96px;
+    max-height: var(--size-96);
     overflow-y: auto;
     border: 1px solid var(--color-md-border);
     border-radius: var(--radius-sm);

@@ -426,7 +426,7 @@
 
   /* Only this box scrolls when several messages wait; the sidebar itself stays put. */
   .queued {
-    max-height: 96px;
+    max-height: var(--size-96);
     overflow-y: auto;
     border: 1px solid var(--color-md-border);
     border-radius: var(--radius-sm);

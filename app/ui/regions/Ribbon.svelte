@@ -114,8 +114,8 @@
   }
 
   svg {
-    width: 18px;
-    height: 18px;
+    width: var(--size-18);
+    height: var(--size-18);
     fill: none;
     stroke: currentColor;
     stroke-width: 1.8;

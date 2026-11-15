@@ -987,8 +987,8 @@
   }
 
   .close {
-    min-width: 28px;
-    min-height: 28px;
+    min-width: var(--size-28);
+    min-height: var(--size-28);
     padding: 0 var(--space-2);
     color: var(--color-text-muted);
     font-size: var(--font-size-lg);
@@ -1087,7 +1087,7 @@
 
   .checks .state {
     flex: none;
-    min-width: 40px;
+    min-width: var(--size-40);
     font-size: var(--font-size-tag);
     letter-spacing: 0.04em;
     text-transform: uppercase;

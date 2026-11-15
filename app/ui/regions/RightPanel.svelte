@@ -382,8 +382,8 @@
   }
 
   .size button {
-    min-width: 36px;
-    min-height: 32px;
+    min-width: var(--size-36);
+    min-height: var(--size-32);
     font: inherit;
     padding: 0;
     border: none;
@@ -394,7 +394,7 @@
   }
 
   .size output {
-    min-width: 48px;
+    min-width: var(--size-48);
     text-align: center;
     border-left: 1px solid var(--color-md-border);
     border-right: 1px solid var(--color-md-border);
@@ -465,7 +465,7 @@
   }
   /* Message box: same tokens, radius and size as the normal agent's. */
   .pane > :global(.assistant) :global(textarea) {
-    min-height: 64px;
+    min-height: var(--size-64);
     border: 1px solid var(--color-md-border);
     border-radius: var(--radius-sm);
     background: var(--color-md-surface);
@@ -490,7 +490,7 @@
   }
   .pane > :global(.assistant) :global(.composer .send) {
     width: 100%;
-    min-height: 32px;
+    min-height: var(--size-32);
     border: 1px solid var(--color-md-accent);
     border-radius: var(--radius-sm);
     background: var(--color-md-accent);
@@ -504,7 +504,7 @@
   }
   .pane > :global(.assistant) :global(.composer .attach > button) {
     flex: 1;
-    min-height: 32px;
+    min-height: var(--size-32);
     border: none;
     border-right: 1px solid var(--color-md-border);
     border-radius: 0;

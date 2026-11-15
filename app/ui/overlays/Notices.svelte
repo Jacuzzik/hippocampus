@@ -60,8 +60,8 @@
   }
 
   button {
-    min-width: 24px;
-    min-height: 24px;
+    min-width: var(--size-24);
+    min-height: var(--size-24);
     color: var(--color-text-muted);
     font: inherit;
     background: none;

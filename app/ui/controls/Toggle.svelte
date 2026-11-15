@@ -48,8 +48,8 @@
   .box {
     position: relative;
     display: inline-block;
-    width: 36px;
-    height: 18px;
+    width: var(--size-36);
+    height: var(--size-18);
     flex: none;
   }
 
@@ -77,8 +77,8 @@
     position: absolute;
     top: 3px;
     left: 3px;
-    width: 12px;
-    height: 12px;
+    width: var(--size-12);
+    height: var(--size-12);
     border-radius: var(--radius-sm);
     background: var(--color-bg-0);
     transition: transform var(--duration-fast) var(--ease-standard);

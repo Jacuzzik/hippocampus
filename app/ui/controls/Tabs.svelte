@@ -166,7 +166,7 @@
   .segmented button {
     justify-content: center;
     min-width: 0;
-    min-height: 32px;
+    min-height: var(--size-32);
     padding: 0 var(--space-2);
     color: var(--color-md-text-muted);
     font-size: var(--font-size-xs);

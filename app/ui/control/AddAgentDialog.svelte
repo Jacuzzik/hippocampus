@@ -429,8 +429,8 @@
 
   .face-pick img {
     display: block;
-    width: 48px;
-    height: 48px;
+    width: var(--size-48);
+    height: var(--size-48);
     border-radius: 50%;
   }
 
