@@ -725,6 +725,9 @@ export async function mockSidecar(
               kind: String(args.params?.kind),
             });
             return { webhooks: hookRows };
+          case "run_webhook":
+            if (args.params?.approve !== true) throw new Error("needs approval");
+            return { result: "Link check: 3 links checked, all working." };
           case "delete_webhook": {
             const at = hookRows.findIndex((h) => h.id === args.params?.id);
             if (at < 0) throw new Error("no webhook with that id");

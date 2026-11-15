@@ -267,3 +267,19 @@ test("capabilities list the skills and show MCP servers and plugins as Planned",
   }
   await expect(caps.getByRole("button", { name: /Not set up/ })).toHaveCount(0);
 });
+
+test("a saved webhook can be tested once and the result is shown", async ({
+  page,
+}) => {
+  await mockSidecar(page);
+  await page.goto("/");
+  await openControl(page);
+  const dialog = page.getByRole("dialog", { name: "Control panel" });
+  await dialog.getByRole("tab", { name: "Work" }).click();
+  await dialog.getByRole("textbox", { name: "Name" }).fill("Nightly links");
+  await dialog.getByRole("button", { name: "Add webhook" }).click();
+  await dialog.getByRole("button", { name: "Test Nightly links" }).click();
+  await expect(dialog.getByRole("status")).toContainText(
+    "Link check: 3 links checked, all working.",
+  );
+});

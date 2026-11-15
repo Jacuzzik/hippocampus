@@ -64,6 +64,22 @@
     }
   }
 
+  // Test runs the webhook once. The click is the user's approval; nothing runs without it.
+  let testResult = $state<{ id: string; text: string } | null>(null);
+
+  async function test(hook: Webhook): Promise<void> {
+    testResult = null;
+    try {
+      const { result } = await invoke<{ result: string }>("sidecar_call", {
+        method: "run_webhook",
+        params: { id: hook.id, approve: true },
+      });
+      testResult = { id: hook.id, text: result };
+    } catch (cause) {
+      report("The test run failed", cause);
+    }
+  }
+
   async function remove(id: string): Promise<void> {
     if (confirming !== id) {
       confirming = id;
@@ -110,6 +126,12 @@
           <li>
             {hook.name} <span class="muted">runs {hook.kind}</span>
             <Button
+              variant="secondary"
+              size="sm"
+              aria-label={`Test ${hook.name}`}
+              onclick={() => void test(hook)}>Test</Button
+            >
+            <Button
               variant="danger"
               size="sm"
               aria-label={confirming === hook.id
@@ -118,6 +140,9 @@
               onclick={() => void remove(hook.id)}
               >{confirming === hook.id ? "Confirm remove" : "Remove"}</Button
             >
+            {#if testResult?.id === hook.id}
+              <p class="muted" role="status">Test result: {testResult.text}</p>
+            {/if}
           </li>
         {/each}
       </ul>

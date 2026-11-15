@@ -23,7 +23,7 @@ A name the file builds at run time is not listed.
 | `ui/control/NetworkSection.svelte` | `network`, `set_network` | no |
 | `ui/control/SettingsDialog.svelte` | `clear_activity`, `clear_crashes`, `crashes`, `doctor`, `export_notes`, `link_doctor`, `logs`, `set_agent_shell`, `set_number`, `set_vault`, `settings`, `settings_export`, `settings_import` | yes |
 | `ui/control/SkillsSection.svelte` | `open_skill_folder`, `remove_skill`, `skills` | yes |
-| `ui/control/TriggersSection.svelte` | `delete_webhook`, `jobs`, `network`, `save_webhook`, `webhooks` | yes |
+| `ui/control/TriggersSection.svelte` | `delete_webhook`, `jobs`, `network`, `run_webhook`, `save_webhook`, `webhooks` | yes |
 | `ui/crashLog.svelte.ts` | `record_crash` | no |
 | `ui/graph/BrainGraph.svelte` | `note_save`, `note_text`, `read`, `save_export` | no |
 | `ui/graph/NoteActions.svelte` | (built at run time) | yes |
