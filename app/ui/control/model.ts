@@ -133,6 +133,17 @@ export const SETTINGS_PAGES = [
     words:
       "engine provider model tool calls network autonomy shell sandbox rules bash",
   },
+  { id: "Work", words: "dispatch task scheduled jobs triggers webhooks run" },
+  { id: "Questions", words: "ask me questions answers waiting" },
+  {
+    id: "Helpers and skills",
+    words: "helper jobs capabilities skills install",
+  },
+  {
+    id: "Team and sharing",
+    words: "teams archived agents restore share sharing",
+  },
+  { id: "Activity", words: "activity log tool calls approvals history" },
   { id: "Budgets", words: "tokens caps limits spend" },
   { id: "Models and keys", words: "api key secret provider claude openai" },
   {

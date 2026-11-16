@@ -61,11 +61,10 @@ test("every button in the dialogs has a name and a size that can be hit", async 
 }) => {
   await mockSidecar(page);
   await page.goto("/");
-  await page.getByRole("button", { name: "Control panel" }).click();
-  const control = page.getByRole("dialog", { name: "Control panel" });
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  const control = page.getByRole("dialog", { name: "Settings" });
   await expect(control).toBeVisible();
   expect(await audit(page), "Control panel").toEqual([]);
-  await control.getByRole("button", { name: "Open settings" }).click();
   const settings = page.getByRole("dialog", { name: "Settings" });
   await expect(settings).toBeVisible();
   expect(await audit(page), "Settings").toEqual([]);

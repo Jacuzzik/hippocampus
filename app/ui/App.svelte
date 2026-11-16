@@ -17,7 +17,6 @@
   import { bootTask, boot } from "./owner/bootTasks.svelte.ts";
   // The dialogs are loaded when first opened, so their code is not part of the start-up bundle.
   const ToolsDialog = () => import("./overlays/ToolsDialog.svelte");
-  const ControlDialog = () => import("./control/ControlDialog.svelte");
   const AddAgentDialog = () => import("./control/AddAgentDialog.svelte");
   const SettingsDialog = () => import("./control/SettingsDialog.svelte");
   import CommandBox, { type Item } from "./overlays/CommandBox.svelte";
@@ -85,10 +84,8 @@
   let setupOpen = $state(false);
   // The assistant tool allowlist: from the command palette.
   let toolsOpen = $state(false);
-  // The control panel: network, budgets, activity, questions, memory, jobs, helpers, sharing, skills, keys.
-  let controlOpen = $state(false);
   let addOpen = $state(false);
-  // The settings: six tabs, from the command palette or the control panel.
+  // The settings: six tabs, from the ribbon or the command palette.
   let settingsOpen = $state(false);
   let settingsStart = $state<SettingsPage>("General");
   // Full screen layout from the top bar: only the terminal and the agent cards show.
@@ -173,9 +170,12 @@
       run: () => (toolsOpen = true),
     },
     {
-      id: "control",
-      label: "Control panel",
-      run: () => (controlOpen = true),
+      id: "work",
+      label: "Dispatch, jobs and triggers",
+      run: () => {
+        settingsStart = "Work";
+        settingsOpen = true;
+      },
     },
     {
       id: "settings",
@@ -312,20 +312,6 @@
   >
 {/if}
 
-{#if controlOpen}
-  <PanelBoundary name="Control panel">
-    {#await ControlDialog() then { default: Dialog }}
-      <Dialog
-        onclose={() => (controlOpen = false)}
-        onsettings={() => {
-          controlOpen = false;
-          settingsOpen = true;
-        }}
-      />
-    {/await}
-  </PanelBoundary>
-{/if}
-
 {#if addOpen}
   <PanelBoundary name="Add agent"
     >{#await AddAgentDialog() then { default: Dialog }}<Dialog
@@ -371,7 +357,6 @@
     bind:sidebarOpen
     bind:panelOpen
     onaccount={() => (setupOpen = true)}
-    oncontrol={() => (controlOpen = true)}
     onsettings={() => {
       settingsStart = "General";
       settingsOpen = true;

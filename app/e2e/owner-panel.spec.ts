@@ -114,8 +114,8 @@ test("a card menu archives an added agent and the Control panel restores it", as
     .click({ button: "right" });
   await page.getByRole("menuitem", { name: "Archive" }).click();
   await expect(bar.getByText("Grace")).toHaveCount(0);
-  await page.getByRole("button", { name: "Control panel" }).click();
-  const control = page.getByRole("dialog", { name: "Control panel" });
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  const control = page.getByRole("dialog", { name: "Settings" });
   await control.getByRole("tab", { name: "Team and sharing" }).click();
   await control.getByRole("button", { name: "Restore" }).click();
   await expect(bar.getByText("Grace")).toBeVisible();

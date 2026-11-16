@@ -8,7 +8,18 @@
   import { invoke } from "@tauri-apps/api/core";
   import { getVersion } from "@tauri-apps/api/app";
   import { onMount } from "svelte";
+  import ActivitySection from "./ActivitySection.svelte";
+  import ArchivedAgentsSection from "./ArchivedAgentsSection.svelte";
+  import AsksSection from "./AsksSection.svelte";
   import BudgetSection from "./BudgetSection.svelte";
+  import CapabilitiesSection from "./CapabilitiesSection.svelte";
+  import DispatchSection from "./DispatchSection.svelte";
+  import HelpersSection from "./HelpersSection.svelte";
+  import JobsSection from "./JobsSection.svelte";
+  import ShareSection from "./ShareSection.svelte";
+  import SkillsSection from "./SkillsSection.svelte";
+  import TeamsSection from "./TeamsSection.svelte";
+  import TriggersSection from "./TriggersSection.svelte";
   import ConnectorsSection from "./ConnectorsSection.svelte";
   import KeysSection from "./KeysSection.svelte";
   import MemorySection from "./MemorySection.svelte";
@@ -36,7 +47,8 @@
   import { FLAGS, flagOn, setFlag } from "../flags.svelte.ts";
 
   // Settings as pages: a list of categories on the left, one short page on the right.
-  // Each setting has one home. Day-to-day controls (dispatch, jobs, questions) stay in the Control panel.
+  // Each setting has one home. Day-to-day controls (dispatch, jobs, questions) are pages here too:
+  // there is one window, not a separate control panel.
   let {
     onclose,
     start = "General",
@@ -653,6 +665,22 @@
             {/if}
           </section>
           <NetworkSection />
+        {:else if page === "Work"}
+          <DispatchSection />
+          <JobsSection />
+          <TriggersSection />
+        {:else if page === "Questions"}
+          <AsksSection />
+        {:else if page === "Helpers and skills"}
+          <HelpersSection />
+          <CapabilitiesSection />
+          <SkillsSection />
+        {:else if page === "Team and sharing"}
+          <TeamsSection />
+          <ArchivedAgentsSection />
+          <ShareSection />
+        {:else if page === "Activity"}
+          <ActivitySection />
         {:else if page === "Budgets"}
           <BudgetSection />
         {:else if page === "Models and keys"}
@@ -694,7 +722,7 @@
               >{#snippet help()}What you type to the assistant or an agent goes
                 to the provider you chose (Claude, OpenAI and so on), with your
                 own key or login, under that provider's terms. The network
-                switch in the Control panel can stop it.{/snippet}
+                switch in Settings, Agents can stop it.{/snippet}
               <code>Only when you chat</code>
             </SettingRow>
             <SettingRow title="Local model (Ollama)"

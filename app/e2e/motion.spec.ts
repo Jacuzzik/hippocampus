@@ -2,8 +2,8 @@ import { expect, test } from "@playwright/test";
 import { mockSidecar } from "./tauri-mock";
 
 async function openControl(page: import("@playwright/test").Page) {
-  await page.getByRole("button", { name: "Control panel" }).click();
-  const dialog = page.getByRole("dialog", { name: "Control panel" });
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Settings" });
   await expect(dialog).toBeVisible();
   return dialog;
 }

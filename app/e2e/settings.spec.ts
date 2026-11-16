@@ -2,11 +2,7 @@ import { expect, test } from "@playwright/test";
 import { mockSidecar } from "./tauri-mock";
 
 async function openSettings(page: import("@playwright/test").Page) {
-  await page.getByRole("button", { name: "Control panel" }).click();
-  await page
-    .getByRole("dialog", { name: "Control panel" })
-    .getByRole("button", { name: "Open settings" })
-    .click();
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
   return page.getByRole("dialog", { name: "Settings" });
 }
 
@@ -20,6 +16,11 @@ test("settings has a page per category and each one opens", async ({
     General: "Vault folder",
     Appearance: "Terminal text size",
     Agents: "Main agent engine",
+    Work: "Dispatch",
+    Questions: "Ask me",
+    "Helpers and skills": "Helper jobs",
+    "Team and sharing": "Teams",
+    Activity: "Activity log",
     Budgets: "Token budget",
     "Models and keys": "Keys and secrets",
     Connectors: "Checked now",

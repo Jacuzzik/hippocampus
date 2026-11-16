@@ -19,8 +19,8 @@ test("a dialog takes the keyboard when it opens: Escape closes it and focus goes
 test("Tab stays inside an open dialog", async ({ page }) => {
   await mockSidecar(page);
   await page.goto("/");
-  await page.getByRole("button", { name: "Control panel" }).click();
-  const dialog = page.getByRole("dialog", { name: "Control panel" });
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Settings" });
   await expect(dialog).toBeVisible();
   for (let i = 0; i < 40; i++) {
     await page.keyboard.press("Tab");
