@@ -22,6 +22,7 @@
     centerOn,
     hitTest,
     labelAlpha,
+    LabelPlacer,
     LOW_POWER,
     linkCounts,
     matchFilter,
@@ -222,8 +223,8 @@
     return w ?? 0;
   }
 
-  // Greedy: a label is drawn only if it clears every label already placed this frame.
-  // shortcut: label width is measured once per title and placement is a linear scan, so a few hundred labels at most; upgrade to a spatial grid if more.
+  // One label layer for every renderer (canvas, ASCII, constellation); placement is LabelPlacer in model.ts.
+  // Label width is measured once per title.
   function drawLabels(): void {
     if (hideNames) {
       labels = [];
@@ -238,26 +239,16 @@
       a: number;
       hub: boolean;
     }[] = [];
-    const boxes: number[] = [];
+    const placer = new LabelPlacer(MAX_LABELS);
     const place = (i: number, a: number) => {
-      if (placed.length >= MAX_LABELS || !visible[i] || a <= 0) return;
+      if (!visible[i] || a <= 0) return;
       const sx = (pos[2 * i] ?? 0) * cam.zoom + cam.x;
       const sy = (pos[2 * i + 1] ?? 0) * cam.zoom + cam.y;
       if (sx < 0 || sy < 0 || sx > w || sy > h) return;
       const text = data.nodes[i]?.title ?? "";
       const x = sx + (i === selected ? 7 : 4) + LABEL_GAP;
       const y = sy - LABEL_H / 2;
-      const x1 = x + labelWidth(text);
-      for (let k = 0; k < boxes.length; k += 4) {
-        if (
-          x < (boxes[k + 2] ?? 0) &&
-          x1 > (boxes[k] ?? 0) &&
-          y < (boxes[k + 3] ?? 0) &&
-          y + LABEL_H > (boxes[k + 1] ?? 0)
-        )
-          return;
-      }
-      boxes.push(x, y, x1, y + LABEL_H);
+      if (!placer.claim(x, y, x + labelWidth(text), y + LABEL_H)) return;
       placed.push({ text, x, y, a, hub: GROUP_HUBS.has(text) });
     };
     // The focused note and its links are always named; every other name fades in with zoom.

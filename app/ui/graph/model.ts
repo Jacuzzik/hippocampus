@@ -286,6 +286,38 @@ export function labelAlpha(zoom: number): number {
   return Math.min(1, Math.max(0, t));
 }
 
+/**
+ * Greedy label placement shared by every graph renderer: a label is kept only if its box clears every
+ * label already kept, and none past `max`. Boxes are screen pixels [x, y, x1, y1].
+ * shortcut: a linear scan, fine for a few hundred labels; upgrade to a spatial grid if more.
+ */
+export class LabelPlacer {
+  private readonly boxes: number[] = [];
+  private readonly max: number;
+  count = 0;
+  constructor(max: number) {
+    this.max = max;
+  }
+
+  /** True when the box fits and was claimed. */
+  claim(x: number, y: number, x1: number, y1: number): boolean {
+    if (this.count >= this.max) return false;
+    const b = this.boxes;
+    for (let k = 0; k < b.length; k += 4) {
+      if (
+        x < (b[k + 2] ?? 0) &&
+        x1 > (b[k] ?? 0) &&
+        y < (b[k + 3] ?? 0) &&
+        y1 > (b[k + 1] ?? 0)
+      )
+        return false;
+    }
+    b.push(x, y, x1, y1);
+    this.count++;
+    return true;
+  }
+}
+
 function add(arr: Float32Array, i: number, v: number): void {
   arr[i] = (arr[i] ?? 0) + v;
 }

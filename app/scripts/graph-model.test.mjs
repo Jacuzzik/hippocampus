@@ -406,3 +406,13 @@ test("incidentLines keeps only the links that touch the focused note", () => {
   assert.equal(incidentLines(pos, edges, -1).length, 0);
   assert.equal(incidentLines(pos, edges, 9).length, 0);
 });
+
+test("LabelPlacer keeps labels that do not overlap and stops at the cap", async () => {
+  const { LabelPlacer } = await import("../ui/graph/model.ts");
+  const p = new LabelPlacer(2);
+  assert.equal(p.claim(0, 0, 10, 10), true);
+  assert.equal(p.claim(5, 5, 15, 15), false, "overlaps the first");
+  assert.equal(p.claim(10, 0, 20, 10), true, "touching edges do not overlap");
+  assert.equal(p.claim(100, 100, 110, 110), false, "cap of 2 reached");
+  assert.equal(p.count, 2);
+});
