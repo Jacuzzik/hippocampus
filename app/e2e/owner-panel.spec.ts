@@ -47,6 +47,21 @@ test("the tasks tab opens the task board", async ({ page }) => {
   await expect(page.getByRole("region", { name: "Tasks" })).toBeVisible();
 });
 
+test("a task card starts a temp on its text, and the Temps tab lists it", async ({
+  page,
+}) => {
+  await page.getByRole("tab", { name: "tasks" }).click();
+  const board = page.getByRole("region", { name: "Tasks" });
+  await board.getByRole("button", { name: "Start a temp on MDF-1" }).click();
+  await expect(board.getByRole("status")).toHaveText(
+    "Temp started. Its answer shows in the Temps tab.",
+  );
+  await page.getByRole("tab", { name: "temps" }).click();
+  await expect(
+    page.getByText(/Work on task MDF-1: Ship the Tasks page/),
+  ).toBeVisible();
+});
+
 test("the inbox tab lists agent messages", async ({ page }) => {
   await page.getByRole("tab", { name: "inbox" }).click();
   await expect(page.getByRole("region", { name: "Inbox" })).toContainText(

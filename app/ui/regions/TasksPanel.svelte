@@ -1,4 +1,5 @@
-<!-- The office task board, read only: tasks grouped by status, as in the office app's Tasks page. -->
+<!-- The office task board, read only: tasks grouped by status, as in the office app's Tasks page.
+     A card that is not done can start a temp (a short-lived helper) on its text; the board itself is not changed. -->
 <script lang="ts">
   import PanelHeader from "../controls/PanelHeader.svelte";
   import Loading from "../controls/Loading.svelte";
@@ -42,6 +43,28 @@
     return flagOn("panelRefresh") ? every(load, 5000) : undefined;
   });
 
+  // 7.23: one temp per click, on the card's id and title. The cap of running temps is the backend's.
+  let tempNote = $state<{ id: string; text: string; bad: boolean } | null>(
+    null,
+  );
+  async function startTemp(task: Task): Promise<void> {
+    try {
+      await invoke("sidecar_call", {
+        method: "start_helper",
+        params: {
+          prompt: `Work on task ${task.id}: ${task.title}. Reply in a few lines with what you found or did.`,
+        },
+      });
+      tempNote = {
+        id: task.id,
+        text: "Temp started. Its answer shows in the Temps tab.",
+        bad: false,
+      };
+    } catch (cause) {
+      tempNote = { id: task.id, text: String(cause), bad: true };
+    }
+  }
+
   const groups = $derived(
     STATUSES.map((status) => ({
       status,
@@ -71,7 +94,20 @@
               <span>{task.title}</span>
               {#if task.waiting}<span class="waiting">Waiting on you</span>{/if}
               <small>{task.assignee ?? "unassigned"}</small>
+              {#if task.status !== "done"}
+                <button
+                  type="button"
+                  class="temp"
+                  aria-label="Start a temp on {task.id}"
+                  onclick={() => startTemp(task)}>Temp</button
+                >
+              {/if}
             </li>
+            {#if tempNote?.id === task.id}
+              <li class="note" class:bad={tempNote.bad} role="status">
+                {tempNote.text}
+              </li>
+            {/if}
           {/each}
         </ul>
       {:else}
@@ -98,7 +134,7 @@
   li {
     display: flex;
     gap: var(--space-2);
-    align-items: baseline;
+    align-items: center;
     padding: var(--space-1) 0;
     border-bottom: 1px solid var(--color-border);
   }
@@ -114,6 +150,27 @@
 
   .muted {
     color: var(--color-md-text-muted);
+  }
+
+  .temp {
+    flex: none;
+    min-height: var(--size-24);
+    padding: 0 var(--space-2);
+    font: inherit;
+    color: var(--color-md-text);
+    background: transparent;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+  }
+
+  .note {
+    color: var(--color-md-text-muted);
+    border-bottom: none;
+  }
+
+  .note.bad {
+    color: var(--color-danger);
   }
 
   .waiting {

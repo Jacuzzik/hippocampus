@@ -47,6 +47,6 @@ A name the file builds at run time is not listed.
 | `ui/regions/RightPanel.svelte` | `asks`, `engine`, `inbox`, `terminal_command` | no |
 | `ui/regions/SkillsPanel.svelte` | `skills` | yes |
 | `ui/regions/SpendMeter.svelte` | `budget` | no |
-| `ui/regions/TasksPanel.svelte` | `tasks` | yes |
+| `ui/regions/TasksPanel.svelte` | `start_helper`, `tasks` | yes |
 | `ui/regions/TempsPanel.svelte` | `helpers`, `start_helper` | yes |
 | `ui/regions/terminalQueue.svelte.ts` | `terminal_context`, `terminal_input` | no |
