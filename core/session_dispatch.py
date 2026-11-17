@@ -100,6 +100,14 @@ class DispatchPart:
             ),
             "phone_view": lambda request: phone.view(request.get("serial"), request.get("approve")),
             "phone_stop": lambda request: phone.stop(request.get("serial")),
+            "user_account": lambda request: self.user_account.status(),
+            "user_sign_in": lambda request: self.user_account.start(open_browser=True),
+            "user_sign_in_cancel": lambda request: self.user_account.cancel(),
+            "user_sign_out": lambda request: self.user_account.sign_out(),
+            "user_delete": lambda request: self.user_account.delete(),
+            "user_consent": lambda request: self.user_account.set_consent(
+                request.get("sync") is True, request.get("usage") is True
+            ),
             "tokens": self.tokens,
             "set_engine": self.set_engine,
             "stop": plain(self.stop),

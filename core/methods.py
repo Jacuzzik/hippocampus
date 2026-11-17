@@ -37,6 +37,14 @@ METHODS: dict[str, Method] = {
     "account": _m("Whether a Claude key is saved."),
     "sign_in": _m("Save the Claude key in the keychain."),
     "sign_out": _m("Remove the Claude key."),
+    "user_account": _m(
+        "The Hippocampus account: set up or not, signed in or not, name, plan, consent."
+    ),
+    "user_sign_in": _m("Start Google sign-in; gives the address to open in the browser."),
+    "user_sign_in_cancel": _m("Stop waiting for the browser sign-in."),
+    "user_sign_out": _m("Sign out and delete the saved sign-in from the keychain."),
+    "user_delete": _m("Delete the Hippocampus account on the service, then sign out."),
+    "user_consent": _m("Save the sync and usage-report choices (both off by default)."),
     "remove_data": _m("Delete the index cache and the key; never the vault."),
     "keys": _m("Which provider keys are saved (last four characters only)."),
     "save_key": _m("Save one provider key."),

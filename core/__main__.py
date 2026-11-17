@@ -59,6 +59,7 @@ from core import (
     migrate,
     skills,
 )
+from core import account as user_account
 from core import activity as journal
 from core import budget as budgets
 from core import memory as memory_notes
@@ -193,6 +194,7 @@ class Session(
             None  # none installed: search by meaning is off
         )
         self.ledger = budgets.Ledger(storage / "usage.jsonl")
+        self.user_account = user_account.Account(storage)
         self.helpers = Helpers(self._helper_run, lambda e: self.note("handoff", text=e["text"]))
         network.set_mode(self.settings.network_mode)
 

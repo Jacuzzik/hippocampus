@@ -1,6 +1,25 @@
-# Accounts plan (draft for the owner)
+# Accounts plan
 
-Status: **draft, not agreed.** No account code gets written until the owner signs off on the decisions at the end.
+Status: **agreed 2026-11-17** with the recommendations below (Supabase, update notices and plan first, no paid
+plan in the beta, no domain yet). The app side is built (`core/account.py`, Settings > General > Account,
+`supabase/functions/delete-account`), tested against a stand-in service. It switches on when the two values in
+"Owner setup" are filled in.
+
+## Owner setup (only the owner can do these; all free)
+
+1. **Supabase project:** supabase.com > New project (Free plan). Note the project address
+   (`https://<ref>.supabase.co`).
+2. **Google sign-in client:** console.cloud.google.com > APIs & Services > OAuth consent screen (External,
+   name "Hippocampus") > Credentials > Create OAuth client ID > Web application. Authorised redirect URI:
+   `https://<ref>.supabase.co/auth/v1/callback`.
+3. **Connect them:** Supabase > Authentication > Sign In / Providers > Google: switch on, paste the client ID
+   and secret.
+4. **Let the app's return address in:** Supabase > Authentication > URL Configuration > Redirect URLs: add
+   `http://127.0.0.1:*/callback`.
+5. **Give Claude two public values:** the project address and the **anon public** key (Supabase > Project
+   Settings > API). Never the `service_role` key. Claude puts them in `core/account.py` (AUTH_URL, AUTH_KEY),
+   deploys `delete-account` (needs `supabase login` by the owner once), and runs the tests against the real
+   project (14.14).
 Covers plan items 14.01–14.14 and M.22. The rules already agreed: the app works fully with no account (14.08),
 sign-in is with a Google account (owner, 2026-11-13), and the security checks in `docs/SECURITY-REVIEW.md`
 pass before launch (14.13).

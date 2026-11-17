@@ -8,6 +8,7 @@
   import { invoke } from "@tauri-apps/api/core";
   import { getVersion } from "@tauri-apps/api/app";
   import { onMount } from "svelte";
+  import AccountSection from "./AccountSection.svelte";
   import ActivitySection from "./ActivitySection.svelte";
   import AppsSection from "./AppsSection.svelte";
   import ArchivedAgentsSection from "./ArchivedAgentsSection.svelte";
@@ -433,6 +434,7 @@
               <code>config/settings.toml</code>
             </SettingRow>
           </section>
+          <AccountSection />
         {:else if page === "Appearance"}
           <section class="control-section">
             <h3>Appearance</h3>

@@ -13,6 +13,8 @@ export async function mockSidecar(
     orphan?: boolean;
     noVault?: boolean;
     signedIn?: boolean;
+    /** This build has the Hippocampus sign-in service set up (Settings > Account shows). */
+    account?: boolean;
     intro?: boolean;
     /** Act out the very first start: the setup checklist opens by itself. */
     firstRun?: boolean;
@@ -25,6 +27,7 @@ export async function mockSidecar(
       orphan: boolean;
       noVault: boolean;
       signedIn: boolean;
+      account: boolean;
       intro: boolean;
       firstRun: boolean;
       fail: string[];
@@ -67,6 +70,25 @@ export async function mockSidecar(
       if (opts.orphan)
         graph.nodes.push({ id: "delta.md", title: "Delta", tags: [] });
       let vaultOpen = !opts.noVault;
+      // The Hippocampus account. Tests call window.__finishSignIn() to act out the browser coming back.
+      const userAccount = {
+        configured: opts.account,
+        signed_in: false,
+        waiting: false,
+        consent: { sync: false, usage: false, asked: false },
+        email: "",
+        name: "",
+        plan: "free",
+      };
+      (window as unknown as { __finishSignIn: () => void }).__finishSignIn =
+        () => {
+          Object.assign(userAccount, {
+            signed_in: true,
+            waiting: false,
+            email: "ada@example.com",
+            name: "Ada",
+          });
+        };
       // Every terminal start and stop, in order, for tests to read.
       // Tests set window.__boot to act out a backend restart.
       const bootId = () =>
@@ -531,6 +553,31 @@ export async function mockSidecar(
               ],
               max_bytes: 32000,
             };
+          case "user_account":
+            return structuredClone(userAccount);
+          case "user_sign_in":
+            if (!userAccount.configured)
+              throw new Error("Accounts are not set up in this build yet.");
+            userAccount.waiting = true;
+            return { url: "https://auth.test/auth/v1/authorize" };
+          case "user_sign_in_cancel":
+            userAccount.waiting = false;
+            return structuredClone(userAccount);
+          case "user_sign_out":
+          case "user_delete":
+            Object.assign(userAccount, {
+              signed_in: false,
+              email: "",
+              name: "",
+            });
+            return structuredClone(userAccount);
+          case "user_consent":
+            userAccount.consent = {
+              sync: args.params?.sync === true,
+              usage: args.params?.usage === true,
+              asked: true,
+            };
+            return structuredClone(userAccount);
           case "account":
             return {
               claude: claudeKey !== null,
@@ -1237,6 +1284,7 @@ export async function mockSidecar(
       orphan: options.orphan === true,
       noVault: options.noVault === true,
       signedIn: options.signedIn === true,
+      account: options.account === true,
       intro: options.intro === true,
       firstRun: options.firstRun === true,
       fail: options.fail ?? [],
