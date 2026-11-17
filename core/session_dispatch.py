@@ -4,7 +4,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from core import methods
+from core import methods, phone
 from core.github_board import board as github_board
 from core.session_shared import ci_in, issues_in
 
@@ -92,6 +92,11 @@ class DispatchPart:
             "issues": lambda request: issues_in(request.get("folder")),
             "ci": lambda request: ci_in(request.get("folder")),
             "github_board": lambda request: github_board(request.get("repo")),
+            "phone_status": lambda request: phone.status(),
+            "phone_mirror": lambda request: phone.mirror(
+                request.get("serial"), request.get("approve")
+            ),
+            "phone_stop": lambda request: phone.stop(request.get("serial")),
             "tokens": self.tokens,
             "set_engine": self.set_engine,
             "stop": plain(self.stop),

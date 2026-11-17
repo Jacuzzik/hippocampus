@@ -117,6 +117,9 @@ METHODS: dict[str, Method] = {
     "issues": _m("Open GitHub issues of a folder."),
     "ci": _m("The newest CI run of a folder's repo."),
     "github_board": _m("Open pull requests, issues and CI runs of one GitHub repository."),
+    "phone_status": _m("Android devices seen by adb, and which are being mirrored."),
+    "phone_mirror": _m("Mirror a phone's screen in a scrcpy window, after approval."),
+    "phone_stop": _m("Stop mirroring a phone."),
     "tokens": _m("This month's token use per folder."),
     # Terminals
     "terminal_start": _m("Start an agent's program.", _AGENT),

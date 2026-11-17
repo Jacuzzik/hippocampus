@@ -43,6 +43,7 @@ test("dashboards open from the top bar, list six dashboards and show numbers fro
     "Activity",
     "GitHub",
     "Calendar and scheduling",
+    "Phone",
   ]);
   const board = view.getByRole("tabpanel");
   await expect(board.getByText("Tokens today")).toBeVisible();
@@ -218,4 +219,32 @@ test("the calendar shows events and job days, adds and removes an event, and cha
   await expect(board.getByRole("gridcell")).toHaveCount(31);
   await board.getByRole("button", { name: "This month" }).click();
   await expect(board.getByText("November 2026")).toBeVisible();
+});
+
+test("the Phone dashboard lists devices and starts and stops mirroring; a phone that has not allowed the computer cannot be mirrored", async ({
+  page,
+}) => {
+  await mockSidecar(page);
+  await page.addInitScript(() => {
+    if (sessionStorage.getItem("seeded")) return;
+    sessionStorage.setItem("seeded", "1");
+    localStorage.setItem(
+      "hippocampus.prefs",
+      JSON.stringify({ intro: "off", dashboardsLocked: false }),
+    );
+  });
+  await page.goto("/");
+  await page.keyboard.press("Control+d");
+  const view = page.getByRole("dialog", { name: "Dashboards" });
+  await view.getByRole("tab", { name: "Phone" }).click();
+  const board = view.getByRole("tabpanel");
+  const ready = board.locator("li", { hasText: "SM A525F" });
+  await expect(ready).toContainText("R58M123ABC · Ready");
+  const blocked = board.locator("li", { hasText: "192.168.1.20:5555" });
+  await expect(blocked).toContainText("Accept the USB debugging prompt");
+  await expect(blocked.getByRole("button", { name: "Mirror" })).toBeDisabled();
+  await ready.getByRole("button", { name: "Mirror" }).click();
+  await expect(ready).toContainText("mirroring");
+  await ready.getByRole("button", { name: "Stop mirroring" }).click();
+  await expect(ready.getByRole("button", { name: "Mirror" })).toBeEnabled();
 });

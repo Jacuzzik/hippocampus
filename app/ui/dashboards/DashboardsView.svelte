@@ -8,6 +8,7 @@
   import Loading from "../controls/Loading.svelte";
   import Tabs from "../controls/Tabs.svelte";
   import CalendarBoard from "./CalendarBoard.svelte";
+  import PhoneBoard from "./PhoneBoard.svelte";
   import { prefs } from "../prefs.svelte.ts";
   import {
     activityTiles,
@@ -94,7 +95,7 @@
     tiles = null;
     error = null;
     try {
-      // A dashboard with no reader here (the calendar) draws and loads itself.
+      // A dashboard with no reader here (the calendar, the phone) draws and loads itself.
       const found = (await READERS[wanted]?.()) ?? [];
       if (wanted !== current) return; // the user moved on while it was read
       tiles = found;
@@ -197,6 +198,8 @@
       {/if}
       {#if current === "calendar"}
         {#key refreshed}<CalendarBoard />{/key}
+      {:else if current === "phone"}
+        {#key refreshed}<PhoneBoard />{/key}
       {:else if error === NEEDS_REPO}
         <p class="note" role="status">
           Write a repository as owner/name and press Show. It is read with the

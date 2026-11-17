@@ -20,6 +20,7 @@ export const DASHBOARDS = [
   { id: "activity", label: "Activity" },
   { id: "github", label: "GitHub" },
   { id: "calendar", label: "Calendar and scheduling" },
+  { id: "phone", label: "Phone" },
 ] as const;
 export type DashboardId = (typeof DASHBOARDS)[number]["id"];
 

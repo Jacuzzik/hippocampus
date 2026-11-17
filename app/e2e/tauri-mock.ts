@@ -797,6 +797,32 @@ export async function mockSidecar(
                   : [],
             };
           }
+          case "phone_status":
+          case "phone_mirror":
+          case "phone_stop": {
+            const w = window as unknown as { __mirroring?: string[] };
+            w.__mirroring ??= [];
+            if (args.method === "phone_mirror") {
+              if (args.params?.approve !== true)
+                throw new Error("mirroring a phone needs the user's approval");
+              w.__mirroring.push(String(args.params?.serial));
+            }
+            if (args.method === "phone_stop") w.__mirroring = [];
+            return {
+              adb: true,
+              scrcpy: true,
+              devices: [
+                { serial: "R58M123ABC", state: "device", model: "SM A525F" },
+                {
+                  serial: "192.168.1.20:5555",
+                  state: "unauthorized",
+                  model: "",
+                },
+              ],
+              mirroring: w.__mirroring,
+              error: "",
+            };
+          }
           case "github_board":
             if (String(args.params?.repo) === "nobody/nothing")
               return { error: "HTTP 404: Not Found" };
