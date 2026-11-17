@@ -8,11 +8,12 @@ from typing import Any
 
 from ai.keys import get_api_key
 from ai.router import build_router
-from core import jobs as job_store
 from core import (
+    calendar_board,
     link_doctor,
     webhooks,
 )
+from core import jobs as job_store
 from core import memory as memory_notes
 from core.helpers import HelperLimit
 from core.vault.scanner import iter_notes
@@ -74,6 +75,27 @@ class JobsPart:
         self.note("approval", tool="run_job", tier="act", approved=True, by="card")
         self.note("handoff", text=result)
         return {**self.jobs(), "result": result}
+
+    @property
+    def events_path(self) -> Path:
+        return self.storage / "events.json"
+
+    def calendar(self, request: dict[str, Any]) -> dict[str, Any]:
+        today = datetime.now().astimezone().date()
+        month = request.get("month") or today.isoformat()[:7]
+        return calendar_board.month_view(
+            self.events_path, job_store.load(self.jobs_path), month, today
+        )
+
+    def calendar_add(self, request: dict[str, Any]) -> dict[str, Any]:
+        event = calendar_board.add(
+            self.events_path, request.get("date"), request.get("time"), request.get("title")
+        )
+        return self.calendar({"month": event["date"][:7]})
+
+    def calendar_remove(self, request: dict[str, Any]) -> dict[str, Any]:
+        calendar_board.remove(self.events_path, request.get("id"))
+        return self.calendar({"month": request.get("month")})
 
     @property
     def jobs_path(self) -> Path:

@@ -4,6 +4,8 @@ import { test } from "node:test";
 import {
   activityTiles,
   githubTiles,
+  monthCells,
+  shiftMonth,
   noteTiles,
   overviewTiles,
   short,
@@ -145,4 +147,26 @@ test("GitHub tiles show counts, the newest run and the newest titles", () => {
   );
   assert.equal(tiles[2].tone, "warn");
   assert.equal(githubTiles({ ...found, newest_run: null })[2].value, "None");
+});
+
+test("a month grid starts on Monday and puts events and job runs on their day", () => {
+  const cells = monthCells({
+    month: "2026-11",
+    first_weekday: 6,
+    days: 30,
+    today: "2026-11-17",
+    events: [{ id: "e1", date: "2026-11-20", time: "15:30", title: "Dentist" }],
+    job_runs: [{ date: "2026-11-19", name: "Weekly link check" }],
+  });
+  assert.equal(cells.length, 36);
+  assert.deepEqual(cells.slice(0, 6), [null, null, null, null, null, null]);
+  assert.equal(cells[6].date, "2026-11-01");
+  assert.deepEqual(cells[6 + 18].jobs, ["Weekly link check"]);
+  assert.equal(cells[6 + 19].events[0].title, "Dentist");
+});
+
+test("the month before January and after December crosses the year", () => {
+  assert.equal(shiftMonth("2026-01", -1), "2025-12");
+  assert.equal(shiftMonth("2026-12", 1), "2027-01");
+  assert.equal(shiftMonth("2026-11", 1), "2026-12");
 });

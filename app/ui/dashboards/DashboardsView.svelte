@@ -7,6 +7,7 @@
   import ErrorRow from "../controls/ErrorRow.svelte";
   import Loading from "../controls/Loading.svelte";
   import Tabs from "../controls/Tabs.svelte";
+  import CalendarBoard from "./CalendarBoard.svelte";
   import { prefs } from "../prefs.svelte.ts";
   import {
     activityTiles,
@@ -33,6 +34,8 @@
   let tiles = $state<Tile[] | null>(null);
   let error = $state<string | null>(null);
   let readAt = $state("");
+  // Bumped by Refresh, so a dashboard that loads itself reads again.
+  let refreshed = $state(0);
 
   const call = <T,>(method: string): Promise<T> =>
     invoke<T>("sidecar_call", { method });
@@ -52,7 +55,7 @@
   const NEEDS_REPO = "Choose a repository first.";
 
   // What each dashboard reads. One that fails shows its reason and a Try again button.
-  const READERS: Record<DashboardId, () => Promise<Tile[]>> = {
+  const READERS: Partial<Record<DashboardId, () => Promise<Tile[]>>> = {
     overview: async () => {
       const [agents, used, cards, asks, system] = await Promise.all([
         call<{ agents: unknown[] }>("agents"),
@@ -91,7 +94,8 @@
     tiles = null;
     error = null;
     try {
-      const found = await READERS[wanted]();
+      // A dashboard with no reader here (the calendar) draws and loads itself.
+      const found = (await READERS[wanted]?.()) ?? [];
       if (wanted !== current) return; // the user moved on while it was read
       tiles = found;
       readAt = new Date().toLocaleTimeString([], {
@@ -141,7 +145,13 @@
       >{prefs.dashboardsLocked ? "Locked" : "Unlocked"}</button
     >
     <span class="read" role="status">{readAt ? `Read at ${readAt}` : ""}</span>
-    <button type="button" onclick={() => void load()}>Refresh</button>
+    <button
+      type="button"
+      onclick={() => {
+        refreshed++;
+        void load();
+      }}>Refresh</button
+    >
     <button
       type="button"
       class="close"
@@ -185,7 +195,9 @@
           </p>
         {/if}
       {/if}
-      {#if error === NEEDS_REPO}
+      {#if current === "calendar"}
+        {#key refreshed}<CalendarBoard />{/key}
+      {:else if error === NEEDS_REPO}
         <p class="note" role="status">
           Write a repository as owner/name and press Show. It is read with the
           gh tool you are logged in to.

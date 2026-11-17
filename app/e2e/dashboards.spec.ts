@@ -42,6 +42,7 @@ test("dashboards open from the top bar, list six dashboards and show numbers fro
     "System",
     "Activity",
     "GitHub",
+    "Calendar and scheduling",
   ]);
   const board = view.getByRole("tabpanel");
   await expect(board.getByText("Tokens today")).toBeVisible();
@@ -171,4 +172,50 @@ test("the GitHub dashboard asks for a repository, shows its numbers and says why
   await page.keyboard.press("Control+d");
   await view.getByRole("tab", { name: "GitHub" }).click();
   await expect(board.getByLabel("Repository")).toHaveValue("nobody/nothing");
+});
+
+test("the calendar shows events and job days, adds and removes an event, and changes month", async ({
+  page,
+}) => {
+  await mockSidecar(page);
+  await page.addInitScript(() => {
+    if (sessionStorage.getItem("seeded")) return;
+    sessionStorage.setItem("seeded", "1");
+    localStorage.setItem(
+      "hippocampus.prefs",
+      JSON.stringify({ intro: "off", dashboardsLocked: false }),
+    );
+  });
+  await page.goto("/");
+  await page.keyboard.press("Control+d");
+  const view = page.getByRole("dialog", { name: "Dashboards" });
+  await view.getByRole("tab", { name: "Calendar and scheduling" }).click();
+  const board = view.getByRole("tabpanel");
+  await expect(board.getByText("November 2026")).toBeVisible();
+  await expect(board.getByRole("gridcell")).toHaveCount(30);
+  await expect(
+    board.getByRole("gridcell", { name: "2026-11-20" }),
+  ).toContainText("15:30 Dentist");
+  await expect(
+    board.getByRole("gridcell", { name: "2026-11-19" }),
+  ).toContainText("Weekly link check");
+  await expect(board.getByRole("button", { name: "Add event" })).toBeDisabled();
+  await board.getByLabel("Date").fill("2026-11-25");
+  await board.getByLabel("Event").fill("Pay rent");
+  await board.getByRole("button", { name: "Add event" }).click();
+  await expect(
+    board.getByRole("gridcell", { name: "2026-11-25" }),
+  ).toContainText("Pay rent");
+  await board.getByRole("button", { name: "Remove Pay rent" }).click();
+  await expect(board.getByText("Pay rent")).toHaveCount(0);
+  await board.getByLabel("Event").fill("boom");
+  await board.getByRole("button", { name: "Add event" }).click();
+  await expect(board.getByRole("alert")).toContainText(
+    "An event needs a title.",
+  );
+  await board.getByRole("button", { name: "Next month" }).click();
+  await expect(board.getByText("December 2026")).toBeVisible();
+  await expect(board.getByRole("gridcell")).toHaveCount(31);
+  await board.getByRole("button", { name: "This month" }).click();
+  await expect(board.getByText("November 2026")).toBeVisible();
 });

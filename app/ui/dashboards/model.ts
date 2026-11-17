@@ -19,6 +19,7 @@ export const DASHBOARDS = [
   { id: "system", label: "System" },
   { id: "activity", label: "Activity" },
   { id: "github", label: "GitHub" },
+  { id: "calendar", label: "Calendar and scheduling" },
 ] as const;
 export type DashboardId = (typeof DASHBOARDS)[number]["id"];
 
@@ -212,4 +213,53 @@ export function githubTiles(found: GithubShape): Tile[] {
       value: issue.title,
     })),
   ];
+}
+
+export type CalendarEvent = {
+  id: string;
+  date: string;
+  time: string;
+  title: string;
+};
+export type CalendarShape = {
+  month: string;
+  /** 0 is Monday. */
+  first_weekday: number;
+  days: number;
+  today: string;
+  events: CalendarEvent[];
+  job_runs: { date: string; name: string }[];
+};
+export type DayCell = {
+  day: number;
+  date: string;
+  events: CalendarEvent[];
+  jobs: string[];
+};
+
+/** The cells of a month grid that starts on Monday: null for the blanks before day 1. */
+export function monthCells(view: CalendarShape): (DayCell | null)[] {
+  const cells: (DayCell | null)[] = Array.from(
+    { length: view.first_weekday },
+    () => null,
+  );
+  for (let day = 1; day <= view.days; day++) {
+    const date = `${view.month}-${String(day).padStart(2, "0")}`;
+    cells.push({
+      day,
+      date,
+      events: view.events.filter((event) => event.date === date),
+      jobs: view.job_runs
+        .filter((run) => run.date === date)
+        .map((run) => run.name),
+    });
+  }
+  return cells;
+}
+
+/** The month before or after, as YYYY-MM. */
+export function shiftMonth(month: string, by: number): string {
+  const [year = 0, index = 1] = month.split("-").map(Number);
+  const total = year * 12 + (index - 1) + by;
+  return `${Math.floor(total / 12)}-${String((total % 12) + 1).padStart(2, "0")}`;
 }

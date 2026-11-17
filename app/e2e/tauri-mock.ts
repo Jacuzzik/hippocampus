@@ -749,6 +749,54 @@ export async function mockSidecar(
             return { ok: true };
           case "terminal_context":
             return { percent: 42 };
+          case "calendar":
+          case "calendar_add":
+          case "calendar_remove": {
+            const w = window as unknown as {
+              __events?: {
+                id: string;
+                date: string;
+                time: string;
+                title: string;
+              }[];
+            };
+            const events = (w.__events ??= [
+              { id: "e1", date: "2026-11-20", time: "15:30", title: "Dentist" },
+            ]);
+            if (args.method === "calendar_add") {
+              if (String(args.params?.title) === "boom")
+                throw new Error("An event needs a title.");
+              events.push({
+                id: `e${events.length + 1}`,
+                date: String(args.params?.date),
+                time: String(args.params?.time ?? ""),
+                title: String(args.params?.title),
+              });
+            }
+            if (args.method === "calendar_remove")
+              events.splice(
+                events.findIndex((event) => event.id === args.params?.id),
+                1,
+              );
+            const month =
+              args.method === "calendar_add"
+                ? String(args.params?.date).slice(0, 7)
+                : String(args.params?.month ?? "2026-11");
+            const first = new Date(`${month}-01T00:00:00Z`);
+            return {
+              month,
+              first_weekday: (first.getUTCDay() + 6) % 7,
+              days: new Date(
+                Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0),
+              ).getUTCDate(),
+              today: "2026-11-17",
+              events: events.filter((event) => event.date.startsWith(month)),
+              job_runs:
+                month === "2026-11"
+                  ? [{ date: "2026-11-19", name: "Weekly link check" }]
+                  : [],
+            };
+          }
           case "github_board":
             if (String(args.params?.repo) === "nobody/nothing")
               return { error: "HTTP 404: Not Found" };
