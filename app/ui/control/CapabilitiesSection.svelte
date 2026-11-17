@@ -11,6 +11,8 @@
   let skills = $state<Skill[]>([]);
   let armed = $state<string | null>(null);
   let error = $state<string | null>(null);
+  // True while an install or remove runs, so the buttons cannot be pressed twice (13.03).
+  let busy = $state<"install" | "remove" | null>(null);
 
   async function load(): Promise<void> {
     try {
@@ -29,6 +31,7 @@
       return;
     }
     armed = null;
+    busy = "remove";
     try {
       skills = (
         await invoke<{ skills: Skill[] }>("sidecar_call", {
@@ -39,6 +42,8 @@
       error = null;
     } catch (cause) {
       error = String(cause);
+    } finally {
+      busy = null;
     }
   }
 
@@ -52,6 +57,7 @@
       return;
     }
     installArmed = false;
+    busy = "install";
     try {
       skills = (
         await invoke<{ skills: Skill[] }>("sidecar_call", {
@@ -63,6 +69,8 @@
       error = null;
     } catch (cause) {
       error = String(cause);
+    } finally {
+      busy = null;
     }
   }
 
@@ -97,7 +105,11 @@
           <span
             >{skill.name} <span class="muted">{skill.description}</span></span
           >
-          <button type="button" onclick={() => removeSkill(skill.name)}>
+          <button
+            type="button"
+            disabled={busy !== null}
+            onclick={() => removeSkill(skill.name)}
+          >
             {armed === skill.name ? "Confirm remove" : "Remove"}
           </button>
         </li>
@@ -112,8 +124,16 @@
       bind:value={installPath}
       oninput={() => (installArmed = false)}
     />
-    <button type="button" disabled={!installPath.trim()} onclick={installSkill}>
-      {installArmed ? `Confirm install of ${installPath.trim()}` : "Install"}
+    <button
+      type="button"
+      disabled={!installPath.trim() || busy !== null}
+      onclick={installSkill}
+    >
+      {busy === "install"
+        ? "Installing…"
+        : installArmed
+          ? `Confirm install of ${installPath.trim()}`
+          : "Install"}
     </button>
   </div>
   {#if error}<ErrorRow message={error} onretry={load} />{/if}

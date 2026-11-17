@@ -124,7 +124,11 @@
         <strong>{server.label}</strong>
         <span class="muted">{server.address}</span>
         <span class="muted">
-          {!checked ? "Checking…" : running[server.id] ? "Answering" : "Not running"}
+          {!checked
+            ? "Checking…"
+            : running[server.id]
+              ? "Answering"
+              : "Not running"}
         </span>
       </li>
     {/each}

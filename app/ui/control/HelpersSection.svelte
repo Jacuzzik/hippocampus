@@ -36,8 +36,11 @@
     }
   }
 
+  // True while the start call runs (13.03), so one click starts one helper.
+  let busy = $state(false);
   async function start(): Promise<void> {
     error = null;
+    busy = true;
     try {
       await invoke("sidecar_call", {
         method: "start_helper",
@@ -47,6 +50,8 @@
       await load();
     } catch (cause) {
       error = String(cause);
+    } finally {
+      busy = false;
     }
   }
 
@@ -67,8 +72,8 @@
     <button
       type="button"
       class="primary"
-      disabled={!prompt.trim() || running >= limit}
-      onclick={start}>Start helper</button
+      disabled={!prompt.trim() || running >= limit || busy}
+      onclick={start}>{busy ? "Starting…" : "Start helper"}</button
     >
     {#if running >= limit}<span class="muted"
         >All {limit} slots are in use.</span

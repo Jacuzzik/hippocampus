@@ -19,8 +19,11 @@
     }
   }
 
+  // True while a change is saved (13.03), so the buttons cannot race each other.
+  let busy = $state(false);
   async function choose(next: NetworkMode): Promise<void> {
     error = null;
+    busy = true;
     try {
       const result = await invoke<{ mode: NetworkMode }>("sidecar_call", {
         method: "set_network",
@@ -30,6 +33,8 @@
     } catch (cause) {
       error = String(cause);
       await load();
+    } finally {
+      busy = false;
     }
   }
 
@@ -48,6 +53,7 @@
         type="button"
         class="segment"
         aria-pressed={mode === option}
+        disabled={busy}
         onclick={() => choose(option)}
       >
         {option.charAt(0).toUpperCase() + option.slice(1)}

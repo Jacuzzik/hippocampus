@@ -3,6 +3,7 @@
   import { invoke } from "@tauri-apps/api/core";
   import { onMount } from "svelte";
   import { allowlistAfter, type ToolRow } from "./allowlist";
+  import Loading from "../controls/Loading.svelte";
 
   // Which tools the assistant may use. Each change is saved at once; the settings file keeps it.
   let { onclose }: { onclose: () => void } = $props();
@@ -10,6 +11,8 @@
   let tools = $state<ToolRow[]>([]);
   let every = $state(true);
   let error = $state<string | null>(null);
+  // False until the first answer (or failure), so "open a brain folder" does not flash while it loads (13.03).
+  let loaded = $state(false);
 
   async function load(): Promise<void> {
     try {
@@ -21,6 +24,8 @@
       every = result.every;
     } catch (cause) {
       error = String(cause);
+    } finally {
+      loaded = true;
     }
   }
 
@@ -91,7 +96,9 @@
       Every tool
     </label>
 
-    {#if tools.length === 0}
+    {#if !loaded}
+      <Loading what="the tools" />
+    {:else if tools.length === 0}
       <p class="muted">Open a brain folder to see the assistant's tools.</p>
     {:else}
       <ul>

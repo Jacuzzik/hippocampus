@@ -21,10 +21,13 @@
     if (!error) pending = { agent, task: task.trim() };
   }
 
+  // True while the send runs (13.03).
+  let sending = $state(false);
   async function confirm(): Promise<void> {
     if (!pending) return;
     const { agent: who, task: text } = pending;
     pending = null;
+    sending = true;
     try {
       await invoke("sidecar_call", {
         method: "start_helper",
@@ -34,6 +37,8 @@
       task = "";
     } catch (cause) {
       error = String(cause);
+    } finally {
+      sending = false;
     }
   }
 </script>
@@ -68,7 +73,9 @@
     </div>
   {:else}
     <div class="row">
-      <Button variant="primary" onclick={review}>Review and send</Button>
+      <Button variant="primary" disabled={sending} onclick={review}
+        >{sending ? "Sending…" : "Review and send"}</Button
+      >
       {#if sent}<span class="muted">{sent}</span>{/if}
     </div>
   {/if}

@@ -9,6 +9,8 @@
   let confirmRemove = $state(false);
   let notice = $state<string | null>(null);
 
+  // True while the removal runs (13.03).
+  let busy = $state(false);
   async function removeData(): Promise<void> {
     if (!confirmRemove) {
       confirmRemove = true;
@@ -17,11 +19,14 @@
     confirmRemove = false;
     error = null;
     notice = null;
+    busy = true;
     try {
       await invoke("sidecar_call", { method: "remove_data" });
       notice = "Removed the index cache. Your notes are untouched.";
     } catch (cause) {
       error = String(cause);
+    } finally {
+      busy = false;
     }
   }
 
@@ -53,10 +58,12 @@
         Removes the index cache. Your notes are never deleted.
       </p>
       <div>
-        <button type="button" onclick={removeData}>
-          {confirmRemove
-            ? "Press again to remove Hippocampus data"
-            : "Remove Hippocampus data"}
+        <button type="button" disabled={busy} onclick={removeData}>
+          {busy
+            ? "Removing…"
+            : confirmRemove
+              ? "Press again to remove Hippocampus data"
+              : "Remove Hippocampus data"}
         </button>
       </div>
       {#if notice}

@@ -17,6 +17,8 @@
   let query = $state("");
   let results = $state<string[] | null>(null);
   let error = $state<string | null>(null);
+  // True while a search runs (13.03): search by meaning can take a few seconds.
+  let busy = $state(false);
 
   async function load(): Promise<void> {
     try {
@@ -30,6 +32,7 @@
 
   async function search(): Promise<void> {
     error = null;
+    busy = true;
     try {
       const found = await invoke<Hits>("sidecar_call", {
         method: "memory_search",
@@ -42,6 +45,8 @@
       );
     } catch (cause) {
       error = String(cause);
+    } finally {
+      busy = false;
     }
   }
 
@@ -82,7 +87,9 @@
       placeholder="Search memory notes"
       bind:value={query}
     />
-    <button type="submit" class="primary">Search</button>
+    <button type="submit" class="primary" disabled={busy}
+      >{busy ? "Searching…" : "Search"}</button
+    >
   </form>
   {#if results}
     {#if results.length === 0}
