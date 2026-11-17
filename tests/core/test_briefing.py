@@ -106,6 +106,7 @@ def test_a_start_hands_the_cli_one_briefing_and_the_card_can_show_its_stamp(tmp_
             }
         )
     main, ada = session.terminals.briefings
+    assert (session.hive_path / "hippoherman" / "outbox").is_dir()
     assert main.startswith("1. Role\nYou are Hippoherman") and ada.startswith(
         "1. Role\nYou are ada,"
     )
@@ -135,3 +136,10 @@ def test_an_agent_whose_goal_holds_a_key_is_not_started(
             }
         )
     assert session.terminals.briefings == []
+
+
+def test_the_main_briefing_sets_the_lead_role_and_what_goes_to_the_user() -> None:
+    text = finished(briefing.main_briefing("/vault", "/hive/hippoherman/outbox"))
+    assert "7. Lead role" in text and "/hive/hippoherman/outbox" in text
+    assert "Bring to the user only:" in text and "a change of scope" in text
+    assert briefing.lint(text) == []

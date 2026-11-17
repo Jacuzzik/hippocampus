@@ -45,7 +45,9 @@ class TerminalPart:
             )
             # The wording lives in core/briefing.py; the parts that differ per agent are filled in there.
             if agent == "hippoherman":
-                text = briefing.main_briefing(self.settings.vault)
+                outbox = self.hive_path / agent / "outbox"
+                outbox.mkdir(parents=True, exist_ok=True)  # the lead routes work through it
+                text = briefing.main_briefing(self.settings.vault, outbox)
             else:
                 text = briefing.agent_briefing(
                     agent, saved, folder, self.settings.vault, self.hive_path / agent / "outbox"
