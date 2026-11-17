@@ -133,6 +133,10 @@ class DispatchPart:
             "inbox_thread": self.inbox_thread,
             "logs": self.logs,
             "connectors": self.connectors,
+            "apps": lambda request: self.apps_list(),
+            "app_connect": self.app_connect,
+            "app_disconnect": self.app_disconnect,
+            "app_board": self.app_board,
         }
 
     def stop(self) -> dict[str, Any]:
