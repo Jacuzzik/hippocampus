@@ -228,8 +228,7 @@
         ? "Open this agent's folder in VS Code"
         : "This agent has no working folder"}>IDE</button
     >
-  </div>
-  <div class="seg" role="group" aria-label="Run controls">
+    <!-- 4.06: one action row, three equal buttons, in place of an IDE row and a separate run row. -->
     <button
       type="button"
       class="stop"
