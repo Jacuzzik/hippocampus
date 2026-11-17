@@ -43,6 +43,21 @@
 
   // Messages wait here while the CLI is printing, then go into its terminal in order.
   const queue = createTerminalQueue(() => agent.id);
+
+  // Clear context from the card menu: the agent first rewrites its handoff note, which its next start
+  // loads (core/pins.py), and the clear waits in the queue until it has finished.
+  $effect(() => {
+    const onClear = (event: Event) => {
+      if ((event as CustomEvent<{ id: string }>).detail.id !== agent.id) return;
+      event.preventDefault();
+      queue.send(
+        `Write your handoff now: rewrite ${agent.id}-Handoff.md at the vault root with four short parts: State, Next, Files, Open. Your context is cleared after this.`,
+      );
+      queue.send("/clear");
+    };
+    window.addEventListener("agent-clear", onClear);
+    return () => window.removeEventListener("agent-clear", onClear);
+  });
   $effect(() => {
     const timer = setInterval(queue.tick, 1000);
     return () => clearInterval(timer);

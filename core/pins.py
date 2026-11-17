@@ -72,3 +72,20 @@ def summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
         "warn": total > TOKENS_WARN,
         "limit": TOKENS_WARN,
     }
+
+
+def handoff_path(agent: str) -> str:
+    """The agent's handoff note at the vault root (8.15). It rewrites it before a clear; the next start loads it."""
+    return f"{agent}-Handoff.md"
+
+
+def handoff(agent: str, read: Callable[[str], str] | None) -> str:
+    """The body of the briefing's handoff section, or "" when there is no handoff note yet."""
+    (row,) = gather([handoff_path(agent)], read)
+    if row["missing"] or not row["text"].strip():
+        return ""
+    cut = "\n(cut here: the note is longer)" if row["cut"] else ""
+    return (
+        f"Your last session left this in {row['path']}. Carry on from it.\n\n"
+        f"{row['text'].strip()}{cut}"
+    )

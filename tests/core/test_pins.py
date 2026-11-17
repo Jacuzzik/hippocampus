@@ -85,3 +85,26 @@ def test_no_pins_adds_no_section(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
         {"method": "terminal_start", "agent": "ada", "provider": "claude", "rows": 24, "cols": 80}
     )
     assert "Pinned notes" not in session.terminals.briefings[0]
+
+
+def test_a_handoff_note_is_loaded_into_the_next_start(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    session = _session(tmp_path, monkeypatch, [])
+    vault = session.indexer.vault  # type: ignore[union-attr]
+    (vault / "ada-Handoff.md").write_text("State: half done\nNext: tests", encoding="utf-8")
+    session.dispatch(
+        {"method": "terminal_start", "agent": "ada", "provider": "claude", "rows": 24, "cols": 80}
+    )
+    (text,) = session.terminals.briefings
+    assert "Handoff from your last session\nYour last session left this in ada-Handoff.md" in text
+    assert "Next: tests" in text and "rewrite ada-Handoff.md" in text
+    assert briefing.lint(text) == []
+
+
+def test_no_handoff_note_adds_no_section(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    session = _session(tmp_path, monkeypatch, [])
+    session.dispatch(
+        {"method": "terminal_start", "agent": "ada", "provider": "claude", "rows": 24, "cols": 80}
+    )
+    assert "Handoff from your last session" not in session.terminals.briefings[0]

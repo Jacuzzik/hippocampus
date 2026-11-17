@@ -327,7 +327,14 @@
         role="menuitem"
         class="danger"
         onclick={() => {
-          sendLine(open.id, "/clear");
+          // An added agent's panel takes this: it asks for a handoff first, then clears (8.15).
+          const handled = !window.dispatchEvent(
+            new CustomEvent("agent-clear", {
+              detail: { id: open.id },
+              cancelable: true,
+            }),
+          );
+          if (!handled) sendLine(open.id, "/clear");
           menu = null;
         }}>Clear context</button
       >

@@ -271,3 +271,47 @@ test("the monitor tab checks the newest CI run of an agent's folder", async ({
     "Newest CI run: tests on main: failure.",
   );
 });
+
+test("Clear context asks the agent for its handoff first, then clears", async ({
+  page,
+}) => {
+  await page.evaluate(() => {
+    (window as unknown as { __cliCommand: string }).__cliCommand =
+      "claude --model claude-sonnet-5-5";
+  });
+  const bar = page.getByLabel("Agents");
+  await bar.getByRole("button", { name: "+ Add agent" }).click();
+  const add = page.getByRole("dialog", { name: "Add agent" });
+  await add.getByRole("textbox", { name: "Name", exact: true }).fill("Grace");
+  await add.getByRole("button", { name: "Next" }).click();
+  await add.getByLabel("Folder in workspaces").selectOption("IT");
+  await add.getByRole("button", { name: "Next" }).click();
+  await add.getByRole("button", { name: "claude-sonnet-5-5" }).click();
+  await add.getByRole("button", { name: "Next" }).click();
+  await add
+    .getByRole("textbox", { name: "Goal", exact: true })
+    .fill("Tidy the notes");
+  await add.getByRole("button", { name: "Spawn" }).click();
+  await expect(bar.getByLabel("Context 42").first()).toBeVisible({
+    timeout: 10000,
+  });
+  await bar
+    .getByRole("button", { name: "Grace options" })
+    .click({ button: "right" });
+  await page.getByRole("menuitem", { name: "Clear context" }).click();
+  const typed = () =>
+    page.evaluate(() =>
+      ((window as unknown as { __typed?: string[] }).__typed ?? []).filter(
+        (t) => t !== "\r",
+      ),
+    );
+  // The clear waits in the queue (3 seconds after the handoff request) and goes in second.
+  await expect
+    .poll(typed, { timeout: 10000 })
+    .toEqual([
+      expect.stringMatching(
+        /^Write your handoff now: rewrite Grace#\d{4}-Handoff\.md/,
+      ),
+      "/clear",
+    ]);
+});

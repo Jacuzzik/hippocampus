@@ -50,9 +50,13 @@ class TerminalPart:
                 text = briefing.agent_briefing(
                     agent, saved, folder, self.settings.vault, self.hive_path / agent / "outbox"
                 )
-            pinned_text = pins.section(pins.gather(pins.paths(saved), self._pin_reader()))
+            reader = self._pin_reader()
+            pinned_text = pins.section(pins.gather(pins.paths(saved), reader))
             if pinned_text:
                 text = briefing.add_section(text, "Pinned notes", pinned_text)
+            handoff_text = pins.handoff(agent, reader) if agent != "hippoherman" else ""
+            if handoff_text:
+                text = briefing.add_section(text, "Handoff from your last session", handoff_text)
             vault = str(self.settings.vault) if self.settings.vault else None
             block_tools = bool(request.get("block_tools", False))
             # The start-up inbox is written each time a terminal starts, so a new agent gets it as soon as its terminal opens.
