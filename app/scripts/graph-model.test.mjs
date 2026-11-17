@@ -416,3 +416,19 @@ test("LabelPlacer keeps labels that do not overlap and stops at the cap", async 
   assert.equal(p.claim(100, 100, 110, 110), false, "cap of 2 reached");
   assert.equal(p.count, 2);
 });
+
+test("an eased zoom reaches the same factor in a few frames and then stops", async () => {
+  const { easeZoom } = await import("../ui/graph/model.ts");
+  let pending = 2;
+  let applied = 1;
+  let frames = 0;
+  while (pending !== 1 && frames < 100) {
+    const [step, rest] = easeZoom(pending);
+    applied *= step;
+    pending = rest;
+    frames++;
+  }
+  assert.ok(frames > 3 && frames < 30, `took ${frames} frames`);
+  assert.ok(Math.abs(applied - 2) < 1e-9);
+  assert.deepEqual(easeZoom(1), [1, 1]);
+});

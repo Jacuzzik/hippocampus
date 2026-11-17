@@ -286,6 +286,18 @@ export function labelAlpha(zoom: number): number {
   return Math.min(1, Math.max(0, t));
 }
 
+/** Share of the remaining zoom applied each frame: the wheel glides instead of jumping (12.11). */
+export const ZOOM_EASE = 0.35;
+/**
+ * One frame of an eased zoom. `pending` is the zoom factor still to apply (1 = none). Returns the factor to apply
+ * this frame and what is left; the last small step is applied whole, so it always ends.
+ */
+export function easeZoom(pending: number, share = ZOOM_EASE): [number, number] {
+  if (Math.abs(Math.log(pending)) < 0.002) return [pending, 1];
+  const step = Math.exp(Math.log(pending) * share);
+  return [step, pending / step];
+}
+
 /**
  * Greedy label placement shared by every graph renderer: a label is kept only if its box clears every
  * label already kept, and none past `max`. Boxes are screen pixels [x, y, x1, y1].

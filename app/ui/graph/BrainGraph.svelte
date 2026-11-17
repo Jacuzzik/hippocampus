@@ -21,6 +21,7 @@
   import {
     centerOn,
     hitTest,
+    easeZoom,
     labelAlpha,
     LabelPlacer,
     LOW_POWER,
@@ -265,8 +266,19 @@
     labels = placed;
   }
 
+  // 12.11: the zoom still to apply and the point it is centred on.
+  let zoomPending = { factor: 1, x: 0, y: 0 };
+  function stepZoom(): boolean {
+    if (zoomPending.factor === 1) return false;
+    const [step, rest] = easeZoom(zoomPending.factor);
+    cam = zoomAt(cam, zoomPending.x, zoomPending.y, step);
+    zoomPending = { ...zoomPending, factor: rest };
+    return rest !== 1;
+  }
+
   function draw(): void {
     frame = 0;
+    if (stepZoom()) schedule();
     // Live motion: one simulation step a frame while it is still hot. Reduced motion stays still.
     let moving = false;
     if (!ascii && !calm && tick(sim)) {
@@ -289,7 +301,10 @@
       );
     drawLabels();
     // Read by the e2e test: how many nodes the last frame placed inside the canvas.
-    if (canvas) canvas.dataset.inView = String(countInView());
+    if (canvas) {
+      canvas.dataset.inView = String(countInView());
+      canvas.dataset.zoom = cam.zoom.toFixed(3);
+    }
   }
 
   // The constellation on the overlay canvas. Its geometry is rebuilt after the layout settles, and every few
@@ -808,7 +823,10 @@
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
       const [x, y] = local(e);
-      cam = zoomAt(cam, x, y, Math.exp(-e.deltaY * 0.0015));
+      const factor = Math.exp(-e.deltaY * 0.0015);
+      // Reduced motion zooms at once; otherwise the frames glide toward the target (see stepZoom).
+      if (calm) cam = zoomAt(cam, x, y, factor);
+      else zoomPending = { factor: zoomPending.factor * factor, x, y };
       schedule();
     };
     c.addEventListener("pointerdown", onDown);
