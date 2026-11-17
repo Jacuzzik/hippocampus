@@ -19,6 +19,8 @@ PROTOCOL = "2024-11-05"
 VAULT_TOOLS = (
     "search_notes",
     "read_note",
+    "search_documents",
+    "read_document",
     "create_note",
     "edit_note",
     "delete_note",

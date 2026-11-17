@@ -9,6 +9,7 @@ from typing import Any
 import yaml
 
 from core.vault import Indexer
+from tools import documents
 from tools.registry import Tool
 
 # Hub notes linked to MAIN. The chat cannot delete them.
@@ -111,6 +112,13 @@ def vault_tools(indexer: Indexer, lock: threading.RLock) -> dict[str, Tool]:
         if not hits:
             return "no notes match"
         return "\n".join(f"{path}: {title}" for path, title in hits)
+
+    def search_documents(args: dict[str, Any]) -> str:
+        hits = documents.search(root, str(args.get("query", "")))
+        return "\n".join(hits) if hits else "no documents match"
+
+    def read_document(args: dict[str, Any]) -> str:
+        return documents.text_of(documents.inside(root, args.get("path")))[: documents.READ_MAX]
 
     def read_note(args: dict[str, Any]) -> str:
         target = note_path(args.get("path"))
@@ -310,6 +318,33 @@ def vault_tools(indexer: Indexer, lock: threading.RLock) -> dict[str, Tool]:
                 "required": ["query"],
             },
             run=search_notes,
+        ),
+        Tool(
+            name="search_documents",
+            tier="read",
+            description="Find text, CSV and PDF files in the vault that contain the text. Returns each path with the words around the match.",
+            parameters={
+                "type": "object",
+                "properties": {"query": {"type": "string"}},
+                "required": ["query"],
+            },
+            run=search_documents,
+        ),
+        Tool(
+            name="read_document",
+            tier="read",
+            description="Read the text of one .txt, .csv or .pdf file in the vault.",
+            parameters={
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "File path relative to the vault, ending in .txt, .csv or .pdf",
+                    }
+                },
+                "required": ["path"],
+            },
+            run=read_document,
         ),
         Tool(
             name="read_note",
