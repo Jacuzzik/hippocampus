@@ -248,3 +248,61 @@ test("the Phone dashboard lists devices and starts and stops mirroring; a phone 
   await ready.getByRole("button", { name: "Stop mirroring" }).click();
   await expect(ready.getByRole("button", { name: "Mirror" })).toBeEnabled();
 });
+
+test("an app is connected in Settings with a key that is never shown again, gets its own dashboard, and is disconnected", async ({
+  page,
+}) => {
+  await mockSidecar(page);
+  await page.goto("/");
+  await page.keyboard.press("Control+d");
+  const view = page.getByRole("dialog", { name: "Dashboards" });
+  await expect(view.getByRole("tab", { name: "Shopify" })).toHaveCount(0);
+  await view.getByRole("button", { name: /locked/ }).click();
+  const settings = page.getByRole("dialog", { name: "Settings" });
+  await expect(settings.getByText("0 of 3 connected")).toBeVisible();
+  await settings.getByLabel("Find an app").fill("shop");
+  await expect(settings.getByRole("button", { name: /^Connect / })).toHaveCount(
+    1,
+  );
+  await settings.getByRole("button", { name: "Connect Shopify" }).click();
+  const save = settings.getByRole("button", { name: "Save key" });
+  await expect(save).toBeDisabled();
+  const key = settings.getByLabel("Key for Shopify");
+  await expect(key).toHaveAttribute("type", "password");
+  await key.fill("shpat_secret1234");
+  await settings.getByLabel("Shop address").fill("evil.com/x");
+  await save.click();
+  await expect(settings.getByRole("alert")).toContainText("must look like");
+  await settings.getByLabel("Shop address").fill("my-shop.myshopify.com");
+  await save.click();
+  await expect(settings.getByText("Connected · key ends 1234")).toBeVisible();
+  await expect(settings.getByText("1 of 3 connected")).toBeVisible();
+  // The key reached the backend once and is nowhere on the page.
+  expect(
+    await page.evaluate(
+      () => (window as unknown as { __appKeys: string[] }).__appKeys,
+    ),
+  ).toEqual(["shpat_secret1234"]);
+  expect(await page.content()).not.toContain("shpat_secret1234");
+  await settings.getByRole("button", { name: "Close settings" }).click();
+
+  await view.getByRole("tab", { name: "Shopify" }).click();
+  const board = view.getByRole("tabpanel");
+  await expect(board.locator("li", { hasText: "Orders" })).toContainText("12");
+  await expect(board.locator("li", { hasText: "Customers" })).toContainText(
+    "Not read",
+  );
+  await expect(board.locator("li", { hasText: "Customers" })).toContainText(
+    "needs read access",
+  );
+
+  await view.getByRole("button", { name: /locked/ }).click();
+  await settings.getByRole("button", { name: "Disconnect Shopify" }).click();
+  await expect(settings.getByText("0 of 3 connected")).toBeVisible();
+  await settings.getByRole("button", { name: "Close settings" }).click();
+  await expect(view.getByRole("tab", { name: "Shopify" })).toHaveCount(0);
+  await expect(view.getByRole("tab", { name: "Overview" })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+});

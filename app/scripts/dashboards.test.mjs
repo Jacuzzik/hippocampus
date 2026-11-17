@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   activityTiles,
+  appTiles,
   githubTiles,
   monthCells,
   shiftMonth,
@@ -169,4 +170,22 @@ test("the month before January and after December crosses the year", () => {
   assert.equal(shiftMonth("2026-01", -1), "2025-12");
   assert.equal(shiftMonth("2026-12", 1), "2027-01");
   assert.equal(shiftMonth("2026-11", 1), "2026-12");
+});
+
+test("an app's numbers become tiles, and one that failed says why", () => {
+  assert.deepEqual(
+    appTiles([
+      { label: "Orders", value: "12", error: "" },
+      { label: "Customers", value: "", error: "The key was refused (401)." },
+    ]),
+    [
+      { label: "Orders", value: "12" },
+      {
+        label: "Customers",
+        value: "Not read",
+        note: "The key was refused (401).",
+        tone: "warn",
+      },
+    ],
+  );
 });

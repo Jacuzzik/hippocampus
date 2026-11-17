@@ -34,8 +34,8 @@ Asked for on 2026-11-16. Built one slice at a time, each with its own checks and
 ## Connected apps (DB.06, DB.07)
 
 A catalogue of 22 apps: Shopify, BuiltByBit, Stripe, GitHub, GitLab, Vercel, Netlify, Cloudflare,
-Plausible, PostHog, Sentry, Linear, Notion, Airtable, Discord, Telegram, Lemon Squeezy, Gumroad,
-Paddle, WooCommerce, Modrinth, Polar.
+Plausible, PostHog, Sentry, Airtable, Discord, Telegram, Lemon Squeezy, Gumroad, Paddle, WooCommerce,
+Modrinth, Polar, YouTube, Todoist. (Linear and Notion were dropped: they cannot be read with GET.)
 
 - Each app is one entry of data, not code: its address, how the key is sent, and a short list of
   numbers to read (a request path, where the number is in the answer, how to count it).
@@ -65,3 +65,13 @@ Paddle, WooCommerce, Modrinth, Polar.
   only. None is checked against a real account until one is connected.
 - scrcpy cannot draw inside the app window; it opens its own window.
 - The Tasks dashboard stays read-only: the board belongs to the office, not to this app.
+
+## State on 2026-11-17
+
+All nine slices are built and committed. Still open:
+
+- No app entry has been read with a real account. A made-up key was sent to each reachable service to
+  confirm the address exists; BuiltByBit, Cloudflare and YouTube answered 400 and Telegram 404 to it,
+  which fits a malformed key but does not prove the entry.
+- Real phone mirroring was not started; only the device list was read with the real `adb`.
+- The app has not been rebuilt or installed with any of this.

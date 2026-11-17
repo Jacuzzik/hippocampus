@@ -9,6 +9,7 @@
   import { getVersion } from "@tauri-apps/api/app";
   import { onMount } from "svelte";
   import ActivitySection from "./ActivitySection.svelte";
+  import AppsSection from "./AppsSection.svelte";
   import ArchivedAgentsSection from "./ArchivedAgentsSection.svelte";
   import AsksSection from "./AsksSection.svelte";
   import BudgetSection from "./BudgetSection.svelte";
@@ -704,6 +705,7 @@
               Dashboards are {prefs.dashboardsLocked ? "locked" : "unlocked"}.
             </p>
           </section>
+          <AppsSection />
         {:else if page === "Memory"}
           <section class="control-section">
             <h3>Memory</h3>

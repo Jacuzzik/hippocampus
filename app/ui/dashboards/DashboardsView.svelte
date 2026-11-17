@@ -12,6 +12,7 @@
   import { prefs } from "../prefs.svelte.ts";
   import {
     activityTiles,
+    appTiles,
     DASHBOARDS,
     githubTiles,
     noteTiles,
@@ -20,6 +21,7 @@
     systemTiles,
     taskTiles,
     type ActivityRow,
+    type AppNumber,
     type DashboardId,
     type GithubShape,
     type GraphShape,
@@ -31,7 +33,35 @@
   let { onclose, onsettings }: { onclose: () => void; onsettings: () => void } =
     $props();
 
-  let current = $state<DashboardId>("overview");
+  // A built-in dashboard's id, or "app:<id>" for a connected app.
+  let current = $state<string>("overview");
+  // The connected apps: each one gets a dashboard after the built-in ones.
+  let apps = $state<{ id: string; name: string }[]>([]);
+  async function readApps(): Promise<void> {
+    try {
+      const found = await invoke<{
+        apps: { id: string; name: string; connected: boolean }[];
+      }>("sidecar_call", { method: "apps" });
+      apps = found.apps.filter((app) => app.connected);
+      if (
+        current.startsWith("app:") &&
+        !apps.some((a) => `app:${a.id}` === current)
+      )
+        current = "overview";
+    } catch (cause) {
+      console.error("Could not read the connected apps", cause);
+    }
+  }
+  $effect(() => {
+    void readApps();
+    const again = () => void readApps();
+    window.addEventListener("apps-changed", again);
+    return () => window.removeEventListener("apps-changed", again);
+  });
+  const items = $derived([
+    ...DASHBOARDS.map((item) => ({ id: item.id as string, label: item.label })),
+    ...apps.map((app) => ({ id: `app:${app.id}`, label: app.name })),
+  ]);
   let tiles = $state<Tile[] | null>(null);
   let error = $state<string | null>(null);
   let readAt = $state("");
@@ -96,7 +126,16 @@
     error = null;
     try {
       // A dashboard with no reader here (the calendar, the phone) draws and loads itself.
-      const found = (await READERS[wanted]?.()) ?? [];
+      const found = wanted.startsWith("app:")
+        ? appTiles(
+            (
+              await invoke<{ numbers: AppNumber[] }>("sidecar_call", {
+                method: "app_board",
+                params: { id: wanted.slice(4) },
+              })
+            ).numbers,
+          )
+        : ((await READERS[wanted as DashboardId]?.()) ?? []);
       if (wanted !== current) return; // the user moved on while it was read
       tiles = found;
       readAt = new Date().toLocaleTimeString([], {
@@ -120,7 +159,7 @@
     }
   }
   const title = $derived(
-    DASHBOARDS.find((item) => item.id === current)?.label ?? "",
+    items.find((item) => item.id === current)?.label ?? "",
   );
 </script>
 
@@ -163,7 +202,7 @@
   <div class="body">
     <nav>
       <Tabs
-        items={DASHBOARDS.map((item) => ({ id: item.id, label: item.label }))}
+        {items}
         bind:value={current}
         label="Dashboards"
         idBase="dashboards"

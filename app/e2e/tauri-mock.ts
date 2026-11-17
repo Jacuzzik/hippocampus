@@ -797,6 +797,94 @@ export async function mockSidecar(
                   : [],
             };
           }
+          case "apps":
+          case "app_connect":
+          case "app_disconnect": {
+            const w = window as unknown as {
+              __apps?: Record<
+                string,
+                { hint: string; saved: Record<string, string> }
+              >;
+              __appKeys?: string[];
+            };
+            const on = (w.__apps ??= {});
+            if (args.method === "app_connect") {
+              const key = String(args.params?.key ?? "");
+              const fields = (args.params?.fields ?? {}) as Record<
+                string,
+                string
+              >;
+              if (
+                args.params?.id === "shopify" &&
+                !/^[a-z0-9.-]+\.[a-z]+$/.test(fields.shop ?? "")
+              )
+                throw new Error(
+                  "Shop address must look like my-shop.myshopify.com.",
+                );
+              // A test reads window.__appKeys to see the key reached the backend, and only there.
+              (w.__appKeys ??= []).push(key);
+              on[String(args.params?.id)] = {
+                hint: key.slice(-4),
+                saved: fields,
+              };
+            }
+            if (args.method === "app_disconnect")
+              Reflect.deleteProperty(on, String(args.params?.id));
+            const catalogue = [
+              {
+                id: "shopify",
+                name: "Shopify",
+                what: "Orders, products and customers of your shop.",
+                fields: [
+                  {
+                    key: "shop",
+                    label: "Shop address",
+                    example: "my-shop.myshopify.com",
+                  },
+                ],
+                numbers: ["Orders", "Products", "Customers"],
+              },
+              {
+                id: "builtbybit",
+                name: "BuiltByBit",
+                what: "Your resources and unread alerts.",
+                fields: [],
+                numbers: ["Your resources", "Unread alerts"],
+              },
+              {
+                id: "stripe",
+                name: "Stripe",
+                what: "Balance, charges and customers.",
+                fields: [],
+                numbers: ["Available balance"],
+              },
+            ];
+            return {
+              network: "converse",
+              apps: catalogue.map((app) => ({
+                ...app,
+                key_help: "An API key or access token with read access.",
+                saved: on[app.id]?.saved ?? {},
+                connected: app.id in on,
+                hint: on[app.id]?.hint ?? null,
+              })),
+            };
+          }
+          case "app_board":
+            return {
+              id: args.params?.id,
+              name: "Shopify",
+              numbers: [
+                { label: "Orders", value: "12", error: "" },
+                { label: "Products", value: "40", error: "" },
+                {
+                  label: "Customers",
+                  value: "",
+                  error:
+                    "The key may not read this (403). It needs read access.",
+                },
+              ],
+            };
           case "phone_status":
           case "phone_mirror":
           case "phone_stop": {

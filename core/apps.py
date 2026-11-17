@@ -362,9 +362,12 @@ APPS: tuple[App, ...] = (
         "todoist",
         "Todoist",
         "Open tasks and projects.",
-        "https://api.todoist.com/rest/v2",
+        "https://api.todoist.com/api/v1",
         "bearer",
-        (_m("Open tasks", "/tasks", "count"), _m("Projects", "/projects", "count")),
+        (
+            _m("Open tasks (first page)", "/tasks?limit=200", "count", "results"),
+            _m("Projects (first page)", "/projects?limit=200", "count", "results"),
+        ),
     ),
 )
 BY_ID = {app.id: app for app in APPS}
@@ -489,6 +492,7 @@ def _value(metric: Metric, found: object) -> str:
 
 
 STATUS = {
+    400: "The service did not accept the request (400). The key may be mistyped.",
     401: "The key was refused (401). Check it, or make a new one.",
     403: "The key may not read this (403). It needs read access.",
     404: "Not found (404). Check the settings of this app.",

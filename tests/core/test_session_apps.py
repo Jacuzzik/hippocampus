@@ -72,7 +72,7 @@ def test_numbers_need_a_connection_and_a_network_that_allows_going_out(
     with pytest.raises(ValueError, match="not connected"):
         session.app_board({"id": "todoist"})
     session.app_connect({"id": "todoist", "key": "tok"})
-    session._apps_fetch = lambda url, headers: (200, b"[1, 2, 3]")
+    session._apps_fetch = lambda url, headers: (200, b'{"results": [1, 2, 3]}')
     board = session.app_board({"id": "todoist"})
     assert board["name"] == "Todoist"
     assert [row["value"] for row in board["numbers"]] == ["3", "3"]

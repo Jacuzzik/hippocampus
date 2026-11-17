@@ -264,3 +264,19 @@ export function shiftMonth(month: string, by: number): string {
   const total = year * 12 + (index - 1) + by;
   return `${Math.floor(total / 12)}-${String((total % 12) + 1).padStart(2, "0")}`;
 }
+
+export type AppNumber = { label: string; value: string; error: string };
+
+/** One tile per number of a connected app. A number that could not be read shows why. */
+export function appTiles(numbers: AppNumber[]): Tile[] {
+  return numbers.map((number) =>
+    number.error
+      ? {
+          label: number.label,
+          value: "Not read",
+          note: number.error,
+          tone: "warn" as const,
+        }
+      : { label: number.label, value: number.value },
+  );
+}
