@@ -144,6 +144,12 @@ def agent_briefing(
     )
 
 
+def add_section(text: str, title: str, body: str) -> str:
+    """Add a numbered section after the last one, so the numbers stay in order."""
+    last = max((int(n) for n in _HEADING.findall(text)), default=0)
+    return f"{text}\n\n{last + 1}. {title}\n{body}"
+
+
 def stamp(text: str) -> dict[str, Any]:
     """The version and a short hash of a briefing, so a change is visible on the agent's card."""
     return {"version": VERSION, "hash": hashlib.sha256(text.encode("utf-8")).hexdigest()[:8]}
@@ -180,7 +186,7 @@ def lint(text: str) -> list[str]:
             problems.append(f'The briefing has no "{needed}" section.')
     if len(text) > SIZE_MAX:
         problems.append(
-            f"The briefing is {len(text)} characters; the most allowed is {SIZE_MAX}. Shorten the agent's description or goal."
+            f"The briefing is {len(text)} characters; the most allowed is {SIZE_MAX}. Shorten the agent's description or goal, or unpin some notes."
         )
     if app_log.mask(text) != text:
         problems.append(

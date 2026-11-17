@@ -73,6 +73,7 @@ class DispatchPart:
             "terminal_traces": self.terminal_traces,
             "terminal_rebrief": self.terminal_rebrief,
             "briefing_preview": self.briefing_preview,
+            "agent_pins": self.agent_pins,
             "terminal_command": self.terminal_command,
             "terminal_start": terminal("terminal_start"),
             "terminal_input": terminal("terminal_input"),

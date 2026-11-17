@@ -933,6 +933,20 @@ export async function mockSidecar(
             const text = `1. Role\nYou are ${String(args.params?.name)}, an agent in the Hippocampus app. Your goal: ${String(args.params?.goal)}.`;
             return { text, version: 5, characters: text.length };
           }
+          case "agent_pins": {
+            // Each pinned note costs 900 tokens here, so two pins pass the 1500 warning line.
+            const row = (
+              savedAgents as { id: string; pinned?: string[] }[]
+            ).find((a) => a.id === args.params?.agent);
+            const notes = (row?.pinned ?? []).map((path) => ({
+              path,
+              tokens: 900,
+              cut: false,
+              missing: "",
+            }));
+            const tokens = notes.length * 900;
+            return { notes, tokens, warn: tokens > 1500, limit: 1500 };
+          }
           case "terminal_rebrief": {
             const w = window as unknown as { __rebriefed?: string[] };
             (w.__rebriefed ??= []).push(String(args.params?.agent));

@@ -9,7 +9,7 @@
   import LiveTerminal, {
     type TerminalState,
   } from "../regions/LiveTerminal.svelte";
-  import type { SavedAgent } from "./addedAgents.svelte";
+  import { togglePin, type SavedAgent } from "./addedAgents.svelte";
   import { createTerminalQueue } from "../regions/terminalQueue.svelte";
 
   let { agent }: { agent: SavedAgent } = $props();
@@ -87,7 +87,7 @@
     );
   }
 
-  // "terminal", "git", "messages" or "traces".
+  // "terminal", "git", "messages", "traces" or "pinned".
   let view = $state("terminal");
   let gitText = $state("");
   const views = $derived([
@@ -100,7 +100,27 @@
     },
     { id: "messages", label: "Messages" },
     { id: "traces", label: "Traces" },
+    { id: "pinned", label: "Pinned" },
   ]);
+
+  // Notes pinned to this agent, with the token cost they add to every start (core/pins.py).
+  type PinCost = {
+    notes: { path: string; tokens: number; cut: boolean; missing: string }[];
+    tokens: number;
+    warn: boolean;
+    limit: number;
+  };
+  let pinCost = $state<PinCost | null>(null);
+  $effect(() => {
+    if (view !== "pinned") return;
+    void (agent.pinned ?? []).length; // read again when a pin changes
+    invoke<PinCost>("sidecar_call", {
+      method: "agent_pins",
+      params: { agent: agent.id },
+    })
+      .then((result) => (pinCost = result))
+      .catch((cause) => (error = String(cause)));
+  });
 
   // Messages and Traces read again every few seconds while their tab is open.
   type Message = {
@@ -318,6 +338,42 @@
             <span class="dim">{trace.tool.replace("mcp__vault__", "")}</span>
             <span class="grow mono">{trace.detail}</span>
             <small>{(trace.at ?? "").replace("T", " ").slice(5, 16)}</small>
+          </li>
+        {/each}
+      </ul>
+    {/if}
+  {/if}
+
+  {#if view === "pinned"}
+    {#if (agent.pinned ?? []).length === 0}
+      <EmptyState
+        title="No pinned notes"
+        text="Right-click a note in the graph and pick Pin to an agent. Its text goes into this agent's briefing at every start."
+      />
+    {:else}
+      {#if pinCost}
+        <p class="pin-total" class:bad={pinCost.warn}>
+          About {pinCost.tokens} tokens on every start{pinCost.warn
+            ? `: more than the ${pinCost.limit} advised. Unpin a note to save tokens.`
+            : "."}
+        </p>
+      {/if}
+      <ul class="rows" aria-label="Notes pinned to {agent.name}">
+        {#each agent.pinned ?? [] as path (path)}
+          {@const row = pinCost?.notes.find((n) => n.path === path)}
+          <li>
+            <span class="grow">{path}</span>
+            <span class="dim"
+              >{row?.missing ||
+                (row
+                  ? `${row.tokens} tokens${row.cut ? ", cut" : ""}`
+                  : "")}</span
+            >
+            <button
+              type="button"
+              aria-label="Unpin {path}"
+              onclick={() => togglePin(agent.id, path)}>Unpin</button
+            >
           </li>
         {/each}
       </ul>
@@ -627,6 +683,14 @@
   .confirm button {
     flex: 1 1 0;
     width: auto;
+  }
+  .pin-total {
+    margin: 0;
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
+  }
+  .pin-total.bad {
+    color: var(--color-danger);
   }
   .error {
     margin: 0;

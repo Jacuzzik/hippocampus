@@ -2,10 +2,15 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
   import type { GraphData } from "./model.ts";
+  import {
+    addedAgents,
+    archived,
+    togglePin,
+  } from "../owner/addedAgents.svelte";
 
   export type MenuTarget = { x: number; y: number; id: string };
   type Scope = "note" | "hub" | "group";
-  type View = "menu" | "colour" | "delete";
+  type View = "menu" | "colour" | "delete" | "pin";
 
   let {
     menu,
@@ -156,6 +161,9 @@
           role="menuitem"
           onclick={() => startColour("note")}>Change colour</button
         >
+        <button type="button" role="menuitem" onclick={() => (view = "pin")}
+          >Pin to an agent…</button
+        >
         {#if !isMain(open.id) && !fromMain(open.id)}
           <button
             type="button"
@@ -182,6 +190,30 @@
             call("note_colour", { path: open.id, scope, status: tag })}
           >{label}</button
         >
+      {/each}
+      <button type="button" class="back" onclick={() => (view = "menu")}
+        >Back</button
+      >
+    {:else if view === "pin"}
+      {@const agents = addedAgents.list.filter(
+        (a) => !archived.ids.includes(a.id),
+      )}
+      <p class="heading">Pin {title(open.id)} to</p>
+      <p class="muted">
+        A pinned note goes into the agent's briefing at its next start.
+      </p>
+      {#each agents as agent (agent.id)}
+        <button
+          type="button"
+          role="menuitemcheckbox"
+          aria-checked={(agent.pinned ?? []).includes(open.id)}
+          onclick={() => togglePin(agent.id, open.id)}
+          >{(agent.pinned ?? []).includes(open.id)
+            ? "✓ "
+            : ""}{agent.name}</button
+        >
+      {:else}
+        <p class="muted">Add an agent first.</p>
       {/each}
       <button type="button" class="back" onclick={() => (view = "menu")}
         >Back</button

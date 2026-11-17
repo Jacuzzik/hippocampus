@@ -6,7 +6,12 @@ import { SvelteSet } from "svelte/reactivity";
 import type { AgentDraft } from "../control/model";
 
 // The note is private to the user: it is shown only in the card's menu dialog.
-export type SavedAgent = AgentDraft & { id: string; note?: string };
+// pinned: note paths whose text goes into the agent's briefing at every start (core/pins.py).
+export type SavedAgent = AgentDraft & {
+  id: string;
+  note?: string;
+  pinned?: string[];
+};
 
 const KEY = "hippocampus.addedAgents";
 
@@ -176,6 +181,22 @@ export function saveEdit(): void {
     ),
   );
   agentEdit.current = null;
+}
+
+/** Pins a note to an agent, or unpins it. Takes effect at the agent's next start. */
+export function togglePin(id: string, path: string): void {
+  setAddedAgents(
+    addedAgents.list.map((a) => {
+      if (a.id !== id) return a;
+      const pinned = a.pinned ?? [];
+      return {
+        ...a,
+        pinned: pinned.includes(path)
+          ? pinned.filter((p) => p !== path)
+          : [...pinned, path],
+      };
+    }),
+  );
 }
 
 export function archiveAgent(id: string): void {

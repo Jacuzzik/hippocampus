@@ -1,5 +1,6 @@
 """The terminal calls from the window: start, input, resize, stop and the rest, passed on to core/terminal.py."""
 
+from collections.abc import Callable
 from datetime import datetime
 from typing import Any
 
@@ -7,6 +8,8 @@ from ai import cli_sessions
 from core import (
     added_agents,
     briefing,
+    note_actions,
+    pins,
     sandbox,
     startup_inbox,
 )
@@ -47,6 +50,9 @@ class TerminalPart:
                 text = briefing.agent_briefing(
                     agent, saved, folder, self.settings.vault, self.hive_path / agent / "outbox"
                 )
+            pinned_text = pins.section(pins.gather(pins.paths(saved), self._pin_reader()))
+            if pinned_text:
+                text = briefing.add_section(text, "Pinned notes", pinned_text)
             vault = str(self.settings.vault) if self.settings.vault else None
             block_tools = bool(request.get("block_tools", False))
             # The start-up inbox is written each time a terminal starts, so a new agent gets it as soon as its terminal opens.
@@ -89,6 +95,20 @@ class TerminalPart:
 
     def terminal_context(self, request: dict[str, Any]) -> dict[str, Any]:
         return {"percent": cli_sessions.context_percent(request["agent"])}
+
+    def _pin_reader(self) -> Callable[[str], str] | None:
+        """Reads a whole note by its path, or None when no vault is open."""
+        if self.indexer is None:
+            return None
+        return lambda path: note_actions.read_full(self.indexer, self.lock, path)
+
+    def agent_pins(self, request: dict[str, Any]) -> dict[str, Any]:
+        """The notes pinned to an agent, each with its token estimate, and a warning past the limit."""
+        agent = request.get("agent")
+        if not isinstance(agent, str) or not agent:
+            raise ValueError('"agent_pins" needs an "agent" id')
+        saved = next((a for a in added_agents.load(self.agents_path) if a.get("id") == agent), {})
+        return pins.summary(pins.gather(pins.paths(saved), self._pin_reader()))
 
     def briefing_preview(self, request: dict[str, Any]) -> dict[str, Any]:
         """The briefing a new agent would start with, from the words typed so far. Nothing is saved or started.
