@@ -1,0 +1,46 @@
+name: Feedback
+description: Tell us what works, what does not, or what you would like the app to do.
+title: "Feedback: "
+labels: [feedback]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for writing. For a security problem, do not use this form: open a private advisory instead (see SECURITY.md).
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What kind of feedback is it?
+      options:
+        - Something is broken
+        - Something is confusing
+        - An idea or a wish
+        - Praise
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, or what would you like?
+      description: Plain words are fine. Steps to see it again help a lot.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      description: Shown in Settings > About.
+      placeholder: "0.1.0"
+  - type: dropdown
+    id: system
+    attributes:
+      label: Your computer
+      options:
+        - Linux
+        - Windows
+        - macOS
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Screenshots or a few lines of the log (Settings > Advanced). Remove anything private first.

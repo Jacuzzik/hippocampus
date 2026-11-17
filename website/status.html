@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <title>Hippocampus status</title>
+    <meta
+      name="description"
+      content="Which version is current, known problems, and where to check builds."
+    />
+    <link rel="stylesheet" href="site.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <nav aria-label="Site">
+        <a class="name" href="index.html">Hippocampus</a>
+        <a href="download.html">Download</a>
+        <a href="docs.html">Docs</a>
+        <a href="changelog.html">Changelog</a>
+        <a href="privacy.html">Privacy</a>
+        <a href="status.html" aria-current="page">Status</a>
+        <a href="feedback.html">Feedback</a>
+        <a href="security.html">Security</a>
+      </nav>
+      <main>
+        <h1>Status</h1>
+        <p class="lead">
+          Hippocampus runs on your own computer, so there is no server to go
+          down. This page says which version is current and what is known to be
+          wrong.
+        </p>
+        <h2>Current version</h2>
+        <p>
+          0.1.0, not yet released. It is in testing before a first public beta.
+          New versions are listed on the
+          <a href="https://github.com/Jacuzzik/hippocampus/releases"
+            >releases page</a
+          >
+          and in the <a href="changelog.html">changelog</a>.
+        </p>
+        <h2>Build checks</h2>
+        <p>
+          Every change runs the full test suite. See the latest results on
+          <a href="https://github.com/Jacuzzik/hippocampus/actions"
+            >GitHub Actions</a
+          >.
+        </p>
+        <h2>Known problems</h2>
+        <ul>
+          <li>
+            Builds for Windows and macOS are not ready; Linux only for now.
+          </li>
+          <li>There is no sign-in yet. The app works fully without one.</li>
+          <li>
+            The phone screen shown inside the app updates only when the phone's
+            screen changes. That is how Android sends it.
+          </li>
+        </ul>
+        <p>
+          Found something not listed here?
+          <a href="feedback.html">Send feedback</a>.
+        </p>
+      </main>
+      <footer>
+        Hippocampus is open source. This site sets no cookies and loads nothing
+        from other sites.
+        <a href="https://github.com/Jacuzzik/hippocampus">Source on GitHub</a>
+      </footer>
+    </div>
+  </body>
+</html>
