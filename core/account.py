@@ -34,9 +34,9 @@ from keyring.errors import KeyringError
 
 from ai import network
 
-# Filled in when the owner creates the Supabase project; the key is the public "anon" key, safe to ship.
-AUTH_URL = ""
-AUTH_KEY = ""
+# The owner's Supabase project (2026-11-17). The key is the public "publishable" key, safe to ship.
+AUTH_URL = "https://qrdehlqmqydphizlznhr.supabase.co"
+AUTH_KEY = "sb_publishable_PCRx2rK7SQwNBAJRl_fY9w_05ttd0f3"
 KEYCHAIN = "hippocampus-account"
 KEYCHAIN_USER = "session"
 CONSENT_FILE = "account.json"
