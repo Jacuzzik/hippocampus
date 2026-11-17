@@ -24,6 +24,7 @@ test("settings has a page per category and each one opens", async ({
     Budgets: "Token budget",
     "Models and keys": "Keys and secrets",
     Connectors: "Checked now",
+    Dashboards: "Lock dashboards",
     Memory: "Memory size per agent",
     "Privacy and data": "Error log",
     Advanced: "Backend (Python)",
