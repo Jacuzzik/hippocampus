@@ -12,7 +12,7 @@ A name the file builds at run time is not listed.
 | `ui/control/ActivitySection.svelte` | `activity` | yes |
 | `ui/control/AddAgentDialog.svelte` | `briefing_preview`, `create_workspace`, `keys`, `local_status`, `provider_status`, `workspaces` | no |
 | `ui/control/AppsSection.svelte` | `apps` | yes |
-| `ui/control/AsksSection.svelte` | `answer`, `asks` | yes |
+| `ui/control/AsksSection.svelte` | `answer`, `asks`, `confirm` | yes |
 | `ui/control/BudgetSection.svelte` | `budget`, `budget_allow`, `set_budget` | yes |
 | `ui/control/CapabilitiesSection.svelte` | `install_skill`, `remove_skill`, `skills` | no |
 | `ui/control/ConnectorsSection.svelte` | `connectors` | yes |

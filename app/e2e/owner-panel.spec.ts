@@ -62,6 +62,42 @@ test("a task card starts a temp on its text, and the Temps tab lists it", async 
   ).toBeVisible();
 });
 
+test("a tool call waiting for approval is approved or denied from Ask me", async ({
+  page,
+}) => {
+  await page.evaluate(() => {
+    (window as unknown as { __approvals: unknown[] }).__approvals = [
+      { call: "t1", name: "delete_note", preview: "Delete ideas/old.md" },
+      { call: "t2", name: "write_note", preview: "Write ideas/new.md" },
+    ];
+  });
+  await page.getByRole("tab", { name: "ask me" }).click();
+  const list = page.getByRole("list", { name: "Waiting approvals" });
+  await expect(list.getByRole("listitem")).toHaveCount(2);
+  await list
+    .getByRole("listitem")
+    .filter({ hasText: "delete_note" })
+    .getByRole("button", { name: "Deny" })
+    .click();
+  await list
+    .getByRole("listitem")
+    .filter({ hasText: "write_note" })
+    .getByRole("button", { name: "Approve" })
+    .click();
+  await expect(list).toHaveCount(0);
+  expect(
+    await page.evaluate(
+      () => (window as unknown as { __decided: unknown[] }).__decided,
+    ),
+  ).toEqual([
+    ["t1", false],
+    ["t2", true],
+  ]);
+  const answered = page.getByRole("list", { name: "Answered questions" });
+  await expect(answered.getByText("Denied")).toBeVisible();
+  await expect(answered.getByText("Approved")).toBeVisible();
+});
+
 test("the inbox tab lists agent messages", async ({ page }) => {
   await page.getByRole("tab", { name: "inbox" }).click();
   await expect(page.getByRole("region", { name: "Inbox" })).toContainText(

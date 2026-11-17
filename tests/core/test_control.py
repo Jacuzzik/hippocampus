@@ -191,14 +191,25 @@ def test_errors_reach_the_log(tmp_path: Path) -> None:
 # --- ask me queue -------------------------------------------------------------------------
 
 
+def test_waiting_tool_approvals_are_listed_and_a_decision_clears_them(tmp_path: Path) -> None:
+    session = sidecar.Session(tmp_path, Settings(), emit=lambda e: None)
+    session.gate.open("t1", "delete_note", "Delete old.md")
+    assert session.dispatch({"method": "asks"})["approvals"] == [
+        {"call": "t1", "name": "delete_note", "preview": "Delete old.md"}
+    ]
+    session.dispatch({"method": "confirm", "call": "t1", "approve": False})
+    assert session.dispatch({"method": "asks"})["approvals"] == []
+
+
 def test_waiting_questions_are_listed_and_answering_clears_them(tmp_path: Path) -> None:
     session = sidecar.Session(tmp_path, Settings(), emit=lambda e: None)
     session.asks.open("q1", "Which folder?")
     assert session.dispatch({"method": "asks"}) == {
-        "asks": [{"call": "q1", "question": "Which folder?"}]
+        "asks": [{"call": "q1", "question": "Which folder?"}],
+        "approvals": [],
     }
     session.dispatch({"method": "answer", "call": "q1", "text": "notes"})
-    assert session.dispatch({"method": "asks"}) == {"asks": []}
+    assert session.dispatch({"method": "asks"}) == {"asks": [], "approvals": []}
     with pytest.raises(ValueError):
         session.dispatch({"method": "answer", "call": "q1", "text": "again"})
 

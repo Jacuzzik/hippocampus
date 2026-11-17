@@ -550,6 +550,14 @@ export async function mockSidecar(
             );
           case "confirm": {
             const params = args.params as { call: string; approve: boolean };
+            const w = window as unknown as {
+              __approvals?: { call: string }[];
+              __decided?: [string, boolean][];
+            };
+            w.__approvals = (w.__approvals ?? []).filter(
+              (a) => a.call !== params.call,
+            );
+            (w.__decided ??= []).push([params.call, params.approve]);
             // The fake sidecar keeps one pending chat per card: find it through the call id.
             for (const [chat, resolve] of pending) {
               resolve(params.approve);
@@ -646,6 +654,17 @@ export async function mockSidecar(
                   question: "Which folder should the new note go in?",
                 },
               ],
+              // Tests put waiting tool approvals here; confirm removes them.
+              approvals:
+                (
+                  window as unknown as {
+                    __approvals?: {
+                      call: string;
+                      name: string;
+                      preview: string;
+                    }[];
+                  }
+                ).__approvals ?? [],
             };
           case "answer":
             return { call: args.params?.call };

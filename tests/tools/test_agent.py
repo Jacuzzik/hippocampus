@@ -195,6 +195,20 @@ def test_gate_decide_only_answers_open_calls() -> None:
     assert gate.decision("c") is None
 
 
+def test_gate_lists_what_is_still_waiting_with_its_tool_and_preview() -> None:
+    gate = ConfirmGate()
+    gate.open("a", "delete_note", "Delete ideas/old.md")
+    gate.open("b", "write_note", "Write x.md")
+    assert gate.waiting() == [
+        ("a", "delete_note", "Delete ideas/old.md"),
+        ("b", "write_note", "Write x.md"),
+    ]
+    gate.decide("a", False)
+    assert [call for call, _, _ in gate.waiting()] == ["b"]
+    gate.close("b")
+    assert gate.waiting() == []
+
+
 def test_tool_not_on_the_allowed_list_is_refused() -> None:
     seen: list[dict] = []
     provider = Scripted(

@@ -145,7 +145,7 @@ class Agent:
             asks.close(call.id)
 
     async def _confirm(self, call: ToolCall, tool: Tool, preview: str) -> bool:
-        self.gate.open(call.id)
+        self.gate.open(call.id, tool.name, preview)
         self.emit(
             {
                 "event": "confirm",

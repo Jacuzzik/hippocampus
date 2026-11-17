@@ -28,10 +28,21 @@ class ConfirmGate:
     def __init__(self) -> None:
         self._lock = threading.Lock()
         self._pending: dict[str, bool | None] = {}
+        self._shown: dict[str, tuple[str, str]] = {}
 
-    def open(self, call_id: str) -> None:
+    def open(self, call_id: str, name: str = "", preview: str = "") -> None:
         with self._lock:
             self._pending[call_id] = None
+            self._shown[call_id] = (name, preview)
+
+    def waiting(self) -> list[tuple[str, str, str]]:
+        """(call id, tool name, preview) for every confirmation still waiting, oldest first (7.19)."""
+        with self._lock:
+            return [
+                (call, *self._shown.get(call, ("", "")))
+                for call, decided in self._pending.items()
+                if decided is None
+            ]
 
     def decide(self, call_id: str, approve: bool) -> bool:
         """Record the user's answer. False when no confirmation with that id is waiting."""
@@ -48,6 +59,7 @@ class ConfirmGate:
     def close(self, call_id: str) -> None:
         with self._lock:
             self._pending.pop(call_id, None)
+            self._shown.pop(call_id, None)
 
 
 class AskQueue:

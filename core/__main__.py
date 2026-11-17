@@ -463,7 +463,14 @@ class Session(
     # --- Asks, memory, jobs, helpers, skills, share, keys ----------------------------------
 
     def asks_waiting(self) -> dict[str, Any]:
-        return {"asks": [{"call": call, "question": q} for call, q in self.asks.waiting()]}
+        return {
+            "asks": [{"call": call, "question": q} for call, q in self.asks.waiting()],
+            # Tool calls waiting for approval, so the Ask me page can approve or deny them too (7.19).
+            "approvals": [
+                {"call": call, "name": name, "preview": preview}
+                for call, name, preview in self.gate.waiting()
+            ],
+        }
 
     def skills_state(self) -> dict[str, Any]:
         return {"skills": skills.list_skills(SKILLS_DIR)}
