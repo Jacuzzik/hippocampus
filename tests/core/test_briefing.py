@@ -143,3 +143,11 @@ def test_the_main_briefing_sets_the_lead_role_and_what_goes_to_the_user() -> Non
     assert "7. Lead role" in text and "/hive/hippoherman/outbox" in text
     assert "Bring to the user only:" in text and "a change of scope" in text
     assert briefing.lint(text) == []
+
+
+def test_both_briefings_point_at_the_shared_board() -> None:
+    main = briefing.main_briefing("/vault", "/out")
+    agent = briefing.agent_briefing("ada", {}, None, "/vault", Path("/out"))
+    for text in (main, agent):
+        assert "Hive-Board.md at the vault root" in text
+        assert "Never change or remove another agent's lines." in text
