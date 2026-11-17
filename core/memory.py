@@ -37,10 +37,45 @@ def _is_section(line: str) -> bool:
     return line.startswith("## ")
 
 
+def _is_rules(section: str) -> bool:
+    """A section whose heading names rules. It is never moved to the archive."""
+    return "rules" in section.split("\n", 1)[0].lower()
+
+
+def condense(text: str) -> str:
+    """The condense step (7.08): drop a list line that says what an earlier one already said (case and spacing
+    ignored), and squeeze runs of blank lines to one. The frontmatter and plain text are left alone."""
+    lines = text.splitlines(keepends=True)
+    start = 0
+    if text.startswith("---\n"):
+        end = next((i for i in range(1, len(lines)) if lines[i].strip() == "---"), None)
+        start = 0 if end is None else end + 1
+    out = lines[:start]
+    seen: set[str] = set()
+    blank = False
+    for line in lines[start:]:
+        stripped = line.strip()
+        if not stripped:
+            if blank:
+                continue
+            blank = True
+            out.append(line)
+            continue
+        blank = False
+        if stripped.startswith(("- ", "* ")):
+            key = " ".join(stripped[2:].lower().split())
+            if key and key in seen:
+                continue
+            seen.add(key)
+        out.append(line)
+    return "".join(out)
+
+
 def trim_text(text: str, limit: int, stem: str) -> tuple[str, str]:
     """Split a long memory note: (text to keep, sections to archive). Nothing moves under the limit.
 
-    The title, frontmatter and any text before the first "## " stay, and so does the newest section.
+    The title, frontmatter and any text before the first "## " stay, and so do the newest section and every
+    section whose heading names rules.
     """
     if len(text.encode("utf-8")) <= limit:
         return text, ""
@@ -60,9 +95,10 @@ def trim_text(text: str, limit: int, stem: str) -> tuple[str, str]:
             sections[-1] += line
     moved: list[str] = []
     while len(head.encode()) + sum(len(s.encode()) for s in sections) > limit:
-        if len(sections) < 2:
+        movable = [i for i, s in enumerate(sections) if not _is_rules(s)]
+        if len(movable) < 2:
             break
-        moved.append(sections.pop(0))
+        moved.append(sections.pop(movable[0]))
     if not moved:
         return text, ""
     return head + "".join(sections), "".join(moved)
@@ -73,10 +109,12 @@ def trim_memory_file(vault: Path, path: Path, limit: int) -> Path | None:
     if path.name.endswith(f"{ARCHIVE_SUFFIX}.md") or not path.is_file():
         return None  # archives are never trimmed, so they cannot grow archives of their own
     text = path.read_text(encoding="utf-8")
-    if not is_memory(text):
+    if not is_memory(text) or len(text.encode("utf-8")) <= limit:
         return None
-    kept, moved = trim_text(text, limit, path.stem)
+    kept, moved = trim_text(condense(text), limit, path.stem)
     if not moved:
+        if kept != text:  # condensing alone brought it under the cap, or was all it could do
+            safe_write.write_text(path, kept)
         return None
     archive = path.with_name(f"{path.stem}{ARCHIVE_SUFFIX}.md")
     if archive.is_file():
