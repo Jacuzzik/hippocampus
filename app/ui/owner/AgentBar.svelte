@@ -6,6 +6,7 @@
   import { every } from "../poll.ts";
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
+  import { listen } from "@tauri-apps/api/event";
   import logo from "../assets/brand/hippocampus-mark-purple.png";
   import {
     addedAgents,
@@ -21,6 +22,70 @@
   import { AGENT_PROVIDERS, CARD_FACES, providerLogo } from "../control/model";
 
   type Account = { claude: boolean; model: string; provider: string };
+
+  // N.03, 12.10: when the backend delivers a hive message, an envelope flies from the sender's card to the
+  // receiver's. Skipped when motion is off (the Motion setting, quiet mode, or the computer's reduced motion).
+  let bar: HTMLDivElement | undefined = $state();
+  let sent = $state(0);
+  let envelopes = $state<
+    { key: number; x0: number; y0: number; x1: number; y1: number }[]
+  >([]);
+  let envelopeKey = 0;
+  const ENVELOPES_MAX = 4;
+  function still(): boolean {
+    const motion = document.documentElement.dataset.motion;
+    return (
+      motion === "off" ||
+      (motion !== "on" &&
+        typeof matchMedia === "function" &&
+        matchMedia("(prefers-reduced-motion: reduce)").matches)
+    );
+  }
+  function cardAt(id: string): DOMRect | null {
+    const card = bar?.querySelector(`[data-agent="${CSS.escape(id)}"]`);
+    return card ? card.getBoundingClientRect() : null;
+  }
+  function flyEnvelope(from: string, to: string): void {
+    sent += 1;
+    if (from === to || still() || envelopes.length >= ENVELOPES_MAX) return;
+    const a = cardAt(from);
+    const b = cardAt(to);
+    if (!a || !b) return; // the sender or receiver has no card (archived, or the user)
+    envelopes = [
+      ...envelopes,
+      {
+        key: envelopeKey++,
+        x0: a.left + a.width / 2,
+        y0: a.top,
+        x1: b.left + b.width / 2,
+        y1: b.top,
+      },
+    ];
+  }
+  onMount(() => {
+    let stop: (() => void) | undefined;
+    let gone = false;
+    listen<{ event?: string; from?: string; to?: string }>(
+      "sidecar-event",
+      (event) => {
+        const { payload } = event;
+        if (payload.event === "message_sent")
+          flyEnvelope(String(payload.from ?? ""), String(payload.to ?? ""));
+      },
+    ).then(
+      (unlisten) => {
+        if (gone) unlisten();
+        else stop = unlisten;
+      },
+      () => {
+        /* no event bridge (a plain browser): no envelopes */
+      },
+    );
+    return () => {
+      gone = true;
+      stop?.();
+    };
+  });
 
   let account = $state<Account | null>(null);
   // Added agents only, minus archived ones; the main agent is not in this list, so it cannot be moved.
@@ -454,9 +519,15 @@
   </div>
 {/if}
 
-<div class="agent-bar" aria-label="Agents">
+<div
+  class="agent-bar"
+  aria-label="Agents"
+  bind:this={bar}
+  data-messages-sent={sent}
+>
   <!-- Selecting HIPPO's card highlights it; the Control Room stays in the right panel. Its buttons do their own job. -->
   <div
+    data-agent="hippoherman"
     class="chip main"
     class:selected={selection.id === "hippoherman"}
     role="button"
@@ -541,7 +612,11 @@
     </div>
   </div>
   {#each added as agent (agent.id)}
-    <div class="chip main added" class:selected={selection.id === agent.id}>
+    <div
+      data-agent={agent.id}
+      class="chip main added"
+      class:selected={selection.id === agent.id}
+    >
       <button
         type="button"
         class="card-open"
@@ -619,8 +694,52 @@
   {/each}
   <button type="button" class="add" onclick={onadd}>+ Add agent</button>
 </div>
+{#each envelopes as env (env.key)}
+  <span
+    class="envelope"
+    aria-hidden="true"
+    style="--x0: {env.x0}px; --y0: {env.y0}px; --x1: {env.x1}px; --y1: {env.y1}px"
+    onanimationend={() =>
+      (envelopes = envelopes.filter((e) => e.key !== env.key))}>✉</span
+  >
+{/each}
 
 <style>
+  /* Fixed, so the bar's scrolling does not clip it; it rises above the cards on its way across. */
+  .envelope {
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 50;
+    pointer-events: none;
+    color: var(--color-accent);
+    font-size: var(--font-size-lg);
+    animation: fly 900ms var(--ease-standard) forwards;
+  }
+  @keyframes fly {
+    from {
+      opacity: 0;
+      transform: translate(var(--x0), var(--y0)) translate(-50%, -50%);
+    }
+    15% {
+      opacity: 1;
+    }
+    50% {
+      transform: translate(
+          calc((var(--x0) + var(--x1)) / 2),
+          calc(var(--y0) - var(--space-6))
+        )
+        translate(-50%, -50%);
+    }
+    85% {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+      transform: translate(var(--x1), var(--y1)) translate(-50%, -50%);
+    }
+  }
+
   .agent-bar {
     display: flex;
     align-items: center;

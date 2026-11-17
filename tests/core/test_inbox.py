@@ -266,3 +266,17 @@ def test_the_human_can_message_one_agent_or_all(tmp_path: Path, monkeypatch) -> 
     assert len(found) == 3
     thread = session.dispatch({"method": "inbox_thread", "thread": rows[0]["thread"]})
     assert thread["markdown"].startswith("# Stand-up")
+
+
+def test_a_delivered_message_is_announced_for_the_envelope_animation(tmp_path: Path) -> None:
+    events: list[dict] = []
+    session = sidecar.Session(tmp_path, Settings(), emit=events.append)
+    session.terminals = FakeTerminals()  # type: ignore[assignment]
+    inbox.send(session.hive_path, "hippoherman", "ada", "Task 9", "Do it")
+    [(path, message)] = inbox.pending(session.hive_path, "ada")
+    session.terminals.quiet = False
+    assert session._deliver("ada", path, message) is False
+    assert not [e for e in events if e.get("event") == "message_sent"]
+    session.terminals.quiet = True
+    assert session._deliver("ada", path, message) is True
+    assert {"event": "message_sent", "from": "hippoherman", "to": "ada"} in events

@@ -161,4 +161,6 @@ class HivePart:
         except RuntimeError:
             return False  # the terminal is not running: the message stays queued
         inbox.mark_done(path)
+        # The agent bar flies an envelope from the sender's card to the receiver's (N.03, 12.10).
+        self.emit({"event": "message_sent", "from": sender, "to": agent})
         return True
