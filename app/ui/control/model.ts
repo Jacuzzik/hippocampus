@@ -222,7 +222,34 @@ export const AGENT_PROVIDERS = [
   { id: "mistral", label: "Mistral", needsKey: true, kind: "key" },
   { id: "groq", label: "Groq", needsKey: true, kind: "key" },
   { id: "openrouter", label: "OpenRouter", needsKey: true, kind: "key" },
+  // 7.02: any program, typed by the owner. It always runs inside the sandbox, so it cannot change the app.
+  { id: "custom", label: "Custom command", needsKey: false, kind: "custom" },
 ] as const;
+
+/** The providers the Monitor's engine switch offers: a custom command belongs to one agent, so it is not one. */
+export const ENGINE_SWITCH_PROVIDERS = AGENT_PROVIDERS.filter(
+  (p) => p.kind !== "custom",
+);
+
+// 7.20: how far an agent may act without asking. core/autonomy.py turns each level into its CLI's flags.
+export const AUTONOMY_LEVELS = [
+  {
+    id: "ask",
+    label: "Ask first",
+    hint: "It asks before it edits a file or runs a command.",
+  },
+  {
+    id: "edits",
+    label: "Edit freely",
+    hint: "File edits go through; commands still ask.",
+  },
+  {
+    id: "full",
+    label: "Act without asking",
+    hint: "Edits and commands go through. Needs the sandbox, so the app stays safe.",
+  },
+] as const;
+export type Autonomy = (typeof AUTONOMY_LEVELS)[number]["id"];
 
 // Provider logos, by provider id. Providers with no file here show no logo.
 // Plain Node (node --test) has no import.meta.glob, so the call throws there and the map stays empty.
@@ -527,6 +554,7 @@ export interface AgentDraft {
   command: string;
   description: string;
   goal: string;
+  autonomy?: Autonomy;
 }
 
 /** The first problem with a step, or null when the step can be left. */
@@ -537,6 +565,8 @@ export function agentStepError(step: number, draft: AgentDraft): string | null {
   if (step === 2) {
     if (!AGENT_PROVIDERS.some((p) => p.id === draft.provider))
       return "Pick a provider.";
+    if (draft.provider === "custom")
+      return draft.command.trim() === "" ? "Type the command to run." : null;
     if (draft.model.trim() === "") return "Name the model.";
   }
   return null;
@@ -560,6 +590,11 @@ export function engineStatus(
 ): { ready: boolean; text: string } {
   const row = AGENT_PROVIDERS.find((p) => p.id === provider);
   if (!row) return { ready: false, text: "Not set up: pick a provider." };
+  if (row.kind === "custom")
+    return {
+      ready: true,
+      text: "Runs your command inside the sandbox; the app folder stays read-only.",
+    };
   if (row.kind === "local") {
     const server = servers.find((s) => s.provider === provider);
     if (!server) return { ready: false, text: `Checking ${row.label}…` };
@@ -584,8 +619,9 @@ export function engineStatus(
 
 /** The command line the choice builds, e.g. "claude --model m". */
 export function agentCommand(
-  draft: Pick<AgentDraft, "provider" | "model">,
+  draft: Pick<AgentDraft, "provider" | "model"> & { command?: string },
 ): string {
+  if (draft.provider === "custom") return (draft.command ?? "").trim();
   const model = draft.model.trim();
   if (draft.provider === "ollama") return `ollama run ${model}`;
   if (draft.provider === "codex") return `codex --model ${model}`;

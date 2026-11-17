@@ -16,6 +16,15 @@ from pathlib import Path
 
 # Folders under the home folder that hold keys. Inside the sandbox each one is empty.
 PRIVATE = (".ssh", ".gnupg", ".aws", ".config/gh", ".password-store")
+# The installed app, its launcher and its data, under the home folder. Inside the sandbox each one is
+# read-only (D.09): an agent can never change or delete Hippocampus itself. The vault and an agent's own
+# folder inside the data folder stay writable, because a deeper rule wins.
+APP_PATHS = (
+    ".local/share/hippocampus",
+    ".local/bin/hippocampus",
+    ".local/share/dev.hippocampus.desktop",
+    ".hippocampus",
+)
 
 
 @lru_cache(maxsize=1)
@@ -65,6 +74,9 @@ def wrap(
     ]  # fmt: skip
     app_root = app_root.resolve()
     rules: list[tuple[Path, str]] = [(home.resolve(), "--bind"), (app_root, "--ro-bind")]
+    rules += [
+        ((home / name).resolve(), "--ro-bind") for name in APP_PATHS if (home / name).exists()
+    ]
     rules += [(path.resolve(), "--ro-bind") for path in readonly or [] if path.exists()]
     for path in writable or []:
         if not path.exists():
@@ -96,7 +108,11 @@ def policy_lines(*, shell: bool, sandboxed: bool, blocked: bool, app_root: Path)
             "Tools are blocked for this agent: no shell, no file writes, no web and no note tools.",
         ]
     lines = []
-    if shell:
+    if shell and sandboxed:
+        lines.append(
+            "Shell: open. Not allowed: sudo, the claude command, and any command that names the app folder."
+        )
+    elif shell:
         lines.append(
             "Shell: allowed for simple tasks. Not allowed: rm, rmdir, mv, cp, git, sudo, chmod, chown, curl, wget, dd, "
             "kill, pkill, process listings, the claude command, and any command that names the app folder."
@@ -106,7 +122,8 @@ def policy_lines(*, shell: bool, sandboxed: bool, blocked: bool, app_root: Path)
     lines.append(f"The app folder ({app_root}) cannot be read or edited with the file tools.")
     if sandboxed:
         lines += [
-            "Your program runs in a sandbox: the app folder and the system are read-only, whatever command is used.",
+            "Your program runs in a sandbox: the app folder, the installed app, its data and the system are "
+            "read-only, whatever command is used. Never try to change, move or delete any part of Hippocampus.",
             "You see only your own processes. Private folders such as SSH keys are empty.",
             "Other agents' inboxes and outboxes are read-only. You write only to your own outbox.",
         ]

@@ -115,9 +115,7 @@ def test_the_policy_text_matches_the_switches() -> None:
         "Tools are blocked for this agent: no shell, no file writes, no web and no note tools."
     ]
     open_shell = sandbox.policy_lines(shell=True, sandboxed=True, blocked=False, app_root=root)
-    assert open_shell[0].startswith("Shell: allowed") and any(
-        "sandbox" in line for line in open_shell
-    )
+    assert open_shell[0].startswith("Shell: open") and any("sandbox" in line for line in open_shell)
     no_shell = sandbox.policy_lines(shell=False, sandboxed=False, blocked=False, app_root=root)
     assert no_shell[0] == "Shell: not available to this agent." and not any(
         "sandbox" in line for line in no_shell

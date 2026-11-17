@@ -8,6 +8,7 @@
   import {
     AGENT_MODELS,
     AGENT_PROVIDERS,
+    AUTONOMY_LEVELS,
     AGENT_TEMPLATES,
     AGENT_STEPS,
     AVATARS,
@@ -33,6 +34,7 @@
       command: "",
       description: "",
       goal: "",
+      autonomy: "edits",
     };
   }
 
@@ -54,8 +56,9 @@
   const engine = $derived(
     engineStatus(draft.provider, savedKeys, clis, servers),
   );
+  const custom = $derived(draft.provider === "custom");
   const command = $derived(
-    draft.model.trim() === "" ? "" : agentCommand(draft),
+    custom || draft.model.trim() !== "" ? agentCommand(draft) : "",
   );
 
   async function loadKeys(): Promise<void> {
@@ -283,27 +286,60 @@
           onchange={() => (draft.model = "")}
         />
       </div>
-      <label
-        >Model <input
-          type="text"
-          readonly
-          value={draft.model}
-          placeholder="Pick a model below"
-        /></label
-      >
-      <div class="choice" aria-label="Suggested models">
-        {#each AGENT_MODELS[draft.provider] ?? [] as m (m)}
-          <button
-            type="button"
-            class:on={draft.model === m}
-            onclick={() => (draft.model = m)}>{m}</button
-          >
-        {/each}
-      </div>
+      {#if custom}
+        <label
+          >Command <input
+            type="text"
+            bind:value={draft.command}
+            placeholder="e.g. aider --model sonnet"
+          /></label
+        >
+      {:else}
+        <label
+          >Model <input
+            type="text"
+            readonly
+            value={draft.model}
+            placeholder="Pick a model below"
+          /></label
+        >
+        <div class="choice" aria-label="Suggested models">
+          {#each AGENT_MODELS[draft.provider] ?? [] as m (m)}
+            <button
+              type="button"
+              class:on={draft.model === m}
+              onclick={() => (draft.model = m)}>{m}</button
+            >
+          {/each}
+        </div>
+      {/if}
       <p class="command">
         <span class="muted">Command</span>
-        <code>{command || "Pick a model to see the command."}</code>
+        <code
+          >{command ||
+            (custom
+              ? "Type a command to run."
+              : "Pick a model to see the command.")}</code
+        >
       </p>
+      <fieldset class="picker">
+        <legend>Autonomy</legend>
+        <div class="choice" role="radiogroup" aria-label="Autonomy">
+          {#each AUTONOMY_LEVELS as level (level.id)}
+            <button
+              type="button"
+              role="radio"
+              aria-checked={draft.autonomy === level.id}
+              class:on={draft.autonomy === level.id}
+              title={level.hint}
+              onclick={() => (draft.autonomy = level.id)}>{level.label}</button
+            >
+          {/each}
+        </div>
+        <p class="muted">
+          {AUTONOMY_LEVELS.find((l) => l.id === draft.autonomy)?.hint}
+        </p>
+      </fieldset>
       <p class={engine.ready ? "muted" : "error"} role="status">
         {engine.text}
       </p>

@@ -7,6 +7,7 @@ from typing import Any
 from ai import cli_sessions
 from core import (
     added_agents,
+    autonomy,
     briefing,
     note_actions,
     pins,
@@ -66,7 +67,8 @@ class TerminalPart:
             inbox_path = startup_inbox.write(self.hive_path, agent, agents)
             shell = self.settings.agent_shell
             # The real rules for this start, computed from the switches, so the briefing cannot disagree with them.
-            sandboxed = shell and sandbox_for(provider)
+            # A custom command always runs in the sandbox (core/terminal.py refuses it where there is none).
+            sandboxed = provider == "custom" or (shell and sandbox_for(provider))
             limits = sandbox.policy_lines(
                 shell=agent == "hippoherman" or sandboxed,
                 sandboxed=sandboxed,
@@ -83,7 +85,19 @@ class TerminalPart:
                 "at": datetime.now().isoformat(timespec="seconds"),
             }
             started = self.terminals.start(
-                agent, provider, rows, cols, model, folder, text, vault, block_tools, shell
+                agent,
+                provider,
+                rows,
+                cols,
+                model,
+                folder,
+                text,
+                vault,
+                block_tools,
+                shell,
+                # The custom command and the autonomy level come from the saved agent, never from the window.
+                command=str(saved.get("command") or "") if provider == "custom" else "",
+                autonomy_level=saved.get("autonomy", autonomy.DEFAULT) if saved else None,
             )
             # The start-up inbox is sent into the terminal chat by the delivery loop, once the terminal has settled.
             # Only a CLI that has just started gets it: reopening the window reattaches to a running CLI, and

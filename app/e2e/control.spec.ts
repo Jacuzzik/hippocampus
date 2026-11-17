@@ -343,3 +343,46 @@ test("a scheduled job can be run now and shows its result and new last-run time"
   );
   await expect(list).toContainText("last 2026-11-15 09:00");
 });
+
+test("a custom command agent saves its command and autonomy (7.02, 7.20)", async ({
+  page,
+}) => {
+  await mockSidecar(page);
+  await page.goto("/");
+  await page
+    .getByLabel("Agents")
+    .getByRole("button", { name: "+ Add agent" })
+    .click();
+  const add = page.getByRole("dialog", { name: "Add agent" });
+  await add.getByRole("textbox", { name: "Name", exact: true }).fill("Aida");
+  await add.getByRole("button", { name: "Next" }).click();
+  await add.getByLabel("Folder in workspaces").selectOption("IT");
+  await add.getByRole("button", { name: "Next" }).click();
+  await add.getByRole("button", { name: "Provider" }).click();
+  await add.getByRole("option", { name: "Custom command" }).click();
+  await expect(
+    add.getByText(/Runs your command inside the sandbox/),
+  ).toBeVisible();
+  await add.getByRole("button", { name: "Next" }).click();
+  await expect(add.getByRole("alert")).toHaveText("Type the command to run.");
+  await add.getByRole("textbox", { name: "Command" }).fill("aider --yes");
+  await expect(add.locator("code")).toHaveText("aider --yes");
+  // "Edit freely" is the default; pick the loosest level.
+  const levels = add.getByRole("radiogroup", { name: "Autonomy" });
+  await expect(
+    levels.getByRole("radio", { name: "Edit freely" }),
+  ).toHaveAttribute("aria-checked", "true");
+  await levels.getByRole("radio", { name: "Act without asking" }).click();
+  await add.getByRole("button", { name: "Next" }).click();
+  await add.getByRole("textbox", { name: "Goal", exact: true }).fill("Code");
+  await add.getByRole("button", { name: "Spawn" }).click();
+  const saved = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem("hippocampus.addedAgents") ?? "[]"),
+  );
+  const aida = saved.find((a: { name: string }) => a.name === "Aida");
+  expect(aida).toMatchObject({
+    provider: "custom",
+    command: "aider --yes",
+    autonomy: "full",
+  });
+});

@@ -55,8 +55,9 @@ class Settings:
     # A memory note longer than this (bytes) has its oldest sections moved to an archive note.
     memory_max_bytes: int = 32_000
     # On: every agent gets a fenced shell and its program runs in the operating-system sandbox.
-    # Off: only the main agent has a (fenced) shell, as before.
-    agent_shell: bool = False
+    # Off: only the main agent has a (fenced) shell, as before. On by default (D.09: the owner wants a loose
+    # sandbox that still never lets an agent change the app).
+    agent_shell: bool = True
     # Seconds between two rounds of moving agent messages into inboxes and typing them into terminals.
     delivery_seconds: int = 3
 
@@ -160,7 +161,7 @@ SCHEMA: tuple[dict[str, object], ...] = (
     {
         "key": "agents.shell",
         "type": "bool",
-        "default": False,
+        "default": True,
         "help": "Give every agent a fenced shell in the sandbox.",
     },
 )

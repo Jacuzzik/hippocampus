@@ -15,6 +15,7 @@
   import {
     AGENT_MODELS,
     AGENT_PROVIDERS,
+    ENGINE_SWITCH_PROVIDERS,
     CARD_FACES,
     type Caps,
   } from "../control/model";
@@ -289,7 +290,7 @@
             <div class="picker">
               <Dropdown
                 bind:value={engineProvider}
-                options={AGENT_PROVIDERS.map((p) => ({
+                options={ENGINE_SWITCH_PROVIDERS.map((p) => ({
                   value: p.id,
                   label: p.label,
                 }))}

@@ -176,7 +176,7 @@ def test_the_settings_call_returns_the_schema(tmp_path: Path) -> None:
         storage=tmp_path / "s", settings=Settings(), settings_path=tmp_path / "x.toml"
     )
     schema = session.settings_view()["schema"]
-    assert {"key": "agents.shell", "type": "bool", "default": False}.items() <= next(
+    assert {"key": "agents.shell", "type": "bool", "default": True}.items() <= next(
         r for r in schema if r["key"] == "agents.shell"
     ).items()
     session.close()

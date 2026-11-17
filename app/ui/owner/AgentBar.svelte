@@ -150,6 +150,7 @@
     briefing: string;
     delivery: string;
     undelivered: boolean;
+    autonomy: string;
   } | null>(null);
   const NO_DATA = "—";
   // What each added agent's terminal is running and its context use; read every few seconds.
@@ -172,6 +173,7 @@
         model?: string | null;
         briefing?: Briefing | null;
         delivery?: string | null;
+        autonomy?: string | null;
         crashed?: number | null;
       }
     >
@@ -183,6 +185,7 @@
     briefing: string;
     delivery: string;
     undelivered: boolean;
+    autonomy: string;
   } {
     const now = live[id];
     const brief = now?.briefing;
@@ -197,6 +200,8 @@
         : "Not handed over in this run",
       delivery: now?.delivery ?? NO_DATA,
       undelivered: (now?.delivery ?? "").startsWith("Not delivered"),
+      // The level the CLI really started with (core/autonomy.py), not only the one picked.
+      autonomy: (now?.autonomy ?? NO_DATA).replace(/^Autonomy: /, ""),
     };
   }
   // Types one line into an agent's terminal and presses Enter. The text and the Enter key go in
@@ -514,6 +519,8 @@
           {info.delivery}{#if info.undelivered}. Use Resend briefing in the card
             menu.{/if}
         </dd>
+        <dt>AUTONOMY</dt>
+        <dd>{info.autonomy}</dd>
       </dl>
     </div>
   </div>

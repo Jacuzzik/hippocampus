@@ -22,13 +22,19 @@ def test_without_the_switch_a_normal_agent_has_no_shell(claude: None) -> None:
     assert bash_rules(terminal._command("ada", "claude")) == ["Bash"]
 
 
-def test_with_the_switch_every_agent_gets_the_same_fenced_shell(claude: None) -> None:
+def test_inside_the_sandbox_every_agent_gets_the_same_open_shell(claude: None) -> None:
     agent = bash_rules(terminal._command("ada", "claude", shell=True))
-    main = bash_rules(terminal._command("hippoherman", "claude"))
+    main = bash_rules(terminal._command("hippoherman", "claude", shell=True))
     assert agent == main  # one list for all, so behaviour is predictable
-    assert "Bash(rm:*)" in agent and "Bash(git:*)" in agent and "Bash(kill:*)" in agent
-    assert f"Bash(* {ROOT}*)" in agent  # no command may name the app folder
+    # D.09: the sandbox keeps the app read-only, so only sudo, nested claude and the app folder stay denied.
+    assert agent == ["Bash(sudo:*)", "Bash(claude:*)", f"Bash(* {ROOT}*)"]
     assert "Bash" not in agent  # the blanket ban is gone
+
+
+def test_without_the_sandbox_the_main_agent_keeps_the_strict_fence(claude: None) -> None:
+    main = bash_rules(terminal._command("hippoherman", "claude"))
+    assert "Bash(rm:*)" in main and "Bash(git:*)" in main and "Bash(kill:*)" in main
+    assert f"Bash(* {ROOT}*)" in main
 
 
 def test_block_tools_still_removes_the_shell(claude: None) -> None:
@@ -66,14 +72,16 @@ def test_the_switch_is_saved_and_the_rules_are_reported_in_plain_words(
     path = tmp_path / "config" / "settings.toml"
     path.parent.mkdir()
     path.write_text('[network]\nmode = "off"\n', encoding="utf-8")
-    session = sidecar.Session(tmp_path, Settings(), emit=lambda e: None, settings_path=path)
+    session = sidecar.Session(
+        tmp_path, Settings(agent_shell=False), emit=lambda e: None, settings_path=path
+    )
     monkeypatch.setattr(sandbox, "available", lambda: True)
     off = session.dispatch({"method": "settings"})["shell"]
     assert off["on"] is False and off["agents"][0] == "Shell: not available to this agent."
     on = session.dispatch({"method": "set_agent_shell", "on": True})
     assert (
         on["on"] is True
-        and on["agents"][0].startswith("Shell: allowed")
+        and on["agents"][0].startswith("Shell: open")
         and any("sandbox" in line for line in on["agents"])
     )
     assert (

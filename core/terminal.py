@@ -7,6 +7,7 @@ import codecs
 import json
 import logging
 import os
+import shlex
 import shutil
 import signal
 import struct
@@ -18,7 +19,7 @@ from pathlib import Path
 from typing import Any
 
 from ai import cli_sessions
-from core import sandbox
+from core import autonomy, sandbox
 from core.settings import HIVE_DIR, ROOT
 from tools.vault_mcp import VAULT_TOOLS, mcp_config
 
@@ -60,6 +61,8 @@ class Terminals:
         self.procs: dict[str, tuple[subprocess.Popen, int]] = {}
         # How each agent's briefing reached its CLI in this run, in plain words for the card.
         self.briefing_delivery: dict[str, str] = {}
+        # The autonomy level each agent's CLI was started with, in plain words for its panel (7.20).
+        self.autonomy_text: dict[str, str] = {}
         # The exit code of each agent's CLI that ended with an error we did not ask for; cleared when it starts again.
         self.crashed: dict[str, int] = {}
         # The command each agent's terminal was started with; it has no keys or secrets, only the CLI and its flags.
@@ -111,7 +114,15 @@ class Terminals:
         vault: str | None = None,
         block_tools: bool = False,
         shell: bool = False,
+        command: str = "",
+        autonomy_level: object = None,
     ) -> dict[str, Any]:
+        custom = provider == "custom"
+        if custom and not sandbox.available():
+            # A custom command can be any program, so it runs only where the app folder stays read-only.
+            raise RuntimeError(
+                "A custom command runs only inside the sandbox, and bubblewrap cannot start on this computer."
+            )
         with self.lock:
             running = self.procs.get(agent)
             if running is not None and running[0].poll() is None:
@@ -150,10 +161,32 @@ class Terminals:
             resume = bool(cli_sessions.get(agent).get("started"))
             brief_path = self._write_briefing(agent, briefing)
             # The shell for every agent comes only with the sandbox: without it a normal agent gets no shell.
-            sandboxed = shell and sandbox_for(provider)
+            sandboxed = custom or (shell and sandbox_for(provider))
+            # The main agent keeps its CLI's own default; a blocked agent has its tools taken away instead.
+            level = None
+            if agent != "hippoherman" and not block_tools and autonomy_level is not None:
+                level = autonomy.effective(
+                    provider,
+                    autonomy_level,
+                    sandboxed=sandboxed,
+                    folder_in_app=_folder_in_app(folder, vault),
+                )
             argv = _command(
-                agent, provider, model, brief_path, vault, block_tools, resume, shell=sandboxed
+                agent,
+                provider,
+                model,
+                brief_path,
+                vault,
+                block_tools,
+                resume,
+                shell=sandboxed and not custom,
+                command=command,
+                level=level,
             )
+            if level is None:
+                self.autonomy_text.pop(agent, None)
+            else:
+                self.autonomy_text[agent] = autonomy.describe(provider, autonomy_level, level)
             run_argv = _sandboxed(argv, agent, folder, vault) if sandboxed else argv
             if pty is None:
                 raise RuntimeError(
@@ -395,6 +428,7 @@ class Terminals:
             "last": last_cmd,
             "model": cli_sessions.last_model(agent),
             "delivery": self.briefing_delivery.get(agent),
+            "autonomy": self.autonomy_text.get(agent),
         }
 
     def _last_command(self, agent: str) -> str | None:
@@ -624,6 +658,9 @@ SHELL_DENIED = (
     "pidof",
     "claude",
 )
+# Inside the sandbox the operating system keeps the app read-only and other processes out of reach, so the
+# shell is open (D.09: "not strict"). Only these stay denied, with any command that names the app folder.
+SANDBOX_SHELL_DENIED = ("sudo", "claude")
 
 
 def sandbox_for(provider: str) -> bool:
@@ -660,6 +697,30 @@ def _sandboxed(argv: list[str], agent: str, folder: str | None, vault: str | Non
     )
 
 
+def _folder_in_app(folder: str | None, vault: str | None) -> bool:
+    """True when the agent works inside the app's own folder (the vault inside it does not count)."""
+    if not folder:
+        return False
+    work = Path(folder).resolve()
+    if vault and _inside(work, Path(vault).resolve()):
+        return False
+    return _inside(work, ROOT.resolve())
+
+
+def _custom_argv(command: str) -> list[str]:
+    """A custom command (7.02) split like a shell would, with its program found on PATH. No shell runs it."""
+    try:
+        argv = shlex.split(command)
+    except ValueError as cause:
+        raise RuntimeError(f"The custom command cannot be read: {cause}.") from cause
+    if not argv:
+        raise RuntimeError("This agent has no custom command. Edit the agent and type one.")
+    binary = shutil.which(argv[0])
+    if binary is None:
+        raise RuntimeError(f"{argv[0]} is not installed or not on PATH.")
+    return [binary, *argv[1:]]
+
+
 def _command(
     agent: str,
     provider: str,
@@ -669,7 +730,12 @@ def _command(
     block_tools: bool = False,
     resume: bool = False,
     shell: bool = False,
+    command: str = "",
+    level: str | None = None,
 ) -> list[str]:
+    if provider == "custom":
+        return _custom_argv(command)
+    perms = autonomy.flags(provider, level) if level else []
     # resume: the agent already ran on this engine, so its CLI continues the last session in its folder (each CLI scopes "last" to the working folder).
     if provider in OPENCODE_FOR:
         binary = shutil.which("opencode")
@@ -709,16 +775,16 @@ def _command(
     if name == "agy":
         # Antigravity takes the model as a flag (`agy --model <name>`).
         args = [binary, "--continue"] if resume else [binary]
-        return args + (["--model", model] if model else [])
+        return args + (["--model", model] if model else []) + perms
     if name == "codex":
         # Codex takes the model as `--model <name>`; a blocked agent runs in Codex's read-only sandbox.
         args = [binary, "resume", "--last"] if resume else [binary]
         args += ["--model", model] if model else []
-        return args + (["--sandbox", "read-only"] if block_tools else [])
+        return args + (["--sandbox", "read-only"] if block_tools else perms)
     if name == "gemini":
         # Gemini CLI takes the model as `--model <name>`, so a model change reaches it.
         args = [binary, "--resume", "latest"] if resume else [binary]
-        return args + (["--model", model] if model else [])
+        return args + (["--model", model] if model else []) + perms
     if name != "claude":
         return [binary]
     entry = cli_sessions.get(agent)
@@ -737,23 +803,20 @@ def _command(
     vault_dir = ["--add-dir", vault] if vault else []
     # The terminal gets the same vault tools as the chat, so its deletes go through the app's checks, not a shell.
     # A blocked agent gets no vault tools either: "block tools" means no shell and no MCP tools.
-    vault_tools = (
-        [
-            "--mcp-config",
-            mcp_config(vault),
-            "--allowedTools",
-            *[f"mcp__vault__{name}" for name in VAULT_TOOLS],
-        ]
-        if vault and not block_tools
-        else []
-    )
+    use_vault = bool(vault) and not block_tools
+    allowed = [f"mcp__vault__{name}" for name in VAULT_TOOLS] if use_vault else []
+    # "Act without asking": the shell and the web run without a prompt; the deny rules below still win.
+    if level == "full" and shell:
+        allowed += list(autonomy.CLAUDE_FULL_TOOLS)
     return [
         binary,
         flag,
         entry["id"],
         *(["--model", model] if model else []),
+        *perms,
         *vault_dir,
-        *vault_tools,
+        *(["--mcp-config", mcp_config(vault)] if use_vault and vault else []),
+        *(["--allowedTools", *allowed] if allowed else []),
         # The hive is where the agent writes its outbox, so it is a folder the agent may write to.
         "--add-dir",
         str(HIVE_DIR),
@@ -763,7 +826,8 @@ def _command(
         # The patterns are best effort; the sandbox is the real fence. The main agent has the fenced shell
         # either way. A normal agent has it only with `shell` (which also means it runs in the sandbox).
         *(
-            [f"Bash({cmd}:*)" for cmd in SHELL_DENIED] + [f"Bash(* {ROOT}*)"]
+            [f"Bash({cmd}:*)" for cmd in (SANDBOX_SHELL_DENIED if shell else SHELL_DENIED)]
+            + [f"Bash(* {ROOT}*)"]
             if agent == "hippoherman" or shell
             else ["Bash"]
         ),

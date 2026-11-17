@@ -84,6 +84,7 @@ class FakeTerminals:
         folder: Any,
         text: str,
         *rest: Any,
+        **options: Any,
     ) -> dict[str, Any]:
         self.briefings.append(text)
         return {"running": True, "replay": ""}
