@@ -1,14 +1,7 @@
 /* the office app look for the agent panels (right sidebar and bottom owner panel).
    Colours are the md-* semantic tokens in design/tokens.json (from the the office app
-   app's dark theme). Scoped to .md-theme so the rest of the app keeps its own tokens. */
-
-@font-face {
-  font-family: var(--font-ui);
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url("../assets/fonts/press-start-2p-latin-400.woff2") format("woff2");
-}
+   app's dark theme). Scoped to .md-theme so the rest of the app keeps its own tokens.
+   Only rules that several panels share live here; a component's own look stays in its component (3.05). */
 
 .md-theme {
   --color-bg-0: var(--color-md-bg-0);
@@ -25,58 +18,9 @@
   --color-face-disc: var(--color-md-card);
 }
 
-/* The main agent card is a light card, like the office app's agent cards. */
-.md-theme .agent-card {
-  --color-text-muted: var(--color-md-card-text);
-  --color-text: var(--color-md-card-text);
-}
-
 /* Chat: the message box sits at the bottom, the log fills the space above. */
 .md-theme .composer {
   margin-top: auto;
-}
-
-/* Bottom panel: the empty note sits under the card, left aligned. */
-.md-theme.owner-panel .empty {
-  margin: var(--space-2) 0 0;
-  align-self: flex-start;
-  font-size: var(--font-size-tag);
-}
-
-.md-theme .card-row {
-  display: flex;
-  align-items: stretch;
-  gap: var(--space-2);
-}
-
-.md-theme .card-row {
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.md-theme .card-row .agent-card {
-  flex: 1;
-  min-width: 0;
-}
-
-.md-theme .card-row .agent-card .face {
-  width: 64px;
-  height: 64px;
-}
-
-.md-theme .agents-btn {
-  flex: none;
-  align-self: center;
-  font-size: var(--font-size-tag);
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-md-border);
-  border-radius: var(--radius-md);
-  background: var(--color-md-surface);
-  color: var(--color-md-text);
-  cursor: pointer;
-  font-family: var(--font-ui);
-  font-size: var(--font-size-tag);
-  text-transform: uppercase;
 }
 
 .md-theme h3 {
