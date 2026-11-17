@@ -123,7 +123,8 @@ METHODS: dict[str, Method] = {
     "github_board": _m("Open pull requests, issues and CI runs of one GitHub repository."),
     "phone_status": _m("Android devices seen by adb, and which are being mirrored."),
     "phone_mirror": _m("Mirror a phone's screen in a scrcpy window, after approval."),
-    "phone_stop": _m("Stop mirroring a phone."),
+    "phone_view": _m("Show a phone's screen inside the app (view only), after approval."),
+    "phone_stop": _m("Stop mirroring a phone, in the app and in its own window."),
     "tokens": _m("This month's token use per folder."),
     # Terminals
     "terminal_start": _m("Start an agent's program.", _AGENT),

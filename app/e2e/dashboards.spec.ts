@@ -242,11 +242,22 @@ test("the Phone dashboard lists devices and starts and stops mirroring; a phone 
   await expect(ready).toContainText("R58M123ABC · Ready");
   const blocked = board.locator("li", { hasText: "192.168.1.20:5555" });
   await expect(blocked).toContainText("Accept the USB debugging prompt");
-  await expect(blocked.getByRole("button", { name: "Mirror" })).toBeDisabled();
-  await ready.getByRole("button", { name: "Mirror" }).click();
+  await expect(
+    blocked.getByRole("button", { name: "Show here" }),
+  ).toBeDisabled();
+  // The screen is shown inside the app, below the phone's row.
+  await ready.getByRole("button", { name: "Show here" }).click();
   await expect(ready).toContainText("mirroring");
+  await expect(
+    board.getByRole("img", { name: "Screen of SM A525F" }),
+  ).toBeVisible();
+  // scrcpy's own window, for taps and keys, can be opened as well.
+  await ready.getByRole("button", { name: "Own window" }).click();
   await ready.getByRole("button", { name: "Stop mirroring" }).click();
-  await expect(ready.getByRole("button", { name: "Mirror" })).toBeEnabled();
+  await expect(
+    board.getByRole("img", { name: "Screen of SM A525F" }),
+  ).toHaveCount(0);
+  await expect(ready.getByRole("button", { name: "Show here" })).toBeEnabled();
 });
 
 test("an app is connected in Settings with a key that is never shown again, gets its own dashboard, and is disconnected", async ({

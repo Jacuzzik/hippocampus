@@ -1,7 +1,8 @@
 """The Phone dashboard: Android devices seen by adb, and screen mirroring with scrcpy.
 
-scrcpy opens its own window; it cannot draw inside this app. Mirroring starts only on the user's click
-(the request must carry approve: true), with small settings so a weak computer copes.
+The screen is shown inside the app by core/phone_view.py (view only). scrcpy's own window, which takes
+taps and keys, is still there for full control. Either starts only on the user's click (the request must
+carry approve: true), with small settings so a weak computer copes.
 """
 
 import atexit
@@ -10,6 +11,8 @@ import shutil
 import subprocess
 from collections.abc import Callable
 from typing import Any
+
+from core import phone_view
 
 SERIAL = re.compile(r"^[A-Za-z0-9._:-]{1,64}$")
 SECONDS = 10
@@ -50,6 +53,8 @@ def status(
         "scrcpy": which("scrcpy") is not None,
         "devices": [],
         "mirroring": _alive(),
+        # Phones shown inside the app, each with the address of its picture stream.
+        "showing": phone_view.showing(),
         "error": "",
     }
     if not found["adb"]:
@@ -64,13 +69,10 @@ def status(
     return found
 
 
-def mirror(
-    serial: object,
-    approve: object,
-    which: Callable[[str], str | None] = shutil.which,
-    run: Callable[..., Any] = subprocess.run,
-    popen: Callable[..., Any] = subprocess.Popen,
-) -> dict[str, Any]:
+def _ready(
+    serial: object, approve: object, which: Callable[[str], str | None], run: Callable[..., Any]
+) -> dict[str, str]:
+    """The device row, after the approval, the serial and the tools are checked."""
     if approve is not True:
         raise ValueError("mirroring a phone needs the user's approval")
     if not isinstance(serial, str) or not SERIAL.match(serial):
@@ -88,14 +90,39 @@ def mirror(
             if device["state"] == "unauthorized"
             else f"The device is {device['state']}."
         )
-    if serial not in _alive():
-        title = f"Hippocampus: {device['model'] or serial}"
-        _running[serial] = popen(
-            ["scrcpy", "--serial", serial, "--window-title", title, *SCRCPY_ARGS],
+    return device
+
+
+def mirror(
+    serial: object,
+    approve: object,
+    which: Callable[[str], str | None] = shutil.which,
+    run: Callable[..., Any] = subprocess.run,
+    popen: Callable[..., Any] = subprocess.Popen,
+) -> dict[str, Any]:
+    """scrcpy's own window, which takes taps and keys."""
+    device = _ready(serial, approve, which, run)
+    if device["serial"] not in _alive():
+        title = f"Hippocampus: {device['model'] or device['serial']}"
+        _running[device["serial"]] = popen(
+            ["scrcpy", "--serial", device["serial"], "--window-title", title, *SCRCPY_ARGS],
             stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
+    return status(which, run)
+
+
+def view(
+    serial: object,
+    approve: object,
+    which: Callable[[str], str | None] = shutil.which,
+    run: Callable[..., Any] = subprocess.run,
+    show: Callable[[str], None] = phone_view.show,
+) -> dict[str, Any]:
+    """The phone's screen inside the app, view only."""
+    device = _ready(serial, approve, which, run)
+    show(device["serial"])
     return status(which, run)
 
 
@@ -107,6 +134,8 @@ def stop(
     process = _running.pop(serial, None) if isinstance(serial, str) else None
     if process is not None and process.poll() is None:
         process.terminate()
+    if isinstance(serial, str):
+        phone_view.hide(serial)
     return status(which, run)
 
 

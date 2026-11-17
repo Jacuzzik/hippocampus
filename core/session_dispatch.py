@@ -98,6 +98,7 @@ class DispatchPart:
             "phone_mirror": lambda request: phone.mirror(
                 request.get("serial"), request.get("approve")
             ),
+            "phone_view": lambda request: phone.view(request.get("serial"), request.get("approve")),
             "phone_stop": lambda request: phone.stop(request.get("serial")),
             "tokens": self.tokens,
             "set_engine": self.set_engine,

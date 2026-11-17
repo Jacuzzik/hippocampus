@@ -1,6 +1,7 @@
 <script lang="ts">
   // The Phone dashboard: Android devices seen by adb, and screen mirroring with scrcpy.
-  // scrcpy opens its own window; this board starts and stops it. A click on Mirror is the approval.
+  // "Show here" puts the screen inside the app (view only, core/phone_view.py); "Own window" opens
+  // scrcpy's window, which takes taps and keys. Each click is the approval.
   import { invoke } from "@tauri-apps/api/core";
   import { onMount } from "svelte";
   import EmptyState from "../controls/EmptyState.svelte";
@@ -12,6 +13,7 @@
     scrcpy: boolean;
     devices: { serial: string; state: string; model: string }[];
     mirroring: string[];
+    showing?: Record<string, string>;
     error: string;
   };
   let phone = $state<Phone | null>(null);
@@ -69,7 +71,8 @@
   {/if}
   <ul class="devices">
     {#each phone.devices as device (device.serial)}
-      {@const live = phone.mirroring.includes(device.serial)}
+      {@const shown = phone.showing?.[device.serial]}
+      {@const live = phone.mirroring.includes(device.serial) || !!shown}
       <li>
         <span class="name">
           <b>{device.model || device.serial}</b>
@@ -86,23 +89,41 @@
             onclick={() => act("phone_stop", device.serial)}
             >Stop mirroring</button
           >
-        {:else}
+        {/if}
+        {#if !shown}
           <button
             type="button"
             disabled={!phone.scrcpy ||
               device.state !== "device" ||
               busy === device.serial}
-            onclick={() => act("phone_mirror", device.serial)}>Mirror</button
+            onclick={() => act("phone_view", device.serial)}
+            >{busy === device.serial ? "Starting…" : "Show here"}</button
+          >
+        {/if}
+        {#if !phone.mirroring.includes(device.serial)}
+          <button
+            type="button"
+            disabled={!phone.scrcpy ||
+              device.state !== "device" ||
+              busy === device.serial}
+            onclick={() => act("phone_mirror", device.serial)}
+            >Own window</button
           >
         {/if}
       </li>
+      {#if shown}
+        <li class="screen">
+          <img src={shown} alt="Screen of {device.model || device.serial}" />
+        </li>
+      {/if}
     {/each}
   </ul>
   {#if actionError}<p class="error" role="alert">{actionError}</p>{/if}
   {#if phone.devices.length}
     <p class="muted">
-      The phone's screen opens in its own window, at a small size and without
-      sound.
+      Show here puts the screen inside the app to watch; it changes only when
+      the phone's screen does. Own window opens scrcpy, where you can tap and
+      type. Both use a small size and no sound.
     </p>
   {/if}
 {/if}
@@ -138,6 +159,19 @@
     padding: var(--space-3);
     background: var(--color-bg-1);
     border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+  }
+
+  .devices li.screen {
+    justify-content: center;
+    padding: var(--space-2);
+    background: var(--color-bg-0);
+  }
+
+  .screen img {
+    display: block;
+    max-width: 100%;
+    max-height: 70vh;
     border-radius: var(--radius-sm);
   }
 

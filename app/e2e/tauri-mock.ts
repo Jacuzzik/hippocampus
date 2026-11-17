@@ -926,15 +926,30 @@ export async function mockSidecar(
             };
           case "phone_status":
           case "phone_mirror":
+          case "phone_view":
           case "phone_stop": {
-            const w = window as unknown as { __mirroring?: string[] };
+            const w = window as unknown as {
+              __mirroring?: string[];
+              __showing?: Record<string, string>;
+            };
             w.__mirroring ??= [];
+            w.__showing ??= {};
+            if (args.method === "phone_view") {
+              if (args.params?.approve !== true)
+                throw new Error("mirroring a phone needs the user's approval");
+              // A 1 by 1 picture stands in for the phone's stream.
+              w.__showing[String(args.params?.serial)] =
+                "data:image/gif;base64,R0lGODlhAQABAAAAACw=";
+            }
             if (args.method === "phone_mirror") {
               if (args.params?.approve !== true)
                 throw new Error("mirroring a phone needs the user's approval");
               w.__mirroring.push(String(args.params?.serial));
             }
-            if (args.method === "phone_stop") w.__mirroring = [];
+            if (args.method === "phone_stop") {
+              w.__mirroring = [];
+              w.__showing = {};
+            }
             return {
               adb: true,
               scrcpy: true,
@@ -947,6 +962,7 @@ export async function mockSidecar(
                 },
               ],
               mirroring: w.__mirroring,
+              showing: w.__showing,
               error: "",
             };
           }
