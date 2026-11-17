@@ -29,6 +29,8 @@ type Prefs = {
   intro: Intro;
   rememberTab: boolean;
   lastTab: string;
+  /** Locked dashboards are read-only: nothing on them can be clicked or edited. */
+  dashboardsLocked: boolean;
   flags: Record<string, boolean>;
 };
 
@@ -51,6 +53,7 @@ const DEFAULTS: Prefs = {
   intro: "long",
   rememberTab: true,
   lastTab: "terminal",
+  dashboardsLocked: true,
   flags: {},
 };
 
@@ -96,6 +99,7 @@ function read(): Prefs {
       rememberTab: saved.rememberTab !== false,
       lastTab:
         typeof saved.lastTab === "string" ? saved.lastTab : DEFAULTS.lastTab,
+      dashboardsLocked: saved.dashboardsLocked !== false,
       // Only true and false are kept, so a hand-edited value cannot switch a flag by accident.
       flags: Object.fromEntries(
         Object.entries(saved.flags ?? {}).filter(
@@ -248,6 +252,13 @@ export const prefs = {
   },
   set lastTab(value: string) {
     state.lastTab = value;
+    save();
+  },
+  get dashboardsLocked(): boolean {
+    return state.dashboardsLocked;
+  },
+  set dashboardsLocked(value: boolean) {
+    state.dashboardsLocked = value;
     save();
   },
   /** Feature flags switched by hand in Settings > Advanced; see flags.svelte.ts. */

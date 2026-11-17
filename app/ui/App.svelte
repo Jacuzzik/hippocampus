@@ -19,6 +19,7 @@
   const ToolsDialog = () => import("./overlays/ToolsDialog.svelte");
   const AddAgentDialog = () => import("./control/AddAgentDialog.svelte");
   const SettingsDialog = () => import("./control/SettingsDialog.svelte");
+  const DashboardsView = () => import("./dashboards/DashboardsView.svelte");
   import CommandBox, { type Item } from "./overlays/CommandBox.svelte";
   import type { GraphData } from "./graph/model.ts";
   import { selection } from "./owner/addedAgents.svelte.ts";
@@ -85,6 +86,8 @@
   // The assistant tool allowlist: from the command palette.
   let toolsOpen = $state(false);
   let addOpen = $state(false);
+  // The dashboards: from the top bar, the palette or Ctrl+D.
+  let dashOpen = $state(false);
   // The settings: six tabs, from the ribbon or the command palette.
   let settingsOpen = $state(false);
   let settingsStart = $state<SettingsPage>("General");
@@ -117,7 +120,11 @@
     if (e.key === "o") box = "switcher";
     else if (e.key === "p") box = "palette";
     else if (e.key === "f") void focusSearch();
-    else if (e.key === ",") {
+    else if (e.key === "d") {
+      // In a terminal Ctrl+D ends the input, so it is left to the terminal there.
+      if ((e.target as HTMLElement | null)?.closest?.(".xterm")) return;
+      dashOpen = true;
+    } else if (e.key === ",") {
       settingsStart = "General";
       settingsOpen = true;
     } else return;
@@ -186,6 +193,7 @@
       },
     },
     { id: "add-agent", label: "Add an agent", run: () => (addOpen = true) },
+    { id: "dashboards", label: "Dashboards", run: () => (dashOpen = true) },
     // One entry per right-panel tab, so every view opens from the keyboard.
     ...PANEL_TABS.map((id) => ({
       id: `tab-${id}`,
@@ -312,6 +320,18 @@
   >
 {/if}
 
+{#if dashOpen}
+  <PanelBoundary name="Dashboards"
+    >{#await DashboardsView() then { default: View }}<View
+        onclose={() => (dashOpen = false)}
+        onsettings={() => {
+          settingsStart = "Dashboards";
+          settingsOpen = true;
+        }}
+      />{/await}</PanelBoundary
+  >
+{/if}
+
 {#if addOpen}
   <PanelBoundary name="Add agent"
     >{#await AddAgentDialog() then { default: Dialog }}<Dialog
@@ -385,6 +405,13 @@
       {viewKey}
       fullscreen={terminalOnly}
       onfullscreen={() => (terminalOnly = !terminalOnly)}
+      ondashboards={() => (dashOpen = true)}
+      onadd={() => (addOpen = true)}
+      onpalette={() => (box = "palette")}
+      onlock={() => {
+        settingsStart = "Dashboards";
+        settingsOpen = true;
+      }}
       onselect={(id) => (selectedId = id)}
     />
   </PanelBoundary>

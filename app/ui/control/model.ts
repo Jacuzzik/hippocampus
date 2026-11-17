@@ -151,6 +151,10 @@ export const SETTINGS_PAGES = [
     words:
       "integrations slack webhooks github notion calendar gmail drive mcp plugins ollama",
   },
+  {
+    id: "Dashboards",
+    words: "dashboard lock unlock locked read only apps analytics",
+  },
   { id: "Memory", words: "memory search notes size" },
   { id: "Privacy and data", words: "error log telemetry remove data sign out" },
   {

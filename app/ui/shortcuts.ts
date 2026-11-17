@@ -5,6 +5,7 @@ export type Shortcut = { keys: string; does: string; where: string };
 
 export const SHORTCUTS: Shortcut[] = [
   { keys: "Ctrl+P", does: "Open the command palette", where: "Anywhere" },
+  { keys: "Ctrl+D", does: "Open the dashboards", where: "Outside a terminal" },
   { keys: "Ctrl+O", does: "Jump to a note by name", where: "Anywhere" },
   { keys: "Ctrl+F", does: "Search the notes", where: "Anywhere" },
   { keys: "Ctrl+,", does: "Open Settings", where: "Anywhere" },

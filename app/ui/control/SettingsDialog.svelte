@@ -687,6 +687,23 @@
           <KeysSection />
         {:else if page === "Connectors"}
           <ConnectorsSection />
+        {:else if page === "Dashboards"}
+          <section class="control-section">
+            <h3>Dashboards</h3>
+            <SettingRow title="Lock dashboards"
+              >{#snippet help()}Locked: a dashboard only shows numbers. Nothing
+                on it can be clicked or edited. Unlocked: its buttons and fields
+                work. You can still pick another dashboard, refresh and close
+                the view while locked.{/snippet}
+              <Toggle
+                bind:checked={prefs.dashboardsLocked}
+                ariaLabel="Lock dashboards"
+              />
+            </SettingRow>
+            <p class="muted" role="status">
+              Dashboards are {prefs.dashboardsLocked ? "locked" : "unlocked"}.
+            </p>
+          </section>
         {:else if page === "Memory"}
           <section class="control-section">
             <h3>Memory</h3>

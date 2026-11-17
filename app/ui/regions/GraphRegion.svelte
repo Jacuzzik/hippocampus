@@ -4,6 +4,7 @@
   import { invoke } from "@tauri-apps/api/core";
   import BrainGraph from "../graph/BrainGraph.svelte";
   import type { GraphData } from "../graph/model.ts";
+  import { prefs } from "../prefs.svelte.ts";
 
   type System = {
     cpu: number;
@@ -37,6 +38,10 @@
     fullscreen = false,
     onselect,
     onfullscreen,
+    ondashboards,
+    onadd,
+    onpalette,
+    onlock,
   }: {
     data?: GraphData | null;
     error?: string | null;
@@ -48,6 +53,11 @@
     fullscreen?: boolean;
     onselect: (id: string | null) => void;
     onfullscreen: () => void;
+    ondashboards: () => void;
+    onadd: () => void;
+    onpalette: () => void;
+    /** Opens the setting that locks and unlocks the dashboards. */
+    onlock: () => void;
   } = $props();
 </script>
 
@@ -72,6 +82,60 @@
       >
     </div>
     <div class="icons">
+      <button
+        type="button"
+        aria-label="Dashboards"
+        title="Dashboards · Ctrl+D"
+        onclick={ondashboards}
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="3" y="3" width="8" height="10" rx="1" />
+          <rect x="13" y="3" width="8" height="6" rx="1" />
+          <rect x="13" y="11" width="8" height="10" rx="1" />
+          <rect x="3" y="15" width="8" height="6" rx="1" />
+        </svg>
+      </button>
+      <button
+        type="button"
+        aria-label={prefs.dashboardsLocked
+          ? "Dashboards are locked"
+          : "Dashboards are unlocked"}
+        title={prefs.dashboardsLocked
+          ? "Dashboards are locked"
+          : "Dashboards are unlocked"}
+        onclick={onlock}
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <rect x="5" y="11" width="14" height="10" rx="2" />
+          {#if prefs.dashboardsLocked}
+            <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+          {:else}
+            <path d="M8 11V7a4 4 0 0 1 7.5-2" />
+          {/if}
+        </svg>
+      </button>
+      <button
+        type="button"
+        aria-label="Add an agent"
+        title="Add an agent"
+        onclick={onadd}
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="10" cy="8" r="4" />
+          <path d="M3 21c0-4 3-7 7-7 1.5 0 2.9.4 4 1.1M19 14v6M16 17h6" />
+        </svg>
+      </button>
+      <button
+        type="button"
+        aria-label="Command palette"
+        title="Command palette · Ctrl+P"
+        onclick={onpalette}
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="11" cy="11" r="7" />
+          <path d="M16.5 16.5 21 21" />
+        </svg>
+      </button>
       <button
         type="button"
         aria-label="Full screen layout"
