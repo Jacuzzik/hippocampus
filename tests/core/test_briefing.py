@@ -27,8 +27,8 @@ def test_both_briefings_pass_their_own_lint() -> None:
     )
     assert briefing.lint(main) == [] and briefing.lint(agent) == []
     # The added sections carry on from each text's own last number.
-    assert "11. Start-up inbox" in main and "12. Tools and limits in force" in main
-    assert "12. Start-up inbox" in agent and "13. Tools and limits in force" in agent
+    assert "13. Start-up inbox" in main and "14. Tools and limits in force" in main
+    assert "13. Start-up inbox" in agent and "14. Tools and limits in force" in agent
 
 
 def test_the_name_job_goal_and_folder_reach_the_agents_briefing() -> None:
@@ -36,7 +36,7 @@ def test_the_name_job_goal_and_folder_reach_the_agents_briefing() -> None:
     outbox = Path("/hive/ada#1/outbox")
     text = briefing.agent_briefing("ada#1", saved, "/work/ada", "/vault", outbox)
     for part in (
-        "You are Ada,",
+        "You are Ada (",
         "Breaks big tasks down",
         "Tidy the inbox notes",
         "/work/ada",
@@ -58,7 +58,10 @@ def test_the_stamp_changes_when_the_text_does() -> None:
 @pytest.mark.parametrize(
     ("change", "problem"),
     [
-        (lambda text: text.replace("3. Limits", "Limits"), "out of order or one is missing"),
+        (
+            lambda text: text.replace("3. Every session", "Every session"),
+            "out of order or one is missing",
+        ),
         (lambda text: "Intro\n" + text, "does not start with section 1"),
         (lambda text: text + "\nx" * briefing.SIZE_MAX, "most allowed"),
         (lambda text: text + "\nkey sk-ant-abcdef1234567890", "looks like a key"),
@@ -109,9 +112,9 @@ def test_a_start_hands_the_cli_one_briefing_and_the_card_can_show_its_stamp(tmp_
     main, ada = session.terminals.briefings
     assert (session.hive_path / "hippoherman" / "outbox").is_dir()
     assert main.startswith("1. Role\nYou are Hippoherman") and ada.startswith(
-        "1. Role\nYou are ada,"
+        "1. Role\nYou are ada ("
     )
-    assert main.count("Tools and limits in force") == 1  # added once, not once per layer
+    assert main.count("14. Tools and limits in force") == 1  # added once, not once per layer
     stamp = session.dispatch({"method": "terminal_command", "agent": "ada"})["briefing"]
     assert stamp["version"] == briefing.VERSION and ada.endswith(stamp["hash"]) and stamp["at"]
 
@@ -141,7 +144,7 @@ def test_an_agent_whose_goal_holds_a_key_is_not_started(
 
 def test_the_main_briefing_sets_the_lead_role_and_what_goes_to_the_user() -> None:
     text = finished(briefing.main_briefing("/vault", "/hive/hippoherman/outbox"))
-    assert "7. Lead role" in text and "/hive/hippoherman/outbox" in text
+    assert "5. Lead the office" in text and "/hive/hippoherman/outbox" in text
     assert "Bring to the user only:" in text and "a change of scope" in text
     assert briefing.lint(text) == []
 

@@ -31,7 +31,7 @@ def test_wrap_does_not_wrap_twice() -> None:
 
 
 def test_every_briefing_says_tasks_are_contracts(tmp_path: Path) -> None:
-    rule = "Tasks are contracts"
+    rule = "## Objective"
     assert rule in briefing.main_briefing(None, tmp_path / "outbox")
     assert rule in briefing.agent_briefing("ada", {"name": "Ada"}, None, None, tmp_path / "o")
 

@@ -25,7 +25,7 @@ def test_preview_fills_in_the_typed_words_and_saves_nothing(tmp_path: Path) -> N
         }
     )
     text = found["text"]
-    assert text.startswith("1. Role\nYou are Ada,")
+    assert text.startswith("1. Role\nYou are Ada (")
     assert "Sorts the inbox" in text and "Empty inbox daily" in text and "/w/IT" in text
     assert found["characters"] == len(text)
     assert "{" not in text.split("Example:")[0]  # no blank left unfilled before the JSON example
@@ -34,4 +34,4 @@ def test_preview_fills_in_the_typed_words_and_saves_nothing(tmp_path: Path) -> N
 
 def test_preview_copes_with_missing_and_wrong_typed_fields(tmp_path: Path) -> None:
     text = _session(tmp_path).briefing_preview({"name": 7, "goal": None})["text"]
-    assert "You are New agent," in text and "not described yet" in text
+    assert "You are New agent (" in text and "not described yet" in text
