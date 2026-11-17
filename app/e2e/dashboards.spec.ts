@@ -41,6 +41,7 @@ test("dashboards open from the top bar, list six dashboards and show numbers fro
     "Notes",
     "System",
     "Activity",
+    "GitHub",
   ]);
   const board = view.getByRole("tabpanel");
   await expect(board.getByText("Tokens today")).toBeVisible();
@@ -127,4 +128,47 @@ test("dashboards are locked by default, and the switch in Settings unlocks them 
       .locator("header.topbar")
       .getByRole("button", { name: "Dashboards are unlocked" }),
   ).toBeVisible();
+});
+
+test("the GitHub dashboard asks for a repository, shows its numbers and says why a read failed", async ({
+  page,
+}) => {
+  await mockSidecar(page);
+  // Unlocked for this test, set once so the reload below keeps what the test saved.
+  await page.addInitScript(() => {
+    if (sessionStorage.getItem("seeded")) return;
+    sessionStorage.setItem("seeded", "1");
+    localStorage.setItem(
+      "hippocampus.prefs",
+      JSON.stringify({ intro: "off", dashboardsLocked: false }),
+    );
+  });
+  await page.goto("/");
+  await page.keyboard.press("Control+d");
+  const view = page.getByRole("dialog", { name: "Dashboards" });
+  await view.getByRole("tab", { name: "GitHub" }).click();
+  const board = view.getByRole("tabpanel");
+  await expect(
+    board.getByText(/Write a repository as owner\/name/),
+  ).toBeVisible();
+  await expect(board.getByRole("button", { name: "Show" })).toBeDisabled();
+  await board.getByLabel("Repository").fill("octocat/hello-world");
+  await board.getByRole("button", { name: "Show" }).click();
+  await expect(
+    board.locator("li", { hasText: "Open pull requests" }),
+  ).toContainText("2");
+  await expect(board.locator("li", { hasText: "Newest CI run" })).toContainText(
+    "tests on main.",
+  );
+  await expect(
+    board.locator("li", { hasText: "Pull request #7" }),
+  ).toContainText("Add dashboards");
+  await board.getByLabel("Repository").fill("nobody/nothing");
+  await board.getByRole("button", { name: "Show" }).click();
+  await expect(board.getByRole("alert")).toContainText("HTTP 404: Not Found");
+  // The repository is kept for the next visit.
+  await page.reload();
+  await page.keyboard.press("Control+d");
+  await view.getByRole("tab", { name: "GitHub" }).click();
+  await expect(board.getByLabel("Repository")).toHaveValue("nobody/nothing");
 });

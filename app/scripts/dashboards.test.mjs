@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   activityTiles,
+  githubTiles,
   noteTiles,
   overviewTiles,
   short,
@@ -114,4 +115,34 @@ test("the overview counts open tasks and says when the system was not read", () 
     ["2", "15.4k", "1", "1", "Not read"],
   );
   assert.equal(tiles[3].tone, "warn");
+});
+
+test("GitHub tiles show counts, the newest run and the newest titles", () => {
+  const found = {
+    repo: "a/b",
+    pulls: 100,
+    drafts: 1,
+    issues: 1,
+    runs: 3,
+    failed_runs: 1,
+    running_runs: 0,
+    newest_run: { name: "tests", branch: "main", state: "failed" },
+    newest_pulls: [{ number: 7, title: "Add dashboards" }],
+    newest_issues: [{ number: 3, title: "Graph is slow" }],
+    capped: ["pulls"],
+  };
+  const tiles = githubTiles(found);
+  assert.deepEqual(
+    tiles.map((tile) => [tile.label, tile.value]),
+    [
+      ["Open pull requests", "100+"],
+      ["Open issues", "1"],
+      ["Newest CI run", "failed"],
+      ["Failed runs", "1"],
+      ["Pull request #7", "Add dashboards"],
+      ["Issue #3", "Graph is slow"],
+    ],
+  );
+  assert.equal(tiles[2].tone, "warn");
+  assert.equal(githubTiles({ ...found, newest_run: null })[2].value, "None");
 });

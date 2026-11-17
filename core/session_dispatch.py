@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from core import methods
+from core.github_board import board as github_board
 from core.session_shared import ci_in, issues_in
 
 Handler = Callable[[dict[str, Any]], dict[str, Any]]
@@ -90,6 +91,7 @@ class DispatchPart:
             "card_update": self.card_update,
             "issues": lambda request: issues_in(request.get("folder")),
             "ci": lambda request: ci_in(request.get("folder")),
+            "github_board": lambda request: github_board(request.get("repo")),
             "tokens": self.tokens,
             "set_engine": self.set_engine,
             "stop": plain(self.stop),

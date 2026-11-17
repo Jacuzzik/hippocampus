@@ -11,6 +11,7 @@
   import {
     activityTiles,
     DASHBOARDS,
+    githubTiles,
     noteTiles,
     overviewTiles,
     spendTiles,
@@ -18,6 +19,7 @@
     taskTiles,
     type ActivityRow,
     type DashboardId,
+    type GithubShape,
     type GraphShape,
     type SystemShape,
     type TaskRow,
@@ -39,6 +41,15 @@
     {};
   const tasks = async (): Promise<TaskRow[]> =>
     (await call<{ tasks: TaskRow[] }>("tasks")).tasks;
+
+  // The GitHub dashboard needs a repository first; its field is part of the board, so the lock covers it.
+  let repoDraft = $state(prefs.dashboardRepo);
+  function saveRepo(event: SubmitEvent): void {
+    event.preventDefault();
+    prefs.dashboardRepo = repoDraft;
+    void load();
+  }
+  const NEEDS_REPO = "Choose a repository first.";
 
   // What each dashboard reads. One that fails shows its reason and a Try again button.
   const READERS: Record<DashboardId, () => Promise<Tile[]>> = {
@@ -62,6 +73,15 @@
     tasks: async () => taskTiles(await tasks()),
     notes: async () => noteTiles(await call<GraphShape>("graph")),
     system: async () => systemTiles(await call<SystemShape>("system")),
+    github: async () => {
+      if (!prefs.dashboardRepo) throw new Error(NEEDS_REPO);
+      const found = await invoke<GithubShape | { error: string }>(
+        "sidecar_call",
+        { method: "github_board", params: { repo: prefs.dashboardRepo } },
+      );
+      if ("error" in found) throw new Error(found.error);
+      return githubTiles(found);
+    },
     activity: async () =>
       activityTiles((await call<{ rows: ActivityRow[] }>("activity")).rows),
   };
@@ -79,7 +99,8 @@
         minute: "2-digit",
       });
     } catch (cause) {
-      if (wanted === current) error = String(cause);
+      if (wanted === current)
+        error = cause instanceof Error ? cause.message : String(cause);
     }
   }
   $effect(() => {
@@ -146,7 +167,30 @@
       class:locked={prefs.dashboardsLocked}
     >
       <h3>{title}</h3>
-      {#if error}
+      {#if current === "github"}
+        <form class="repo" onsubmit={saveRepo}>
+          <label for="dash-repo">Repository</label>
+          <input
+            id="dash-repo"
+            type="text"
+            placeholder="owner/name"
+            bind:value={repoDraft}
+          />
+          <button type="submit" disabled={!repoDraft.trim()}>Show</button>
+        </form>
+        {#if prefs.dashboardsLocked && !prefs.dashboardRepo}
+          <p class="note">
+            Dashboards are locked, so the repository cannot be changed here.
+            Unlock them in Settings, Dashboards.
+          </p>
+        {/if}
+      {/if}
+      {#if error === NEEDS_REPO}
+        <p class="note" role="status">
+          Write a repository as owner/name and press Show. It is read with the
+          gh tool you are logged in to.
+        </p>
+      {:else if error}
         <ErrorRow message={error} onretry={() => void load()} />
       {:else if tiles === null}
         <Loading what={title} />
@@ -238,6 +282,28 @@
   .board {
     min-width: 0;
     overflow-y: auto;
+  }
+
+  .repo {
+    display: flex;
+    gap: var(--space-2);
+    align-items: center;
+    margin-top: var(--space-3);
+  }
+
+  .repo input,
+  .repo button {
+    min-height: var(--size-28);
+    padding: var(--space-1) var(--space-2);
+    color: var(--color-text);
+    font: inherit;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+  }
+
+  .repo input {
+    width: min(320px, 100%);
   }
 
   .tiles {

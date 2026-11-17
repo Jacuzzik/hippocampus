@@ -31,6 +31,8 @@ type Prefs = {
   lastTab: string;
   /** Locked dashboards are read-only: nothing on them can be clicked or edited. */
   dashboardsLocked: boolean;
+  /** The repository the GitHub dashboard reads, as owner/name. */
+  dashboardRepo: string;
   flags: Record<string, boolean>;
 };
 
@@ -54,6 +56,7 @@ const DEFAULTS: Prefs = {
   rememberTab: true,
   lastTab: "terminal",
   dashboardsLocked: true,
+  dashboardRepo: "",
   flags: {},
 };
 
@@ -100,6 +103,8 @@ function read(): Prefs {
       lastTab:
         typeof saved.lastTab === "string" ? saved.lastTab : DEFAULTS.lastTab,
       dashboardsLocked: saved.dashboardsLocked !== false,
+      dashboardRepo:
+        typeof saved.dashboardRepo === "string" ? saved.dashboardRepo : "",
       // Only true and false are kept, so a hand-edited value cannot switch a flag by accident.
       flags: Object.fromEntries(
         Object.entries(saved.flags ?? {}).filter(
@@ -259,6 +264,13 @@ export const prefs = {
   },
   set dashboardsLocked(value: boolean) {
     state.dashboardsLocked = value;
+    save();
+  },
+  get dashboardRepo(): string {
+    return state.dashboardRepo;
+  },
+  set dashboardRepo(value: string) {
+    state.dashboardRepo = value.trim();
     save();
   },
   /** Feature flags switched by hand in Settings > Advanced; see flags.svelte.ts. */

@@ -18,6 +18,7 @@ export const DASHBOARDS = [
   { id: "notes", label: "Notes" },
   { id: "system", label: "System" },
   { id: "activity", label: "Activity" },
+  { id: "github", label: "GitHub" },
 ] as const;
 export type DashboardId = (typeof DASHBOARDS)[number]["id"];
 
@@ -159,5 +160,56 @@ export function overviewTiles(found: {
         ? `${Math.round(found.system.cpu)}% · ${Math.round(found.system.ram)}%`
         : "Not read",
     },
+  ];
+}
+
+export type GithubShape = {
+  repo: string;
+  pulls: number;
+  drafts: number;
+  issues: number;
+  runs: number;
+  failed_runs: number;
+  running_runs: number;
+  newest_run: { name: string; branch: string; state: string } | null;
+  newest_pulls: { number: number; title: string }[];
+  newest_issues: { number: number; title: string }[];
+  capped: string[];
+};
+
+export function githubTiles(found: GithubShape): Tile[] {
+  // A list as long as the read limit may be cut short, so its count is shown as "100+".
+  const count = (name: string, n: number): string =>
+    found.capped.includes(name) ? `${n}+` : String(n);
+  const run = found.newest_run;
+  return [
+    {
+      label: "Open pull requests",
+      value: count("pulls", found.pulls),
+      note: found.drafts ? `${found.drafts} are drafts.` : "",
+    },
+    { label: "Open issues", value: count("issues", found.issues) },
+    {
+      label: "Newest CI run",
+      value: run ? run.state : "None",
+      note: run
+        ? `${run.name} on ${run.branch}.`
+        : "This repository has no CI runs.",
+      tone: run?.state === "failed" ? "warn" : "plain",
+    },
+    {
+      label: "Failed runs",
+      value: String(found.failed_runs),
+      note: `Of the newest ${found.runs}.`,
+      tone: found.failed_runs ? "warn" : "plain",
+    },
+    ...found.newest_pulls.map((pull) => ({
+      label: `Pull request #${pull.number}`,
+      value: pull.title,
+    })),
+    ...found.newest_issues.map((issue) => ({
+      label: `Issue #${issue.number}`,
+      value: issue.title,
+    })),
   ];
 }

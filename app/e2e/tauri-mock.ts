@@ -749,6 +749,22 @@ export async function mockSidecar(
             return { ok: true };
           case "terminal_context":
             return { percent: 42 };
+          case "github_board":
+            if (String(args.params?.repo) === "nobody/nothing")
+              return { error: "HTTP 404: Not Found" };
+            return {
+              repo: String(args.params?.repo),
+              pulls: 2,
+              drafts: 1,
+              issues: 1,
+              runs: 3,
+              failed_runs: 1,
+              running_runs: 1,
+              newest_run: { name: "tests", branch: "main", state: "failed" },
+              newest_pulls: [{ number: 7, title: "Add dashboards" }],
+              newest_issues: [{ number: 3, title: "Graph is slow" }],
+              capped: [],
+            };
           case "ci":
             return { state: "failed", text: "tests on main: failure." };
           case "briefing_preview": {
