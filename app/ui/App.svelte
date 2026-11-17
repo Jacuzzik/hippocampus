@@ -83,6 +83,7 @@
   let viewKey = $state(0);
   // Setup and account: opens on first run (no brain yet) and from the ribbon or the palette.
   let setupOpen = $state(false);
+  const SETUP_SEEN = "hippocampus.setupSeen";
   // The assistant tool allowlist: from the command palette.
   let toolsOpen = $state(false);
   let addOpen = $state(false);
@@ -262,6 +263,15 @@
 
   // The graph menu and sidebar fire this after a change, so it redraws at once rather than at the next poll.
   onMount(() => {
+    // 7.29: on the very first start, Setup and account opens by itself to show the setup checks. Once only.
+    try {
+      if (!localStorage.getItem(SETUP_SEEN)) {
+        localStorage.setItem(SETUP_SEEN, "1");
+        setupOpen = true;
+      }
+    } catch {
+      /* storage blocked: no first-run checklist, Setup still opens from its button */
+    }
     // The first graph load (the vault) counts as start-up work; later polls do not.
     const doneVault = bootTask("Notes and graph");
     void load().finally(doneVault);

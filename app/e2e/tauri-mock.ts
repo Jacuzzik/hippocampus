@@ -14,6 +14,8 @@ export async function mockSidecar(
     noVault?: boolean;
     signedIn?: boolean;
     intro?: boolean;
+    /** Act out the very first start: the setup checklist opens by itself. */
+    firstRun?: boolean;
     /** Methods that fail, to test what the user is told. */
     fail?: string[];
   } = {},
@@ -24,8 +26,15 @@ export async function mockSidecar(
       noVault: boolean;
       signedIn: boolean;
       intro: boolean;
+      firstRun: boolean;
       fail: string[];
     }) => {
+      // Tests start past the first-run setup checklist unless they ask for it.
+      try {
+        if (!opts.firstRun) localStorage.setItem("hippocampus.setupSeen", "1");
+      } catch {
+        /* storage blocked */
+      }
       // Tests skip the start-up logo (Settings > Appearance), which otherwise covers the app for 12 seconds.
       try {
         const saved = JSON.parse(
@@ -1208,6 +1217,7 @@ export async function mockSidecar(
       noVault: options.noVault === true,
       signedIn: options.signedIn === true,
       intro: options.intro === true,
+      firstRun: options.firstRun === true,
       fail: options.fail ?? [],
     },
   );

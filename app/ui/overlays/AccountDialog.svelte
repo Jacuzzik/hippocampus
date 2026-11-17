@@ -1,6 +1,7 @@
 <script lang="ts">
   import { dialogFocus } from "../controls/dialogFocus.ts";
   import { invoke } from "@tauri-apps/api/core";
+  import SetupChecklist from "./SetupChecklist.svelte";
 
   // Setup: the brain is the default vault the app creates on first start. Removing data keeps the notes.
   let { onclose }: { onclose: () => void; onopened?: () => void } = $props();
@@ -51,6 +52,11 @@
     onmousedown={(e) => e.stopPropagation()}
   >
     <h2>Setup and account</h2>
+
+    <div class="section">
+      <h3>Setup checks</h3>
+      <SetupChecklist />
+    </div>
 
     <div class="section">
       <h3>Your data</h3>
