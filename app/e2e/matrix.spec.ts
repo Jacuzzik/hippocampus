@@ -17,9 +17,9 @@ async function problems(page: Page, where: string): Promise<string[]> {
       found.push(
         `${label}: the page scrolls sideways (${root.scrollWidth} > ${root.clientWidth})`,
       );
-    // The fonts the tokens name (--font-ui, --font-mono), plus the terminal's own Nerd Font.
+    // The fonts the tokens name (--font-ui, --font-mono, --font-display), plus the terminal's own Nerd Font.
     const style = getComputedStyle(root);
-    const allowed = ["--font-ui", "--font-mono"].map((name) =>
+    const allowed = ["--font-ui", "--font-mono", "--font-display"].map((name) =>
       style.getPropertyValue(name).split(",")[0]?.replace(/["']/g, "").trim(),
     );
     const walker = document.createTreeWalker(

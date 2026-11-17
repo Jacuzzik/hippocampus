@@ -446,6 +446,7 @@
     padding-bottom: var(--space-2);
   }
   .title b {
+    font-family: var(--font-display);
     font-size: var(--font-size-md);
     letter-spacing: 0.04em;
   }

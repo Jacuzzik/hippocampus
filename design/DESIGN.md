@@ -172,6 +172,7 @@ Components use these variables and nothing else: `npm test` fails on a raw colou
 |---|---|
 | `--font-ui` | JetBrains Mono (fallback: ui-monospace, "SF Mono", Menlo, Consolas, monospace) |
 | `--font-mono` | JetBrains Mono (fallback: ui-monospace, "SF Mono", Menlo, Consolas, monospace) |
+| `--font-display` | Martian Mono (fallback: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, monospace) |
 
 ## Layout
 

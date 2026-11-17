@@ -1,4 +1,6 @@
 import "@fontsource-variable/jetbrains-mono";
+// 3.11: the brand pair. Martian Mono for headings, JetBrains Mono for everything else.
+import "@fontsource-variable/martian-mono";
 import "./styles/tokens.css";
 import "./styles/global.css";
 import "./styles/office-theme.css";
