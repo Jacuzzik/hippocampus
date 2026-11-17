@@ -217,9 +217,13 @@ test("a dispatch is sent only after the confirm card", async ({ page }) => {
   await dialog.getByRole("button", { name: "Review and send" }).click();
   await expect(dialog.getByRole("alert")).toHaveText("Write the task.");
   await dialog.getByLabel("Task").fill("Tidy the inbox notes");
+  await dialog.getByLabel("Output").fill("A list of what moved");
   await dialog.getByRole("button", { name: "Review and send" }).click();
   const card = dialog.getByRole("alertdialog", { name: "Confirm dispatch" });
   await expect(card).toContainText("Tidy the inbox notes");
+  // 8.05: the four-part contract is shown before it goes; an empty part says its default.
+  await expect(card).toContainText("A list of what moved");
+  await expect(card).toContainText("Default: only this task");
   // One order everywhere (4.14): Cancel first, the action last.
   await expect(card.getByRole("button")).toHaveText(["Cancel", "Send"]);
   await card.getByRole("button", { name: "Cancel" }).click();

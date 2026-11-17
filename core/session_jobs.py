@@ -10,6 +10,7 @@ from ai.keys import get_api_key
 from ai.router import build_router
 from core import (
     calendar_board,
+    contract,
     inbox,
     link_doctor,
     webhooks,
@@ -140,7 +141,7 @@ class JobsPart:
                 inbox.USER,
                 mission.agent,
                 mission.label,
-                mission.message,
+                contract.wrap(mission.message),
                 act="request",
                 work=mission.id,
             )
@@ -221,8 +222,13 @@ class JobsPart:
         return self.system.read(self.storage)
 
     def start_helper(self, request: dict[str, Any]) -> dict[str, Any]:
-        prompt = request.get("prompt")
-        if not isinstance(prompt, str):
+        # 8.05: every task goes out as a four-part contract. "parts" holds them; a plain "prompt" is the objective.
+        parts = request.get("parts")
+        if isinstance(parts, dict):
+            prompt = contract.build(parts)
+        elif isinstance(request.get("prompt"), str):
+            prompt = contract.wrap(request["prompt"])
+        else:
             raise ValueError('"prompt" must be text')
         over = self.ledger.first_overrun({"app": (self.settings.budget, None)})
         if over is not None and not self.allowance:

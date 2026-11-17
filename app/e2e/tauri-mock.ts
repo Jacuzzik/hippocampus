@@ -1061,19 +1061,24 @@ export async function mockSidecar(
             return { missions: missionRows, cap: 20 };
           case "helpers":
             return { helpers: helperRows, limit: 4 };
-          case "start_helper":
-            if (!String(args.params?.prompt ?? "").trim())
-              throw new Error('"prompt" is empty');
+          case "start_helper": {
+            const parts = args.params?.parts as
+              { objective?: string } | undefined;
+            const prompt = String(
+              args.params?.prompt ?? parts?.objective ?? "",
+            );
+            if (!prompt.trim()) throw new Error('"prompt" is empty');
             helperRows = [
               ...helperRows,
               {
                 id: helperRows.length + 1,
-                prompt: String(args.params?.prompt),
+                prompt,
                 status: "running",
                 result: "",
               },
             ];
             return { helpers: helperRows, limit: 4 };
+          }
           case "skills":
             return { skills: skillRows };
           case "open_skill_folder":
