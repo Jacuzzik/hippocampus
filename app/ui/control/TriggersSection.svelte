@@ -7,6 +7,7 @@
   import StatusCard from "../controls/StatusCard.svelte";
   import Loading from "../controls/Loading.svelte";
   import { report } from "../notices.svelte.ts";
+  import MissionsSection from "./MissionsSection.svelte";
 
   // What starts work without you: the network state, scheduled jobs, context compaction and webhooks.
   type Job = { enabled: boolean };
@@ -118,6 +119,7 @@
       status="Planned"
       reason="The assistant does not shorten its context yet."
     />
+    <MissionsSection />
     <h4>Webhooks</h4>
     {#if webhooks.length === 0}
       <p class="muted">None saved yet.</p>

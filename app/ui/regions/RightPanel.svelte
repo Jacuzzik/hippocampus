@@ -415,11 +415,14 @@
     font-size: var(--font-size-tag);
   }
 
+  /* A tall tab (Triggers, Ask me) scrolls inside the pane; without this the whole window scrolled and the
+     agent bar and status bar rode up over the panel. */
   .pane {
     flex: 1;
     display: flex;
     flex-direction: column;
     min-height: 0;
+    overflow-y: auto;
   }
 
   /* The real terminal takes a fixed slice above the chat. */

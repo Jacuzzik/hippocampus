@@ -295,6 +295,34 @@ test("a webhook is added and removed in the Control panel Triggers", async ({
   await expect(page.getByText("None saved yet.")).toBeVisible();
 });
 
+test("a mission is added switched off, switched on, and removed in Triggers", async ({
+  page,
+}) => {
+  await mockSidecar(page);
+  await page.goto("/");
+  await page.getByRole("tab", { name: "triggers" }).click();
+  const form = page.getByRole("form", { name: "New mission" });
+  await form.getByLabel("Label").fill("Morning check");
+  await form.getByLabel("Message").fill("Check the inbox and report");
+  await form.getByLabel("Schedule").selectOption("weekly");
+  await form.getByRole("checkbox", { name: "Fri" }).check();
+  await form.getByLabel("Time", { exact: true }).fill("09:30");
+  await form.getByRole("button", { name: "Add mission" }).click();
+  const list = page.getByRole("list", { name: "Missions" });
+  await expect(
+    list.getByText("to Hippoherman (main agent), Mon, Fri at 09:30"),
+  ).toBeVisible();
+  const toggle = list.getByRole("checkbox", { name: "Morning check" });
+  await expect(toggle).not.toBeChecked();
+  await list.getByText("Morning check").click();
+  await expect(toggle).toBeChecked();
+  await list.getByRole("button", { name: "Remove Morning check" }).click();
+  await list
+    .getByRole("button", { name: "Confirm remove Morning check" })
+    .click();
+  await expect(list).toHaveCount(0);
+});
+
 test("a switch flips with the keyboard and with a click on its words", async ({
   page,
 }) => {

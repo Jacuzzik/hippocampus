@@ -322,6 +322,17 @@ export async function mockSidecar(
           last_run: "2026-10-26T07:00:00+00:00",
         },
       ];
+      let missionRows: {
+        id: string;
+        label: string;
+        message: string;
+        agent: string;
+        every_minutes: number | null;
+        days: number[];
+        at: string;
+        enabled: boolean;
+        last_run: string | null;
+      }[] = [];
       let helperRows: {
         id: number;
         prompt: string;
@@ -1013,6 +1024,32 @@ export async function mockSidecar(
               result: `${job.name}: 3 links checked, all working.`,
             };
           }
+          case "missions":
+            return { missions: missionRows, cap: 20 };
+          case "mission_save": {
+            const row = args.params?.mission as Record<string, unknown>;
+            if (!String(row.label ?? "").trim())
+              throw new Error("The label must be 1 to 60 characters.");
+            const id = String(row.id ?? `mission-${missionRows.length + 1}`);
+            const saved = {
+              id,
+              label: String(row.label),
+              message: String(row.message),
+              agent: String(row.agent),
+              every_minutes: (row.every_minutes as number | undefined) ?? null,
+              days: (row.days as number[] | undefined) ?? [],
+              at: String(row.at ?? ""),
+              enabled: row.enabled === true,
+              last_run: null,
+            };
+            missionRows = row.id
+              ? missionRows.map((m) => (m.id === id ? saved : m))
+              : [...missionRows, saved];
+            return { missions: missionRows, cap: 20 };
+          }
+          case "mission_remove":
+            missionRows = missionRows.filter((m) => m.id !== args.params?.id);
+            return { missions: missionRows, cap: 20 };
           case "helpers":
             return { helpers: helperRows, limit: 4 };
           case "start_helper":

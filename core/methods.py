@@ -139,6 +139,9 @@ METHODS: dict[str, Method] = {
     # Jobs, helpers, webhooks
     "jobs": _m("Scheduled jobs."),
     "set_job": _m("Turn a scheduled job on or off."),
+    "missions": _m("Scheduled missions: messages sent to an agent on a schedule."),
+    "mission_save": _m("Add or change a scheduled mission."),
+    "mission_remove": _m("Remove a scheduled mission.", ("id", 'a mission "id"')),
     "run_job": _m("Run a scheduled job now."),
     "calendar": _m("One month of your events and the days scheduled jobs will run."),
     "calendar_add": _m("Add an event to the calendar."),

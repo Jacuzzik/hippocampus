@@ -10,11 +10,13 @@ from ai.keys import get_api_key
 from ai.router import build_router
 from core import (
     calendar_board,
+    inbox,
     link_doctor,
     webhooks,
 )
 from core import jobs as job_store
 from core import memory as memory_notes
+from core import missions as mission_store
 from core.helpers import HelperLimit
 from core.vault.scanner import iter_notes
 
@@ -101,10 +103,61 @@ class JobsPart:
     def jobs_path(self) -> Path:
         return self.storage / "jobs.json"
 
-    def run_jobs(self, now: datetime | None = None) -> list[str]:
-        """Run each enabled job that is due. Called on a timer by `serve`."""
-        if self.indexer is None:
+    @property
+    def missions_path(self) -> Path:
+        return self.storage / "missions.json"
+
+    def missions(self) -> dict[str, Any]:
+        rows = [asdict(m) for m in mission_store.load(self.missions_path)]
+        return {"missions": rows, "cap": mission_store.CAP}
+
+    def mission_save(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Add a mission, or change one (with its "id"). Switching one on or off is a change too."""
+        row = request.get("mission")
+        if not isinstance(row, dict):
+            raise ValueError('"mission_save" needs a "mission" object')
+        agent = str(row.get("agent") or "")
+        if agent and agent not in self._agent_ids():
+            raise ValueError(f'No agent has the id "{agent}".')
+        missions = mission_store.upsert(mission_store.load(self.missions_path), row)
+        mission_store.save(self.missions_path, missions)
+        return self.missions()
+
+    def mission_remove(self, request: dict[str, Any]) -> dict[str, Any]:
+        missions = mission_store.remove(mission_store.load(self.missions_path), request.get("id"))
+        mission_store.save(self.missions_path, missions)
+        return self.missions()
+
+    def run_missions(self, now: datetime | None = None) -> list[str]:
+        """Send each switched-on mission that is due, as a message from the user. Needs no vault."""
+        missions = mission_store.load(self.missions_path)
+        if not any(m.enabled for m in missions):
             return []
+
+        def send(mission: mission_store.Mission) -> None:
+            inbox.send(
+                self.hive_path,
+                inbox.USER,
+                mission.agent,
+                mission.label,
+                mission.message,
+                act="request",
+                work=mission.id,
+            )
+
+        missions, lines = mission_store.run_due(missions, now or datetime.now().astimezone(), send)
+        mission_store.save(self.missions_path, missions)
+        for line in lines:
+            self.note("handoff", text=line)
+        if lines:
+            self.changed("inbox")
+        return lines
+
+    def run_jobs(self, now: datetime | None = None) -> list[str]:
+        """Run each enabled job and mission that is due. Called on a timer by `serve`."""
+        sent = self.run_missions(now)
+        if self.indexer is None:
+            return sent
         runners = {"link_check": self._link_check}
         jobs, results = job_store.run_due(
             job_store.load(self.jobs_path), now or datetime.now().astimezone(), runners
@@ -112,7 +165,7 @@ class JobsPart:
         job_store.save(self.jobs_path, jobs)
         for line in results:
             self.note("handoff", text=line)
-        return results
+        return sent + results
 
     def _link_check(self) -> str:
         with self.lock:
