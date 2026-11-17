@@ -145,8 +145,9 @@ def agent_briefing(
     return AGENT.format(
         agent=agent,
         name=saved.get("name") or agent,
-        description=saved.get("description") or "not described yet",
-        goal=saved.get("goal") or "not set",
+        # The template adds its own full stop, so one typed at the end is dropped ("tidy.." before).
+        description=str(saved.get("description") or "").strip().rstrip(".") or "not described yet",
+        goal=str(saved.get("goal") or "").strip().rstrip(".") or "not set",
         folder=folder or "not set",
         vault=vault or "not set",
         outbox=outbox,

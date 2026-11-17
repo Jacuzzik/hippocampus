@@ -72,3 +72,14 @@ def test_a_mission_message_arrives_as_a_contract(tmp_path: Path) -> None:
     [(_, message)] = inbox.pending(session.hive_path, "hippoherman")
     assert contract.is_contract(message["body"]) and "Check the inbox" in message["body"]
     session.close()
+
+
+def test_a_description_ending_in_a_full_stop_gets_one_full_stop(tmp_path: Path) -> None:
+    text = briefing.agent_briefing(
+        "ada",
+        {"name": "Ada", "description": "Keeps notes tidy.", "goal": "Merge."},
+        None,
+        None,
+        tmp_path,
+    )
+    assert "Keeps notes tidy. " in text and ".." not in text
