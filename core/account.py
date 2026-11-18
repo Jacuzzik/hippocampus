@@ -229,22 +229,25 @@ class Account:
     def finish(self, code: str) -> None:
         """Swap the one-time code for tokens. Called by the local server when the browser comes back."""
         with self.lock:
-            if self.pending is None:
+            if self.pending is None or self.pending.get("used"):
                 raise Refused("no sign-in in progress")
+            self.pending["used"] = True  # a second callback with another code is refused
             verifier = self.pending["verifier"]
-            self.pending = None
+        # Stay "waiting" until the tokens are in the keychain, so the window never sees a gap where the
+        # sign-in looks finished but nobody is signed in (it stops polling once waiting is false).
         try:
             session = self._call(
                 "/auth/v1/token?grant_type=pkce", {"auth_code": code, "code_verifier": verifier}
             )
+            self._save(self._stamp(session))
         except (Offline, Refused) as error:
             self.problem = "Sign-in did not finish. Try again."
             raise Refused(str(error)) from error
-        try:
-            self._save(self._stamp(session))
         except KeyringError as error:
             self.problem = "No keychain on this computer, so the sign-in could not be kept."
             raise Refused("keychain") from error
+        finally:
+            self.pending = None
 
     def cancel(self) -> dict[str, Any]:
         self.pending = None
