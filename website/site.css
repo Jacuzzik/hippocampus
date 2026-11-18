@@ -1651,26 +1651,6 @@ footer a:hover {
   object-fit: cover;
   object-position: top left;
 }
-.card-face.real {
-  aspect-ratio: auto;
-  max-width: 420px;
-  padding: 0;
-  border: 0;
-  background: none;
-  align-self: center;
-}
-.card-face.real {
-  box-shadow: none;
-}
-.card-face.real img {
-  display: block;
-  width: 100%;
-  height: auto;
-  margin: 0;
-  border-radius: 0;
-  background: none;
-  image-rendering: auto;
-}
 .engine .glyph.logo {
   display: inline-block;
   width: 20px;

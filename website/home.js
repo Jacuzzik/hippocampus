@@ -8,15 +8,21 @@ const roles = {
   yours: ["your", "Your own", "Any engine", "<b>Hire who you need.</b> Write a role and its rules in plain words, pick an engine, give it a face."],
 };
 
-const card = document.getElementById("role-card");
+// The deck holds the six real agent cards; data-active brings one to the front (motion.css fans the rest).
+const deck = document.getElementById("role-card");
 const desc = document.getElementById("role-desc");
-for (const button of document.querySelectorAll("[data-role]")) {
-  button.addEventListener("click", () => {
-    const [face, name, engine, text] = roles[button.dataset.role];
-    for (const b of document.querySelectorAll("[data-role]")) b.setAttribute("aria-pressed", String(b === button));
-    const img = card.querySelector("img");
-    img.src = `img/app/card-${face}.webp`;
-    img.alt = `The ${name} agent card from the app (${engine})`;
-    desc.innerHTML = text; // fixed text from this file, never from the visitor
-  });
+const pills = [...document.querySelectorAll("[data-role]")];
+function pick(role) {
+  const [face, name, engine, text] = roles[role];
+  for (const b of pills) b.setAttribute("aria-pressed", String(b.dataset.role === role));
+  deck.dataset.active = face;
+  deck.setAttribute("aria-label", `The ${name} agent card from the app (${engine})`);
+  desc.innerHTML = text; // fixed text from this file, never from the visitor
 }
+for (const button of pills) button.addEventListener("click", () => pick(button.dataset.role));
+// Clicking a card behind the front one brings it forward too.
+for (const img of deck.querySelectorAll("[data-card]"))
+  img.addEventListener("click", () => {
+    const role = Object.keys(roles).find((r) => roles[r][0] === img.dataset.card);
+    if (role) pick(role);
+  });

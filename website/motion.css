@@ -1,0 +1,245 @@
+/* Hippocampus website: layout separation and motion. Loaded after site.css.
+   motion.js sets --p (scroll progress of the hero), --mx/--my (pointer), --rx/--ry/--gx/--gy (tilt)
+   and --k (a card's place in the team deck). Without the script, or with reduced motion, every
+   variable falls back to the resting value, so the page is flat and still. */
+
+/* ---- Sections: numbered, ruled and spaced apart ---------------------------------------------- */
+main {
+  counter-reset: sec;
+}
+.section {
+  margin-top: 96px;
+  padding-top: 40px;
+  border-top: 1px solid var(--color-line);
+}
+.num {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: var(--space-4);
+}
+.num::before {
+  counter-increment: sec;
+  content: counter(sec, decimal-leading-zero);
+  display: inline-grid;
+  place-items: center;
+  min-width: 28px;
+  height: 20px;
+  padding: 0 4px;
+  background: var(--color-accent);
+  color: var(--color-btn-fg);
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.center .num {
+  justify-content: center;
+}
+.group {
+  margin-top: 40px;
+}
+.group-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 var(--space-4);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-fg-2);
+}
+.group-head span {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--color-accent);
+  color: var(--color-accent);
+}
+.group-head::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--color-line);
+}
+.grid2 {
+  gap: var(--space-6);
+}
+.tile {
+  position: relative;
+}
+.shot {
+  height: 230px;
+}
+/* The purple band carries text in the button colour, which reads on purple in both themes. */
+.band,
+.band h2,
+.band .lead,
+.band .num {
+  color: var(--color-btn-fg);
+}
+
+/* ---- Hero: the app window on a stack of two sheets, tilted back until you scroll ---------------- */
+.stage {
+  perspective: 1800px;
+}
+.deck-hero {
+  position: relative;
+  transform-style: preserve-3d;
+  transform-origin: 50% 0;
+  transform: rotateX(calc((1 - var(--p, 1)) * 18deg - var(--my, 0) * 3deg))
+    rotateY(calc(var(--mx, 0) * 5deg)) rotateZ(calc((1 - var(--p, 1)) * -1.5deg))
+    scale(calc(0.9 + var(--p, 1) * 0.1));
+  will-change: transform;
+}
+.deck-hero .window.real {
+  position: relative;
+  box-shadow: 0 40px 80px -30px rgba(20, 16, 40, 0.55);
+}
+.sheet {
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--color-accent);
+  background: var(--color-accent-soft);
+  border-radius: var(--radius);
+}
+.sheet.back1 {
+  transform: translate3d(calc((1 - var(--p, 1)) * 24px), calc((1 - var(--p, 1)) * -30px - 10px), -40px)
+    rotateZ(calc((1 - var(--p, 1)) * 2.5deg));
+}
+.sheet.back2 {
+  opacity: 0.55;
+  transform: translate3d(calc((1 - var(--p, 1)) * 48px), calc((1 - var(--p, 1)) * -60px - 20px), -80px)
+    rotateZ(calc((1 - var(--p, 1)) * 5deg));
+}
+.float.real {
+  z-index: 2;
+  transform: translate3d(var(--dx, 0px), var(--dy, 0px), 0) rotate(var(--rot, 0deg));
+  transition: rotate 300ms var(--ease-out), scale 300ms var(--ease-out);
+}
+.float.left.real {
+  --rot: -5deg;
+}
+.float.right.real {
+  --rot: 4deg;
+}
+.float.real:hover {
+  rotate: calc(var(--rot) * -1);
+  scale: 1.04;
+}
+
+/* ---- Tilt: tiles and plans lean toward the pointer ------------------------------------------- */
+[data-tilt] {
+  transform: perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transition: transform 450ms var(--ease-out), box-shadow 450ms var(--ease-out);
+}
+[data-tilt].lean {
+  transition-duration: 90ms, 300ms;
+  box-shadow: 0 24px 48px -24px rgba(20, 16, 40, 0.45);
+}
+.tile[data-tilt]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(420px circle at var(--gx, 50%) var(--gy, 50%), rgba(255, 255, 255, 0.1), transparent 60%);
+  opacity: 0;
+  transition: opacity 300ms;
+}
+.tile[data-tilt].lean::after {
+  opacity: 1;
+}
+.tile .shot.real img {
+  transition: scale 600ms var(--ease-out);
+}
+.tile.lean .shot.real img {
+  scale: 1.05;
+}
+
+/* ---- Reveal: things rise and straighten from a slight backward lean as they arrive --------------- */
+.motion:not(.still) [data-reveal] {
+  opacity: 0;
+  translate: 0 32px;
+  rotate: x 14deg;
+  transform-origin: 50% 100%;
+}
+.motion:not(.still) [data-reveal],
+.motion:not(.still) [data-reveal][data-tilt] {
+  transition-property: opacity, translate, rotate, transform, box-shadow;
+  transition-duration: 700ms, 800ms, 800ms, 450ms, 450ms;
+  transition-timing-function: var(--ease-out);
+  transition-delay: calc(var(--d, 0) * 80ms), calc(var(--d, 0) * 80ms), calc(var(--d, 0) * 80ms), 0ms, 0ms;
+}
+.motion [data-reveal].in {
+  opacity: 1;
+  translate: 0 0;
+  rotate: none;
+}
+
+/* ---- Team: the six real agent cards as a fanned deck --------------------------------------------- */
+.deck {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  height: clamp(240px, 26vw, 290px);
+  margin: 0 auto;
+  perspective: 1200px;
+}
+.deck img {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: calc(100% - 66px);
+  height: auto;
+  cursor: pointer;
+  transform-origin: 10% 100%;
+  transform: translate3d(calc(var(--k, 0) * 22px), calc(var(--k, 0) * -30px), calc(var(--k, 0) * -60px))
+    rotateZ(calc(var(--k, 0) * 3.5deg));
+  z-index: calc(10 - var(--k, 0));
+  filter: brightness(calc(1 - var(--k, 0) * 0.07));
+  box-shadow: 0 18px 36px -18px rgba(20, 16, 40, 0.5);
+  transition: transform 650ms cubic-bezier(0.2, 0.9, 0.25, 1.1), opacity 300ms, filter 300ms;
+}
+.deck img.front {
+  cursor: default;
+}
+.deck img.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+.deck img:not(.front):hover {
+  filter: brightness(1);
+}
+/* Without the script only the first card shows. */
+html:not(.motion) .deck img:not(:first-child) {
+  display: none;
+}
+
+/* ---- Engines: chips lift as the pointer passes ----------------------------------------------- */
+.engine {
+  transition: translate 250ms var(--ease-out), rotate 250ms var(--ease-out);
+}
+.engine:hover {
+  translate: 0 -5px;
+  rotate: -1.5deg;
+}
+
+@media (max-width: 900px) {
+  .deck {
+    max-width: 380px;
+  }
+  /* The tilted sheets would poke past a phone's edge. */
+  .stage {
+    overflow-x: clip;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .deck-hero,
+  .sheet,
+  .float.real,
+  [data-tilt],
+  .deck img {
+    transition: none;
+  }
+}
