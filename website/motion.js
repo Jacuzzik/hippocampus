@@ -107,3 +107,10 @@ function queue() {
 addEventListener("scroll", queue, { passive: true });
 addEventListener("resize", queue);
 frame();
+
+/* ---- Placeholders: drop the shimmer once a picture has loaded ----------------------------------- */
+for (const img of document.querySelectorAll(".window.real img, .shot.real img, .deck img, .float.real")) {
+  const done = () => img.classList.add("ok");
+  if (img.complete && img.naturalWidth) done();
+  else img.addEventListener("load", done, { once: true });
+}

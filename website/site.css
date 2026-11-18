@@ -173,6 +173,10 @@ body::before {
 img {
   max-width: 100%;
 }
+/* A component's own display rule must never show something marked hidden. */
+[hidden] {
+  display: none !important;
+}
 a {
   color: var(--color-fg);
   text-underline-offset: 3px;

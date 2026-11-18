@@ -243,3 +243,44 @@ html:not(.motion) .deck img:not(:first-child) {
     transition: none;
   }
 }
+
+/* ---- Placeholders: every app picture holds its size and shimmers until it has loaded ------------ */
+.window.real img,
+.shot.real img,
+.deck img,
+.float.real {
+  background-color: #2a2a33;
+  background-image: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.07) 50%, transparent 70%);
+  background-size: 250% 100%;
+  animation: ph-shimmer 1.4s linear infinite;
+}
+.deck img,
+.float.real {
+  background-color: var(--color-elevated);
+}
+.window.real img.ok,
+.shot.real img.ok,
+.deck img.ok,
+.float.real.ok {
+  background: none;
+  animation: none;
+}
+@keyframes ph-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -150% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .window.real img,
+  .shot.real img,
+  .deck img,
+  .float.real {
+    animation: none;
+  }
+}
+.shot.real img.mid {
+  object-position: center;
+}
