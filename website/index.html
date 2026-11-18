@@ -57,67 +57,11 @@
           <p class="platforms">Runs on <span class="on">Linux</span><span>macOS · soon</span><span>Windows · soon</span></p>
 
           <div class="stage" role="img" aria-label="A picture of the app: the graph of notes in the middle, files and agents on the left, and the inbox with an approval waiting on the right.">
-            <div class="window" aria-hidden="true">
-              <div class="w-bar">
-                <span class="tl" style="background: #d96a62"></span><span class="tl" style="background: #8b7cf0"></span><span class="tl" style="background: #7bc47f"></span>
-                <span class="w-tab">Graph</span><span class="w-tab off">Launch plan.md</span><span class="w-tab off">Office</span>
-                <span class="w-net">Network <b>● Off</b></span>
-              </div>
-              <div class="w-ribbon"><i class="on"></i><i></i><i></i><i></i><i></i></div>
-              <div class="w-side">
-                <h4>VAULT</h4>
-                <span>▾ Projects</span>
-                <span class="on">&nbsp;&nbsp;Launch plan.md</span>
-                <span>&nbsp;&nbsp;Website.md</span>
-                <span>▸ Research</span>
-                <span>▸ Daily</span>
-                <span>▸ Ideas</span>
-                <h4>AGENTS</h4>
-                <span><span class="face"><img src="img/card-face-01.svg" alt="" /></span>Hippo<i class="dot"></i></span>
-                <span><span class="face"><img src="img/card-face-03.svg" alt="" /></span>Researcher<i class="dot"></i></span>
-                <span><span class="face"><img src="img/card-face-04.svg" alt="" /></span>Writer</span>
-                <span><span class="face"><img src="img/card-face-05.svg" alt="" /></span>Editor<i class="dot"></i></span>
-              </div>
-              <div class="w-graph">
-                <div class="w-chips"><span class="on">All</span><span>Projects</span><span>Research</span><span>Daily</span></div>
-                <svg viewBox="0 0 520 440" preserveAspectRatio="xMidYMid slice">
-                  <line x1="250" y1="210" x2="140" y2="130" /><line x1="250" y1="210" x2="370" y2="120" /><line x1="250" y1="210" x2="390" y2="290" />
-                  <line x1="250" y1="210" x2="150" y2="320" /><line x1="140" y1="130" x2="70" y2="220" /><line x1="370" y1="120" x2="460" y2="180" />
-                  <line x1="390" y1="290" x2="320" y2="380" /><line x1="150" y1="320" x2="70" y2="220" /><line x1="370" y1="120" x2="270" y2="60" />
-                  <line x1="140" y1="130" x2="270" y2="60" /><line x1="390" y1="290" x2="470" y2="350" /><line x1="150" y1="320" x2="220" y2="400" />
-                  <line class="new" x1="250" y1="210" x2="320" y2="380" />
-                  <circle cx="250" cy="210" r="13" fill="#a896e3" /><circle cx="140" cy="130" r="8" fill="#9482d3" />
-                  <circle cx="370" cy="120" r="9" fill="#7fc4e8" /><circle cx="390" cy="290" r="8" fill="#7bc47f" />
-                  <circle cx="150" cy="320" r="8" fill="#8b7cf0" /><circle cx="70" cy="220" r="5" fill="#d96a62" />
-                  <circle cx="460" cy="180" r="5" fill="#7fc4e8" /><circle cx="320" cy="380" r="6" fill="#8b7cf0" />
-                  <circle cx="270" cy="60" r="5" fill="#a896e3" /><circle cx="470" cy="350" r="4" fill="#7fc4e8" /><circle cx="220" cy="400" r="4" fill="#9482d3" />
-                  <text x="268" y="214">Launch plan</text><text x="152" y="126">Pricing</text><text x="382" y="116">Website</text>
-                  <text x="402" y="294">Competitors</text><text x="162" y="324">Beta list</text><text x="330" y="396">2026-11-18</text>
-                </svg>
-                <div class="w-note"><b>Launch plan</b><small>Linked to Pricing, Website and Beta list. Updated by Researcher 2 min ago.</small></div>
-              </div>
-              <div class="w-right">
-                <h4>INBOX · 2</h4>
-                <div class="msg"><span class="face"><img src="img/card-face-03.svg" alt="" /></span><span><b>Researcher<em>2m</em></b><p>Wrote 3 notes on competitors and linked them to Pricing.</p></span></div>
-                <div class="msg ask"><span class="face"><img src="img/card-face-05.svg" alt="" /></span><span><b>Editor<em>now</em></b><p>The beta email is ready. Send it to the list?</p><span class="approve"><span>Approve</span><span>Deny</span></span></span></div>
-                <div class="msg"><span class="face"><img src="img/card-face-01.svg" alt="" /></span><span><b>Hippo<em>5m</em></b><p>Split the launch into 4 jobs. 2 are done.</p></span></div>
-                <div class="w-composer">Message any agent…<b>Send ↵</b></div>
-              </div>
-              <div class="w-status">
-                <span>Today <b>12.4k</b> of 200k tokens<i class="meter"></i></span>
-                <span><b>3</b> agents working</span>
-                <span>Vault <b>~/notes</b></span>
-                <span>Shell <b>sandboxed</b></span>
-              </div>
+            <div class="window real" aria-hidden="true">
+              <img src="img/app/main.webp" width="2080" height="1300" alt="" />
             </div>
-            <div class="float left" aria-hidden="true">
-              <span class="face"><img src="img/card-face-05.svg" alt="" /></span>
-              <span><b>Editor</b><span class="tag">Asks you</span><small>Ollama · local</small></span>
-            </div>
-            <div class="float right" aria-hidden="true">
-              <span class="face"><img src="img/card-face-03.svg" alt="" /></span>
-              <span><b>Researcher</b><span class="tag ok">+3 notes</span><small>Gemini CLI</small></span>
-            </div>
+            <img class="float left real" src="img/app/card-editor.webp" width="640" height="246" alt="" aria-hidden="true" />
+            <img class="float right real" src="img/app/card-researcher.webp" width="640" height="246" alt="" aria-hidden="true" />
           </div>
         </section>
 
@@ -140,69 +84,37 @@
             <article class="tile">
               <h3>See how your thinking connects</h3>
               <p>Every note is a dot and every <code>[[link]]</code> is a line. The graph moves as agents write.</p>
-              <div class="shot" aria-hidden="true">
-                <svg viewBox="0 0 400 190" preserveAspectRatio="xMidYMid slice">
-                  <g stroke="#3a3a44"><line x1="200" y1="95" x2="110" y2="50" /><line x1="200" y1="95" x2="300" y2="45" /><line x1="200" y1="95" x2="310" y2="140" /><line x1="200" y1="95" x2="100" y2="150" /><line x1="110" y1="50" x2="40" y2="100" /><line x1="300" y1="45" x2="370" y2="90" /></g>
-                  <line x1="200" y1="95" x2="230" y2="170" stroke="#9482d3" stroke-dasharray="3 3" />
-                  <circle cx="200" cy="95" r="11" fill="#a896e3" /><circle cx="110" cy="50" r="7" fill="#9482d3" /><circle cx="300" cy="45" r="7" fill="#7fc4e8" /><circle cx="310" cy="140" r="6" fill="#7bc47f" /><circle cx="100" cy="150" r="6" fill="#8b7cf0" /><circle cx="40" cy="100" r="4" fill="#d96a62" /><circle cx="370" cy="90" r="4" fill="#7fc4e8" /><circle cx="230" cy="170" r="5" fill="#8b7cf0" />
-                  <text x="240" y="180" fill="#a896e3" font-size="10" font-family="monospace">new: Pricing ideas</text>
-                </svg>
-              </div>
+              <div class="shot real" aria-hidden="true"><img src="img/app/graph.webp" width="1360" height="520" alt="" loading="lazy" /></div>
             </article>
 
             <article class="tile">
               <h3>An inbox you can read</h3>
               <p>Agents message each other and you through small files. Every message is there to read later.</p>
-              <div class="shot" aria-hidden="true">
-                <div class="row"><span class="face"><img src="img/card-face-01.svg" alt="" /></span>Hippo → Researcher: find 5 competitors<small>9:02</small></div>
-                <div class="row"><span class="face"><img src="img/card-face-03.svg" alt="" /></span>Researcher → Hippo: done, 3 notes<small>9:14</small></div>
-                <div class="row"><span class="face"><img src="img/card-face-04.svg" alt="" /></span>Writer → you: draft is in Projects/<small>9:20</small></div>
-                <div class="row"><span class="face"><img src="img/card-face-05.svg" alt="" /></span><span class="warn">Editor → you: send the email?</span><small>now</small></div>
-              </div>
+              <div class="shot real" aria-hidden="true"><img src="img/app/inbox.webp" width="936" height="360" alt="" loading="lazy" /></div>
             </article>
 
             <article class="tile">
               <h3>Each agent gets a briefing</h3>
               <p>The app writes every agent a briefing: its role, its rules, its limits and the job in front of it.</p>
-              <div class="shot" aria-hidden="true">
-<pre><span class="dim"># agents/researcher/BRIEFING.md</span>
-<span class="ok">Role</span>      Researcher, reports to Hippo
-<span class="ok">Job</span>       Find 5 competitors, one note each
-<span class="ok">Output</span>    Research/*.md, linked to [[Pricing]]
-<span class="ok">Limits</span>    40k tokens today · ask before sending
-<span class="ok">Done when</span> Hippo has the list</pre>
-              </div>
+              <div class="shot real" aria-hidden="true"><img src="img/app/briefing.webp" width="672" height="424" alt="" loading="lazy" /></div>
             </article>
 
             <article class="tile">
               <h3>A fence around the shell</h3>
               <p>With the shell on, each agent runs in a sandbox: its own folder and your vault, nothing else.</p>
-              <div class="shot" aria-hidden="true">
-                <div class="fence"><span>Your computer: home folder, other apps, the app itself</span><div>An agent's sandbox<br /><small>its workspace · your vault · tools you allowed</small></div></div>
-              </div>
+              <div class="shot real" aria-hidden="true"><img src="img/app/network.webp" width="1355" height="452" alt="" loading="lazy" /></div>
             </article>
 
             <article class="tile">
               <h3>Budgets, approvals and a stop button</h3>
               <p>Token caps per day, week and month. Risky steps wait on a card. One key stops every agent.</p>
-              <div class="shot" aria-hidden="true">
-                <div class="row">Today<span class="bar"><i style="width: 6%"></i></span><small>12.4k / 200k</small></div>
-                <div class="row">This week<span class="bar"><i style="width: 8%"></i></span><small>81k / 1M</small></div>
-                <div class="row">Researcher<span class="bar hot"><i style="width: 82%"></i></span><small>33k / 40k</small></div>
-                <div class="row"><span class="warn">■ Stop all agents</span><small>Ctrl+.</small></div>
-              </div>
+              <div class="shot real" aria-hidden="true"><img src="img/app/activity.webp" width="1355" height="664" alt="" loading="lazy" /></div>
             </article>
 
             <article class="tile">
               <h3>Plain files you already own</h3>
               <p>A folder of Markdown you choose. Open it in Obsidian or any editor; back it up any way you like.</p>
-              <div class="shot" aria-hidden="true">
-<pre>~/notes/
-├── Projects/Launch plan.md  <span class="dim">→ [[Pricing]] [[Website]]</span>
-├── Research/Competitors.md  <span class="dim">→ [[Pricing]]</span>
-├── Daily/2026-11-18.md      <span class="ok">+ written by Researcher</span>
-└── Ideas/Pricing.md         <span class="dim">← 2 links</span></pre>
-              </div>
+              <div class="shot real" aria-hidden="true"><img src="img/app/files.webp" width="1400" height="540" alt="" loading="lazy" /></div>
             </article>
           </div>
         </section>
@@ -226,11 +138,8 @@
               </p>
               <a class="button quiet" href="docs.html">How agents work →</a>
             </div>
-            <div id="role-card" class="card-face">
-              <div class="top"><span>Agent card</span><span class="live">● Working</span></div>
-              <img src="img/card-face-01.svg" alt="" />
-              <b>Hippo</b>
-              <small>Claude Code · main</small>
+            <div id="role-card" class="card-face real">
+              <img src="img/app/card-hippo.webp" width="640" height="254" alt="The Hippoherman agent card from the app" />
             </div>
           </div>
         </section>
@@ -247,32 +156,32 @@
         </div>
         <div class="rails" aria-label="Engines: Claude Code, Codex, Gemini CLI, Ollama, LM Studio, vLLM, OpenAI, Mistral, DeepSeek, Qwen, OpenRouter, Gemini">
           <div class="rail" aria-hidden="true">
-            <div class="engine"><span class="chip">SIGNED IN</span><span class="glyph">✳</span><b>Claude Code</b><small>With your Claude plan</small></div>
-            <div class="engine light"><span class="chip">SIGNED IN</span><span class="glyph">◎</span><b>Codex</b><small>With your ChatGPT plan</small></div>
-            <div class="engine purple"><span class="chip">SIGNED IN</span><span class="glyph">✦</span><b>Gemini CLI</b><small>With your Google account</small></div>
-            <div class="engine"><span class="chip">LOCAL</span><span class="glyph">◐</span><b>Ollama</b><small>Free, on your computer</small></div>
-            <div class="engine light"><span class="chip">LOCAL</span><span class="glyph">▣</span><b>LM Studio</b><small>Free, on your computer</small></div>
-            <div class="engine"><span class="chip">LOCAL</span><span class="glyph">▲</span><b>vLLM</b><small>Your own server</small></div>
-            <div class="engine"><span class="chip">SIGNED IN</span><span class="glyph">✳</span><b>Claude Code</b><small>With your Claude plan</small></div>
-            <div class="engine light"><span class="chip">SIGNED IN</span><span class="glyph">◎</span><b>Codex</b><small>With your ChatGPT plan</small></div>
-            <div class="engine purple"><span class="chip">SIGNED IN</span><span class="glyph">✦</span><b>Gemini CLI</b><small>With your Google account</small></div>
-            <div class="engine"><span class="chip">LOCAL</span><span class="glyph">◐</span><b>Ollama</b><small>Free, on your computer</small></div>
-            <div class="engine light"><span class="chip">LOCAL</span><span class="glyph">▣</span><b>LM Studio</b><small>Free, on your computer</small></div>
-            <div class="engine"><span class="chip">LOCAL</span><span class="glyph">▲</span><b>vLLM</b><small>Your own server</small></div>
+            <div class="engine"><span class="chip">SIGNED IN</span><span class="glyph logo" style="--logo: url(img/providers/claude.svg)"></span><b>Claude Code</b><small>With your Claude plan</small></div>
+            <div class="engine light"><span class="chip">SIGNED IN</span><span class="glyph logo" style="--logo: url(img/providers/codex.svg)"></span><b>Codex</b><small>With your ChatGPT plan</small></div>
+            <div class="engine purple"><span class="chip">SIGNED IN</span><span class="glyph logo" style="--logo: url(img/providers/gemini-cli.svg)"></span><b>Gemini CLI</b><small>With your Google account</small></div>
+            <div class="engine"><span class="chip">LOCAL</span><span class="glyph logo" style="--logo: url(img/providers/ollama.svg)"></span><b>Ollama</b><small>Free, on your computer</small></div>
+            <div class="engine light"><span class="chip">LOCAL</span><span class="glyph logo" style="--logo: url(img/providers/lmstudio.svg)"></span><b>LM Studio</b><small>Free, on your computer</small></div>
+            <div class="engine"><span class="chip">LOCAL</span><span class="glyph logo" style="--logo: url(img/providers/vllm.svg)"></span><b>vLLM</b><small>Your own server</small></div>
+            <div class="engine"><span class="chip">SIGNED IN</span><span class="glyph logo" style="--logo: url(img/providers/claude.svg)"></span><b>Claude Code</b><small>With your Claude plan</small></div>
+            <div class="engine light"><span class="chip">SIGNED IN</span><span class="glyph logo" style="--logo: url(img/providers/codex.svg)"></span><b>Codex</b><small>With your ChatGPT plan</small></div>
+            <div class="engine purple"><span class="chip">SIGNED IN</span><span class="glyph logo" style="--logo: url(img/providers/gemini-cli.svg)"></span><b>Gemini CLI</b><small>With your Google account</small></div>
+            <div class="engine"><span class="chip">LOCAL</span><span class="glyph logo" style="--logo: url(img/providers/ollama.svg)"></span><b>Ollama</b><small>Free, on your computer</small></div>
+            <div class="engine light"><span class="chip">LOCAL</span><span class="glyph logo" style="--logo: url(img/providers/lmstudio.svg)"></span><b>LM Studio</b><small>Free, on your computer</small></div>
+            <div class="engine"><span class="chip">LOCAL</span><span class="glyph logo" style="--logo: url(img/providers/vllm.svg)"></span><b>vLLM</b><small>Your own server</small></div>
           </div>
           <div class="rail back" aria-hidden="true">
-            <div class="engine light"><span class="chip">KEY</span><span class="glyph">◇</span><b>OpenAI</b><small>With your own key</small></div>
-            <div class="engine"><span class="chip">KEY</span><span class="glyph">▚</span><b>Mistral</b><small>With your own key</small></div>
-            <div class="engine purple"><span class="chip">KEY</span><span class="glyph">◆</span><b>DeepSeek</b><small>With your own key</small></div>
-            <div class="engine"><span class="chip">KEY</span><span class="glyph">◈</span><b>Qwen</b><small>With your own key</small></div>
-            <div class="engine light"><span class="chip">KEY</span><span class="glyph">⇄</span><b>OpenRouter</b><small>Many models, one key</small></div>
-            <div class="engine"><span class="chip">KEY</span><span class="glyph">✦</span><b>Gemini</b><small>With your own key</small></div>
-            <div class="engine light"><span class="chip">KEY</span><span class="glyph">◇</span><b>OpenAI</b><small>With your own key</small></div>
-            <div class="engine"><span class="chip">KEY</span><span class="glyph">▚</span><b>Mistral</b><small>With your own key</small></div>
-            <div class="engine purple"><span class="chip">KEY</span><span class="glyph">◆</span><b>DeepSeek</b><small>With your own key</small></div>
-            <div class="engine"><span class="chip">KEY</span><span class="glyph">◈</span><b>Qwen</b><small>With your own key</small></div>
-            <div class="engine light"><span class="chip">KEY</span><span class="glyph">⇄</span><b>OpenRouter</b><small>Many models, one key</small></div>
-            <div class="engine"><span class="chip">KEY</span><span class="glyph">✦</span><b>Gemini</b><small>With your own key</small></div>
+            <div class="engine light"><span class="chip">KEY</span><span class="glyph logo" style="--logo: url(img/providers/openai.svg)"></span><b>OpenAI</b><small>With your own key</small></div>
+            <div class="engine"><span class="chip">KEY</span><span class="glyph logo" style="--logo: url(img/providers/mistral.svg)"></span><b>Mistral</b><small>With your own key</small></div>
+            <div class="engine purple"><span class="chip">KEY</span><span class="glyph logo" style="--logo: url(img/providers/deepseek.svg)"></span><b>DeepSeek</b><small>With your own key</small></div>
+            <div class="engine"><span class="chip">KEY</span><span class="glyph logo" style="--logo: url(img/providers/qwen.svg)"></span><b>Qwen</b><small>With your own key</small></div>
+            <div class="engine light"><span class="chip">KEY</span><span class="glyph logo" style="--logo: url(img/providers/openrouter.svg)"></span><b>OpenRouter</b><small>Many models, one key</small></div>
+            <div class="engine"><span class="chip">KEY</span><span class="glyph logo" style="--logo: url(img/providers/gemini.svg)"></span><b>Gemini</b><small>With your own key</small></div>
+            <div class="engine light"><span class="chip">KEY</span><span class="glyph logo" style="--logo: url(img/providers/openai.svg)"></span><b>OpenAI</b><small>With your own key</small></div>
+            <div class="engine"><span class="chip">KEY</span><span class="glyph logo" style="--logo: url(img/providers/mistral.svg)"></span><b>Mistral</b><small>With your own key</small></div>
+            <div class="engine purple"><span class="chip">KEY</span><span class="glyph logo" style="--logo: url(img/providers/deepseek.svg)"></span><b>DeepSeek</b><small>With your own key</small></div>
+            <div class="engine"><span class="chip">KEY</span><span class="glyph logo" style="--logo: url(img/providers/qwen.svg)"></span><b>Qwen</b><small>With your own key</small></div>
+            <div class="engine light"><span class="chip">KEY</span><span class="glyph logo" style="--logo: url(img/providers/openrouter.svg)"></span><b>OpenRouter</b><small>Many models, one key</small></div>
+            <div class="engine"><span class="chip">KEY</span><span class="glyph logo" style="--logo: url(img/providers/gemini.svg)"></span><b>Gemini</b><small>With your own key</small></div>
           </div>
         </div>
       </section>
