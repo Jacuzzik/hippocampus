@@ -101,9 +101,9 @@ test("sharing is a Planned card and a helper cannot be started empty", async ({
   const share = dialog.locator("article", {
     hasText: "Share a note by password link",
   });
-  await expect(share.getByText("Planned", { exact: true })).toBeVisible();
+  await expect(share.getByText("Needs setup", { exact: true })).toBeVisible();
   await expect(
-    share.getByText("No share host is set up in this build"),
+    share.getByText(/Sign in under General > Account/),
   ).toBeVisible();
   // No form that can only fail.
   await expect(dialog.getByRole("button", { name: "Make link" })).toHaveCount(

@@ -37,6 +37,8 @@ from ai import network
 # The owner's Supabase project (2026-11-17). The key is the public "publishable" key, safe to ship.
 AUTH_URL = "https://qrdehlqmqydphizlznhr.supabase.co"
 AUTH_KEY = "sb_publishable_PCRx2rK7SQwNBAJRl_fY9w_05ttd0f3"
+# The website, where share links open (14.04) and the account page lives (14.03).
+SITE_URL = os.environ.get("HIPPOCAMPUS_SITE_URL", "https://hippocampus-app.vercel.app").rstrip("/")
 KEYCHAIN = "hippocampus-account"
 KEYCHAIN_USER = "session"
 CONSENT_FILE = "account.json"
@@ -48,7 +50,8 @@ DONE_PAGE = (
     "<body style='font-family:monospace;padding:40px'><h1>{title}</h1><p>{text}</p></body>"
 )
 
-Fetch = Callable[[urllib.request.Request], dict[str, Any]]
+Json = dict[str, Any] | list[Any] | None  # what the service sends and takes
+Fetch = Callable[[urllib.request.Request], Any]
 
 
 class Offline(Exception):
@@ -64,10 +67,24 @@ def _fetch(request: urllib.request.Request) -> dict[str, Any]:
         with urllib.request.urlopen(request, timeout=15) as reply:  # noqa: S310 (https service address)
             body = reply.read()
     except urllib.error.HTTPError as error:
-        raise Refused(f"{error.code}") from error
+        raise Refused(_reason(error)) from error
     except (urllib.error.URLError, OSError) as error:
         raise Offline(str(error)) from error
     return json.loads(body) if body else {}
+
+
+def _reason(error: urllib.error.HTTPError) -> str:
+    """The service's own words for a refusal (a limit from the database reads well), else the code."""
+    try:
+        said = json.loads(error.read() or b"{}")
+    except (ValueError, OSError):
+        said = {}
+    message = said.get("message") or said.get("msg") if isinstance(said, dict) else None
+    return str(message) if message else str(error.code)
+
+
+def _now() -> str:
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
 
 def pkce() -> tuple[str, str]:
@@ -118,16 +135,23 @@ class Account:
 
     # Talking to the service --------------------------------------------------------------------
     def _call(
-        self, path: str, body: dict[str, Any] | None = None, token: str = ""
-    ) -> dict[str, Any]:
+        self,
+        path: str,
+        body: Json = None,
+        token: str = "",
+        method: str = "POST",
+        prefer: str = "",
+    ) -> Json:
         if not network.allows_model_calls():
             raise Offline("the network switch is off")
         headers = {"apikey": self.key, "Content-Type": "application/json"}
         if token:
             headers["Authorization"] = f"Bearer {token}"
+        if prefer:
+            headers["Prefer"] = prefer
         data = json.dumps(body).encode() if body is not None else None
         return self.fetch(
-            urllib.request.Request(self.url + path, data=data, headers=headers, method="POST")
+            urllib.request.Request(self.url + path, data=data, headers=headers, method=method)
         )
 
     def _stamp(self, session: dict[str, Any]) -> dict[str, Any]:
@@ -277,6 +301,75 @@ class Account:
             raise ValueError("The account service refused. Nothing was deleted.") from error
         self._wipe()
         return self.status()
+
+    # What the account unlocks (14.02, 14.04, 14.07). Each runs only when the user presses a button ---
+    def _session(self) -> tuple[str, str]:
+        """A current access token and the user's id; renews the token when it is about to expire."""
+        session = self._load()
+        if not session:
+            raise ValueError("Sign in first, under Settings > Account.")
+        if session.get("expires_at", 0) - REFRESH_EARLY_S < time.time():
+            try:
+                session = self._refresh(session)
+            except Offline as error:
+                raise ValueError("Could not reach the account service.") from error
+            except Refused as error:
+                self._wipe()
+                raise ValueError("Your sign-in expired. Sign in again.") from error
+        return session["access_token"], (session.get("user") or {}).get("id", "")
+
+    def _data(self, path: str, body: Json = None, method: str = "POST", prefer: str = "") -> Json:
+        token, _ = self._session()
+        try:
+            return self._call(path, body, token=token, method=method, prefer=prefer)
+        except Offline as error:
+            raise ValueError("Could not reach the account service.") from error
+        except Refused as error:
+            raise ValueError(f"The account service said no: {error}") from error
+
+    def sync_save(self, items: dict[str, str]) -> None:
+        """Upload these sync items (kind to text), replacing what the account held."""
+        _, user = self._session()
+        rows = [
+            {"user_id": user, "kind": k, "body": v, "updated_at": _now()} for k, v in items.items()
+        ]
+        self._data("/rest/v1/sync_items", rows, prefer="resolution=merge-duplicates")
+
+    def sync_fetch(self) -> dict[str, dict[str, str]]:
+        """What the account holds: kind to {"body", "updated_at"}."""
+        rows = self._data("/rest/v1/sync_items?select=kind,body,updated_at", method="GET")
+        return {r["kind"]: {"body": r["body"], "updated_at": r["updated_at"]} for r in rows or []}
+
+    def usage_save(self, days: dict[str, int]) -> None:
+        """Upload tokens used per day (ISO date to number). Nothing else about the work is sent."""
+        if not days:
+            return
+        _, user = self._session()
+        rows = [{"user_id": user, "day": d, "tokens": n} for d, n in sorted(days.items())]
+        self._data("/rest/v1/usage_days", rows, prefer="resolution=merge-duplicates")
+
+    def share_create(self, title: str, body: str, password: str, minutes: int) -> dict[str, Any]:
+        """Put one note behind a password until it expires; give back the link to send."""
+        rows = self._data(
+            "/rest/v1/rpc/create_share",
+            {"p_title": title, "p_body": body, "p_password": password, "p_minutes": minutes},
+        )
+        made = rows[0] if isinstance(rows, list) and rows else {}
+        if not made.get("id"):
+            raise ValueError("The account service did not make the link.")
+        return {"url": f"{SITE_URL}/share.html#{made['id']}", "expires_at": made.get("expires_at")}
+
+    def shares(self) -> list[dict[str, Any]]:
+        rows = self._data(
+            "/rest/v1/shares?select=id,title,expires_at,created_at&order=created_at.desc",
+            method="GET",
+        )
+        return [{**r, "url": f"{SITE_URL}/share.html#{r['id']}"} for r in rows or []]
+
+    def share_delete(self, share_id: str) -> None:
+        if not share_id or not all(c in "0123456789abcdef-" for c in share_id):
+            raise ValueError("That is not a link id.")
+        self._data(f"/rest/v1/shares?id=eq.{share_id}", method="DELETE")
 
     # Consent (14.12): both off until the user turns them on --------------------------------------
     def consent(self) -> dict[str, bool]:

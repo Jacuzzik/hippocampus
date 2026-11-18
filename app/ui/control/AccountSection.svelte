@@ -24,6 +24,10 @@
   let confirmDelete = $state(false);
   let sync = $state(false);
   let usage = $state(false);
+  let syncNote = $state<string | null>(null);
+  let confirmFetch = $state(false);
+  type Share = { id: string; title: string; expires_at: string; url: string };
+  let shares = $state<Share[] | null>(null);
   let timer: ReturnType<typeof setInterval> | undefined;
 
   async function call(method: string, params?: object): Promise<void> {
@@ -66,6 +70,54 @@
     await call(method, params);
     busy = false;
     confirmDelete = false;
+  }
+
+  // Sync by button only (14.02); usage history goes with it when turned on (14.07).
+  async function syncSave(): Promise<void> {
+    busy = true;
+    error = null;
+    try {
+      const r = await invoke<{ saved: string[]; usage_days: number }>(
+        "sidecar_call",
+        { method: "user_sync_save" },
+      );
+      syncNote =
+        `Saved ${r.saved.join(" and ")} to your account` +
+        (r.usage_days ? `, with ${r.usage_days} days of usage.` : ".");
+    } catch (cause) {
+      error = String(cause);
+    } finally {
+      busy = false;
+    }
+  }
+
+  async function syncFetch(): Promise<void> {
+    busy = true;
+    error = null;
+    confirmFetch = false;
+    try {
+      const r = await invoke<{ fetched: string[] }>("sidecar_call", {
+        method: "user_sync_fetch",
+      });
+      syncNote = `Replaced ${r.fetched.join(" and ")} with your account's copy. The old ones are kept as .before-sync files.`;
+    } catch (cause) {
+      error = String(cause);
+    } finally {
+      busy = false;
+    }
+  }
+
+  async function loadShares(id?: string): Promise<void> {
+    error = null;
+    try {
+      const r = await invoke<{ shares: Share[] }>("sidecar_call", {
+        method: id ? "user_share_delete" : "user_shares",
+        params: id ? { id } : undefined,
+      });
+      shares = r.shares;
+    } catch (cause) {
+      error = String(cause);
+    }
   }
 
   onMount(() => void call("user_account"));
@@ -117,12 +169,12 @@
           <Toggle
             bind:checked={sync}
             ariaLabel="Sync settings and briefings"
-            label="Sync settings and briefings between your computers"
+            label="Sync added agents and settings between your computers (by button, never on its own)"
           />
           <Toggle
             bind:checked={usage}
-            ariaLabel="Send usage reports"
-            label="Send anonymous usage reports"
+            ariaLabel="Keep usage history"
+            label="Keep my usage history in my account (tokens per day, nothing else)"
           />
           <button
             type="button"
@@ -135,16 +187,73 @@
         <Toggle
           bind:checked={sync}
           ariaLabel="Sync settings and briefings"
-          label="Sync settings and briefings"
+          label="Sync added agents and settings"
           onchange={() => run("user_consent", { sync, usage })}
         />
         <Toggle
           bind:checked={usage}
-          ariaLabel="Send usage reports"
-          label="Send usage reports"
+          ariaLabel="Keep usage history"
+          label="Keep my usage history in my account"
           onchange={() => run("user_consent", { sync, usage })}
         />
       {/if}
+      {#if status.consent.asked && status.consent.sync}
+        <div class="row" role="group" aria-label="Sync">
+          <button type="button" disabled={busy} onclick={syncSave}
+            >Save to account</button
+          >
+          {#if confirmFetch}
+            <button type="button" disabled={busy} onclick={syncFetch}
+              >Yes, replace them here</button
+            >
+            <button type="button" onclick={() => (confirmFetch = false)}
+              >Keep mine</button
+            >
+          {:else}
+            <button
+              type="button"
+              disabled={busy}
+              onclick={() => (confirmFetch = true)}>Get from account</button
+            >
+          {/if}
+        </div>
+        {#if confirmFetch}
+          <p class="hint" role="alert">
+            This replaces your added agents and settings here with the account's
+            copy. Your vault folder and notes stay as they are.
+          </p>
+        {/if}
+        {#if syncNote}<p class="muted" role="status">{syncNote}</p>{/if}
+      {/if}
+      <details
+        ontoggle={(e) =>
+          e.currentTarget.open && shares === null && loadShares()}
+      >
+        <summary>Share links</summary>
+        {#if shares === null}
+          <p class="muted">Loading…</p>
+        {:else if shares.length === 0}
+          <p class="muted">
+            No links. Open a note in the graph and press Share to make one.
+          </p>
+        {:else}
+          <ul class="shares">
+            {#each shares as link (link.id)}
+              <li>
+                <span>{link.title}</span>
+                <span class="muted"
+                  >{new Date(link.expires_at) < new Date()
+                    ? "expired"
+                    : `until ${new Date(link.expires_at).toLocaleString()}`}</span
+                >
+                <button type="button" onclick={() => loadShares(link.id)}
+                  >Delete</button
+                >
+              </li>
+            {/each}
+          </ul>
+        {/if}
+      </details>
       <div class="row">
         <button
           type="button"
@@ -189,5 +298,16 @@
   }
   h4 {
     margin: 0;
+  }
+  .shares {
+    list-style: none;
+    padding: 0;
+    display: grid;
+    gap: var(--space-2);
+  }
+  .shares li {
+    display: flex;
+    gap: var(--space-2);
+    align-items: center;
   }
 </style>

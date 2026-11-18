@@ -44,7 +44,13 @@ METHODS: dict[str, Method] = {
     "user_sign_in_cancel": _m("Stop waiting for the browser sign-in."),
     "user_sign_out": _m("Sign out and delete the saved sign-in from the keychain."),
     "user_delete": _m("Delete the Hippocampus account on the service, then sign out."),
-    "user_consent": _m("Save the sync and usage-report choices (both off by default)."),
+    "user_consent": _m("Save the sync and usage-history choices (both off by default)."),
+    "user_sync_save": _m(
+        "Upload the added agents and settings (and usage per day, if on) to the account."
+    ),
+    "user_sync_fetch": _m("Replace the added agents and settings here with the account's copy."),
+    "user_shares": _m("The account's share links."),
+    "user_share_delete": _m("Delete one share link.", ("id", 'the link "id"')),
     "remove_data": _m("Delete the index cache and the key; never the vault."),
     "keys": _m("Which provider keys are saved (last four characters only)."),
     "save_key": _m("Save one provider key."),
@@ -117,7 +123,11 @@ METHODS: dict[str, Method] = {
     "remove_skill": _m("Remove a skill."),
     "install_skill": _m("Install a skill from a folder."),
     "open_skill_folder": _m("Open the skills folder."),
-    "share": _m("Share a note."),
+    "share": _m(
+        "A password link to one note, on the account.",
+        ("path", 'the note "path"'),
+        ("password", 'a "password" of 8 or more characters'),
+    ),
     # Agents and their folders
     "agents": _m("The added agents."),
     "save_agents": _m("Save the added agents."),

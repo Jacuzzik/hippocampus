@@ -40,9 +40,27 @@ test("sign in with Google, choose consent, sign out", async ({ page }) => {
   await expect(
     consent.getByLabel("Sync settings and briefings"),
   ).not.toBeChecked();
-  await expect(consent.getByLabel("Send usage reports")).not.toBeChecked();
+  await expect(consent.getByLabel("Keep usage history")).not.toBeChecked();
+  await consent
+    .getByLabel("Sync settings and briefings")
+    .check({ force: true });
   await consent.getByRole("button", { name: "Save choices" }).click();
   await expect(consent).toHaveCount(0);
+
+  // Sync is by button; getting asks first (14.02).
+  await dialog.getByRole("button", { name: "Save to account" }).click();
+  await expect(
+    dialog.getByText("Saved agents and settings to your account."),
+  ).toBeVisible();
+  await dialog.getByRole("button", { name: "Get from account" }).click();
+  await dialog.getByRole("button", { name: "Yes, replace them here" }).click();
+  await expect(dialog.getByText(/Replaced agents and settings/)).toBeVisible();
+
+  // Share links list (14.04).
+  await dialog.getByText("Share links").click();
+  await expect(dialog.getByText("Plan for Q4")).toBeVisible();
+  await dialog.getByRole("button", { name: "Delete", exact: true }).click();
+  await expect(dialog.getByText(/No links/)).toBeVisible();
 
   // Deleting needs a second click.
   await dialog.getByRole("button", { name: "Delete account" }).click();

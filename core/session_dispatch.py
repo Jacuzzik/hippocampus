@@ -108,6 +108,10 @@ class DispatchPart:
             "user_consent": lambda request: self.user_account.set_consent(
                 request.get("sync") is True, request.get("usage") is True
             ),
+            "user_sync_save": self.user_sync_save,
+            "user_sync_fetch": self.user_sync_fetch,
+            "user_shares": self.user_shares,
+            "user_share_delete": self.user_share_delete,
             "tokens": self.tokens,
             "set_engine": self.set_engine,
             "stop": plain(self.stop),

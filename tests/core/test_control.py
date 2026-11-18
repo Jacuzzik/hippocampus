@@ -464,23 +464,23 @@ def test_removing_a_skill_needs_approval(tmp_path: Path, monkeypatch: pytest.Mon
         session.dispatch({"method": "remove_skill", "name": "x"})
 
 
-def test_password_links_are_checked_and_then_refused_until_a_host_exists() -> None:
+def test_password_links_are_checked_and_then_refused_when_signed_out() -> None:
     with pytest.raises(ValueError):
         share.expiry("short")
     now = NOW
     assert share.expiry("long enough", now=now) == now + timedelta(minutes=60)
-    with pytest.raises(NotSetUp, match="share host"):
+    with pytest.raises(NotSetUp, match="need an account"):
         share.request_link("long enough password")
 
 
 def test_share_request_reaches_the_share_check_from_the_sidecar(tmp_path: Path) -> None:
     session = sidecar.Session(tmp_path, Settings(), emit=lambda e: None)
     with pytest.raises(ValueError, match="at least 8"):
-        session.dispatch({"method": "share", "password": "short"})
-    with pytest.raises(ValueError, match="text"):
-        session.dispatch({"method": "share", "password": None})
-    with pytest.raises(NotSetUp, match="share host"):
-        session.dispatch({"method": "share", "password": "long enough password"})
+        session.dispatch({"method": "share", "path": "a.md", "password": "short"})
+    with pytest.raises(ValueError, match="password"):
+        session.dispatch({"method": "share", "path": "a.md", "password": None})
+    with pytest.raises(NotSetUp, match="need an account"):
+        session.dispatch({"method": "share", "path": "a.md", "password": "long enough password"})
 
 
 # --- keys --------------------------------------------------------------------------------

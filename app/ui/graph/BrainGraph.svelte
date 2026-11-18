@@ -8,6 +8,7 @@
   import { invoke } from "@tauri-apps/api/core";
   import { hexOf, parse, token } from "./colors";
   import NoteActions, { type MenuTarget } from "./NoteActions.svelte";
+  import ShareNote from "./ShareNote.svelte";
   import { parseNote, type Block, type Inline } from "./markdown";
   import type { Rgba } from "./renderer";
   import { BrainRenderer } from "./renderer";
@@ -526,6 +527,7 @@
   // Edit in place in the drawer: the full text while editing, or null while the note is only read.
   // Typing saves after a short pause, and leaving the text or the note saves at once. There are no Save or Cancel buttons.
   let editText = $state<string | null>(null);
+  let sharing = $state(false);
   let editError = $state<string | null>(null);
   // The note the right-click Edit asked for: the drawer opens straight into editing it.
   let wantEdit = $state<string | null>(null);
@@ -1020,6 +1022,9 @@
               >Edit</button
             >
           {/if}
+          <button type="button" onclick={() => (sharing = !sharing)}
+            >Share</button
+          >
           <button
             type="button"
             class="close"
@@ -1029,6 +1034,10 @@
         </div>
       </header>
       <p class="path">{node.id}</p>
+      {#if sharing}<ShareNote
+          path={node.id}
+          onclose={() => (sharing = false)}
+        />{/if}
       {#if node.tags.length}
         <p class="tags">{node.tags.map((t) => `#${t}`).join(" ")}</p>
       {/if}

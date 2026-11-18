@@ -71,6 +71,14 @@ export async function mockSidecar(
         graph.nodes.push({ id: "delta.md", title: "Delta", tags: [] });
       let vaultOpen = !opts.noVault;
       // The Hippocampus account. Tests call window.__finishSignIn() to act out the browser coming back.
+      let userShares = [
+        {
+          id: "s1",
+          title: "Plan for Q4",
+          expires_at: "2099-01-01T00:00:00Z",
+          url: "https://site.test/share.html#s1",
+        },
+      ];
       const userAccount = {
         configured: opts.account,
         signed_in: false,
@@ -571,6 +579,23 @@ export async function mockSidecar(
               name: "",
             });
             return structuredClone(userAccount);
+          case "user_sync_save":
+            return { saved: ["agents", "settings"], usage_days: 0 };
+          case "user_sync_fetch":
+            return {
+              fetched: ["agents", "settings"],
+              saved_at: "2026-11-18T00:00:00Z",
+            };
+          case "user_shares":
+            return { shares: structuredClone(userShares) };
+          case "user_share_delete":
+            userShares = userShares.filter((x) => x.id !== args.params?.id);
+            return { shares: structuredClone(userShares) };
+          case "share":
+            return {
+              url: "https://site.test/share.html#new",
+              expires_at: "2026-11-18T01:00:00Z",
+            };
           case "user_consent":
             userAccount.consent = {
               sync: args.params?.sync === true,
@@ -1160,8 +1185,6 @@ export async function mockSidecar(
             ];
             return { skills: skillRows };
           }
-          case "share":
-            throw new Error("Not set up: no share host is configured.");
           case "keys":
             return { keys: keyRows() };
           case "save_key":

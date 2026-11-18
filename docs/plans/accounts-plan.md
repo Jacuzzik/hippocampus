@@ -62,3 +62,21 @@ on Vercel. Payments (if supporter plans come) add a payment provider and its fee
 
 After these five answers the build order is: sign-in service and keychain (no screens) → Settings > Account →
 website account page → tests on staging → security review → switch on.
+
+## Phase 2: what an account unlocks (14.02–14.07), decided 2026-11-18
+
+The owner asked Claude to plan these and decide. Rules kept: local-first, everything off until the user turns it
+on, free for everyone in the beta, nothing runs in the background. One SQL file sets up the server side:
+`supabase/migrations/20261118_account_features.sql` (paste into Supabase > SQL Editor once).
+
+| Item | Decision | How |
+| --- | --- | --- |
+| 14.02 Sync | Opt-in, by button, never automatic. **Save to account** uploads the added agents and the settings file; **Get from account** replaces them here after a confirm, keeps a `.before-sync` copy, and never touches this computer's vault folder. No notes, no keys. | Table `sync_items`, one row per user and kind, only its owner can read or write it. |
+| 14.03 Account page | `website/account.html`: sign in with Google, see name and plan, download, your share links, usage history, delete account. | supabase-js in the page, same project. |
+| 14.04 Server features | Share links for one note, with a password and an expiry (1 minute to 24 hours), as `core/share.py` already planned. The link opens on the website; the password is checked on the server. | Table `shares`, functions `create_share`, `open_share`. Passwords are stored hashed (bcrypt). |
+| 14.05 Plan | Two plans: **Free** (everything) and **Supporter** (a badge, same features). No payments in the beta; the owner marks a supporter by hand. | `app_metadata.plan`, which only the owner can change (see below). |
+| 14.06 Abuse control | Hard limits in the database, not in the app: 20 live links and 50 new links a day per user, notes up to 200 KB, sync items up to 256 KB, a link locks after 10 wrong passwords. Sign-in rate limits are Supabase's own. | Checks inside the SQL functions and table constraints. |
+| 14.07 Usage history | Opt-in ("Keep my usage history in my account", off by default). Sends one number per day: tokens used. No prompts, no agent names, no note names. | Table `usage_days`; sent when the user presses Save to account. |
+
+Making someone a supporter (owner only, Supabase > SQL Editor):
+`update auth.users set raw_app_meta_data = raw_app_meta_data || '{"plan":"supporter"}' where email = '<their email>';`

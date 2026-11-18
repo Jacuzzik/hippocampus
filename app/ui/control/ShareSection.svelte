@@ -1,8 +1,7 @@
 <script lang="ts">
   import StatusCard from "../controls/StatusCard.svelte";
 
-  // Password links need a share host, which this build does not have. The card says so, in place of a
-  // form that could only fail.
+  // Password links are made on the user's account (14.04): from a note in the graph, with its Share button.
 </script>
 
 <section class="control-section" aria-labelledby="control-share">
@@ -10,7 +9,7 @@
   <StatusCard
     name="Share a note by password link"
     what="A link to one note that asks for a password and stops working after a time you choose, 60 minutes by default."
-    status="Planned"
-    reason="No share host is set up in this build, so no link can be made yet."
+    status="Needs setup"
+    reason="Sign in under General > Account, then open a note in the graph and press Share. Your links are listed under Account."
   />
 </section>

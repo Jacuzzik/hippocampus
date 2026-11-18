@@ -10,6 +10,7 @@ from typing import Any
 
 from ai import chat_history, cli_sessions
 from core import (
+    account_sync,
     added_agents,
     inbox,
     safe_write,
@@ -122,12 +123,35 @@ class AgentsPart:
         return {"id": ids[0] if ids else None, "ids": ids}
 
     def share_note(self, request: dict[str, Any]) -> dict[str, Any]:
+        """A password link to one note (14.04). Needs a signed-in account; the link opens on the website."""
         password = request.get("password")
         if not isinstance(password, str):
             raise ValueError('"password" must be text')
         minutes = _whole(request.get("minutes", share.DEFAULT_MINUTES), "minutes")
-        share.request_link(password, minutes)  # always raises until a share host is set up
-        return {}
+        share.expiry(password, minutes)
+        if not self.user_account.status().get("signed_in"):
+            share.request_link(password, minutes)  # raises Not set up: links need an account
+        text = self.note_text({"path": request.get("path")})["text"]
+        title = Path(str(request.get("path") or "Note")).stem
+        return self.user_account.share_create(title, text, password, minutes)
+
+    # The account's sync and links (14.02, 14.04, 14.07); each runs only on the user's button press.
+    def user_sync_save(self, request: dict[str, Any]) -> dict[str, Any]:
+        return account_sync.save(
+            self.user_account, self.agents_path, self.settings_path, self.storage / "usage.jsonl"
+        )
+
+    def user_sync_fetch(self, request: dict[str, Any]) -> dict[str, Any]:
+        got = account_sync.fetch(self.user_account, self.agents_path, self.settings_path)
+        self.settings = load_settings(self.settings_path)
+        return got
+
+    def user_shares(self, request: dict[str, Any]) -> dict[str, Any]:
+        return {"shares": self.user_account.shares()}
+
+    def user_share_delete(self, request: dict[str, Any]) -> dict[str, Any]:
+        self.user_account.share_delete(str(request.get("id") or ""))
+        return self.user_shares(request)
 
     # Folders an agent can work in: each one inside the app's workspaces folder.
     def workspaces(self) -> dict[str, Any]:
