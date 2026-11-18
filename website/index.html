@@ -37,90 +37,78 @@
     <main id="main">
       <div class="wrap">
         <section class="hero" aria-labelledby="hero-title">
-          <div>
-            <p class="num">A second brain that does the work</p>
-            <h1 id="hero-title">
-              Your notes, a graph of them, and agents that work in them.
-            </h1>
-            <p class="lead">
-              Hippocampus keeps a folder of Markdown notes on your computer,
-              draws them as a living graph, and runs a team of real
-              command-line agents beside them. They read your notes, write
-              new ones and report back in an inbox you can read.
-            </p>
-            <div class="actions">
-              <a class="button" href="download.html">Download</a>
-              <a class="button quiet" href="docs.html">How it works</a>
-            </div>
-            <p class="platforms">
-              Linux today · macOS and Windows builds coming · free and open
-              source
-            </p>
-            <div class="engines" aria-label="Agent engines">
-              <span class="chip">Claude Code</span>
-              <span class="chip">Codex</span>
-              <span class="chip">Gemini CLI</span>
-              <span class="chip">Ollama</span>
-              <span class="chip">+ 8 more</span>
-            </div>
+          <span class="eyebrow"><b>New</b> Share a note with a password link</span>
+          <h1 id="hero-title">
+            Your notes, a graph,<br /><span class="grad-text">and agents that work in them.</span>
+          </h1>
+          <p class="lead">
+            Hippocampus keeps a folder of Markdown notes on your computer,
+            draws them as a living graph, and runs a team of real command-line
+            agents beside them. They read your notes, write new ones and report
+            back in an inbox you can read.
+          </p>
+          <div class="actions">
+            <a class="button" href="download.html">Download free</a>
+            <a class="button quiet" href="docs.html">How it works</a>
+          </div>
+          <p class="platforms">Linux today · macOS and Windows builds coming · open source</p>
+          <div class="engines" aria-label="Agent engines">
+            <span class="pill on">Claude Code</span>
+            <span class="pill">Codex</span>
+            <span class="pill">Gemini CLI</span>
+            <span class="pill">Ollama</span>
+            <span class="pill">+ 8 more</span>
           </div>
 
-          <div class="mock" role="img" aria-label="A picture of the app: notes on the left, the graph in the middle, the control room on the right and agent cards along the bottom.">
-            <div class="mock-top">
-              <i></i><i></i><i></i><span>Hippocampus · 214 notes · 3 agents</span>
-            </div>
-            <div class="mock-body">
-              <div class="mock-notes">
-                <b>Notes</b>
-                <div class="mock-line" style="width: 90%"></div>
-                <div class="mock-line" style="width: 70%"></div>
-                <div class="mock-line" style="width: 82%"></div>
-                <div class="mock-line" style="width: 60%"></div>
-                <b>Tags</b>
-                <div class="mock-line" style="width: 40%"></div>
-                <div class="mock-line" style="width: 55%"></div>
+          <div class="stage" role="img" aria-label="Pictures of the app: on a Mac, the graph of notes with the inbox and agents; on a phone, the agents and what is waiting for you.">
+            <div class="window" aria-hidden="true">
+              <div class="w-bar">
+                <span class="tl" style="background: #ff5f57"></span><span class="tl" style="background: #febc2e"></span><span class="tl" style="background: #28c840"></span>
+                <span class="w-logo"><img src="img/hippocampus-mark-purple.png" alt="" />Hippocampus</span>
+                <span class="w-search">Search notes…</span>
               </div>
-              <svg class="mock-graph" viewBox="0 0 200 150" aria-hidden="true">
-                <line x1="100" y1="75" x2="52" y2="40" />
-                <line x1="100" y1="75" x2="150" y2="34" />
-                <line x1="100" y1="75" x2="160" y2="104" />
-                <line x1="100" y1="75" x2="58" y2="116" />
-                <line x1="52" y1="40" x2="28" y2="78" />
-                <line x1="150" y1="34" x2="178" y2="62" />
-                <line x1="160" y1="104" x2="130" y2="132" />
-                <line x1="58" y1="116" x2="28" y2="78" />
-                <line x1="150" y1="34" x2="104" y2="20" />
-                <circle cx="100" cy="75" r="7" />
-                <circle cx="52" cy="40" r="4.5" />
-                <circle class="hot" cx="150" cy="34" r="5" />
-                <circle cx="160" cy="104" r="4" />
-                <circle cx="58" cy="116" r="4.5" />
-                <circle cx="28" cy="78" r="3" />
-                <circle cx="178" cy="62" r="3" />
-                <circle cx="130" cy="132" r="3" />
-                <circle cx="104" cy="20" r="2.5" />
-              </svg>
-              <div class="mock-room">
-                <b>Control room</b>
-                <div class="mock-line" style="width: 100%"></div>
-                <div class="mock-line" style="width: 75%"></div>
-                <b>Inbox · 2</b>
-                <div class="mock-line" style="width: 88%"></div>
-                <div class="mock-line" style="width: 64%"></div>
+              <div class="w-side">
+                <span class="on">Graph</span><span>Notes</span><span>Agents</span><span>Inbox · 2</span><span>Tasks</span><span>Memory</span>
+              </div>
+              <div class="w-canvas">
+                <div class="w-chips"><span class="pill on">All</span><span class="pill">Projects</span><span class="pill">Daily</span><span class="pill">Ideas</span></div>
+                <svg viewBox="0 0 480 380">
+                  <defs>
+                    <radialGradient id="g1"><stop offset="0" stop-color="#ffd0e0" /><stop offset="1" stop-color="#ff4f8b" /></radialGradient>
+                    <radialGradient id="g2"><stop offset="0" stop-color="#e5dcff" /><stop offset="1" stop-color="#8b6cff" /></radialGradient>
+                    <radialGradient id="g3"><stop offset="0" stop-color="#ffe2c9" /><stop offset="1" stop-color="#ff8a3d" /></radialGradient>
+                  </defs>
+                  <line x1="220" y1="200" x2="120" y2="120" /><line x1="220" y1="200" x2="330" y2="100" /><line x1="220" y1="200" x2="350" y2="260" /><line x1="220" y1="200" x2="130" y2="300" />
+                  <line x1="120" y1="120" x2="60" y2="210" /><line x1="330" y1="100" x2="410" y2="160" /><line x1="350" y1="260" x2="290" y2="340" /><line x1="130" y1="300" x2="60" y2="210" /><line x1="330" y1="100" x2="240" y2="60" /><line x1="120" y1="120" x2="240" y2="60" />
+                  <circle cx="220" cy="200" r="15" fill="url(#g1)" /><circle cx="120" cy="120" r="9" fill="url(#g2)" /><circle cx="330" cy="100" r="10" fill="url(#g3)" /><circle cx="350" cy="260" r="8" fill="url(#g2)" /><circle cx="130" cy="300" r="9" fill="url(#g3)" /><circle cx="60" cy="210" r="5" fill="url(#g2)" /><circle cx="410" cy="160" r="5" fill="url(#g1)" /><circle cx="290" cy="340" r="5" fill="url(#g2)" /><circle cx="240" cy="60" r="6" fill="url(#g3)" />
+                </svg>
+                <div class="w-note"><b>Launch plan</b><small>Pricing, website and the beta list. Updated by Researcher 4 min ago.</small></div>
+              </div>
+              <div class="w-room">
+                <div class="msg"><span class="who"><span class="face"><img src="img/card-face-03.svg" alt="" /></span>Researcher<em>2m</em></span><span class="muted">Wrote 3 notes on competitors and linked them to Pricing.</span></div>
+                <div class="msg"><span class="who"><span class="face"><img src="img/card-face-05.svg" alt="" /></span>Editor<em>now</em></span><span>Send the draft to Pam?</span><span class="approve"><span>Approve</span><span>Deny</span></span></div>
+                <div class="today"><b>Today</b><small>12.4k of 200k tokens · 3 agents working</small></div>
+              </div>
+              <div class="w-dock">
+                <span class="agent"><span class="face"><img src="img/card-face-01.svg" alt="" /></span><span><b>Hippo</b><small>Claude Code · main</small></span><span class="live"></span></span>
+                <span class="agent"><span class="face"><img src="img/card-face-03.svg" alt="" /></span><span><b>Researcher</b><small>Gemini CLI</small></span><span class="live"></span></span>
+                <span class="agent"><span class="face"><img src="img/card-face-05.svg" alt="" /></span><span><b>Editor</b><small>Ollama · local</small></span></span>
               </div>
             </div>
-            <div class="mock-agents">
-              <div class="agent-card">
-                <img src="img/card-face-01.svg" alt="" />
-                <div><b>Hippo</b><small>main · Claude Code</small></div>
-              </div>
-              <div class="agent-card">
-                <img src="img/card-face-03.svg" alt="" />
-                <div><b>Researcher</b><small>Gemini CLI</small></div>
-              </div>
-              <div class="agent-card">
-                <img src="img/card-face-05.svg" alt="" />
-                <div><b>Editor</b><small>Ollama</small></div>
+
+            <div class="phone" aria-hidden="true">
+              <div class="screen">
+                <div class="p-status">9:41<i></i>70%</div>
+                <div class="p-head"><span class="w-logo" style="margin: 0"><img src="img/hippocampus-mark-purple.png" alt="" />Hippocampus</span><span class="face"><img src="img/card-face-01.svg" alt="" /></span></div>
+                <div class="p-title">Your agents <span>See all</span></div>
+                <div class="p-row">
+                  <div class="art a1 feature"><span class="tag"><span class="face"><img src="img/card-face-01.svg" alt="" /></span><span>Hippo<small>Claude Code</small></span></span><img class="big-face" src="img/card-face-01.svg" alt="" /><footer><small>● 12 notes today</small><b>Runs your team</b></footer></div>
+                  <div class="art a2 feature"><span class="tag"><span class="face"><img src="img/card-face-03.svg" alt="" /></span><span>Researcher<small>Gemini CLI</small></span></span><img class="big-face" src="img/card-face-03.svg" alt="" /><footer><small>● 8 notes today</small><b>Digs into anything</b></footer></div>
+                </div>
+                <div class="offer"><span><b>2 waiting for you</b><small>Editor wants to send a draft.</small></span><span class="go">→</span></div>
+                <div class="p-title" style="margin-top: 6px">Recently written <span>See all</span></div>
+                <div class="thumbs"><div class="art a5"></div><div class="art a3"></div><div class="art a4"></div></div>
+                <div class="tabbar"><i class="on"></i><i></i><i></i><i></i></div>
               </div>
             </div>
           </div>
@@ -133,8 +121,8 @@
               <h2 id="graph-title">See how your thinking connects.</h2>
               <p class="lead">
                 Every note is a dot and every <code>[[link]]</code> is a line.
-                The graph moves as agents write, so you can watch new ideas
-                land and find the notes nothing points to yet.
+                The graph moves as agents write, so you watch new ideas land and
+                find the notes nothing points to yet.
               </p>
               <ul class="ticks">
                 <li>Search, filter by tag, and save views you come back to</li>
@@ -154,32 +142,16 @@
           <p class="num">02 · Your team</p>
           <h2 id="team-title">Hire agents. Give each one a face and a job.</h2>
           <p class="lead">
-            Each agent is its own command-line program in its own terminal,
-            with a briefing the app writes for it: its role, its rules and
-            its limits. They message each other and you through an inbox of
-            small files you can read.
+            Each agent is its own command-line program in its own terminal, with
+            a briefing the app writes for it: its role, its rules and its
+            limits. They message each other and you through an inbox of small
+            files you can read.
           </p>
-          <div class="team" style="margin-top: 24px">
-            <div class="agent-card">
-              <img src="img/card-face-01.svg" alt="" />
-              <div><b>Hippo</b><small>Runs the team</small></div>
-            </div>
-            <div class="agent-card">
-              <img src="img/card-face-02.svg" alt="" />
-              <div><b>Researcher</b><small>Reads and summarises</small></div>
-            </div>
-            <div class="agent-card">
-              <img src="img/card-face-03.svg" alt="" />
-              <div><b>Writer</b><small>Drafts notes</small></div>
-            </div>
-            <div class="agent-card">
-              <img src="img/card-face-04.svg" alt="" />
-              <div><b>Librarian</b><small>Links and tidies</small></div>
-            </div>
-            <div class="agent-card">
-              <img src="img/card-face-06.svg" alt="" />
-              <div><b>Your own</b><small>Any role you write</small></div>
-            </div>
+          <div class="team">
+            <div class="art a1 feature"><span class="tag"><span class="face"><img src="img/card-face-01.svg" alt="" /></span><span>Hippo<small>Claude Code · main</small></span></span><img class="big-face" src="img/card-face-01.svg" alt="" /><footer><small>Leads the team</small><b>Runs your<br />whole team</b></footer></div>
+            <div class="art a2 feature"><span class="tag"><span class="face"><img src="img/card-face-02.svg" alt="" /></span><span>Researcher<small>Gemini CLI</small></span></span><img class="big-face" src="img/card-face-02.svg" alt="" /><footer><small>Reads and summarises</small><b>Digs into<br />anything</b></footer></div>
+            <div class="art a3 feature"><span class="tag"><span class="face"><img src="img/card-face-04.svg" alt="" /></span><span>Writer<small>Codex</small></span></span><img class="big-face" src="img/card-face-04.svg" alt="" /><footer><small>Drafts notes</small><b>Turns ideas<br />into pages</b></footer></div>
+            <div class="art a4 feature"><span class="tag"><span class="face"><img src="img/card-face-06.svg" alt="" /></span><span>Your own<small>Any engine</small></span></span><img class="big-face" src="img/card-face-06.svg" alt="" /><footer><small>Any role you write</small><b>Hire who<br />you need</b></footer></div>
           </div>
         </section>
 
@@ -189,41 +161,25 @@
               <p class="num">03 · Any engine</p>
               <h2 id="engines-title">Bring the tools you already use.</h2>
               <p class="lead">
-                Claude Code, Codex and Gemini CLI run as they are, signed in
-                with your own subscription. Local models through Ollama, LM
-                Studio or vLLM work with no internet at all. Mix them in one
-                team.
+                Claude Code, Codex and Gemini CLI run as they are, signed in with
+                your own subscription. Local models through Ollama, LM Studio or
+                vLLM work with no internet at all. Mix them in one team.
               </p>
             </div>
-            <ul class="cards">
-              <li><b>Command-line agents</b>Claude Code, Codex, Gemini CLI</li>
-              <li><b>On your computer</b>Ollama, LM Studio, vLLM</li>
-              <li><b>By key</b>Claude, OpenAI, Gemini, Mistral, DeepSeek, Qwen, OpenRouter</li>
-            </ul>
+            <div class="engine-grid">
+              <span>Claude Code</span><span>Codex</span><span>Gemini CLI</span><span>Ollama</span><span>LM Studio</span><span>vLLM</span><span>OpenAI</span><span>Mistral</span><span>DeepSeek</span><span>Qwen</span><span>OpenRouter</span><span>Gemini</span>
+            </div>
           </div>
         </section>
 
         <section class="section" id="yours" aria-labelledby="yours-title">
           <p class="num">04 · Yours</p>
           <h2 id="yours-title">Runs on your computer. Your notes stay yours.</h2>
-          <ul class="cards" style="margin-top: 24px">
-            <li>
-              <b>Plain files</b>Markdown in a folder you choose. Open it in any
-              editor, back it up any way you like.
-            </li>
-            <li>
-              <b>Keys in the keychain</b>API keys and your sign-in live in the
-              system keychain, never in a file.
-            </li>
-            <li>
-              <b>A network switch</b>Off, Listen, Converse or Open, Off by
-              default. With it off, nothing leaves the computer.
-            </li>
-            <li>
-              <b>No account needed</b>Everything works without one. An
-              account is only for extras, and they are off until you turn
-              them on.
-            </li>
+          <ul class="cards" style="margin-top: 32px">
+            <li><b>Plain files</b>Markdown in a folder you choose. Open it in any editor, back it up any way you like.</li>
+            <li><b>Keys in the keychain</b>API keys and your sign-in live in the system keychain, never in a file.</li>
+            <li><b>A network switch</b>Off, Listen, Converse or Open, Off by default. With it off, nothing leaves the computer.</li>
+            <li><b>No account needed</b>Everything works without one. Account extras are off until you turn them on.</li>
           </ul>
         </section>
 
@@ -233,20 +189,14 @@
               <p class="num">05 · A fence around the shell</p>
               <h2 id="fence-title">Let them run commands. Inside a sandbox.</h2>
               <p class="lead">
-                With the shell switched on, each agent runs inside a sandbox.
-                It can work in its own folder and your vault, and nothing
-                else: not the app, not other agents' folders.
+                With the shell switched on, each agent runs inside a sandbox. It
+                can work in its own folder and your vault, and nothing else: not
+                the app, not other agents' folders.
               </p>
             </div>
             <div class="fence">
-              <div class="card">
-                <h3>Your computer</h3>
-                <p class="muted">Home folder, other apps, the app itself, other agents</p>
-              </div>
-              <div class="card inside">
-                <h3>An agent's sandbox</h3>
-                <p class="muted">Its workspace, your vault, the tools you allowed</p>
-              </div>
+              <div class="card"><h3>Your computer</h3>Home folder, other apps, the app itself, other agents</div>
+              <div class="card inside"><h3>An agent's sandbox</h3>Its workspace, your vault, the tools you allowed</div>
             </div>
           </div>
         </section>
@@ -262,95 +212,46 @@ Stop         one key, every agent</div>
               <p class="num">06 · You stay in charge</p>
               <h2 id="charge-title">Budgets, approvals and a stop button.</h2>
               <p class="lead">
-                Set token caps per day, week and month. Anything risky waits
-                on an approval card. One press stops every agent.
+                Set token caps per day, week and month. Anything risky waits on
+                an approval card. One press stops every agent.
               </p>
             </div>
           </div>
         </section>
 
         <section class="section" id="account" aria-labelledby="account-title">
-          <p class="num">07 · Extras with an account</p>
-          <h2 id="account-title">Optional, free, and off until you say so.</h2>
-          <ul class="cards" style="margin-top: 24px">
-            <li>
-              <b>Share a note</b>A link with a password that stops working
-              after the time you pick.
-            </li>
-            <li>
-              <b>Sync by button</b>Move your agents and settings to another
-              computer. Never your notes, never your keys.
-            </li>
-            <li>
-              <b>Usage history</b>Tokens per day, kept with your account if
-              you want it. Nothing else.
-            </li>
-          </ul>
-          <div class="actions">
-            <a class="button quiet" href="account.html">Your account</a>
+          <div class="banner">
+            <div>
+              <h2 id="account-title">Extras with a free account.</h2>
+              <p>Share links, sync by button and usage history. Optional, and each one off until you say so.</p>
+            </div>
+            <a class="button" href="account.html">Your account →</a>
           </div>
+          <ul class="cards">
+            <li><b>Share a note</b>A link with a password that stops working after the time you pick.</li>
+            <li><b>Sync by button</b>Move your agents and settings to another computer. Never your notes, never your keys.</li>
+            <li><b>Usage history</b>Tokens per day, kept with your account if you want it. Nothing else.</li>
+          </ul>
         </section>
 
         <section class="section faq" id="faq" aria-labelledby="faq-title">
-          <p class="num">08 · FAQ</p>
+          <p class="num">07 · FAQ</p>
           <h2 id="faq-title">Questions, answered.</h2>
-          <details>
-            <summary>Is it free?</summary>
-            <p>
-              Yes. The app is free and open source. Agents that use a paid
-              service (Claude Code, a provider key) cost what that service
-              costs you; local models cost nothing.
-            </p>
-          </details>
-          <details>
-            <summary>Do I need an account?</summary>
-            <p>
-              No. Everything works without one. Sign in with Google only if
-              you want share links, sync or usage history.
-            </p>
-          </details>
-          <details>
-            <summary>Where are my notes kept?</summary>
-            <p>
-              In a folder of Markdown files on your computer that you choose.
-              They are never uploaded, even when you have an account; a share
-              link holds only the one note you share, until it expires.
-            </p>
-          </details>
-          <details>
-            <summary>Can I use it with my Obsidian vault?</summary>
-            <p>
-              Yes. A vault is a folder of Markdown notes with
-              <code>[[links]]</code>, which is what Hippocampus reads.
-            </p>
-          </details>
-          <details>
-            <summary>Can an agent break my computer?</summary>
-            <p>
-              The shell is off by default. When you switch it on, each agent
-              runs in a sandbox that keeps it to its own folder and your
-              vault, and risky steps wait for your approval.
-            </p>
-          </details>
-          <details>
-            <summary>Which systems does it run on?</summary>
-            <p>
-              Linux is tested. macOS and Windows installers are built but not
-              yet tested by hand; on Windows the agent terminals do not work
-              yet.
-            </p>
-          </details>
+          <details><summary>Is it free?</summary><p>Yes. The app is free and open source. Agents that use a paid service (Claude Code, a provider key) cost what that service costs you; local models cost nothing.</p></details>
+          <details><summary>Do I need an account?</summary><p>No. Everything works without one. Sign in with Google only if you want share links, sync or usage history.</p></details>
+          <details><summary>Where are my notes kept?</summary><p>In a folder of Markdown files on your computer that you choose. They are never uploaded, even with an account; a share link holds only the one note you share, until it expires.</p></details>
+          <details><summary>Can I use it with my Obsidian vault?</summary><p>Yes. A vault is a folder of Markdown notes with <code>[[links]]</code>, which is what Hippocampus reads.</p></details>
+          <details><summary>Can an agent break my computer?</summary><p>The shell is off by default. When you switch it on, each agent runs in a sandbox that keeps it to its own folder and your vault, and risky steps wait for your approval.</p></details>
+          <details><summary>Which systems does it run on?</summary><p>Linux is tested. macOS and Windows installers are built but not yet tested by hand; on Windows the agent terminals do not work yet.</p></details>
         </section>
 
-        <section class="closing" aria-labelledby="closing-title">
-          <img src="img/card-face-01.svg" alt="" />
+        <section class="closing art a3" aria-labelledby="closing-title">
+          <span class="face"><img src="img/card-face-01.svg" alt="" /></span>
           <h2 id="closing-title">Your vault is open.</h2>
-          <p class="muted">Bring your notes. Hire a team. Watch the graph grow.</p>
+          <p>Bring your notes. Hire a team. Watch the graph grow.</p>
           <div class="actions">
-            <a class="button" href="download.html">Download</a>
-            <a class="button quiet" href="https://github.com/Jacuzzik/hippocampus"
-              >Read the code on GitHub</a
-            >
+            <a class="button" href="download.html">Download free</a>
+            <a class="button quiet" href="https://github.com/Jacuzzik/hippocampus">Read the code on GitHub</a>
           </div>
         </section>
       </div>
