@@ -11,25 +11,36 @@
       name="description"
       content="What Hippocampus stores and what leaves your computer."
     />
+    <link rel="icon" href="img/hippocampus-mark-purple.png" />
     <link rel="stylesheet" href="site.css" />
   </head>
   <body>
-    <div class="wrap">
-      <nav aria-label="Site">
-        <a class="name" href="index.html">Hippocampus</a>
-        <a href="download.html">Download</a>
-        <a href="docs.html">Docs</a>
-        <a href="changelog.html">Changelog</a>
-        <a href="privacy.html" aria-current="page">Privacy</a>
-        <a href="status.html">Status</a>
-        <a href="feedback.html">Feedback</a>
-        <a href="security.html">Security</a>
-      </nav>
-      <main>
+    <a class="skip" href="index.html#main">Skip to the page</a>
+    <header class="topbar">
+      <div class="wrap">
+        <nav aria-label="Site">
+          <a class="name" href="index.html"
+            ><img src="img/hippocampus-mark-purple.png" alt="" />Hippocampus</a
+          >
+          <a href="index.html#graph">Graph</a>
+          <a href="index.html#team">Team</a>
+          <a href="index.html#engines">Engines</a>
+          <a href="index.html#yours">Yours</a>
+          <a href="index.html#faq">FAQ</a>
+          <a href="docs.html">Docs</a>
+          <a href="account.html">Sign in</a>
+          <a class="button" href="download.html">Download</a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main">
+      <div class="wrap">
         <h1>Privacy</h1>
         <p class="lead">
-          Hippocampus works fully on your own computer. It has no account, no
-          telemetry and no server of its own.
+          Hippocampus works fully on your own computer, with no telemetry. An
+          account is optional; without one, nothing goes to a Hippocampus
+          server.
         </p>
         <h2>What is stored, and where</h2>
         <ul>
@@ -56,21 +67,82 @@
             Claude Code), under that provider's terms.
           </li>
           <li>
-            Nothing else. The network switch in the Control panel can stop model
-            calls altogether.
+            Nothing else, unless you have an account and use its extras (below).
+            The network switch in the Control panel can stop all of it.
           </li>
         </ul>
+        <h2>If you make an account</h2>
+        <p>
+          Sign-in is with Google through Supabase, which holds the account. The
+          app keeps your sign-in in the system keychain. Each extra is off until
+          you turn it on, and sends only this:
+        </p>
+        <ul>
+          <li>
+            <strong>Account:</strong> your email address, name and plan, from
+            Google.
+          </li>
+          <li>
+            <strong>Share links:</strong> the one note you share, until the link
+            expires. Its password is stored only as a hash.
+          </li>
+          <li>
+            <strong>Sync:</strong> your added agents and settings file, when you
+            press Save to account. Never notes, keys or the vault folder.
+          </li>
+          <li>
+            <strong>Usage history:</strong> one number per day, the tokens used.
+            No prompts, agent names or note names.
+          </li>
+        </ul>
+        <p>
+          Delete account, in the app or on the
+          <a href="account.html">account page</a>, deletes all of it.
+        </p>
         <h2>This website</h2>
         <p>
           It sets no cookies, runs no analytics and loads no files from other
-          sites.
+          sites. The account and share pages talk only to the Hippocampus
+          sign-in service, and keep your sign-in in the tab until you close it.
         </p>
-      </main>
-      <footer>
-        Hippocampus is open source. This site sets no cookies and loads nothing
-        from other sites.
-        <a href="https://github.com/Jacuzzik/hippocampus">Source on GitHub</a>
-      </footer>
-    </div>
+      </div>
+    </main>
+
+    <footer>
+      <div class="wrap footer-grid">
+        <div>
+          <h3>Hippocampus</h3>
+          <p>
+            Your notes, a graph of them, and agents that work in them. Free
+            and open source. This site sets no cookies and loads nothing from
+            other sites.
+          </p>
+        </div>
+        <div>
+          <h3>Product</h3>
+          <ul>
+            <li><a href="download.html">Download</a></li>
+            <li><a href="docs.html">Docs</a></li>
+            <li><a href="changelog.html">Changelog</a></li>
+            <li><a href="account.html">Account</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Help</h3>
+          <ul>
+            <li><a href="status.html">Status</a></li>
+            <li><a href="feedback.html">Feedback</a></li>
+            <li><a href="https://github.com/Jacuzzik/hippocampus">GitHub</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Trust</h3>
+          <ul>
+            <li><a href="privacy.html">Privacy</a></li>
+            <li><a href="security.html">Security</a></li>
+          </ul>
+        </div>
+      </div>
+    </footer>
   </body>
 </html>

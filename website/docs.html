@@ -11,21 +11,31 @@
       name="description"
       content="Getting started with Hippocampus: a vault, an agent, messages and the shell sandbox."
     />
+    <link rel="icon" href="img/hippocampus-mark-purple.png" />
     <link rel="stylesheet" href="site.css" />
   </head>
   <body>
-    <div class="wrap">
-      <nav aria-label="Site">
-        <a class="name" href="index.html">Hippocampus</a>
-        <a href="download.html">Download</a>
-        <a href="docs.html" aria-current="page">Docs</a>
-        <a href="changelog.html">Changelog</a>
-        <a href="privacy.html">Privacy</a>
-        <a href="status.html">Status</a>
-        <a href="feedback.html">Feedback</a>
-        <a href="security.html">Security</a>
-      </nav>
-      <main>
+    <a class="skip" href="index.html#main">Skip to the page</a>
+    <header class="topbar">
+      <div class="wrap">
+        <nav aria-label="Site">
+          <a class="name" href="index.html"
+            ><img src="img/hippocampus-mark-purple.png" alt="" />Hippocampus</a
+          >
+          <a href="index.html#graph">Graph</a>
+          <a href="index.html#team">Team</a>
+          <a href="index.html#engines">Engines</a>
+          <a href="index.html#yours">Yours</a>
+          <a href="index.html#faq">FAQ</a>
+          <a href="docs.html">Docs</a>
+          <a href="account.html">Sign in</a>
+          <a class="button" href="download.html">Download</a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main">
+      <div class="wrap">
         <h1>Getting started</h1>
         <h2>1. Choose a vault</h2>
         <p>
@@ -75,12 +85,44 @@
           >
           explains how the parts fit.
         </p>
-      </main>
-      <footer>
-        Hippocampus is open source. This site sets no cookies and loads nothing
-        from other sites.
-        <a href="https://github.com/Jacuzzik/hippocampus">Source on GitHub</a>
-      </footer>
-    </div>
+      </div>
+    </main>
+
+    <footer>
+      <div class="wrap footer-grid">
+        <div>
+          <h3>Hippocampus</h3>
+          <p>
+            Your notes, a graph of them, and agents that work in them. Free
+            and open source. This site sets no cookies and loads nothing from
+            other sites.
+          </p>
+        </div>
+        <div>
+          <h3>Product</h3>
+          <ul>
+            <li><a href="download.html">Download</a></li>
+            <li><a href="docs.html">Docs</a></li>
+            <li><a href="changelog.html">Changelog</a></li>
+            <li><a href="account.html">Account</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Help</h3>
+          <ul>
+            <li><a href="status.html">Status</a></li>
+            <li><a href="feedback.html">Feedback</a></li>
+            <li><a href="https://github.com/Jacuzzik/hippocampus">GitHub</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Trust</h3>
+          <ul>
+            <li><a href="privacy.html">Privacy</a></li>
+            <li><a href="security.html">Security</a></li>
+          </ul>
+        </div>
+      </div>
+    </footer>
   </body>
 </html>

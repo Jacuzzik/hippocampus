@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Your account · Hippocampus</title>
+    <meta name="description" content="Sign in to your optional Hippocampus account." />
+    <meta name="referrer" content="no-referrer" />
+    <link rel="icon" href="img/hippocampus-mark-purple.png" />
+    <link rel="stylesheet" href="site.css" />
+  </head>
+  <body>
+    <a class="skip" href="index.html#main">Skip to the page</a>
+    <header class="topbar">
+      <div class="wrap">
+        <nav aria-label="Site">
+          <a class="name" href="index.html"
+            ><img src="img/hippocampus-mark-purple.png" alt="" />Hippocampus</a
+          >
+          <a href="index.html#graph">Graph</a>
+          <a href="index.html#team">Team</a>
+          <a href="index.html#engines">Engines</a>
+          <a href="index.html#yours">Yours</a>
+          <a href="index.html#faq">FAQ</a>
+          <a href="docs.html">Docs</a>
+          <a href="account.html">Sign in</a>
+          <a class="button" href="download.html">Download</a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main">
+      <div class="wrap">
+        <h1>Your account</h1>
+        <p class="lead">
+          Optional. The app works fully without one. An account adds share
+          links, sync by button and usage history, each off until you turn it
+          on in the app.
+        </p>
+        <p id="problem" class="muted" role="alert"></p>
+
+        <section id="signed-out" data-view class="panel" hidden>
+          <h2>Sign in</h2>
+          <p class="muted">With your Google account. Hippocampus never sees your password.</p>
+          <div><button id="sign-in" class="button" type="button">Sign in with Google</button></div>
+        </section>
+
+        <section id="signed-in" data-view hidden>
+          <div class="panel">
+            <h2 id="who"></h2>
+            <p class="muted"><span id="email"></span> · Plan: <b id="plan"></b></p>
+            <div class="actions" style="margin: 0">
+              <a class="button" href="download.html">Download the app</a>
+              <button id="sign-out" class="button quiet" type="button">Sign out</button>
+            </div>
+          </div>
+
+          <h2 style="margin-top: 36px">Share links</h2>
+          <p id="no-links" class="muted">
+            No links. In the app, open a note in the graph and press Share.
+          </p>
+          <ul id="links" class="ticks"></ul>
+
+          <h2 style="margin-top: 36px">Usage history</h2>
+          <p id="usage-none" class="muted">
+            Nothing yet. Turn on "Keep my usage history" in the app, then press
+            Save to account.
+          </p>
+          <div id="usage" class="bars" aria-label="Tokens per day"></div>
+          <p id="usage-total" class="muted"></p>
+
+          <h2 style="margin-top: 36px">Delete your account</h2>
+          <p class="muted">
+            Deletes the account and everything it holds on the service: links,
+            synced settings, usage history. Notes on your computer are not
+            touched.
+          </p>
+          <button id="delete" class="button quiet" type="button">Delete account</button>
+          <div id="confirm-delete" class="actions" hidden>
+            <button id="delete-yes" class="button" type="button">Yes, delete my account</button>
+            <button id="keep" class="button quiet" type="button">Keep it</button>
+          </div>
+        </section>
+
+        <section id="deleted" data-view class="panel" hidden>
+          <h2>Your account is deleted.</h2>
+          <p class="muted">You can keep using the app without one, or sign in again to start fresh.</p>
+        </section>
+      </div>
+    </main>
+
+    <footer>
+      <div class="wrap footer-grid">
+        <div>
+          <h3>Hippocampus</h3>
+          <p>
+            Your notes, a graph of them, and agents that work in them. Free
+            and open source. This site sets no cookies and loads nothing from
+            other sites.
+          </p>
+        </div>
+        <div>
+          <h3>Product</h3>
+          <ul>
+            <li><a href="download.html">Download</a></li>
+            <li><a href="docs.html">Docs</a></li>
+            <li><a href="changelog.html">Changelog</a></li>
+            <li><a href="account.html">Account</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Help</h3>
+          <ul>
+            <li><a href="status.html">Status</a></li>
+            <li><a href="feedback.html">Feedback</a></li>
+            <li><a href="https://github.com/Jacuzzik/hippocampus">GitHub</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Trust</h3>
+          <ul>
+            <li><a href="privacy.html">Privacy</a></li>
+            <li><a href="security.html">Security</a></li>
+          </ul>
+        </div>
+      </div>
+    </footer>
+    <script type="module">
+      import { accountPage } from "./account.js"; accountPage();
+    </script>
+  </body>
+</html>
