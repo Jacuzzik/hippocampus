@@ -34,7 +34,6 @@
   --color-chart-1: #a896e3;
   --color-chart-2: #e2cc55;
   --color-chart-3: #8b7cf0;
-  --color-band: #dcab3c;
   color-scheme: light;
 
   --font-sans: Inter, "Helvetica Neue", Helvetica, Arial, sans-serif;
@@ -254,11 +253,7 @@ main > .wrap {
   background: var(--color-elevated);
 }
 .button.yellow {
-  background: #dcab3c;
-  color: #222229;
-}
-.button.yellow:hover {
-  background: #e2cc55;
+  background: var(--color-btn);
 }
 .button:disabled,
 .button[aria-disabled="true"] {
@@ -306,19 +301,26 @@ main > .wrap {
   background: var(--color-elevated);
 }
 .topbar nav a.name {
-  gap: 10px;
-  color: var(--color-fg);
+  gap: var(--space-2);
+  height: var(--control-md);
+  padding: 0 var(--space-3) 0 var(--space-1);
+  margin-right: auto;
+  background: var(--color-accent);
+  color: var(--color-btn-fg);
   font-size: var(--text-md);
   font-weight: 600;
-  margin-right: auto;
-  padding-left: 0;
 }
 .topbar nav a.name:hover {
-  background: none;
+  background: var(--color-btn-hover);
+  color: var(--color-btn-fg);
 }
-.topbar .name img {
+/* The app's hippo mark, white on the accent badge. */
+.name .logo {
   width: 24px;
   height: 24px;
+  background: #ffffff;
+  -webkit-mask: url("img/hippocampus-mark-mask.png") center / 80% no-repeat;
+  mask: url("img/hippocampus-mark-mask.png") center / 80% no-repeat;
 }
 .topbar nav a.button {
   height: var(--control-sm);
@@ -421,7 +423,8 @@ main > .wrap {
   right: -0.06em;
   bottom: 0.04em;
   height: 0.34em;
-  background: var(--color-chart-2);
+  background: var(--color-accent);
+  opacity: 0.55;
   z-index: -1;
 }
 .hero .lead {
@@ -683,7 +686,7 @@ main > .wrap {
   color: #999999;
 }
 .msg.ask {
-  border-left: 3px solid #dcab3c;
+  border-left: 3px solid #9482d3;
 }
 .approve {
   display: flex;
@@ -791,8 +794,9 @@ main > .wrap {
   margin-left: 8px;
   padding: 0 var(--space-2);
   font: 500 var(--text-xs) var(--font-mono);
-  color: var(--color-warning);
-  border: 1px solid var(--color-warning);
+  color: var(--color-fg);
+  background: var(--color-accent-soft);
+  border: 1px solid transparent;
   border-radius: var(--radius);
 }
 .float .tag.ok {
@@ -897,7 +901,7 @@ main > .wrap {
   color: #8c8c8c;
 }
 .warn {
-  color: #dcab3c;
+  color: #a896e3;
 }
 .shot svg {
   display: block;
@@ -929,7 +933,7 @@ main > .wrap {
   background: #a896e3;
 }
 .shot .bar.hot i {
-  background: #dcab3c;
+  background: #9482d3;
 }
 .fence {
   display: grid;
@@ -1064,7 +1068,7 @@ main > .wrap {
 /* The yellow band: every engine the app can run, sliding past. */
 .band {
   margin-top: 112px;
-  background: var(--color-band);
+  background: var(--color-accent);
   color: #222229;
   padding: 72px 0;
   overflow: hidden;
@@ -1107,8 +1111,8 @@ main > .wrap {
   color: #222229;
 }
 .engine.purple {
-  background: #9482d3;
-  color: #222229;
+  background: #2a2a33;
+  color: #dadada;
 }
 .engine b {
   display: block;
