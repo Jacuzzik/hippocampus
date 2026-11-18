@@ -144,3 +144,5 @@ A row is "closed" only when a check proves it: a test, a lint rule, or a screens
 
 - 11.13 dead-code scan (vulture, knip): unused file `app/ui/regions/GraphPanel.svelte` and `app/playwright.tmp-rp.config.ts`; unused packages `@tauri-apps/plugin-dialog` (check the Rust side first) and `@xterm/addon-unicode11`; 20 unused exports, mostly in `ui/graph/model.ts`; Python: `inbox.held`, `store.note_title`, `store.backlinks`, `store.tagged` (check the tests before removing).
 - Browser preview only (`npm run dev` in a browser): the agents list is read before the test mock is installed, so a notice shows. The desktop app is not affected.
+
+- 14.14 done 2026-11-18 against the real Supabase project: Google sign-in, token refresh, network switch Off blocks calls, sign-out (service then refuses the old session), delete-account (function deployed; service then refuses the account). Found and fixed a gap where a fast sign-in briefly showed as signed out (a4184d7).
