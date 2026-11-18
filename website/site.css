@@ -1,51 +1,64 @@
 /* Hippocampus website. The look follows the Dashboard Design System
-   (https://claude.ai/artifact/FmPW2kXLyUcnCYmbUvafp8): its colour tokens, Inter type scale, 4px spacing,
-   2px corners, 125ms ease-out motion and its buttons, badges, tabs, panels and tables.
+   (https://claude.ai/artifact/FmPW2kXLyUcnCYmbUvafp8, version 12), which matches the app's own tokens
+   (app/ui/styles/tokens.css): its colours, Martian Mono headings, JetBrains Mono text, 12-28px type scale,
+   4px spacing, 2px corners, 120/200/320ms motion on one curve, and its buttons, badges, tabs, panels and tables.
    Light is the default; dark follows the visitor's system setting. The app-window pictures are always
    drawn in the dark theme, because that is how the app looks. Only the design system's colours are used. */
 
 @font-face {
-  font-family: Inter;
-  src: url("fonts/inter-latin-wght-normal.woff2") format("woff2");
-  font-weight: 100 900;
+  font-family: "JetBrains Mono";
+  src: url("fonts/jetbrains-mono-latin-wght-normal.woff2") format("woff2");
+  font-weight: 100 800;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Martian Mono";
+  src: url("fonts/martian-mono-latin-wght-normal.woff2") format("woff2");
+  font-weight: 100 800;
   font-display: swap;
 }
 
 /* ---- Tokens (names and values from the design system) ----------------------------------------- */
 :root {
-  --color-bg: #f7f7fa;
+  --color-bg: #f6f5f9;
   --color-surface: #ffffff;
-  --color-elevated: #efeff4;
-  --color-line: #dcdce3;
-  --color-grid: #e4e4ec;
-  --color-fg-muted: #6e6e78;
-  --color-fg-2: #55555f;
-  --color-fg: #222229;
-  --color-accent: #9482d3;
-  --color-accent-soft: rgba(148, 130, 211, 0.14);
-  --color-btn: #9482d3;
-  --color-btn-hover: #8170c4;
-  --color-btn-pressed: #6f5fb3;
-  --color-btn-fg: #222229;
-  --color-success: #3e8e43;
-  --color-warning: #9a6b12;
-  --color-danger: #b2463e;
-  --color-info: #2f7fa8;
-  --color-chart-1: #a896e3;
-  --color-chart-2: #e2cc55;
-  --color-chart-3: #8b7cf0;
-  color-scheme: light;
+  --color-elevated: #eceaf2;
+  --color-line: #cfcbdb;
+  --color-grid: #dad6e4;
+  --color-fg-muted: #6b6579;
+  --color-fg-2: #5a5468;
+  --color-fg: #1f1b2a;
+  --color-accent: #6a55c2;
+  --color-accent-soft: rgba(106, 85, 194, 0.14);
+  --color-btn: #6a55c2;
+  --color-btn-hover: #5b46b5;
+  --color-btn-pressed: #5b46b5;
+  --color-btn-fg: #ffffff;
+  --color-focus-ring: rgba(106, 85, 194, 0.6);
+  --color-link: #5b46b5;
+  --color-success: #256b29;
+  --color-warning: #7a5708;
+  --color-pending: #94500f;
+  --color-danger: #b3362b;
+  --color-info: #1f6f9c;
+  --color-chart-1: #6a55c2;
+  --color-chart-2: #7a5708;
+  --color-chart-3: #5b46b5;
+  --color-card: #fffdf5;
+  --color-card-text: #1a1320;
+  --color-card-muted: #6b5878;
 
-  --font-sans: Inter, "Helvetica Neue", Helvetica, Arial, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  --text-xs: 10px;
+  --font-sans: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --font-display: "Martian Mono", "JetBrains Mono", ui-monospace, monospace;
+  --text-xs: 12px;
   --text-sm: 12px;
   --text-base: 13px;
   --text-md: 14px;
   --text-lg: 16px;
   --text-xl: 20px;
   --text-2xl: 28px;
-  --leading: 1.45;
+  --leading: 1.5;
 
   --space-1: 4px;
   --space-2: 8px;
@@ -62,9 +75,10 @@
   --control-lg: 40px;
   --nav-h: 32px;
 
-  --ease-out: cubic-bezier(0, 0, 0.2, 1);
-  --dur-fast: 125ms;
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --dur-fast: 120ms;
   --dur-base: 200ms;
+  --dur-slow: 320ms;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -76,11 +90,22 @@
     --color-fg-muted: #8c8c8c;
     --color-fg-2: #999999;
     --color-fg: #dadada;
+    --color-accent: #9482d3;
     --color-accent-soft: rgba(148, 130, 211, 0.18);
+    --color-btn: #9482d3;
+    --color-btn-hover: #a896e3;
+    --color-btn-pressed: #8b7cf0;
+    --color-btn-fg: #222229;
+    --color-focus-ring: rgba(148, 130, 211, 0.55);
+    --color-link: #a896e3;
     --color-success: #7bc47f;
     --color-warning: #dcab3c;
+    --color-pending: #e8924a;
     --color-danger: #d96a62;
     --color-info: #7fc4e8;
+    --color-chart-1: #a896e3;
+    --color-chart-2: #e2cc55;
+    --color-chart-3: #8b7cf0;
     color-scheme: dark;
   }
 }
@@ -93,11 +118,22 @@
   --color-fg-muted: #8c8c8c;
   --color-fg-2: #999999;
   --color-fg: #dadada;
+  --color-accent: #9482d3;
   --color-accent-soft: rgba(148, 130, 211, 0.18);
+  --color-btn: #9482d3;
+  --color-btn-hover: #a896e3;
+  --color-btn-pressed: #8b7cf0;
+  --color-btn-fg: #222229;
+  --color-focus-ring: rgba(148, 130, 211, 0.55);
+  --color-link: #a896e3;
   --color-success: #7bc47f;
   --color-warning: #dcab3c;
+  --color-pending: #e8924a;
   --color-danger: #d96a62;
   --color-info: #7fc4e8;
+  --color-chart-1: #a896e3;
+  --color-chart-2: #e2cc55;
+  --color-chart-3: #8b7cf0;
   color-scheme: dark;
 }
 
@@ -144,9 +180,9 @@ a {
 h1,
 h2,
 h3 {
-  font-family: var(--font-sans);
+  font-family: var(--font-display);
   font-weight: 600;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
   line-height: 1.15;
   text-wrap: balance;
   margin: 0 0 var(--space-4);
@@ -394,9 +430,9 @@ main > .wrap {
   background: var(--color-accent-soft);
 }
 .hero h1 {
-  font-size: clamp(34px, 6.6vw, 76px);
+  font-size: clamp(30px, 5.4vw, 60px);
   font-weight: 600;
-  letter-spacing: -0.045em;
+  letter-spacing: -0.03em;
   line-height: 1.04;
   max-width: 14ch;
   margin: 0 auto 24px;
@@ -1044,9 +1080,10 @@ main > .wrap {
   image-rendering: pixelated;
 }
 .card-face b {
+  font-family: var(--font-display);
   font-size: var(--text-xl);
   font-weight: 600;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
 }
 .card-face small {
   color: var(--color-fg-muted);
@@ -1361,8 +1398,8 @@ main > .wrap {
   border: 3px solid var(--color-bg);
 }
 .closing h2 {
-  font-size: clamp(28px, 4.4vw, 48px);
-  letter-spacing: -0.035em;
+  font-size: clamp(26px, 4vw, 42px);
+  letter-spacing: -0.02em;
 }
 .closing .actions {
   justify-content: center;
