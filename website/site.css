@@ -2,8 +2,7 @@
    (https://claude.ai/artifact/FmPW2kXLyUcnCYmbUvafp8, version 12), which matches the app's own tokens
    (app/ui/styles/tokens.css): its colours, Martian Mono headings, JetBrains Mono text, 12-28px type scale,
    4px spacing, 2px corners, 120/200/320ms motion on one curve, and its buttons, badges, tabs, panels and tables.
-   Light is the default; dark follows the visitor's system setting. The app-window pictures are always
-   drawn in the dark theme, because that is how the app looks. Only the design system's colours are used. */
+   The site is dark only, like the app. The background is a big grid with a soft accent glow at the bottom. Only the design system's colours are used. */
 
 @font-face {
   font-family: "JetBrains Mono";
@@ -20,30 +19,6 @@
 
 /* ---- Tokens (names and values from the design system) ----------------------------------------- */
 :root {
-  --color-bg: #f6f5f9;
-  --color-surface: #ffffff;
-  --color-elevated: #eceaf2;
-  --color-line: #cfcbdb;
-  --color-grid: #dad6e4;
-  --color-fg-muted: #6b6579;
-  --color-fg-2: #5a5468;
-  --color-fg: #1f1b2a;
-  --color-accent: #6a55c2;
-  --color-accent-soft: rgba(106, 85, 194, 0.14);
-  --color-btn: #6a55c2;
-  --color-btn-hover: #5b46b5;
-  --color-btn-pressed: #5b46b5;
-  --color-btn-fg: #ffffff;
-  --color-focus-ring: rgba(106, 85, 194, 0.6);
-  --color-link: #5b46b5;
-  --color-success: #256b29;
-  --color-warning: #7a5708;
-  --color-pending: #94500f;
-  --color-danger: #b3362b;
-  --color-info: #1f6f9c;
-  --color-chart-1: #6a55c2;
-  --color-chart-2: #7a5708;
-  --color-chart-3: #5b46b5;
   --color-card: #fffdf5;
   --color-card-text: #1a1320;
   --color-card-muted: #6b5878;
@@ -79,37 +54,6 @@
   --dur-fast: 120ms;
   --dur-base: 200ms;
   --dur-slow: 320ms;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --color-bg: #222229;
-    --color-surface: #222229;
-    --color-elevated: #2a2a33;
-    --color-line: #333333;
-    --color-grid: #3a3a44;
-    --color-fg-muted: #8c8c8c;
-    --color-fg-2: #999999;
-    --color-fg: #dadada;
-    --color-accent: #9482d3;
-    --color-accent-soft: rgba(148, 130, 211, 0.18);
-    --color-btn: #9482d3;
-    --color-btn-hover: #a896e3;
-    --color-btn-pressed: #8b7cf0;
-    --color-btn-fg: #222229;
-    --color-focus-ring: rgba(148, 130, 211, 0.55);
-    --color-link: #a896e3;
-    --color-success: #7bc47f;
-    --color-warning: #dcab3c;
-    --color-pending: #e8924a;
-    --color-danger: #d96a62;
-    --color-info: #7fc4e8;
-    --color-chart-1: #a896e3;
-    --color-chart-2: #e2cc55;
-    --color-chart-3: #8b7cf0;
-    color-scheme: dark;
-  }
-}
-:root[data-theme="dark"] {
   --color-bg: #222229;
   --color-surface: #222229;
   --color-elevated: #2a2a33;
@@ -135,6 +79,7 @@
   --color-chart-2: #e2cc55;
   --color-chart-3: #8b7cf0;
   color-scheme: dark;
+
 }
 
 /* ---- Base ------------------------------------------------------------------------------------- */
@@ -164,10 +109,24 @@ body::before {
   position: fixed;
   inset: 0;
   z-index: -1;
-  background: var(--color-fg);
-  -webkit-mask: url("img/pattern.svg") 0 0 / 192px 192px repeat;
-  mask: url("img/pattern.svg") 0 0 / 192px 192px repeat;
-  opacity: 0.05;
+  /* A big grid of fine lines, fading out toward the top. */
+  background-image: linear-gradient(var(--color-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--color-grid) 1px, transparent 1px);
+  background-size: 96px 96px;
+  background-position: -1px -1px;
+  -webkit-mask: linear-gradient(to bottom, rgba(0, 0, 0, 0.35), #000 70%);
+  mask: linear-gradient(to bottom, rgba(0, 0, 0, 0.35), #000 70%);
+  opacity: 0.55;
+  pointer-events: none;
+}
+/* A soft accent glow rising from the bottom of the window. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: auto 0 0;
+  height: 55vh;
+  z-index: -1;
+  background: radial-gradient(120% 100% at 50% 100%, rgba(148, 130, 211, 0.2), rgba(148, 130, 211, 0.06) 45%, transparent 75%);
   pointer-events: none;
 }
 img {
