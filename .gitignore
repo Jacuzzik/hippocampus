@@ -33,3 +33,6 @@ brains/
 app/.tauri-dev.log
 backups/
 graphify-out/
+
+# Supabase CLI link state (holds the linked project ref)
+supabase/.temp/

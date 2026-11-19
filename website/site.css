@@ -1627,3 +1627,31 @@ footer a:hover {
     display: none;
   }
 }
+
+/* ---- Pixel icons (img/icons/plain and img/icons/tile, 20x20 grid drawn as crisp SVG) ---------- */
+.pxicon {
+  display: inline-block;
+  flex: none;
+  vertical-align: middle;
+  image-rendering: pixelated;
+}
+.engine .glyph.pxicon {
+  display: block;
+  margin-bottom: var(--space-2);
+}
+.os .glyph:has(.pxicon) {
+  background: none;
+}
+.badge i.icon {
+  background: none;
+  border: 0;
+  padding: 0;
+}
+.with-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.button .pxicon {
+  margin-left: -4px;
+}
