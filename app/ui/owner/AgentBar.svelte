@@ -19,7 +19,7 @@
     selection,
     startEdit,
   } from "./addedAgents.svelte";
-  import { AGENT_PROVIDERS, CARD_FACES, providerLogo } from "../control/model";
+  import { AGENT_PROVIDERS, CARD_FACES, providerLogo } from "../settings/model";
 
   type Account = { claude: boolean; model: string; provider: string };
 

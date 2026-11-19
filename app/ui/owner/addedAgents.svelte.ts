@@ -3,7 +3,7 @@
 import { report } from "../notices.svelte.ts";
 import { invoke } from "@tauri-apps/api/core";
 import { SvelteSet } from "svelte/reactivity";
-import type { AgentDraft } from "../control/model";
+import type { AgentDraft } from "../settings/model";
 
 // The note is private to the user: it is shown only in the card's menu dialog.
 // pinned: note paths whose text goes into the agent's briefing at every start (core/pins.py).

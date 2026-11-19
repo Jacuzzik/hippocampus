@@ -9,24 +9,6 @@ A name the file builds at run time is not listed.
 |---|---|---|
 | `ui/App.svelte` | `graph` | yes |
 | `ui/assistant/session.svelte.ts` | `answer`, `budget_allow`, `chat`, `chat_history`, `chat_history_save`, `confirm`, `current_session`, `new_session`, `stop` | yes |
-| `ui/control/AccountSection.svelte` | `user_sign_in`, `user_sync_fetch`, `user_sync_save` | yes |
-| `ui/control/ActivitySection.svelte` | `activity` | yes |
-| `ui/control/AddAgentDialog.svelte` | `briefing_preview`, `create_workspace`, `keys`, `local_status`, `provider_status`, `workspaces` | no |
-| `ui/control/AppsSection.svelte` | `apps` | yes |
-| `ui/control/AsksSection.svelte` | `answer`, `asks`, `confirm` | yes |
-| `ui/control/BudgetSection.svelte` | `budget`, `budget_allow`, `set_budget` | yes |
-| `ui/control/CapabilitiesSection.svelte` | `install_skill`, `remove_skill`, `skills` | yes |
-| `ui/control/ConnectorsSection.svelte` | `connectors` | yes |
-| `ui/control/DispatchSection.svelte` | `start_helper` | yes |
-| `ui/control/HelpersSection.svelte` | `helpers`, `start_helper` | yes |
-| `ui/control/JobsSection.svelte` | `jobs`, `run_job`, `set_job` | yes |
-| `ui/control/KeysSection.svelte` | `clear_key`, `keys`, `local_status`, `save_key` | yes |
-| `ui/control/MemorySection.svelte` | `memory_search`, `memory_status` | yes |
-| `ui/control/MissionsSection.svelte` | (built at run time) | yes |
-| `ui/control/NetworkSection.svelte` | `network`, `set_network` | yes |
-| `ui/control/SettingsDialog.svelte` | `clear_activity`, `clear_crashes`, `crashes`, `doctor`, `export_notes`, `link_doctor`, `logs`, `set_agent_shell`, `set_number`, `set_vault`, `settings`, `settings_export`, `settings_import` | yes |
-| `ui/control/SkillsSection.svelte` | `open_skill_folder`, `remove_skill`, `skills` | yes |
-| `ui/control/TriggersSection.svelte` | `delete_webhook`, `jobs`, `network`, `run_webhook`, `save_webhook`, `webhooks` | yes |
 | `ui/crashLog.svelte.ts` | `record_crash` | no |
 | `ui/dashboards/CalendarBoard.svelte` | `calendar`, `calendar_add`, `calendar_remove` | yes |
 | `ui/dashboards/DashboardsView.svelte` | `app_board`, `apps`, `github_board` | yes |
@@ -54,3 +36,21 @@ A name the file builds at run time is not listed.
 | `ui/regions/TasksPanel.svelte` | `start_helper`, `tasks` | yes |
 | `ui/regions/TempsPanel.svelte` | `helpers`, `start_helper` | yes |
 | `ui/regions/terminalQueue.svelte.ts` | `terminal_context`, `terminal_input` | no |
+| `ui/settings/AccountSection.svelte` | `user_sign_in`, `user_sync_fetch`, `user_sync_save` | yes |
+| `ui/settings/ActivitySection.svelte` | `activity` | yes |
+| `ui/settings/AddAgentDialog.svelte` | `briefing_preview`, `create_workspace`, `keys`, `local_status`, `provider_status`, `workspaces` | no |
+| `ui/settings/AppsSection.svelte` | `apps` | yes |
+| `ui/settings/AsksSection.svelte` | `answer`, `asks`, `confirm` | yes |
+| `ui/settings/BudgetSection.svelte` | `budget`, `budget_allow`, `set_budget` | yes |
+| `ui/settings/CapabilitiesSection.svelte` | `install_skill`, `remove_skill`, `skills` | yes |
+| `ui/settings/ConnectorsSection.svelte` | `connectors` | yes |
+| `ui/settings/DispatchSection.svelte` | `start_helper` | yes |
+| `ui/settings/HelpersSection.svelte` | `helpers`, `start_helper` | yes |
+| `ui/settings/JobsSection.svelte` | `jobs`, `run_job`, `set_job` | yes |
+| `ui/settings/KeysSection.svelte` | `clear_key`, `keys`, `local_status`, `save_key` | yes |
+| `ui/settings/MemorySection.svelte` | `memory_search`, `memory_status` | yes |
+| `ui/settings/MissionsSection.svelte` | (built at run time) | yes |
+| `ui/settings/NetworkSection.svelte` | `network`, `set_network` | yes |
+| `ui/settings/SettingsDialog.svelte` | `clear_activity`, `clear_crashes`, `crashes`, `doctor`, `export_notes`, `link_doctor`, `logs`, `set_agent_shell`, `set_number`, `set_vault`, `settings`, `settings_export`, `settings_import` | yes |
+| `ui/settings/SkillsSection.svelte` | `open_skill_folder`, `remove_skill`, `skills` | yes |
+| `ui/settings/TriggersSection.svelte` | `delete_webhook`, `jobs`, `network`, `run_webhook`, `save_webhook`, `webhooks` | yes |

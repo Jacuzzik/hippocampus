@@ -18,7 +18,7 @@
     ENGINE_SWITCH_PROVIDERS,
     CARD_FACES,
     type Caps,
-  } from "../control/model";
+  } from "../settings/model";
   import Dropdown from "../controls/Dropdown.svelte";
 
   type Budget = {

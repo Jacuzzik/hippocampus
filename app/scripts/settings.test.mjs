@@ -1,4 +1,4 @@
-// Tests for ui/control/model.ts. Node 24 strips the types when it imports the .ts file.
+// Tests for ui/settings/model.ts. Node 24 strips the types when it imports the .ts file.
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
@@ -18,7 +18,7 @@ import {
   overrunOf,
   parseCap,
   usageLine,
-} from "../ui/control/model.ts";
+} from "../ui/settings/model.ts";
 
 test("a cap is reached only when it is set and the usage meets it", () => {
   const caps = { five_hour: 0, daily: 100, weekly: 0, monthly: 0 };

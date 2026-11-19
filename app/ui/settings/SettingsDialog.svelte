@@ -4,7 +4,7 @@
   import SettingRow from "../controls/SettingRow.svelte";
   import Toggle from "../controls/Toggle.svelte";
   import { dialogFocus } from "../controls/dialogFocus.ts";
-  import "./control.css";
+  import "./settings.css";
   import { invoke } from "@tauri-apps/api/core";
   import { getVersion } from "@tauri-apps/api/app";
   import { onMount } from "svelte";

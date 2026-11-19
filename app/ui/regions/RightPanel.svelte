@@ -89,8 +89,8 @@
   import InboxPanel from "./InboxPanel.svelte";
   import MemoryPanel from "./MemoryPanel.svelte";
   import MonitorPanel from "./MonitorPanel.svelte";
-  import AsksSection from "../control/AsksSection.svelte";
-  import TriggersSection from "../control/TriggersSection.svelte";
+  import AsksSection from "../settings/AsksSection.svelte";
+  import TriggersSection from "../settings/TriggersSection.svelte";
   import ActivityPanel from "./ActivityPanel.svelte";
   import SkillsPanel from "./SkillsPanel.svelte";
   import TempsPanel from "./TempsPanel.svelte";

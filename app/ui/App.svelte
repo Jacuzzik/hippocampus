@@ -17,13 +17,13 @@
   import { bootTask, boot } from "./owner/bootTasks.svelte.ts";
   // The dialogs are loaded when first opened, so their code is not part of the start-up bundle.
   const ToolsDialog = () => import("./overlays/ToolsDialog.svelte");
-  const AddAgentDialog = () => import("./control/AddAgentDialog.svelte");
-  const SettingsDialog = () => import("./control/SettingsDialog.svelte");
+  const AddAgentDialog = () => import("./settings/AddAgentDialog.svelte");
+  const SettingsDialog = () => import("./settings/SettingsDialog.svelte");
   const DashboardsView = () => import("./dashboards/DashboardsView.svelte");
   import CommandBox, { type Item } from "./overlays/CommandBox.svelte";
   import type { GraphData } from "./graph/model.ts";
   import { selection } from "./owner/addedAgents.svelte.ts";
-  import { SETTINGS_PAGES, type SettingsPage } from "./control/model.ts";
+  import { SETTINGS_PAGES, type SettingsPage } from "./settings/model.ts";
   import { tick } from "svelte";
 
   let data = $state<GraphData | null>(null);

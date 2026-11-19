@@ -36,3 +36,6 @@ graphify-out/
 
 # Supabase CLI link state (holds the linked project ref)
 supabase/.temp/
+
+# Coverage data (generated)
+.coverage

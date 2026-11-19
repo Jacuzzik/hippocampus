@@ -153,7 +153,7 @@ Missing from disk (tracked in git, deleted in working tree): app/ui/owner/AgentS
 - Defines: (none at top level)
 
 ## `app/scripts/control.test.mjs`
-- Purpose: Tests for ui/control/model.ts. Node 24 strips the types when it imports the .ts file.
+- Purpose: Tests for ui/settings/model.ts. Node 24 strips the types when it imports the .ts file.
 - Defines: (none at top level)
 
 ## `app/scripts/graph-model.test.mjs`
@@ -212,79 +212,79 @@ Missing from disk (tracked in git, deleted in working tree): app/ui/owner/AgentS
 - Purpose: The assistant's live state, shared by the chat panel and the orb. Talks to the sidecar through the Tauri bridge.
 - Defines: SavedSession, assistant
 
-## `app/ui/control/ActivitySection.svelte`
+## `app/ui/settings/ActivitySection.svelte`
 - Purpose: One list of handoffs, tool calls, approvals, errors and settings changes, newest first.
 - Defines: (component)
 
-## `app/ui/control/AddAgentDialog.svelte`
+## `app/ui/settings/AddAgentDialog.svelte`
 - Purpose: The Add agent dialog: four steps, then Spawn adds the agent to the agent bar.
 - Defines: (component)
 
-## `app/ui/control/ArchivedAgentsSection.svelte`
+## `app/ui/settings/ArchivedAgentsSection.svelte`
 - Purpose: Agents archived from their card menu in the bottom bar; restoring one shows it there again.
 - Defines: (component)
 
-## `app/ui/control/AsksSection.svelte`
+## `app/ui/settings/AsksSection.svelte`
 - Purpose: Questions the assistant cannot answer alone, from every chat, in one place.
 - Defines: (component)
 
-## `app/ui/control/BudgetSection.svelte`
+## `app/ui/settings/BudgetSection.svelte`
 - Purpose: Token caps per day, week and month. 0 means no cap. Over a cap, the assistant pauses.
 - Defines: (component)
 
-## `app/ui/control/CapabilitiesSection.svelte`
+## `app/ui/settings/CapabilitiesSection.svelte`
 - Purpose: What the app can use: MCP servers, skills and plugins. Skills can be installed from a folder
 - Defines: (component)
 
-## `app/ui/control/ControlDialog.svelte`
+## `app/ui/settings/ControlDialog.svelte`
 - Purpose: no header comment; read the file
 - Defines: (component)
 
-## `app/ui/control/DispatchSection.svelte`
+## `app/ui/settings/DispatchSection.svelte`
 - Purpose: Sends a task to an agent. Nothing is sent until you confirm the exact task shown.
 - Defines: (component)
 
-## `app/ui/control/HelpersSection.svelte`
+## `app/ui/settings/HelpersSection.svelte`
 - Purpose: Short-lived helpers: one prompt, run once, result reported back. Four run at once, at most.
 - Defines: (component)
 
-## `app/ui/control/JobsSection.svelte`
+## `app/ui/settings/JobsSection.svelte`
 - Purpose: Repeating jobs over the notes. Each runs when it is due, about once a minute is checked.
 - Defines: (component)
 
-## `app/ui/control/KeysSection.svelte`
+## `app/ui/settings/KeysSection.svelte`
 - Purpose: Saved keys are kept in the OS keychain. A saved key takes effect on the next request.
 - Defines: (component)
 
-## `app/ui/control/MemorySection.svelte`
+## `app/ui/settings/MemorySection.svelte`
 - Purpose: Search the assistant's memory notes. Text search always works. Search by meaning
 - Defines: (component)
 
-## `app/ui/control/NetworkSection.svelte`
+## `app/ui/settings/NetworkSection.svelte`
 - Purpose: Which directions the app may reach outside this machine. Off is the default.
 - Defines: (component)
 
-## `app/ui/control/SettingsDialog.svelte`
+## `app/ui/settings/SettingsDialog.svelte`
 - Purpose: Settings in six tabs. The panels reuse the control panel sections, so each setting has one home.
 - Defines: (component)
 
-## `app/ui/control/ShareSection.svelte`
+## `app/ui/settings/ShareSection.svelte`
 - Purpose: Password links for one note, 60 minutes by default. Links need a share host, which is not
 - Defines: (component)
 
-## `app/ui/control/SkillsSection.svelte`
+## `app/ui/settings/SkillsSection.svelte`
 - Purpose: Installed skills: folders under skills/ that hold a SKILL.md file.
 - Defines: (component)
 
-## `app/ui/control/TeamsSection.svelte`
+## `app/ui/settings/TeamsSection.svelte`
 - Purpose: Teams are shared agents across people. Nobody is enrolled in this build.
 - Defines: (component)
 
-## `app/ui/control/TriggersSection.svelte`
+## `app/ui/settings/TriggersSection.svelte`
 - Purpose: What starts work without you: the network state, scheduled jobs, context compaction and webhooks.
 - Defines: (component)
 
-## `app/ui/control/model.ts`
+## `app/ui/settings/model.ts`
 - Purpose: Pure helpers for the control panel. No DOM or Tauri, so they run under node --test.
 - Defines: NETWORK_MODES, NetworkMode, NETWORK_TEXT, WINDOWS, Window, WINDOW_LABELS, Caps, Overrun, overrunOf, usageLine, parseCap, ActivityKind, ActivityRow, ACTIVITY_FILTERS, filterActivity
 
