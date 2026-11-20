@@ -3,6 +3,7 @@
 
 const RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
 if (!RM) init();
+markSwing();
 
 function init() {
   const sections = [...document.querySelectorAll("section[id], section.closing")];
@@ -89,4 +90,39 @@ function init() {
     );
     heads.forEach((h) => io.observe(h));
   }
+}
+
+// The brand mark swings toward the scroll, eased, so it trails the page instead of snapping to it.
+function markSwing() {
+  const wide = matchMedia("(min-width: 1100px)").matches;
+  if (!wide) return;
+  const mark = document.createElement("div");
+  mark.className = "scroll-mark";
+  mark.setAttribute("aria-hidden", "true");
+  const img = document.createElement("img");
+  img.src = "img/hippocampus-mark-purple.png";
+  img.alt = "";
+  img.width = 440;
+  img.height = 440;
+  mark.append(img);
+  document.body.append(mark);
+
+  let cur = scrollY;
+  let raf = 0;
+  let last = 0;
+  const step = (time) => {
+    raf = 0;
+    const dt = last ? Math.min(time - last, 64) : 16;
+    last = time;
+    cur += (scrollY - cur) * (1 - Math.exp(-dt / 180));
+    const moving = Math.abs(scrollY - cur) > 0.1;
+    mark.style.transform = `translate3d(0, ${(cur * 0.12).toFixed(1)}px, 0) rotate(${(Math.sin(cur / 600) * 9).toFixed(2)}deg)`;
+    if (moving) raf = requestAnimationFrame(step);
+    else last = 0;
+  };
+  const queue = () => {
+    if (!raf) raf = requestAnimationFrame(step);
+  };
+  addEventListener("scroll", queue, { passive: true });
+  queue();
 }
