@@ -2,113 +2,93 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1, viewport-fit=cover"
-    />
-    <title>Hippocampus status</title>
-    <meta
-      name="description"
-      content="Which version is current, known problems, and where to check builds."
-    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Status · Hippocampus</title>
+    <meta name="description" content="Current version, build checks and known problems." />
     <link rel="icon" href="img/hippocampus-mark-purple.png" />
     <link rel="stylesheet" href="site.css" />
+    <link rel="stylesheet" href="motion.css" />
+    <link rel="stylesheet" href="studio.css" />
+    
   </head>
   <body>
-    <a class="skip" href="index.html#main">Skip to the page</a>
-    <header class="topbar">
-      <div class="wrap">
-        <nav aria-label="Site">
-          <a class="name" href="index.html"><span class="logo" aria-hidden="true"></span>Hippocampus</a>
-          <a href="index.html#graph">Graph</a>
-          <a href="index.html#team">Team</a>
-          <a href="index.html#engines">Engines</a>
-          <a href="index.html#yours">Yours</a>
-          <a href="index.html#faq">FAQ</a>
+    <a class="skip" href="#main">Skip to the page</a>
+    <div class="announce" role="note">
+      <span class="tag">New</span>
+      <a href="changelog.html">Share a note with a password link is out. Read the changelog <span aria-hidden="true">→</span></a>
+    </div>
+    <header class="top" data-top>
+      <div class="top-in">
+        <a class="brand" href="index.html"><span class="logo" aria-hidden="true"></span>Hippocampus</a>
+        <nav class="menu" aria-label="Site">
+          
           <a href="docs.html">Docs</a>
-          <a href="account.html">Sign in</a>
+          <a href="changelog.html">Changelog</a>
+          <a class="keep" href="account.html">Sign in</a>
           <a class="button" href="download.html">Download</a>
         </nav>
       </div>
+      <div class="progress" aria-hidden="true"><i data-progress></i></div>
     </header>
-
-    <main id="main">
-      <div class="wrap">
-        <h1>Status</h1>
-        <p class="lead">
-          Hippocampus runs on your own computer, so there is no server to go
-          down. This page says which version is current and what is known to be
-          wrong.
-        </p>
-        <h2>Current version</h2>
-        <p>
-          0.1.0, not yet released. It is in testing before a first public beta.
-          New versions are listed on the
-          <a href="https://github.com/Jacuzzik/hippocampus/releases"
-            >releases page</a
-          >
-          and in the <a href="changelog.html">changelog</a>.
-        </p>
-        <h2>Build checks</h2>
-        <p>
-          Every change runs the full test suite. See the latest results on
-          <a href="https://github.com/Jacuzzik/hippocampus/actions"
-            >GitHub Actions</a
-          >.
-        </p>
-        <h2>Known problems</h2>
-        <ul>
-          <li>
-            Builds for Windows and macOS are not ready; Linux only for now.
-          </li>
-          <li>There is no sign-in yet. The app works fully without one.</li>
-          <li>
-            The phone screen shown inside the app updates only when the phone's
-            screen changes. That is how Android sends it.
-          </li>
-        </ul>
-        <p>
-          Found something not listed here?
-          <a href="feedback.html">Send feedback</a>.
-        </p>
+    <main id="main" tabindex="-1">
+      <div class="doc-wrap">
+        <aside class="doc-side" aria-label="On this page" data-toc-wrap>
+          <p class="side-label">On this page</p>
+          <ol data-toc></ol>
+        </aside>
+        <article class="doc">
+          <p class="chapter-no">Status</p>
+          <h1>Status</h1>
+          <p class="lead">Hippocampus runs on your own computer, so there is no server to go down. This page says which version is current and what is known to be wrong.</p>
+          <h2 id="version">Current version</h2>
+          <p><b>0.1.0</b>, not yet released. It is in testing before a first public beta. New versions are listed on the releases page and in the changelog.</p>
+          <h2 id="checks">Build checks</h2>
+          <p>Every change runs the full test suite. See the latest results on GitHub Actions.</p>
+          <h2 id="problems">Known problems</h2>
+          <ul>
+            <li>Builds for Windows and macOS are not ready; Linux only for now.</li>
+            <li>There is no sign-in yet. The app works fully without one.</li>
+            <li>The phone screen shown inside the app updates only when the phone's screen changes. That is how Android sends it.</li>
+          </ul>
+          <p>Found something not listed here? <a href="feedback.html">Send feedback</a>.</p>
+        </article>
       </div>
     </main>
-
-    <footer>
-      <div class="wrap footer-grid">
-        <div>
-          <h3>Hippocampus</h3>
-          <p>
-            Your notes, a graph of them, and agents that work in them. Free
-            and open source. This site sets no cookies and loads nothing from
-            other sites.
-          </p>
+    <footer class="foot">
+      <div class="wrap">
+        <div class="foot-cols">
+          <div>
+            <h3>Hippocampus</h3>
+            <p>Your notes, a graph of them, and agents that work in them. Free and open source. This site sets no cookies and loads nothing from other sites.</p>
+          </div>
+          <div>
+            <h3>Product</h3>
+            <ul>
+              <li><a href="download.html">Download</a></li>
+              <li><a href="docs.html">Docs</a></li>
+              <li><a href="changelog.html">Changelog</a></li>
+              <li><a href="account.html">Account</a></li>
+            </ul>
+          </div>
+          <div>
+            <h3>Help</h3>
+            <ul>
+              <li><a href="status.html">Status</a></li>
+              <li><a href="feedback.html">Feedback</a></li>
+              <li><a href="https://github.com/Jacuzzik/hippocampus">GitHub</a></li>
+            </ul>
+          </div>
+          <div>
+            <h3>Trust</h3>
+            <ul>
+              <li><a href="privacy.html">Privacy</a></li>
+              <li><a href="security.html">Security</a></li>
+            </ul>
+          </div>
         </div>
-        <div>
-          <h3>Product</h3>
-          <ul>
-            <li><a href="download.html">Download</a></li>
-            <li><a href="docs.html">Docs</a></li>
-            <li><a href="changelog.html">Changelog</a></li>
-            <li><a href="account.html">Account</a></li>
-          </ul>
-        </div>
-        <div>
-          <h3>Help</h3>
-          <ul>
-            <li><a href="status.html">Status</a></li>
-            <li><a href="feedback.html">Feedback</a></li>
-            <li><a class="with-icon" href="https://github.com/Jacuzzik/hippocampus"><img class="pxicon" src="img/icons/tile/github.svg" width="16" height="16" alt="" />GitHub</a></li>
-          </ul>
-        </div>
-        <div>
-          <h3>Trust</h3>
-          <ul>
-            <li><a href="privacy.html">Privacy</a></li>
-            <li><a href="security.html">Security</a></li>
-          </ul>
-        </div>
+        <p class="wordmark" aria-hidden="true">HIPPOCAMPUS</p>
       </div>
     </footer>
+    <script type="module" src="studio.js"></script>
   </body>
 </html>

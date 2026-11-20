@@ -2,148 +2,116 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>Hippocampus</title>
-    <meta
-      name="description"
-      content="A notes vault on your own computer, with a graph of your notes and a team of real command-line agents that work in it."
-    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Hippocampus · Your notes, with agents that work in them</title>
+    <meta name="description" content="Hippocampus keeps your notes in a folder on your computer, draws them as a graph and runs a team of agents beside them." />
     <link rel="icon" href="img/hippocampus-mark-purple.png" />
     <link rel="stylesheet" href="site.css" />
     <link rel="stylesheet" href="motion.css" />
-    <link rel="stylesheet" href="scroll.css" />
-    <script type="module" src="home.js"></script>
-    <script type="module" src="motion.js"></script>
-    <script type="module" src="scroll.js"></script>
+    <link rel="stylesheet" href="studio.css" />
+    
   </head>
   <body>
     <a class="skip" href="#main">Skip to the page</a>
-    <a class="announce" href="changelog.html"><span class="tag">New</span>Share a note with a password link is out. Read the changelog <span aria-hidden="true">→</span></a>
-    <header class="topbar">
-      <div class="wrap">
-        <nav aria-label="Site">
-          <a class="name" href="index.html"><span class="logo" aria-hidden="true"></span>Hippocampus</a>
-          <a href="#features">Features</a>
-          <a href="#team">Agents</a>
-          <a href="#engines">Engines</a>
-          <a href="#free">Free</a>
-          <a href="#faq">FAQ</a>
+    <div class="announce" role="note">
+      <span class="tag">New</span>
+      <a href="changelog.html">Share a note with a password link is out. Read the changelog <span aria-hidden="true">→</span></a>
+    </div>
+    <header class="top" data-top>
+      <div class="top-in">
+        <a class="brand" href="index.html"><span class="logo" aria-hidden="true"></span>Hippocampus</a>
+        <nav class="menu" aria-label="Site">
+          <a href="#notes">Notes</a><a href="#team">Agents</a><a href="#engines">Engines</a><a href="#yours">Yours</a><a href="#free">Free</a><a href="#faq">FAQ</a>
           <a href="docs.html">Docs</a>
+          <a href="changelog.html">Changelog</a>
           <a class="keep" href="account.html">Sign in</a>
           <a class="button" href="download.html">Download</a>
         </nav>
       </div>
+      <div class="progress" aria-hidden="true"><i data-progress></i></div>
     </header>
-
-    <main id="main">
-      <div class="wrap">
-        <section class="hero" aria-labelledby="hero-title">
-          <div class="badges">
-            <a class="badge" href="https://github.com/Jacuzzik/hippocampus"><i class="icon"><img class="pxicon" src="img/icons/tile/github.svg" width="28" height="28" alt="" /></i><span><small>Open source</small>Read the code on GitHub</span></a>
-            <a class="badge new" href="#free"><i>[[]]</i><span><small>New</small>Share a note with a password link</span></a>
-          </div>
-          <h1 id="hero-title">
-            Your notes, with <img class="px" src="img/card-face-03.svg" alt="" /> <span class="mark">agents</span>
-            <img class="px" src="img/card-face-05.svg" alt="" /> that work in them.
-          </h1>
-          <p class="lead">
-            Hippocampus keeps a folder of Markdown notes on your computer, draws them as a living graph and runs
-            a team of real command-line agents beside them. Use the subscriptions you already pay for, or local
-            models for free.
-          </p>
+    <main id="main" tabindex="-1">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <p class="eyebrow">Local first · Open source</p>
+          <h1 id="hero-title">Your notes, with <span class="hl">agents</span> that work in them.</h1>
+          <p class="lead">Hippocampus keeps a folder of Markdown notes on your computer, draws them as a living graph and runs a team of real command-line agents beside them. Use the subscriptions you already pay for, or local models for free.</p>
           <div class="actions">
-            <a class="button" href="download.html">
-              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M8 2v9m-4-4 4 4 4-4M2 14h12" /></svg>
-              Download for Linux
-            </a>
-            <a class="button quiet" href="account.html">Sign in</a>
+            <a class="button" href="download.html">Download for Linux</a>
             <a class="button quiet" href="docs.html">How it works</a>
           </div>
           <p class="platforms">Runs on <span class="on">Linux</span><span>macOS · soon</span><span>Windows · soon</span></p>
+        </div>
+        <div class="dossier" aria-hidden="true">
+          <figure class="file f1"><figcaption>FILE 01 · graph</figcaption><img src="img/app/graph.webp" width="1800" height="860" alt="" /></figure>
+          <figure class="file f2"><figcaption>FILE 02 · inbox</figcaption><img src="img/app/inbox.webp" width="1404" height="624" alt="" /></figure>
+          <figure class="file f3"><figcaption>FILE 03 · briefing</figcaption><img src="img/app/briefing.webp" width="1020" height="666" alt="" /></figure>
+        </div>
+      </section>
 
-          <div class="stage" role="img" aria-label="A picture of the app: the graph of notes in the middle, the notes list on the left, the inbox on the right and the agent cards along the bottom.">
-            <div class="deck-hero" data-hero>
-              <span class="sheet back2" aria-hidden="true"></span>
-              <span class="sheet back1" aria-hidden="true"></span>
-              <div class="window real" aria-hidden="true">
-                <img src="img/app/main.webp" width="2400" height="1500" alt="" />
-              </div>
-            </div>
-            <img class="float left real" data-drift="-0.08" src="img/app/card-editor.webp" width="960" height="369" alt="" aria-hidden="true" />
-            <img class="float right real" data-drift="0.06" src="img/app/card-researcher.webp" width="960" height="369" alt="" aria-hidden="true" />
-          </div>
-        </section>
+      <nav class="chapters" aria-label="Chapters">
+        <ol>
+          <li><a href="#notes"><span>01</span>Notes</a></li>
+          <li><a href="#team"><span>02</span>Agents</a></li>
+          <li><a href="#engines"><span>03</span>Engines</a></li>
+          <li><a href="#yours"><span>04</span>Yours</a></li>
+          <li><a href="#free"><span>05</span>Free</a></li>
+          <li><a href="#faq"><span>06</span>FAQ</a></li>
+        </ol>
+      </nav>
 
-        <section class="pillars" aria-label="Why Hippocampus">
-          <article><b>Local first</b><p>Your notes live in a folder you choose. Nothing is uploaded unless you turn it on.</p></article>
-          <article><b>Your agents, your rules</b><p>Every agent has a briefing, a budget, and an approval step for risky actions.</p></article>
-          <article><b>Any engine</b><p>Claude Code, Codex, Gemini CLI or local models, mixed in one team.</p></article>
-        </section>
-
-        <section class="section" id="features" aria-labelledby="features-title">
-          <div class="intro">
-            <div>
-              <span class="num">Features</span>
-              <h2 id="features-title">Your notes and your agents, in one window.</h2>
-            </div>
-            <div>
-              <p>
-                Agents read your notes, write new ones and link them into the graph. You watch it happen, read
-                every message they send, and nothing risky runs without your yes.
-              </p>
-              <p>Everything stays in plain files on your computer.</p>
-            </div>
-          </div>
-
-          <div class="group">
-            <h3 class="group-head"><span>A</span>Watch it work</h3>
-            <div class="feature-list">
-              <article class="feature" data-reveal>
-                <div class="copy"><span class="feature-num">01</span>
-                  <h3>See how your thinking connects</h3>
-                  <p>Every note is a dot and every <code>[[link]]</code> is a line. The graph moves as agents write.</p></div>
-                <div class="shot-col"><div class="shot real" aria-hidden="true"><img class="mid" src="img/app/graph.webp" width="1800" height="860" alt="" loading="lazy" /></div></div>
-              </article>
-              <article class="feature" data-reveal>
-                <div class="copy"><span class="feature-num">02</span>
-                  <h3>An inbox you can read</h3>
-                  <p>Agents message each other and you through small files. Every message is there to read later.</p></div>
-                <div class="shot-col"><div class="shot real" aria-hidden="true"><img src="img/app/inbox.webp" width="1404" height="624" alt="" loading="lazy" /></div></div>
-              </article>
-              <article class="feature" data-reveal>
-                <div class="copy"><span class="feature-num">03</span>
-                  <h3>Each agent gets a briefing</h3>
-                  <p>The app writes every agent a briefing: its role, its rules, its limits and the job in front of it.</p></div>
-                <div class="shot-col"><div class="shot real" aria-hidden="true"><img src="img/app/briefing.webp" width="1020" height="666" alt="" loading="lazy" /></div></div>
-              </article>
-              <article class="feature" data-reveal>
-                <div class="copy"><span class="feature-num">04</span>
-                  <h3>Plain files you already own</h3>
-                  <p>A folder of Markdown you choose. Open it in Obsidian or any editor; back it up any way you like.</p></div>
-                <div class="shot-col"><div class="shot real" aria-hidden="true"><img src="img/app/files.webp" width="1800" height="900" alt="" loading="lazy" /></div></div>
-              </article>
-            </div>
-          </div>
-          <div class="group">
-            <h3 class="group-head"><span>B</span>Stay in control</h3>
-            <div class="feature-list">
-              <article class="feature" data-reveal>
-                <div class="copy"><span class="feature-num">05</span>
-                  <h3>A fence around the network</h3>
-                  <p>Off, Listen, Converse or Open. Off is the default, and with it off nothing leaves your computer.</p></div>
-                <div class="shot-col"><div class="shot real" aria-hidden="true"><img src="img/app/network.webp" width="2040" height="735" alt="" loading="lazy" /></div></div>
-              </article>
-              <article class="feature" data-reveal>
-                <div class="copy"><span class="feature-num">06</span>
-                  <h3>Budgets, approvals and a stop button</h3>
-                  <p>Token caps per day, week and month. Risky steps wait on a card, and every one is in the log.</p></div>
-                <div class="shot-col"><div class="shot real" aria-hidden="true"><img src="img/app/activity.webp" width="2040" height="990" alt="" loading="lazy" /></div></div>
-              </article>
+      <section class="pin" id="notes" aria-labelledby="notes-title">
+        <div class="pin-stick">
+          <header class="chapter-head">
+            <p class="chapter-no">01 / Notes and agents, in one window</p>
+            <h2 id="notes-title">Your notes and your agents, in one window.</h2>
+            <p class="chapter-lead">Agents read your notes, write new ones and link them into the graph. You watch it happen, read every message they send, and nothing risky runs without your yes.</p>
+          </header>
+          <div class="pin-viewport">
+            <div class="pin-track" data-track>
+          <article class="panel-slide">
+            <p class="slide-num">01</p>
+            <h3>See how your thinking connects</h3>
+            <p>Every note is a dot and every [[link]] is a line. The graph moves as agents write.</p>
+            <div class="slide-shot"><img src="img/app/graph.webp" width="1800" height="860" alt="" loading="lazy" /></div>
+          </article>
+          <article class="panel-slide">
+            <p class="slide-num">02</p>
+            <h3>An inbox you can read</h3>
+            <p>Agents message each other and you through small files. Every message is there to read later.</p>
+            <div class="slide-shot"><img src="img/app/inbox.webp" width="1404" height="624" alt="" loading="lazy" /></div>
+          </article>
+          <article class="panel-slide">
+            <p class="slide-num">03</p>
+            <h3>Each agent gets a briefing</h3>
+            <p>The app writes every agent a briefing: its role, its rules, its limits and the job in front of it.</p>
+            <div class="slide-shot"><img src="img/app/briefing.webp" width="1020" height="666" alt="" loading="lazy" /></div>
+          </article>
+          <article class="panel-slide">
+            <p class="slide-num">04</p>
+            <h3>Plain files you already own</h3>
+            <p>A folder of Markdown you choose. Open it in Obsidian or any editor; back it up any way you like.</p>
+            <div class="slide-shot"><img src="img/app/files.webp" width="1800" height="900" alt="" loading="lazy" /></div>
+          </article>
+          <article class="panel-slide">
+            <p class="slide-num">05</p>
+            <h3>A fence around the network</h3>
+            <p>Off, Listen, Converse or Open. Off is the default, and with it off nothing leaves your computer.</p>
+            <div class="slide-shot"><img src="img/app/network.webp" width="2040" height="735" alt="" loading="lazy" /></div>
+          </article>
+          <article class="panel-slide">
+            <p class="slide-num">06</p>
+            <h3>Budgets, approvals and a stop button</h3>
+            <p>Token caps per day, week and month. Risky steps wait on a card, and every one is in the log.</p>
+            <div class="slide-shot"><img src="img/app/activity.webp" width="2040" height="990" alt="" loading="lazy" /></div>
+          </article>
             </div>
           </div>
-        </section>
+          <p class="pin-hint" aria-hidden="true">Scroll to walk through</p>
+        </div>
+      </section>
 
-        <section class="section" id="team" aria-labelledby="team-title">
+<section class="section" id="team" aria-labelledby="team-title">
           <div class="roles">
             <div>
               <span class="num">Agents</span>
@@ -172,9 +140,8 @@
             </div>
           </div>
         </section>
-      </div>
 
-      <section class="band" id="engines" aria-labelledby="engines-title">
+<section class="band" id="engines" aria-labelledby="engines-title">
         <div class="wrap center">
           <span class="num">Engines</span>
           <h2 id="engines-title">Bring the tools you already pay for.</h2>
@@ -215,23 +182,7 @@
         </div>
       </section>
 
-      <div class="wrap">
-        <section class="section" id="developers" aria-labelledby="dev-title">
-          <div class="intro">
-            <div>
-              <span class="num">Developers</span>
-              <h2 id="dev-title">Read the code. Build on it.</h2>
-            </div>
-            <p>Hippocampus is open source. The docs explain the file layout, the briefing format and how to add an engine.</p>
-          </div>
-          <ul class="cards dev-cards">
-            <li><a href="docs.html"><b>Docs</b>How the vault, agents and engines fit together.</a></li>
-            <li><a href="changelog.html"><b>Changelog</b>What changed in each release.</a></li>
-            <li><a href="https://github.com/Jacuzzik/hippocampus"><b>Source on GitHub</b>Read it, file issues, send changes.</a></li>
-          </ul>
-        </section>
-
-        <section class="section" id="yours" aria-labelledby="yours-title">
+<section class="section" id="yours" aria-labelledby="yours-title">
           <div class="intro">
             <div>
               <span class="num">Yours</span>
@@ -247,7 +198,7 @@
           </ul>
         </section>
 
-        <section class="section center" id="free" aria-labelledby="free-title">
+<section class="section center" id="free" aria-labelledby="free-title">
           <span class="num">Free</span>
           <h2 id="free-title">Free. The account is optional.</h2>
           <p class="lead">No paid plan during the beta. You pay only for the engines you choose, and local ones cost nothing.</p>
@@ -291,22 +242,7 @@
           </div>
         </section>
 
-        <section class="section" id="download" aria-labelledby="download-title">
-          <div class="get">
-            <div>
-              <span class="num">Download</span>
-              <h2 id="download-title">Get Hippocampus.</h2>
-              <p class="lead">Linux is tested today. macOS and Windows installers are built and waiting for hand testing.</p>
-            </div>
-            <div class="os">
-              <a href="download.html"><span class="glyph"><img class="pxicon" src="img/icons/tile/linux.svg" width="32" height="32" alt="" /></span><span>Linux<small>.deb · AppImage · x64</small></span><span class="go">Download →</span></a>
-              <div><span class="glyph"><img class="pxicon" src="img/icons/tile/apple.svg" width="32" height="32" alt="" /></span><span>macOS<small>Apple silicon and Intel</small></span><span class="soon">Soon</span></div>
-              <div><span class="glyph"><img class="pxicon" src="img/icons/tile/windows.svg" width="32" height="32" alt="" /></span><span>Windows<small>Agent terminals not ready yet</small></span><span class="soon">Soon</span></div>
-            </div>
-          </div>
-        </section>
-
-        <section class="section faq" id="faq" aria-labelledby="faq-title">
+<section class="section faq" id="faq" aria-labelledby="faq-title">
           <span class="num">FAQ</span>
           <h2 id="faq-title">Questions, answered.</h2>
           <details><summary>Is it free?</summary><p>Yes. The app is free and open source. Agents that use a paid service (Claude Code, a provider key) cost what that service costs you; local models cost nothing.</p></details>
@@ -317,7 +253,23 @@
           <details><summary>Which systems does it run on?</summary><p>Linux is tested. macOS and Windows installers are built but not yet tested by hand; on Windows the agent terminals do not work yet.</p></details>
         </section>
 
-        <section class="closing" aria-labelledby="closing-title">
+
+      <section class="chapter" id="download" aria-labelledby="download-title">
+        <div class="get-grid">
+          <div>
+            <p class="chapter-no">Download</p>
+            <h2 id="download-title">Get Hippocampus.</h2>
+            <p class="lead">Linux is tested today. macOS and Windows installers are built and waiting for hand testing.</p>
+          </div>
+          <ul class="ledger">
+            <li><a href="download.html"><span>Linux</span><small>.deb · AppImage · x64</small><b>→</b></a></li>
+            <li><a href="download.html"><span>macOS</span><small>Apple silicon and Intel</small><b>→</b></a></li>
+            <li><a href="download.html"><span>Windows</span><small>x64 installer</small><b>→</b></a></li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="closing" aria-labelledby="closing-title">
           <div class="row" aria-hidden="true">
             <span class="face"><img src="img/card-face-01.svg" alt="" /></span><span class="face"><img src="img/card-face-02.svg" alt="" /></span><span class="face"><img src="img/card-face-03.svg" alt="" /></span><span class="face"><img src="img/card-face-04.svg" alt="" /></span><span class="face"><img src="img/card-face-05.svg" alt="" /></span><span class="face"><img src="img/card-face-06.svg" alt="" /></span>
           </div>
@@ -328,43 +280,44 @@
             <a class="button quiet" href="https://github.com/Jacuzzik/hippocampus"><img class="pxicon" src="img/icons/tile/github.svg" width="20" height="20" alt="" />Read the code</a>
           </div>
         </section>
-      </div>
     </main>
-
-    <footer>
-      <div class="wrap footer-grid">
-        <div>
-          <h3>Hippocampus</h3>
-          <p>
-            Your notes, a graph of them, and agents that work in them. Free and open source. This site sets no
-            cookies and loads nothing from other sites.
-          </p>
+    <footer class="foot">
+      <div class="wrap">
+        <div class="foot-cols">
+          <div>
+            <h3>Hippocampus</h3>
+            <p>Your notes, a graph of them, and agents that work in them. Free and open source. This site sets no cookies and loads nothing from other sites.</p>
+          </div>
+          <div>
+            <h3>Product</h3>
+            <ul>
+              <li><a href="download.html">Download</a></li>
+              <li><a href="docs.html">Docs</a></li>
+              <li><a href="changelog.html">Changelog</a></li>
+              <li><a href="account.html">Account</a></li>
+            </ul>
+          </div>
+          <div>
+            <h3>Help</h3>
+            <ul>
+              <li><a href="status.html">Status</a></li>
+              <li><a href="feedback.html">Feedback</a></li>
+              <li><a href="https://github.com/Jacuzzik/hippocampus">GitHub</a></li>
+            </ul>
+          </div>
+          <div>
+            <h3>Trust</h3>
+            <ul>
+              <li><a href="privacy.html">Privacy</a></li>
+              <li><a href="security.html">Security</a></li>
+            </ul>
+          </div>
         </div>
-        <div>
-          <h3>Product</h3>
-          <ul>
-            <li><a href="download.html">Download</a></li>
-            <li><a href="docs.html">Docs</a></li>
-            <li><a href="changelog.html">Changelog</a></li>
-            <li><a href="account.html">Account</a></li>
-          </ul>
-        </div>
-        <div>
-          <h3>Help</h3>
-          <ul>
-            <li><a href="status.html">Status</a></li>
-            <li><a href="feedback.html">Feedback</a></li>
-            <li><a class="with-icon" href="https://github.com/Jacuzzik/hippocampus"><img class="pxicon" src="img/icons/tile/github.svg" width="16" height="16" alt="" />GitHub</a></li>
-          </ul>
-        </div>
-        <div>
-          <h3>Trust</h3>
-          <ul>
-            <li><a href="privacy.html">Privacy</a></li>
-            <li><a href="security.html">Security</a></li>
-          </ul>
-        </div>
+        <p class="wordmark" aria-hidden="true">HIPPOCAMPUS</p>
       </div>
     </footer>
+    <script type="module" src="studio.js"></script>
+    <script type="module" src="motion.js"></script>
+    <script type="module" src="home.js"></script>
   </body>
 </html>

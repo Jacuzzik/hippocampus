@@ -2,125 +2,96 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1, viewport-fit=cover"
-    />
-    <title>Hippocampus docs</title>
-    <meta
-      name="description"
-      content="Getting started with Hippocampus: a vault, an agent, messages and the shell sandbox."
-    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Docs · Hippocampus</title>
+    <meta name="description" content="Getting started with Hippocampus: vault, agents, messages, the sandbox and Doctor." />
     <link rel="icon" href="img/hippocampus-mark-purple.png" />
     <link rel="stylesheet" href="site.css" />
+    <link rel="stylesheet" href="motion.css" />
+    <link rel="stylesheet" href="studio.css" />
+    
   </head>
   <body>
-    <a class="skip" href="index.html#main">Skip to the page</a>
-    <header class="topbar">
-      <div class="wrap">
-        <nav aria-label="Site">
-          <a class="name" href="index.html"><span class="logo" aria-hidden="true"></span>Hippocampus</a>
-          <a href="index.html#graph">Graph</a>
-          <a href="index.html#team">Team</a>
-          <a href="index.html#engines">Engines</a>
-          <a href="index.html#yours">Yours</a>
-          <a href="index.html#faq">FAQ</a>
+    <a class="skip" href="#main">Skip to the page</a>
+    <div class="announce" role="note">
+      <span class="tag">New</span>
+      <a href="changelog.html">Share a note with a password link is out. Read the changelog <span aria-hidden="true">→</span></a>
+    </div>
+    <header class="top" data-top>
+      <div class="top-in">
+        <a class="brand" href="index.html"><span class="logo" aria-hidden="true"></span>Hippocampus</a>
+        <nav class="menu" aria-label="Site">
+          
           <a href="docs.html">Docs</a>
-          <a href="account.html">Sign in</a>
+          <a href="changelog.html">Changelog</a>
+          <a class="keep" href="account.html">Sign in</a>
           <a class="button" href="download.html">Download</a>
         </nav>
       </div>
+      <div class="progress" aria-hidden="true"><i data-progress></i></div>
     </header>
-
-    <main id="main">
-      <div class="wrap">
-        <h1>Getting started</h1>
-        <h2>1. Choose a vault</h2>
-        <p>
-          On first run the app asks for a folder. That folder is your vault:
-          every <code>.md</code> file in it is a note. You can change it later
-          in Settings, General.
-        </p>
-        <h2>2. Add an agent</h2>
-        <p>
-          Press <strong>+ Add agent</strong> in the bottom bar. Pick a name, a
-          working folder, and the program and model it runs. The app writes its
-          briefing and starts it in its own terminal.
-        </p>
-        <h2>3. Send a message</h2>
-        <p>
-          Open the <strong>inbox</strong> tab in the Control Room, write a
-          message, and send it to one agent or all of them. A message is typed
-          into the agent's terminal when the terminal is quiet.
-        </p>
-        <h2>4. The shell and the sandbox</h2>
-        <p>
-          By default an added agent has no shell. Settings, Agents has a switch
-          that gives every agent a shell inside a sandbox (bubblewrap on Linux).
-          The sandbox closes the app's own folder and other agents' folders.
-        </p>
-        <h2>5. When something is wrong</h2>
-        <p>
-          Settings, Doctor checks everything the app needs and says what to do
-          for each gap. It also lists broken links between your notes.
-        </p>
-        <h2>Keyboard</h2>
-        <p>
-          <code>Ctrl+P</code> opens the command palette,
-          <code>Ctrl+O</code> jumps to a note, <code>Ctrl+F</code> searches. The
-          full list is in Settings, Keyboard.
-        </p>
-        <h2>More</h2>
-        <p>
-          The
-          <a href="https://github.com/Jacuzzik/hippocampus/blob/main/README.md"
-            >README</a
-          >
-          covers development, and
-          <a
-            href="https://github.com/Jacuzzik/hippocampus/blob/main/ARCHITECTURE.md"
-            >ARCHITECTURE.md</a
-          >
-          explains how the parts fit.
-        </p>
+    <main id="main" tabindex="-1">
+      <div class="doc-wrap">
+        <aside class="doc-side" aria-label="On this page" data-toc-wrap>
+          <p class="side-label">On this page</p>
+          <ol data-toc></ol>
+        </aside>
+        <article class="doc">
+          <p class="chapter-no">Docs</p>
+          <h1>Getting started</h1>
+          <p class="lead">Five steps from an empty folder to a working team of agents.</p>
+          <h2 id="choose">1. Choose a vault</h2>
+          <p>On first run the app asks for a folder. That folder is your vault: every .md file in it is a note. You can change it later in Settings, General.</p>
+          <h2 id="add-agent">2. Add an agent</h2>
+          <p>Press + Add agent in the bottom bar. Pick a name, a working folder, and the program and model it runs. The app writes its briefing and starts it in its own terminal.</p>
+          <h2 id="send">3. Send a message</h2>
+          <p>Open the inbox tab in the Control Room, write a message, and send it to one agent or all of them. A message is typed into the agent's terminal when the terminal is quiet.</p>
+          <h2 id="shell">4. The shell and the sandbox</h2>
+          <p>By default an added agent has no shell. Settings, Agents has a switch that gives every agent a shell inside a sandbox (bubblewrap on Linux). The sandbox closes the app's own folder and other agents' folders.</p>
+          <h2 id="wrong">5. When something is wrong</h2>
+          <p>Settings, Doctor checks everything the app needs and says what to do for each gap. It also lists broken links between your notes.</p>
+          <h2 id="keys">Keyboard</h2>
+          <p><kbd>Ctrl+P</kbd> opens the command palette, <kbd>Ctrl+O</kbd> jumps to a note, <kbd>Ctrl+F</kbd> searches. The full list is in Settings, Keyboard.</p>
+          <h2 id="more">More</h2>
+          <p>The README covers development, and ARCHITECTURE.md explains how the parts fit.</p>
+        </article>
       </div>
     </main>
-
-    <footer>
-      <div class="wrap footer-grid">
-        <div>
-          <h3>Hippocampus</h3>
-          <p>
-            Your notes, a graph of them, and agents that work in them. Free
-            and open source. This site sets no cookies and loads nothing from
-            other sites.
-          </p>
+    <footer class="foot">
+      <div class="wrap">
+        <div class="foot-cols">
+          <div>
+            <h3>Hippocampus</h3>
+            <p>Your notes, a graph of them, and agents that work in them. Free and open source. This site sets no cookies and loads nothing from other sites.</p>
+          </div>
+          <div>
+            <h3>Product</h3>
+            <ul>
+              <li><a href="download.html">Download</a></li>
+              <li><a href="docs.html">Docs</a></li>
+              <li><a href="changelog.html">Changelog</a></li>
+              <li><a href="account.html">Account</a></li>
+            </ul>
+          </div>
+          <div>
+            <h3>Help</h3>
+            <ul>
+              <li><a href="status.html">Status</a></li>
+              <li><a href="feedback.html">Feedback</a></li>
+              <li><a href="https://github.com/Jacuzzik/hippocampus">GitHub</a></li>
+            </ul>
+          </div>
+          <div>
+            <h3>Trust</h3>
+            <ul>
+              <li><a href="privacy.html">Privacy</a></li>
+              <li><a href="security.html">Security</a></li>
+            </ul>
+          </div>
         </div>
-        <div>
-          <h3>Product</h3>
-          <ul>
-            <li><a href="download.html">Download</a></li>
-            <li><a href="docs.html">Docs</a></li>
-            <li><a href="changelog.html">Changelog</a></li>
-            <li><a href="account.html">Account</a></li>
-          </ul>
-        </div>
-        <div>
-          <h3>Help</h3>
-          <ul>
-            <li><a href="status.html">Status</a></li>
-            <li><a href="feedback.html">Feedback</a></li>
-            <li><a class="with-icon" href="https://github.com/Jacuzzik/hippocampus"><img class="pxicon" src="img/icons/tile/github.svg" width="16" height="16" alt="" />GitHub</a></li>
-          </ul>
-        </div>
-        <div>
-          <h3>Trust</h3>
-          <ul>
-            <li><a href="privacy.html">Privacy</a></li>
-            <li><a href="security.html">Security</a></li>
-          </ul>
-        </div>
+        <p class="wordmark" aria-hidden="true">HIPPOCAMPUS</p>
       </div>
     </footer>
+    <script type="module" src="studio.js"></script>
   </body>
 </html>

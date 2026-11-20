@@ -2,151 +2,109 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1, viewport-fit=cover"
-    />
-    <title>Hippocampus changelog</title>
-    <meta
-      name="description"
-      content="What changed in each version of Hippocampus."
-    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Changelog · Hippocampus</title>
+    <meta name="description" content="What changed in Hippocampus, by release." />
     <link rel="icon" href="img/hippocampus-mark-purple.png" />
     <link rel="stylesheet" href="site.css" />
+    <link rel="stylesheet" href="motion.css" />
+    <link rel="stylesheet" href="studio.css" />
+    
   </head>
   <body>
-    <a class="skip" href="index.html#main">Skip to the page</a>
-    <header class="topbar">
-      <div class="wrap">
-        <nav aria-label="Site">
-          <a class="name" href="index.html"><span class="logo" aria-hidden="true"></span>Hippocampus</a>
-          <a href="index.html#graph">Graph</a>
-          <a href="index.html#team">Team</a>
-          <a href="index.html#engines">Engines</a>
-          <a href="index.html#yours">Yours</a>
-          <a href="index.html#faq">FAQ</a>
+    <a class="skip" href="#main">Skip to the page</a>
+    <div class="announce" role="note">
+      <span class="tag">New</span>
+      <a href="changelog.html">Share a note with a password link is out. Read the changelog <span aria-hidden="true">→</span></a>
+    </div>
+    <header class="top" data-top>
+      <div class="top-in">
+        <a class="brand" href="index.html"><span class="logo" aria-hidden="true"></span>Hippocampus</a>
+        <nav class="menu" aria-label="Site">
+          
           <a href="docs.html">Docs</a>
-          <a href="account.html">Sign in</a>
+          <a href="changelog.html">Changelog</a>
+          <a class="keep" href="account.html">Sign in</a>
           <a class="button" href="download.html">Download</a>
         </nav>
       </div>
+      <div class="progress" aria-hidden="true"><i data-progress></i></div>
     </header>
-
-    <main id="main">
-      <div class="wrap">
-        <h1>Changelog</h1>
-        <h2>Unreleased</h2>
-        <p><strong>Added</strong></p>
-        <ul>
-          <li>
-            One inbox for agents: messages carry a type, a task id, a reply link
-            and a priority. The Inbox tab
-          </li>
-        </ul>
-        <p>
-          groups them into conversations, filters, searches, and has a box to
-          write to one agent or all.
-        </p>
-        <ul>
-          <li>
-            &quot;Shell for every agent&quot; (Settings &gt; Agents, off by
-            default): each agent gets a fenced shell and its
-          </li>
-        </ul>
-        <p>
-          program runs in a sandbox that keeps the app and the system read-only.
-        </p>
-        <ul>
-          <li>
-            Agent panel: Traces lists every tool call with its result; Messages
-            lists that agent&#x27;s messages.
-          </li>
-          <li>Settings &gt; Advanced: feature switches and the backend log.</li>
-          <li>TALK on a card opens that agent&#x27;s message box.</li>
-          <li>
-            Planned cards say what a feature will do and what is missing, in
-            place of &quot;Not set up&quot;.
-          </li>
-        </ul>
-        <p><strong>Changed</strong></p>
-        <ul>
-          <li>One terminal component for the main agent and added agents.</li>
-          <li>
-            The graph reads the vault only after a file changed, not every five
-            seconds.
-          </li>
-          <li>Control Room panels refresh while open.</li>
-          <li>
-            Each agent&#x27;s briefing ends with the limits in force and a
-            version stamp; a broken briefing stops the
-          </li>
-        </ul>
-        <p>agent before it starts.</p>
-        <p><strong>Fixed</strong></p>
-        <ul>
-          <li>
-            The agents&#x27; programs start again by themselves after the
-            backend restarts.
-          </li>
-          <li>
-            The start-up inbox was typed into every agent again on each window
-            reload.
-          </li>
-          <li>
-            Two lines typed at once could mix in one input, so `/remote-control`
-            was sent to the model as chat.
-          </li>
-          <li>
-            Sending a task from the app never worked (`task_send` was registered
-            without its arguments).
-          </li>
-          <li>Garbled agent terminal after a resize.</li>
-        </ul>
-        <p><strong>Removed</strong></p>
-        <ul>
-          <li>
-            The unused in-app chat pane, and the tests for a phone and tablet
-            layout that does not exist.
-          </li>
-        </ul>
+    <main id="main" tabindex="-1">
+      <div class="doc-wrap">
+        <aside class="doc-side" aria-label="On this page" data-toc-wrap>
+          <p class="side-label">On this page</p>
+          <ol data-toc></ol>
+        </aside>
+        <article class="doc">
+          <p class="chapter-no">Changelog</p>
+          <h1>Changelog</h1>
+          <p class="lead">Every change, grouped under Added, Changed, Fixed and Removed.</p>
+          <h2 id="unreleased">Unreleased</h2>
+          <h3>Added</h3>
+          <ul>
+            <li>One inbox for agents: messages carry a type, a task id, a reply link and a priority. The Inbox tab groups them into conversations, filters, searches, and has a box to write to one agent or all.</li>
+            <li>"Shell for every agent" (Settings &gt; Agents, off by default): each agent gets a fenced shell and its program runs in a sandbox that keeps the app and the system read-only.</li>
+            <li>Agent panel: Traces lists every tool call with its result; Messages lists that agent's messages.</li>
+            <li>Settings &gt; Advanced: feature switches and the backend log.</li>
+            <li>TALK on a card opens that agent's message box. Planned cards say what a feature will do and what is missing, in place of "Not set up".</li>
+          </ul>
+          <h3>Changed</h3>
+          <ul>
+            <li>One terminal component for the main agent and added agents.</li>
+            <li>The graph reads the vault only after a file changed, not every five seconds. Control Room panels refresh while open.</li>
+            <li>Each agent's briefing ends with the limits in force and a version stamp; a broken briefing stops the agent before it starts.</li>
+          </ul>
+          <h3>Fixed</h3>
+          <ul>
+            <li>The agents' programs start again by themselves after the backend restarts.</li>
+            <li>The start-up inbox was typed into every agent again on each window reload.</li>
+            <li>Two lines typed at once could mix in one input, so <code>/remote-control</code> was sent to the model as chat.</li>
+            <li>Sending a task from the app never worked (<code>task_send</code> was registered without its arguments).</li>
+            <li>Garbled agent terminal after a resize.</li>
+          </ul>
+          <h3>Removed</h3>
+          <ul>
+            <li>The unused in-app chat pane, and the tests for a phone and tablet layout that does not exist.</li>
+          </ul>
+        </article>
       </div>
     </main>
-
-    <footer>
-      <div class="wrap footer-grid">
-        <div>
-          <h3>Hippocampus</h3>
-          <p>
-            Your notes, a graph of them, and agents that work in them. Free
-            and open source. This site sets no cookies and loads nothing from
-            other sites.
-          </p>
+    <footer class="foot">
+      <div class="wrap">
+        <div class="foot-cols">
+          <div>
+            <h3>Hippocampus</h3>
+            <p>Your notes, a graph of them, and agents that work in them. Free and open source. This site sets no cookies and loads nothing from other sites.</p>
+          </div>
+          <div>
+            <h3>Product</h3>
+            <ul>
+              <li><a href="download.html">Download</a></li>
+              <li><a href="docs.html">Docs</a></li>
+              <li><a href="changelog.html">Changelog</a></li>
+              <li><a href="account.html">Account</a></li>
+            </ul>
+          </div>
+          <div>
+            <h3>Help</h3>
+            <ul>
+              <li><a href="status.html">Status</a></li>
+              <li><a href="feedback.html">Feedback</a></li>
+              <li><a href="https://github.com/Jacuzzik/hippocampus">GitHub</a></li>
+            </ul>
+          </div>
+          <div>
+            <h3>Trust</h3>
+            <ul>
+              <li><a href="privacy.html">Privacy</a></li>
+              <li><a href="security.html">Security</a></li>
+            </ul>
+          </div>
         </div>
-        <div>
-          <h3>Product</h3>
-          <ul>
-            <li><a href="download.html">Download</a></li>
-            <li><a href="docs.html">Docs</a></li>
-            <li><a href="changelog.html">Changelog</a></li>
-            <li><a href="account.html">Account</a></li>
-          </ul>
-        </div>
-        <div>
-          <h3>Help</h3>
-          <ul>
-            <li><a href="status.html">Status</a></li>
-            <li><a href="feedback.html">Feedback</a></li>
-            <li><a class="with-icon" href="https://github.com/Jacuzzik/hippocampus"><img class="pxicon" src="img/icons/tile/github.svg" width="16" height="16" alt="" />GitHub</a></li>
-          </ul>
-        </div>
-        <div>
-          <h3>Trust</h3>
-          <ul>
-            <li><a href="privacy.html">Privacy</a></li>
-            <li><a href="security.html">Security</a></li>
-          </ul>
-        </div>
+        <p class="wordmark" aria-hidden="true">HIPPOCAMPUS</p>
       </div>
     </footer>
+    <script type="module" src="studio.js"></script>
   </body>
 </html>

@@ -2,145 +2,102 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1, viewport-fit=cover"
-    />
-    <title>Hippocampus privacy</title>
-    <meta
-      name="description"
-      content="What Hippocampus stores and what leaves your computer."
-    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Privacy · Hippocampus</title>
+    <meta name="description" content="What Hippocampus stores, what leaves your computer, and what the website does." />
     <link rel="icon" href="img/hippocampus-mark-purple.png" />
     <link rel="stylesheet" href="site.css" />
+    <link rel="stylesheet" href="motion.css" />
+    <link rel="stylesheet" href="studio.css" />
+    
   </head>
   <body>
-    <a class="skip" href="index.html#main">Skip to the page</a>
-    <header class="topbar">
-      <div class="wrap">
-        <nav aria-label="Site">
-          <a class="name" href="index.html"><span class="logo" aria-hidden="true"></span>Hippocampus</a>
-          <a href="index.html#graph">Graph</a>
-          <a href="index.html#team">Team</a>
-          <a href="index.html#engines">Engines</a>
-          <a href="index.html#yours">Yours</a>
-          <a href="index.html#faq">FAQ</a>
+    <a class="skip" href="#main">Skip to the page</a>
+    <div class="announce" role="note">
+      <span class="tag">New</span>
+      <a href="changelog.html">Share a note with a password link is out. Read the changelog <span aria-hidden="true">→</span></a>
+    </div>
+    <header class="top" data-top>
+      <div class="top-in">
+        <a class="brand" href="index.html"><span class="logo" aria-hidden="true"></span>Hippocampus</a>
+        <nav class="menu" aria-label="Site">
+          
           <a href="docs.html">Docs</a>
-          <a href="account.html">Sign in</a>
+          <a href="changelog.html">Changelog</a>
+          <a class="keep" href="account.html">Sign in</a>
           <a class="button" href="download.html">Download</a>
         </nav>
       </div>
+      <div class="progress" aria-hidden="true"><i data-progress></i></div>
     </header>
-
-    <main id="main">
-      <div class="wrap">
-        <h1>Privacy</h1>
-        <p class="lead">
-          Hippocampus works fully on your own computer, with no telemetry. An
-          account is optional; without one, nothing goes to a Hippocampus
-          server.
-        </p>
-        <h2>What is stored, and where</h2>
-        <ul>
-          <li>
-            <strong>Your notes</strong> stay in the vault folder you chose.
-          </li>
-          <li>
-            <strong>A search index</strong> of the notes is kept in the app's
-            data folder. It is a cache; deleting it loses nothing.
-          </li>
-          <li>
-            <strong>API keys</strong>, if you add any, go to your system
-            keychain, never to a file.
-          </li>
-          <li>
-            <strong>An error log</strong> is kept on your computer. Keys are
-            masked in it. Settings, Privacy and data shows and clears it.
-          </li>
-        </ul>
-        <h2>What leaves your computer</h2>
-        <ul>
-          <li>
-            What an agent sends to its own provider (for example Anthropic for
-            Claude Code), under that provider's terms.
-          </li>
-          <li>
-            Nothing else, unless you have an account and use its extras (below).
-            The network switch in the Control panel can stop all of it.
-          </li>
-        </ul>
-        <h2>If you make an account</h2>
-        <p>
-          Sign-in is with Google through Supabase, which holds the account. The
-          app keeps your sign-in in the system keychain. Each extra is off until
-          you turn it on, and sends only this:
-        </p>
-        <ul>
-          <li>
-            <strong>Account:</strong> your email address, name and plan, from
-            Google.
-          </li>
-          <li>
-            <strong>Share links:</strong> the one note you share, until the link
-            expires. Its password is stored only as a hash.
-          </li>
-          <li>
-            <strong>Sync:</strong> your added agents and settings file, when you
-            press Save to account. Never notes, keys or the vault folder.
-          </li>
-          <li>
-            <strong>Usage history:</strong> one number per day, the tokens used.
-            No prompts, agent names or note names.
-          </li>
-        </ul>
-        <p>
-          Delete account, in the app or on the
-          <a href="account.html">account page</a>, deletes all of it.
-        </p>
-        <h2>This website</h2>
-        <p>
-          It sets no cookies, runs no analytics and loads no files from other
-          sites. The account and share pages talk only to the Hippocampus
-          sign-in service, and keep your sign-in in the tab until you close it.
-        </p>
+    <main id="main" tabindex="-1">
+      <div class="doc-wrap">
+        <aside class="doc-side" aria-label="On this page" data-toc-wrap>
+          <p class="side-label">On this page</p>
+          <ol data-toc></ol>
+        </aside>
+        <article class="doc">
+          <p class="chapter-no">Privacy</p>
+          <h1>Privacy</h1>
+          <p class="lead">Hippocampus works fully on your own computer, with no telemetry. An account is optional; without one, nothing goes to a Hippocampus server.</p>
+          <h2 id="stored">What is stored, and where</h2>
+          <ul>
+            <li>Your notes stay in the vault folder you chose.</li>
+            <li>A search index of the notes is kept in the app's data folder. It is a cache; deleting it loses nothing.</li>
+            <li>API keys, if you add any, go to your system keychain, never to a file.</li>
+            <li>An error log is kept on your computer. Keys are masked in it. Settings, Privacy and data shows and clears it.</li>
+          </ul>
+          <h2 id="leaves">What leaves your computer</h2>
+          <p>What an agent sends to its own provider (for example Anthropic for Claude Code), under that provider's terms. Nothing else, unless you have an account and use its extras (below). The network switch in the Control panel can stop all of it.</p>
+          <h2 id="account">If you make an account</h2>
+          <p>Sign-in is with Google through Supabase, which holds the account. The app keeps your sign-in in the system keychain. Each extra is off until you turn it on, and sends only this:</p>
+          <ul>
+            <li><b>Account:</b> your email address, name and plan, from Google.</li>
+            <li><b>Share links:</b> the one note you share, until the link expires. Its password is stored only as a hash.</li>
+            <li><b>Sync:</b> your added agents and settings file, when you press Save to account. Never notes, keys or the vault folder.</li>
+            <li><b>Usage history:</b> one number per day, the tokens used. No prompts, agent names or note names.</li>
+          </ul>
+          <p>Delete account, in the app or on the account page, deletes all of it.</p>
+          <h2 id="website">This website</h2>
+          <p>It sets no cookies, runs no analytics and loads no files from other sites. The account and share pages talk only to the Hippocampus sign-in service, and keep your sign-in in the tab until you close it.</p>
+        </article>
       </div>
     </main>
-
-    <footer>
-      <div class="wrap footer-grid">
-        <div>
-          <h3>Hippocampus</h3>
-          <p>
-            Your notes, a graph of them, and agents that work in them. Free
-            and open source. This site sets no cookies and loads nothing from
-            other sites.
-          </p>
+    <footer class="foot">
+      <div class="wrap">
+        <div class="foot-cols">
+          <div>
+            <h3>Hippocampus</h3>
+            <p>Your notes, a graph of them, and agents that work in them. Free and open source. This site sets no cookies and loads nothing from other sites.</p>
+          </div>
+          <div>
+            <h3>Product</h3>
+            <ul>
+              <li><a href="download.html">Download</a></li>
+              <li><a href="docs.html">Docs</a></li>
+              <li><a href="changelog.html">Changelog</a></li>
+              <li><a href="account.html">Account</a></li>
+            </ul>
+          </div>
+          <div>
+            <h3>Help</h3>
+            <ul>
+              <li><a href="status.html">Status</a></li>
+              <li><a href="feedback.html">Feedback</a></li>
+              <li><a href="https://github.com/Jacuzzik/hippocampus">GitHub</a></li>
+            </ul>
+          </div>
+          <div>
+            <h3>Trust</h3>
+            <ul>
+              <li><a href="privacy.html">Privacy</a></li>
+              <li><a href="security.html">Security</a></li>
+            </ul>
+          </div>
         </div>
-        <div>
-          <h3>Product</h3>
-          <ul>
-            <li><a href="download.html">Download</a></li>
-            <li><a href="docs.html">Docs</a></li>
-            <li><a href="changelog.html">Changelog</a></li>
-            <li><a href="account.html">Account</a></li>
-          </ul>
-        </div>
-        <div>
-          <h3>Help</h3>
-          <ul>
-            <li><a href="status.html">Status</a></li>
-            <li><a href="feedback.html">Feedback</a></li>
-            <li><a class="with-icon" href="https://github.com/Jacuzzik/hippocampus"><img class="pxicon" src="img/icons/tile/github.svg" width="16" height="16" alt="" />GitHub</a></li>
-          </ul>
-        </div>
-        <div>
-          <h3>Trust</h3>
-          <ul>
-            <li><a href="privacy.html">Privacy</a></li>
-            <li><a href="security.html">Security</a></li>
-          </ul>
-        </div>
+        <p class="wordmark" aria-hidden="true">HIPPOCAMPUS</p>
       </div>
     </footer>
+    <script type="module" src="studio.js"></script>
   </body>
 </html>
