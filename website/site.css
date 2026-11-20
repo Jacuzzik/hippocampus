@@ -1655,3 +1655,30 @@ footer a:hover {
 .button .pxicon {
   margin-left: -4px;
 }
+
+/* Announcement bar above the top bar: one line, the app's accent on the tag, links to the changelog. */
+.announce {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 36px;
+  padding: 6px 16px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  border-bottom: 1px solid var(--color-line);
+  background: var(--color-accent-soft);
+  text-decoration: none;
+  text-align: center;
+}
+.announce:hover {
+  color: var(--color-text);
+}
+.announce .tag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--color-accent);
+  color: var(--color-accent);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
