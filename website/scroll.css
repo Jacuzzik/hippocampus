@@ -1,0 +1,58 @@
+/* Hippocampus home page: scroll effects. Loaded after motion.css; scroll.js adds the markup.
+   Everything here is decoration. Reduced motion and no-script visitors get the still page. */
+
+/* ---- Memory trail: a rail at the left edge that lights each section as you pass it ------------ */
+.trail {
+  position: fixed;
+  left: 22px;
+  top: 50%;
+  transform: translateY(-50%);
+  height: min(56vh, 480px);
+  width: 14px;
+  z-index: 5;
+  pointer-events: none;
+  display: none;
+}
+@media (min-width: 1100px) {
+  .trail { display: block; }
+}
+.trail::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 6px;
+  width: 1px;
+  background: var(--color-line);
+}
+.trail .fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 6px;
+  width: 1px;
+  background: var(--color-accent, currentColor);
+  transform-origin: top;
+  transform: scaleY(var(--prog, 0));
+}
+.trail .dot {
+  position: absolute;
+  left: 2px;
+  width: 9px;
+  height: 9px;
+  margin-top: -4.5px;
+  border-radius: 50%;
+  border: 1px solid var(--color-line);
+  background: var(--color-bg, #000);
+  transition: background 300ms ease, border-color 300ms ease;
+}
+.trail .dot.lit {
+  background: var(--color-accent, currentColor);
+  border-color: var(--color-accent, currentColor);
+}
+
+/* ---- Picture drift: each app picture moves a little against its card as you scroll ---------- */
+.motion:not(.still) .tile .shot img {
+  transform: translate3d(0, var(--sy, 0px), 0);
+  will-change: transform;
+}
