@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Button from "../controls/Button.svelte";
   import { invoke } from "@tauri-apps/api/core";
 
   // A password link to one note (14.04). Made on the user's account; the password is checked on the
@@ -43,9 +44,7 @@
     <p>Link made. Send the password separately.</p>
     <input readonly aria-label="Share link" value={link.url} />
     <div class="row">
-      <button type="button" onclick={copy}
-        >{copied ? "Copied" : "Copy link"}</button
-      >
+      <Button onclick={copy}>{copied ? "Copied" : "Copy link"}</Button>
       <button type="button" onclick={onclose}>Done</button>
     </div>
   {:else}
@@ -67,10 +66,8 @@
       </select></label
     >
     <div class="row">
-      <button
-        type="button"
-        disabled={busy || password.length < 8}
-        onclick={make}>Make link</button
+      <Button disabled={busy || password.length < 8} onclick={make}
+        >Make link</Button
       >
       <button type="button" onclick={onclose}>Cancel</button>
     </div>

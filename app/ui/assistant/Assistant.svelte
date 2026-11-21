@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Button from "../controls/Button.svelte";
   import { loadDraft, saveDraft } from "../drafts.ts";
   import { onMount } from "svelte";
   import type { ToolStatus } from "./model";
@@ -139,9 +140,8 @@
           >
             Approve
           </button>
-          <button
-            type="button"
-            onclick={() => assistant.decide(card.call, false)}>Decline</button
+          <Button onclick={() => assistant.decide(card.call, false)}
+            >Decline</Button
           >
         </div>
       </section>

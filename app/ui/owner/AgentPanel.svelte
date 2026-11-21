@@ -1,5 +1,6 @@
 <!-- The right-panel tab for a selected added agent, laid out as in Thalha's picture: segmented pill groups, selected in accent. -->
 <script lang="ts">
+  import Button from "../controls/Button.svelte";
   import { loadDraft, saveDraft } from "../drafts.ts";
   import { FONT_MAX, FONT_MIN, prefs } from "../prefs.svelte.ts";
   import Tabs from "../controls/Tabs.svelte";
@@ -220,13 +221,12 @@
   <div class="desc">{agent.description || NO_DATA}</div>
 
   <div class="seg" role="group" aria-label="Agent actions">
-    <button
-      type="button"
+    <Button
       onclick={() => openFolder("ide")}
       disabled={!agent.folder}
       title={agent.folder
         ? "Open this agent's folder in VS Code"
-        : "This agent has no working folder"}>IDE</button
+        : "This agent has no working folder"}>IDE</Button
     >
     <!-- 4.06: one action row, three equal buttons, in place of an IDE row and a separate run row. -->
     <button
@@ -418,7 +418,7 @@
       }}></textarea>
     <button type="submit" class="send" disabled={!text.trim()}>Send →</button>
     <div class="attach">
-      <button type="button" onclick={() => fileInput?.click()}>+ files</button>
+      <Button onclick={() => fileInput?.click()}>+ files</Button>
       <input
         bind:this={fileInput}
         type="file"
@@ -594,7 +594,7 @@
     display: flex;
     justify-content: center;
   }
-  .attach button {
+  .attach :global(button) {
     width: 100%;
     text-align: center;
   }

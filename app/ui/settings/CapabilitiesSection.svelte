@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Button from "../controls/Button.svelte";
   import ErrorRow from "../controls/ErrorRow.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { onMount } from "svelte";
@@ -105,13 +106,12 @@
           <span
             >{skill.name} <span class="muted">{skill.description}</span></span
           >
-          <button
-            type="button"
+          <Button
             disabled={busy !== null}
             onclick={() => removeSkill(skill.name)}
           >
             {armed === skill.name ? "Confirm remove" : "Remove"}
-          </button>
+          </Button>
         </li>
       {/each}
     </ul>
@@ -124,8 +124,7 @@
       bind:value={installPath}
       oninput={() => (installArmed = false)}
     />
-    <button
-      type="button"
+    <Button
       disabled={!installPath.trim() || busy !== null}
       onclick={installSkill}
     >
@@ -134,7 +133,7 @@
         : installArmed
           ? `Confirm install of ${installPath.trim()}`
           : "Install"}
-    </button>
+    </Button>
   </div>
   {#if error}<ErrorRow message={error} onretry={load} />{/if}
 </section>

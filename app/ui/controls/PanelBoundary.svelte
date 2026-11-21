@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Button from "./Button.svelte";
   import type { Snippet } from "svelte";
   import { errorText, recordError } from "../crashLog.svelte.ts";
 
@@ -17,7 +18,7 @@
     <div class="failed" role="alert" style:grid-area={area || null}>
       <b>{name} hit an error</b>
       <p>{errorText(cause)}</p>
-      <button type="button" onclick={reset}>Reload panel</button>
+      <Button onclick={reset}>Reload panel</Button>
     </div>
   {/snippet}
 </svelte:boundary>
@@ -44,15 +45,5 @@
     margin: 0;
     color: var(--color-text-muted);
     overflow-wrap: anywhere;
-  }
-
-  button {
-    padding: var(--space-1) var(--space-3);
-    color: var(--color-text);
-    font: inherit;
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    cursor: pointer;
   }
 </style>
