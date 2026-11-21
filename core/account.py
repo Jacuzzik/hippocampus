@@ -83,6 +83,15 @@ def _reason(error: urllib.error.HTTPError) -> str:
     return str(message) if message else str(error.code)
 
 
+def _signed_out_reason(why: Exception, expired: bool) -> str:
+    """Why the service ended this sign-in. A ban (14.06, set by the owner) is said plainly."""
+    if "banned" in str(why).lower():
+        return "This account is suspended. The app works as before without it; write to the security contact on the website to ask why."
+    if expired:
+        return "Your sign-in expired. Sign in again."
+    return "This account was deleted. Sign in again to use an account."
+
+
 def _now() -> str:
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
@@ -180,12 +189,12 @@ class Account:
                 session = self._refresh(session)
             except Offline:
                 offline = True  # keep the old session; the app works the same without the service
-            except Refused:
+            except Refused as why:
                 self._wipe()
                 return {
                     **base,
                     "signed_in": False,
-                    "problem": "Your sign-in expired. Sign in again.",
+                    "problem": _signed_out_reason(why, expired=True),
                 }
         # The account can be deleted on the web. Check it still exists, at most every 5 minutes.
         if not offline and time.time() - getattr(self, "_checked_at", 0) > 300:
@@ -194,12 +203,12 @@ class Account:
                 self._checked_at = time.time()
             except Offline:
                 offline = True
-            except Refused:
+            except Refused as why:
                 self._wipe()
                 return {
                     **base,
                     "signed_in": False,
-                    "problem": "This account was deleted. Sign in again to use an account.",
+                    "problem": _signed_out_reason(why, expired=False),
                 }
         user = session.get("user") or {}
         meta = user.get("user_metadata") or {}

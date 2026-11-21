@@ -15,7 +15,7 @@ from ai.providers import base
 from ai.providers.base import NetworkBlocked, Reply
 from ai.router import Router
 from core import __main__ as sidecar
-from core import activity, budget, helpers, jobs, memory, share, skills
+from core import account, activity, budget, helpers, jobs, memory, share, skills
 from core.memory import NotSetUp
 from core.settings import Caps, Settings, load_settings, save_budget, save_network_mode
 
@@ -473,7 +473,11 @@ def test_password_links_are_checked_and_then_refused_when_signed_out() -> None:
         share.request_link("long enough password")
 
 
-def test_share_request_reaches_the_share_check_from_the_sidecar(tmp_path: Path) -> None:
+def test_share_request_reaches_the_share_check_from_the_sidecar(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Never the real keychain: a computer signed in to an account would make a real link.
+    monkeypatch.setattr(account.keyring, "get_password", lambda service, user: None)
     session = sidecar.Session(tmp_path, Settings(), emit=lambda e: None)
     with pytest.raises(ValueError, match="at least 8"):
         session.dispatch({"method": "share", "path": "a.md", "password": "short"})
