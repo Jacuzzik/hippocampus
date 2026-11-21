@@ -43,7 +43,8 @@
   }
 
   /* A value or button keeps its own width; only a value longer than half the row wraps. */
-  .setting > :global(button) {
+  .setting > :global(button),
+  .setting > :global(span.row) {
     flex: none;
     white-space: nowrap;
   }
