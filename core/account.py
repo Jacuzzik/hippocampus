@@ -187,6 +187,20 @@ class Account:
                     "signed_in": False,
                     "problem": "Your sign-in expired. Sign in again.",
                 }
+        # The account can be deleted on the web. Check it still exists, at most every 5 minutes.
+        if not offline and time.time() - getattr(self, "_checked_at", 0) > 300:
+            try:
+                self._call("/auth/v1/user", method="GET", token=session["access_token"])
+                self._checked_at = time.time()
+            except Offline:
+                offline = True
+            except Refused:
+                self._wipe()
+                return {
+                    **base,
+                    "signed_in": False,
+                    "problem": "This account was deleted. Sign in again to use an account.",
+                }
         user = session.get("user") or {}
         meta = user.get("user_metadata") or {}
         return {
