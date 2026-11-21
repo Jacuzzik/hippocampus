@@ -66,9 +66,19 @@ class HivePart:
             if time.time() - sent_at >= 20 and self.terminals.info(agent)["status"] == "Idle":
                 try:
                     self.terminals.send_line(agent, COMPACT_PROMPT.format(agent=agent))
+                    self.resend_after_compact[agent] = time.time()
                 except RuntimeError:
                     pass
                 del self.compact_waiting[agent]
+        # 8.12: once the compaction is done and the agent is Idle again, point it at its briefing again.
+        for agent, sent_at in list(self.resend_after_compact.items()):
+            if time.time() - sent_at < 20 or self.terminals.info(agent)["status"] != "Idle":
+                continue
+            del self.resend_after_compact[agent]
+            try:
+                self.terminals.resend_briefing(agent)
+            except RuntimeError:
+                pass
 
     def _write_all_inboxes(self) -> None:
         """Writes the start-up inbox file for every added agent and for the main agent."""

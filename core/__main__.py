@@ -165,6 +165,7 @@ class Session(
         now = datetime.now()
         self.compact_day: str | None = now.date().isoformat() if now.hour >= 3 else None
         self.compact_waiting: dict[str, float] = {}
+        self.resend_after_compact: dict[str, float] = {}
         # Agents whose start-up inbox has not yet been typed into their terminal (agent -> inbox file path).
         self.inbox_pending: dict[str, str] = {}
         self.boot = uuid.uuid4().hex
