@@ -5,6 +5,7 @@
   import Tabs from "../controls/Tabs.svelte";
   import EmptyState from "../controls/EmptyState.svelte";
   import { invoke } from "@tauri-apps/api/core";
+  import Loading from "../controls/Loading.svelte";
   import { every } from "../poll.ts";
   import { onChanged } from "../changed.ts";
   import LiveTerminal, {
@@ -78,14 +79,20 @@
   // A block change is a new session: stop the running CLI, then start it again with the new setting.
   // It ends the running session, so the button asks first.
   let confirmBlock = $state(false);
+  let restarting = $state(false);
   async function toggleBlock(): Promise<void> {
     confirmBlock = false;
     blocked = !blocked;
-    await invoke("sidecar_call", {
-      method: "terminal_stop",
-      params: { agent: agent.id },
-    }).catch(() => undefined);
-    await terminal?.restart();
+    restarting = true;
+    try {
+      await invoke("sidecar_call", {
+        method: "terminal_stop",
+        params: { agent: agent.id },
+      }).catch(() => undefined);
+      await terminal?.restart();
+    } finally {
+      restarting = false;
+    }
   }
 
   // "+ files": a text file (up to 100 KB) goes into the agent's queue, as the Assistant does.
@@ -154,6 +161,8 @@
     detail: string;
     status: string;
   };
+  // The messages and traces lists show the shared loader until their first answer for the chosen view.
+  let loaded = $state(false);
   let messages = $state<Message[]>([]);
   let traces = $state<Trace[]>([]);
   async function loadView(): Promise<void> {
@@ -175,10 +184,13 @@
       }
     } catch (cause) {
       error = String(cause);
+    } finally {
+      loaded = true;
     }
   }
   $effect(() => {
     if (view !== "messages" && view !== "traces") return;
+    loaded = false;
     void loadView();
     // Messages follow the inbox event; traces have no backend event, so they keep a timer.
     return view === "messages"
@@ -248,7 +260,9 @@
       type="button"
       aria-pressed={blocked}
       class:on={blocked}
-      onclick={() => (confirmBlock = !confirmBlock)}>block tools</button
+      disabled={restarting}
+      onclick={() => (confirmBlock = !confirmBlock)}
+      >{restarting ? "restarting…" : "block tools"}</button
     >
   </div>
   {#if confirmBlock}
@@ -311,7 +325,9 @@
   {#if view === "git"}
     <pre class="git" aria-label="Git status">{gitText}</pre>
   {/if}
-  {#if view === "messages"}
+  {#if (view === "messages" || view === "traces") && !loaded}
+    <Loading what={view === "messages" ? "the messages" : "the traces"} />
+  {:else if view === "messages"}
     {#if messages.length === 0}
       <EmptyState
         title="No messages yet"
@@ -340,7 +356,7 @@
       </ul>
     {/if}
   {/if}
-  {#if view === "traces"}
+  {#if view === "traces" && loaded}
     {#if traces.length === 0}
       <EmptyState
         title="No tool calls yet"

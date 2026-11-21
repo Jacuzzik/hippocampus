@@ -456,7 +456,24 @@ class Session(
         if kind is not None and kind not in journal.KINDS:
             raise ValueError(f"kind must be one of: {', '.join(journal.KINDS)}")
         limit = _whole(request.get("limit", 200), "limit")
-        return {"rows": journal.read(self.storage, kind, min(limit, 500))}
+        dates = {}
+        for key in ("since", "until"):
+            value = request.get(key)
+            if value is not None:
+                try:
+                    datetime.strptime(str(value), "%Y-%m-%d")
+                except ValueError:
+                    raise ValueError(f'"{key}" must be a date like 2026-11-21') from None
+                dates[key] = str(value)
+        agent = request.get("agent")
+        rows = journal.read(
+            self.storage,
+            kind,
+            min(limit, 500),
+            agent=str(agent) if agent else None,
+            **dates,
+        )
+        return {"rows": rows}
 
     def clear_activity(self) -> dict[str, Any]:
         """Empty the tool log and office events kept on this computer."""

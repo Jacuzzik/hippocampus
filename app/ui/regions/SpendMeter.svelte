@@ -10,6 +10,7 @@
     used: { app: { daily: number } };
   };
   let budget = $state<Budget | null>(null);
+  let loaded = $state(false);
 
   async function load(): Promise<void> {
     try {
@@ -17,6 +18,8 @@
     } catch {
       // The meter is a convenience; Settings, Budgets shows the failure if it matters.
       budget = null;
+    } finally {
+      loaded = true;
     }
   }
   onMount(() => {
@@ -29,7 +32,11 @@
   );
 </script>
 
-{#if shown}
+{#if !loaded}
+  <span class="spend" role="status" aria-label="Reading tokens used today"
+    >…</span
+  >
+{:else if shown}
   <button
     type="button"
     class="spend {shown.level}"
