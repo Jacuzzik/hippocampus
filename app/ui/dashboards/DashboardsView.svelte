@@ -3,7 +3,6 @@
   // Numbers are read when a dashboard opens and when Refresh is pressed, never on a timer.
   // Locked (Settings > Dashboards) makes the tiles read-only: no click, no typing, no keyboard focus.
   import { invoke } from "@tauri-apps/api/core";
-  import { dialogFocus } from "../controls/dialogFocus.ts";
   import ErrorRow from "../controls/ErrorRow.svelte";
   import Loading from "../controls/Loading.svelte";
   import Tabs from "../controls/Tabs.svelte";
@@ -163,13 +162,14 @@
   );
 </script>
 
+<!-- In the window's grid, not over it: the rail stays on the left and the agent cards on the right.
+     Escape anywhere inside goes back to the graph. -->
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <div
   class="view"
-  role="dialog"
-  aria-modal="true"
+  role="region"
   aria-label="Dashboards"
   tabindex="-1"
-  use:dialogFocus
   onkeydown={onKey}
 >
   <header>
@@ -201,6 +201,8 @@
   </header>
   <div class="body">
     <nav>
+      <!-- The graph is the main dashboard: choosing it goes back to the normal layout. -->
+      <button type="button" class="to-graph" onclick={onclose}>Graph</button>
       <Tabs
         {items}
         bind:value={current}
@@ -236,9 +238,9 @@
         {/if}
       {/if}
       {#if current === "calendar"}
-        {#key refreshed}<CalendarBoard />{/key}
+        <div class="fill">{#key refreshed}<CalendarBoard />{/key}</div>
       {:else if current === "phone"}
-        {#key refreshed}<PhoneBoard />{/key}
+        <div class="fill">{#key refreshed}<PhoneBoard />{/key}</div>
       {:else if error === NEEDS_REPO}
         <p class="note" role="status">
           Write a repository as owner/name and press Show. It is read with the
@@ -249,7 +251,11 @@
       {:else if tiles === null}
         <Loading what={title} />
       {:else}
-        <ul class="tiles">
+        <!-- About as many columns as rows, so a few tiles still fill the board in a grid, not one tall row. -->
+        <ul
+          class="tiles"
+          style:--cols={Math.max(1, Math.ceil(Math.sqrt(tiles.length)))}
+        >
           {#each tiles as tile (tile.label)}
             <li class:warn={tile.tone === "warn"}>
               <span class="label">{tile.label}</span>
@@ -265,11 +271,12 @@
 
 <style>
   .view {
-    position: fixed;
-    inset: 0;
-    z-index: 15;
+    grid-area: board;
     display: flex;
     flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
     padding: var(--space-4);
     color: var(--color-text);
     background: var(--color-bg-0);
@@ -330,12 +337,46 @@
   }
 
   nav {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
     overflow-y: auto;
   }
 
+  .to-graph {
+    min-height: var(--size-28);
+    padding: var(--space-1) var(--space-3);
+    color: var(--color-text);
+    font: inherit;
+    text-align: left;
+    background: none;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+  }
+
+  .to-graph:hover {
+    background: var(--color-surface);
+  }
+
+  /* The board fills its column: the tiles, the calendar and the phone stretch to the bottom. */
   .board {
+    display: flex;
+    flex-direction: column;
     min-width: 0;
+    min-height: 0;
     overflow-y: auto;
+  }
+
+  .board > .tiles,
+  .fill {
+    flex: 1 1 auto;
+  }
+
+  .fill {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
   }
 
   .repo {
@@ -360,9 +401,12 @@
     width: min(320px, 100%);
   }
 
+  /* Columns and rows of 1fr: however many tiles a dashboard has, they share the whole board. */
   .tiles {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr));
+    grid-auto-rows: minmax(120px, 1fr);
+    align-content: stretch;
     gap: var(--space-3);
     margin: var(--space-3) 0 0;
     padding: 0;
@@ -372,9 +416,10 @@
   .tiles li {
     display: flex;
     flex-direction: column;
-    gap: var(--space-1);
+    justify-content: center;
+    gap: var(--space-2);
     min-width: 0;
-    padding: var(--space-3);
+    padding: var(--space-4);
     background: var(--color-bg-1);
     border: 1px solid var(--color-border);
     border-left: 3px solid var(--color-border);
@@ -392,7 +437,8 @@
   }
 
   .tiles b {
-    font-size: var(--font-size-lg);
+    font-size: calc(var(--font-size-xl) * 1.6);
+    line-height: 1.1;
     overflow-wrap: anywhere;
   }
 </style>

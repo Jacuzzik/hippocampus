@@ -33,7 +33,7 @@ test("dashboards open from the top bar, list six dashboards and show numbers fro
     .locator("header.topbar")
     .getByRole("button", { name: "Dashboards", exact: true })
     .click();
-  const view = page.getByRole("dialog", { name: "Dashboards" });
+  const view = page.getByRole("region", { name: "Dashboards" });
   await expect(view.getByRole("tab")).toHaveText([
     "Overview",
     "Agents and spend",
@@ -72,7 +72,7 @@ test("Ctrl+D and the palette open the dashboards", async ({ page }) => {
   await mockSidecar(page);
   await page.goto("/");
   await page.keyboard.press("Control+d");
-  const view = page.getByRole("dialog", { name: "Dashboards" });
+  const view = page.getByRole("region", { name: "Dashboards" });
   await expect(view).toBeVisible();
   await view.getByRole("button", { name: "Close dashboards" }).click();
   await page.keyboard.press("Control+p");
@@ -90,7 +90,7 @@ test("dashboards are locked by default, and the switch in Settings unlocks them 
   await mockSidecar(page, { fail: ["graph"] });
   await page.goto("/");
   await page.keyboard.press("Control+d");
-  const view = page.getByRole("dialog", { name: "Dashboards" });
+  const view = page.getByRole("region", { name: "Dashboards" });
   const board = view.getByRole("tabpanel");
   await expect(view.getByRole("button", { name: /locked/ })).toHaveText(
     "Locked",
@@ -147,7 +147,7 @@ test("the GitHub dashboard asks for a repository, shows its numbers and says why
   });
   await page.goto("/");
   await page.keyboard.press("Control+d");
-  const view = page.getByRole("dialog", { name: "Dashboards" });
+  const view = page.getByRole("region", { name: "Dashboards" });
   await view.getByRole("tab", { name: "GitHub" }).click();
   const board = view.getByRole("tabpanel");
   await expect(
@@ -189,7 +189,7 @@ test("the calendar shows events and job days, adds and removes an event, and cha
   });
   await page.goto("/");
   await page.keyboard.press("Control+d");
-  const view = page.getByRole("dialog", { name: "Dashboards" });
+  const view = page.getByRole("region", { name: "Dashboards" });
   await view.getByRole("tab", { name: "Calendar and scheduling" }).click();
   const board = view.getByRole("tabpanel");
   await expect(board.getByText("November 2026")).toBeVisible();
@@ -235,7 +235,7 @@ test("the Phone dashboard lists devices and starts and stops mirroring; a phone 
   });
   await page.goto("/");
   await page.keyboard.press("Control+d");
-  const view = page.getByRole("dialog", { name: "Dashboards" });
+  const view = page.getByRole("region", { name: "Dashboards" });
   await view.getByRole("tab", { name: "Phone" }).click();
   const board = view.getByRole("tabpanel");
   const ready = board.locator("li", { hasText: "SM A525F" });
@@ -266,7 +266,7 @@ test("an app is connected in Settings with a key that is never shown again, gets
   await mockSidecar(page);
   await page.goto("/");
   await page.keyboard.press("Control+d");
-  const view = page.getByRole("dialog", { name: "Dashboards" });
+  const view = page.getByRole("region", { name: "Dashboards" });
   await expect(view.getByRole("tab", { name: "Shopify" })).toHaveCount(0);
   await view.getByRole("button", { name: /locked/ }).click();
   const settings = page.getByRole("dialog", { name: "Settings" });
@@ -316,4 +316,58 @@ test("an app is connected in Settings with a key that is never shown again, gets
     "aria-selected",
     "true",
   );
+});
+
+async function box_(
+  locator: import("@playwright/test").Locator,
+): Promise<{ x: number; y: number; width: number; height: number }> {
+  const found = await locator.boundingBox();
+  if (!found) throw new Error("The element has no box: it is not on screen.");
+  return found;
+}
+
+test("a dashboard takes the notes, graph and Control Room space; the bottom bar goes and the agent cards stand on the right", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await mockSidecar(page);
+  await page.goto("/");
+  await expect(page.locator("footer.status-bar")).toBeVisible();
+  await page.keyboard.press("Control+d");
+  const view = page.getByRole("region", { name: "Dashboards" });
+  for (const name of [
+    "Overview",
+    "Agents and spend",
+    "Tasks",
+    "Notes",
+    "System",
+    "Activity",
+    "GitHub",
+    "Calendar and scheduling",
+    "Phone",
+  ]) {
+    await view.getByRole("tab", { name, exact: true }).click();
+    // No bottom bar, no Control Room, no note list, no graph: only the rail, the dashboard and the cards.
+    await expect(page.locator("footer.status-bar")).toHaveCount(0);
+    await expect(page.locator(".right-panel")).toBeHidden();
+    await expect(page.getByRole("complementary", { name: "Notes" })).toBeHidden();
+    await expect(page.getByRole("main", { name: "Brain graph" })).toBeHidden();
+    const rail = page.getByRole("complementary", { name: "Agent cards" });
+    await expect(rail.locator("[data-agent='hippoherman']")).toBeVisible();
+    // The dashboard reaches the bottom of the window and the rail's left edge.
+    const box = await box_(view);
+    const railBox = await box_(rail);
+    expect(Math.round(box.y + box.height)).toBe(1080);
+    expect(Math.round(box.x + box.width)).toBe(Math.round(railBox.x));
+  }
+  // The tiles fill the board: the last row ends near the board's bottom.
+  await view.getByRole("tab", { name: "Overview", exact: true }).click();
+  const board = await box_(view.getByRole("tabpanel"));
+  const tiles = await box_(view.locator(".tiles"));
+  expect(tiles.y + tiles.height).toBeGreaterThan(board.y + board.height - 40);
+  // The graph is the main dashboard: choosing it brings the normal layout back.
+  await view.getByRole("button", { name: "Graph", exact: true }).click();
+  await expect(page.locator("footer.status-bar")).toBeVisible();
+  await expect(page.getByRole("main", { name: "Brain graph" })).toBeVisible();
+  await expect(page.getByRole("complementary", { name: "Agent cards" })).toHaveCount(0);
 });

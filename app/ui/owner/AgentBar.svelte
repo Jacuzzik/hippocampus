@@ -113,7 +113,9 @@
   }
 
   // Opens the Add agent dialog (identity, workspace, engine, briefing).
-  let { onadd }: { onadd: () => void } = $props();
+  // vertical: the cards stack in a column, for the agent rail beside a dashboard.
+  let { onadd, vertical = false }: { onadd: () => void; vertical?: boolean } =
+    $props();
 
   // Reads the provider and model in use. Runs at start and again when the Monitor tab changes the engine.
   async function loadAccount(): Promise<void> {
@@ -528,6 +530,7 @@
 
 <div
   class="agent-bar"
+  class:vertical
   aria-label="Agents"
   bind:this={bar}
   data-messages-sent={sent}
@@ -753,6 +756,25 @@
     gap: var(--space-2);
     min-width: 0;
     overflow-x: auto;
+  }
+
+  /* Beside a dashboard the cards stack top to bottom and take the column's width. */
+  .agent-bar.vertical {
+    flex-direction: column;
+    align-items: stretch;
+    height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .agent-bar.vertical > :global(*) {
+    flex: none;
+    min-width: 0;
+  }
+
+  .agent-bar.vertical .chip {
+    width: 100%;
+    min-width: 0;
   }
 
   .chip {

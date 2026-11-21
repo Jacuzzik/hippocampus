@@ -8,6 +8,7 @@
   import RightPanel, { PANEL_TABS } from "./regions/RightPanel.svelte";
   import { prefs } from "./prefs.svelte.ts";
   import StatusBar from "./regions/StatusBar.svelte";
+  import AgentBar from "./owner/AgentBar.svelte";
   import AccountDialog from "./overlays/AccountDialog.svelte";
   import LoadingScreen from "./overlays/LoadingScreen.svelte";
   import HealthBar from "./overlays/HealthBar.svelte";
@@ -87,8 +88,14 @@
   // The assistant tool allowlist: from the command palette.
   let toolsOpen = $state(false);
   let addOpen = $state(false);
-  // The dashboards: from the top bar, the palette or Ctrl+D.
+  // The dashboards: from the top bar, the palette or Ctrl+D. The graph is the main dashboard; any other one
+  // takes the space of the notes, graph and Control Room, the bottom bar goes and the agent cards move to a
+  // column on the right. The graph and the terminals stay mounted underneath, so nothing restarts.
   let dashOpen = $state(false);
+  function closeDashboards(): void {
+    dashOpen = false;
+    viewKey++; // the graph was hidden, so refit it to its canvas
+  }
   // The settings: six tabs, from the ribbon or the command palette.
   let settingsOpen = $state(false);
   let settingsStart = $state<SettingsPage>("General");
@@ -124,7 +131,8 @@
     else if (e.key === "d") {
       // In a terminal Ctrl+D ends the input, so it is left to the terminal there.
       if ((e.target as HTMLElement | null)?.closest?.(".xterm")) return;
-      dashOpen = true;
+      if (dashOpen) closeDashboards();
+      else dashOpen = true;
     } else if (e.key === ",") {
       settingsStart = "General";
       settingsOpen = true;
@@ -330,18 +338,6 @@
   >
 {/if}
 
-{#if dashOpen}
-  <PanelBoundary name="Dashboards"
-    >{#await DashboardsView() then { default: View }}<View
-        onclose={() => (dashOpen = false)}
-        onsettings={() => {
-          settingsStart = "Dashboards";
-          settingsOpen = true;
-        }}
-      />{/await}</PanelBoundary
-  >
-{/if}
-
 {#if addOpen}
   <PanelBoundary name="Add agent"
     >{#await AddAgentDialog() then { default: Dialog }}<Dialog
@@ -382,6 +378,7 @@
   class:no-panel={!panelOpen}
   class:terminal-only={terminalOnly}
   class:focus={focusOn}
+  class:dash={dashOpen}
 >
   <Ribbon
     bind:sidebarOpen
@@ -428,7 +425,21 @@
   <PanelBoundary name="Control Room" area="panel">
     <RightPanel open={panelOpen || terminalOnly} />
   </PanelBoundary>
-  {#if sidebarOpen && data && !terminalOnly}
+  {#if dashOpen}
+    <PanelBoundary name="Dashboards" area="board"
+      >{#await DashboardsView() then { default: View }}<View
+          onclose={closeDashboards}
+          onsettings={() => {
+            settingsStart = "Dashboards";
+            settingsOpen = true;
+          }}
+        />{/await}</PanelBoundary
+    >
+    <aside class="agent-rail md-theme" aria-label="Agent cards">
+      <AgentBar vertical onadd={() => (addOpen = true)} />
+    </aside>
+  {/if}
+  {#if sidebarOpen && data && !terminalOnly && !dashOpen}
     <div
       class="resize-handle left"
       role="separator"
@@ -437,7 +448,7 @@
       onpointerdown={(e) => startResize("left", e)}
     ></div>
   {/if}
-  {#if panelOpen || terminalOnly}
+  {#if (panelOpen || terminalOnly) && !dashOpen}
     <div
       class="resize-handle right"
       role="separator"
@@ -446,7 +457,9 @@
       onpointerdown={(e) => startResize("right", e)}
     ></div>
   {/if}
-  <StatusBar {data} onadd={() => (addOpen = true)} />
+  {#if !dashOpen}
+    <StatusBar {data} onadd={() => (addOpen = true)} />
+  {/if}
 </div>
 
 <style>
@@ -554,6 +567,32 @@
 
   .shell.focus :global(.chip:not(.selected)) {
     opacity: 0.4;
+  }
+
+  /* A dashboard other than the graph: rail, dashboard, agent cards. The notes, graph and Control Room stay
+     mounted but hidden, so terminals keep running; the bottom bar is not drawn. */
+  .shell.dash,
+  .shell.dash.terminal-only {
+    grid-template-columns: var(--layout-ribbon-width) minmax(0, 1fr) var(
+        --agent-rail-col
+      );
+    grid-template-rows: minmax(0, 1fr);
+    grid-template-areas: "rail board agents";
+    --agent-rail-col: 344px; /* one agent card (320px) and the rail padding */
+  }
+
+  .shell.dash > :global(.sidebar),
+  .shell.dash > :global(.graph),
+  .shell.dash > :global(.right-panel) {
+    display: none;
+  }
+
+  .agent-rail {
+    grid-area: agents;
+    min-height: 0;
+    padding: var(--space-3);
+    background: var(--color-bg-1);
+    border-left: 1px solid var(--color-border);
   }
 
   .shell.terminal-only {

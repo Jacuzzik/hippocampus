@@ -171,9 +171,13 @@
     cursor: pointer;
   }
 
+  /* The month grows to fill the dashboard: the weekday row keeps its height, the weeks share the rest. */
   .grid {
+    flex: 1 1 auto;
     display: grid;
     grid-template-columns: repeat(7, minmax(0, 1fr));
+    grid-template-rows: auto;
+    grid-auto-rows: minmax(var(--size-64), 1fr);
     gap: var(--space-1);
     margin-top: var(--space-3);
   }
