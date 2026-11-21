@@ -42,7 +42,14 @@
     flex: 0 0 12em;
   }
 
+  /* A value or button keeps its own width; only a value longer than half the row wraps. */
+  .setting > :global(button) {
+    flex: none;
+    white-space: nowrap;
+  }
+
   .setting :global(code) {
+    flex: 0 0 auto;
     max-width: 50%;
     color: var(--color-text-muted);
     overflow-wrap: anywhere;

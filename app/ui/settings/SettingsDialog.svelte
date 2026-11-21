@@ -1000,8 +1000,9 @@
   .box {
     display: flex;
     flex-direction: column;
-    width: min(920px, calc(100vw - 2 * var(--space-4)));
-    height: min(640px, 85vh);
+    /* Large enough on a big screen that the page list and most pages show without scrolling. */
+    width: min(1200px, calc(100vw - 2 * var(--space-4)));
+    height: min(880px, 90vh);
     padding: var(--space-4);
     color: var(--color-text);
     background: var(--color-bg-1);

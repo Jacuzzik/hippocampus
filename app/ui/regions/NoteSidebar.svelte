@@ -99,6 +99,12 @@
 </aside>
 
 <style>
+  /* The tag dropdown is made to grow in a row; in this column it must keep its own height, or it
+     pushes the tags and the note list down to the middle of the sidebar. */
+  .sidebar > :global(.dd) {
+    flex: none;
+  }
+
   .sidebar {
     grid-area: sidebar;
     display: flex;

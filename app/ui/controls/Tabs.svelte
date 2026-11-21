@@ -68,6 +68,12 @@
     else return;
     e.preventDefault();
   }
+  // Segmented rows: the last tab stretches over the empty cells, so no row ends with a gap.
+  const lastSpan = $derived.by(() => {
+    const cols = columns || items.length;
+    const left = items.length % cols;
+    return left === 0 ? 1 : cols - left + 1;
+  });
 </script>
 
 <div
@@ -92,6 +98,9 @@
       title={item.disabled ? item.reason : undefined}
       onclick={() => pick(item.id)}
       onkeydown={(e) => onKey(e, index)}
+      style:grid-column={segmented && index === items.length - 1 && lastSpan > 1
+        ? `span ${lastSpan}`
+        : null}
     >
       <span>{item.label}</span>
       {#if item.badge !== undefined && item.badge !== 0 && item.badge !== ""}
