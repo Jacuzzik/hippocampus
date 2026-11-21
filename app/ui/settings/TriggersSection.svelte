@@ -213,11 +213,22 @@
   }
 
   .add {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     align-items: end;
     gap: var(--space-2);
     margin-top: var(--space-2);
+  }
+
+  .add input,
+  .add select {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .add :global(button[type="submit"]) {
+    grid-column: 1 / -1;
+    justify-self: start;
   }
 
   .add label {

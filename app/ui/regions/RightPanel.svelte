@@ -16,6 +16,7 @@
 </script>
 
 <script lang="ts">
+  import Loading from "../controls/Loading.svelte";
   import { FONT_MAX, FONT_MIN, prefs } from "../prefs.svelte.ts";
   import { every } from "../poll.ts";
   import { onMount, tick } from "svelte";
@@ -89,7 +90,6 @@
   import TasksPanel from "./TasksPanel.svelte";
   import InboxPanel from "./InboxPanel.svelte";
   import MemoryPanel from "./MemoryPanel.svelte";
-  import MonitorPanel from "./MonitorPanel.svelte";
   import AsksSection from "../settings/AsksSection.svelte";
   import TriggersSection from "../settings/TriggersSection.svelte";
   import ActivityPanel from "./ActivityPanel.svelte";
@@ -299,7 +299,14 @@
           {:else if view === "memory"}
             <MemoryPanel />
           {:else if view === "monitor"}
-            <MonitorPanel />
+            <!-- B.05: the monitor code loads when its tab is first opened. -->
+            {#await import("./MonitorPanel.svelte")}
+              <Loading what="the monitor" />
+            {:then { default: MonitorPanel }}
+              <MonitorPanel />
+            {:catch cause}
+              <p role="alert">Could not load the monitor: {String(cause)}</p>
+            {/await}
           {:else if view === "ask me"}
             <AsksSection />
           {:else if view === "triggers"}
@@ -430,7 +437,7 @@
   /* The real terminal takes a fixed slice above the chat. */
   .live-wrap {
     flex: 1 1 0;
-    min-height: 300px;
+    min-height: var(--size-300);
     display: flex;
     flex-direction: column;
     margin-bottom: var(--space-2);

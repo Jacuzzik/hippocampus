@@ -1,6 +1,8 @@
 <!-- The bottom agent row: the main agent first (fixed), then added agents that can be moved. -->
 <script lang="ts">
-  import { dialogFocus } from "../controls/dialogFocus.ts";
+  import { still } from "../motion.ts";
+  import CountUp from "../controls/CountUp.svelte";
+  import Dialog from "../controls/Dialog.svelte";
   import { backend } from "../backend.svelte.ts";
   import { report } from "../notices.svelte.ts";
   import { every } from "../poll.ts";
@@ -32,15 +34,6 @@
   >([]);
   let envelopeKey = 0;
   const ENVELOPES_MAX = 4;
-  function still(): boolean {
-    const motion = document.documentElement.dataset.motion;
-    return (
-      motion === "off" ||
-      (motion !== "on" &&
-        typeof matchMedia === "function" &&
-        matchMedia("(prefers-reduced-motion: reduce)").matches)
-    );
-  }
   function cardAt(id: string): DOMRect | null {
     const card = bar?.querySelector(`[data-agent="${CSS.escape(id)}"]`);
     return card ? card.getBoundingClientRect() : null;
@@ -281,7 +274,37 @@
   // Fallback is the account's own provider, not a guess: a Codex account with no running CLI must not show Ollama.
   const runningId = $derived(CLI_ID[cliWord] ?? account?.provider ?? "");
   const runningLogo = $derived(providerLogo(runningId));
+  // 7.33: the crash records the backend wrote for each agent ("agent <id>"), newest first.
+  let crashes = $state<Record<string, { count: number; last: string }>>({});
+  async function refreshCrashes(): Promise<void> {
+    try {
+      const rows = (
+        await invoke<{ crashes: { at: string; source: string }[] }>(
+          "sidecar_call",
+          { method: "crashes" },
+        )
+      ).crashes;
+      const next: Record<string, { count: number; last: string }> = {};
+      for (const row of rows) {
+        if (!row.source.startsWith("agent ")) continue;
+        const id = row.source.slice(6);
+        const seen = next[id];
+        if (seen) seen.count += 1;
+        else next[id] = { count: 1, last: row.at };
+      }
+      crashes = next;
+    } catch {
+      /* no records to show; the status word still says Crashed */
+    }
+  }
+  function crashNote(id: string): string {
+    const c = crashes[id];
+    return c
+      ? `${c.count} earlier ${c.count === 1 ? "crash" : "crashes"}, last ${c.last.slice(0, 16).replace("T", " ")}`
+      : "";
+  }
   async function refreshLive(): Promise<void> {
+    void refreshCrashes();
     for (const id of ["hippoherman", ...added.map((a) => a.id)]) {
       try {
         const info = await invoke<{
@@ -433,99 +456,76 @@
 {/if}
 
 {#if agentEdit.current}
-  <div
-    class="info-scrim"
-    role="presentation"
-    onmousedown={() => (agentEdit.current = null)}
+  <Dialog
+    title={agentEdit.current.mode === "rename" ? "Rename agent" : "Agent note"}
+    heading={agentEdit.current.mode === "rename"
+      ? "Rename"
+      : "Note (only you can see this)"}
+    onclose={() => (agentEdit.current = null)}
+    center
+    dim
+    z={30}
+    width="min(var(--size-320), calc(100vw - 2 * var(--space-4)))"
   >
-    <div
-      class="info-box"
-      role="dialog"
-      aria-modal="true"
-      aria-label={agentEdit.current.mode === "rename"
-        ? "Rename agent"
-        : "Agent note"}
-      tabindex="-1"
-      use:dialogFocus
-      onmousedown={(e) => e.stopPropagation()}
-    >
-      <header>
-        <b
-          >{agentEdit.current.mode === "rename"
-            ? "Rename"
-            : "Note (only you can see this)"}</b
-        >
-      </header>
-      {#if agentEdit.current.mode === "rename"}
-        <input
-          class="edit-field"
-          bind:value={agentEdit.current.value}
-          aria-label="Name"
-        />
-      {:else}
-        <textarea
-          class="edit-field"
-          rows="5"
-          bind:value={agentEdit.current.value}
-          aria-label="Note"></textarea>
-      {/if}
-      <div class="edit-actions">
-        <button type="button" onclick={() => (agentEdit.current = null)}
-          >Cancel</button
-        >
-        <button type="button" onclick={saveEdit}>Save</button>
-      </div>
+    {#if agentEdit.current.mode === "rename"}
+      <input
+        class="edit-field"
+        bind:value={agentEdit.current.value}
+        aria-label="Name"
+      />
+    {:else}
+      <textarea
+        class="edit-field"
+        rows="5"
+        bind:value={agentEdit.current.value}
+        aria-label="Note"></textarea>
+    {/if}
+    <div class="edit-actions">
+      <button type="button" onclick={() => (agentEdit.current = null)}
+        >Cancel</button
+      >
+      <button type="button" onclick={saveEdit}>Save</button>
     </div>
-  </div>
+  </Dialog>
 {/if}
 
 {#if info}
-  <div class="info-scrim" role="presentation" onmousedown={() => (info = null)}>
-    <div
-      class="info-box"
-      role="dialog"
-      aria-modal="true"
-      aria-label="{info.name} details"
-      tabindex="-1"
-      use:dialogFocus
-      onmousedown={(e) => e.stopPropagation()}
-    >
-      <header>
-        <b>{info.name}</b>
-        <button
-          type="button"
-          class="info-close"
-          aria-label="Close info"
-          onclick={() => (info = null)}>×</button
-        >
-      </header>
-      <dl>
-        <dt>ROLE</dt>
-        <dd>{info.role}</dd>
-        <dt>PROVIDER</dt>
-        <dd>{info.provider}</dd>
-        <dt>MODEL</dt>
-        <dd>{info.model}</dd>
-        {#if info.folder}
-          <dt>FOLDER</dt>
-          <dd>{info.folder}</dd>
-        {/if}
-        <dt>STATUS</dt>
-        <dd>{info.status}</dd>
-        <dt>CTX</dt>
-        <dd>{info.ctx}</dd>
-        <dt>BRIEFING</dt>
-        <dd>{info.briefing}</dd>
-        <dt>DELIVERY</dt>
-        <dd class:undelivered={info.undelivered}>
-          {info.delivery}{#if info.undelivered}. Use Resend briefing in the card
-            menu.{/if}
-        </dd>
-        <dt>AUTONOMY</dt>
-        <dd>{info.autonomy}</dd>
-      </dl>
-    </div>
-  </div>
+  <Dialog
+    title="{info.name} details"
+    heading={info.name}
+    closeLabel="Close info"
+    onclose={() => (info = null)}
+    center
+    dim
+    z={30}
+    width="min(var(--size-320), calc(100vw - 2 * var(--space-4)))"
+  >
+    <dl>
+      <dt>ROLE</dt>
+      <dd>{info.role}</dd>
+      <dt>PROVIDER</dt>
+      <dd>{info.provider}</dd>
+      <dt>MODEL</dt>
+      <dd>{info.model}</dd>
+      {#if info.folder}
+        <dt>FOLDER</dt>
+        <dd>{info.folder}</dd>
+      {/if}
+      <dt>STATUS</dt>
+      <dd>{info.status}</dd>
+      <dt>CTX</dt>
+      <dd>{info.ctx}</dd>
+      <dt>BRIEFING</dt>
+      <dd>{info.briefing}</dd>
+      <dt>DELIVERY</dt>
+      <dd class:undelivered={info.undelivered}>
+        {info.delivery}{#if info.undelivered}. Use Resend briefing in the card
+          menu.{/if}
+      </dd>
+      <dt>AUTONOMY</dt>
+      <dd>{info.autonomy}</dd>
+    </dl>
+  </Dialog>
 {/if}
 
 <div
@@ -589,9 +589,7 @@
           ></span></span
         >
         <span class="pct"
-          >{live.hippoherman?.percent != null
-            ? `${live.hippoherman?.percent}%`
-            : NO_DATA}</span
+          ><CountUp value={live.hippoherman?.percent} none={NO_DATA} /></span
         >
       </span>
     </div>
@@ -619,6 +617,11 @@
       <span class="status" class:crashed={live.hippoherman?.crashed != null}
         >{statusOf("hippoherman")}</span
       >
+      {#if crashes.hippoherman}
+        <span class="crash-strip" title={crashNote("hippoherman")}
+          >⚠ {crashes.hippoherman.count}</span
+        >
+      {/if}
     </div>
   </div>
   {#each added as agent (agent.id)}
@@ -676,9 +679,7 @@
               ></span></span
             >
             <span class="pct"
-              >{live[agent.id]?.percent != null
-                ? `${live[agent.id]?.percent}%`
-                : NO_DATA}</span
+              ><CountUp value={live[agent.id]?.percent} none={NO_DATA} /></span
             >
           </span>
         </span>
@@ -699,6 +700,11 @@
         <span class="status" class:crashed={live[agent.id]?.crashed != null}
           >{statusOf(agent.id)}</span
         >
+        {#if crashes[agent.id]}
+          <span class="crash-strip" title={crashNote(agent.id)}
+            >⚠ {crashes[agent.id]?.count}</span
+          >
+        {/if}
       </div>
     </div>
   {/each}
@@ -783,7 +789,7 @@
     gap: var(--space-2);
     flex: none;
     min-height: var(--size-64);
-    min-width: 180px;
+    min-width: var(--size-180);
     padding: var(--space-2) var(--space-3);
     background: var(--color-md-card);
     color: var(--color-md-card-text);
@@ -813,7 +819,7 @@
   .add {
     box-shadow: none;
     flex: none;
-    min-height: 44px;
+    min-height: var(--layout-touch-target);
     padding: 0 var(--space-3);
     border: 1px dashed var(--color-border);
     border-radius: var(--radius-md);
@@ -844,7 +850,7 @@
   .chip {
     --hippo-purple: var(--color-accent);
     align-items: flex-start;
-    width: 320px;
+    width: var(--size-320);
     min-height: 0;
     padding: 8px 12px 8px;
     background: var(--color-md-card);
@@ -954,7 +960,7 @@
   /* One continuous loading-style bar: the fill's width is the context percentage. */
   .chip .ctx-bar {
     flex: 1;
-    min-width: 140px;
+    min-width: var(--size-140);
     height: 5px;
     border-radius: var(--radius-sm);
     background: var(--color-ctx-track);
@@ -1045,32 +1051,6 @@
     color: var(--hippo-purple);
   }
 
-  .info-scrim {
-    position: fixed;
-    inset: 0;
-    z-index: 30;
-    display: grid;
-    place-items: center;
-    background: var(--color-shadow-strong);
-  }
-
-  .info-box {
-    width: min(340px, calc(100vw - 32px));
-    padding: var(--space-4);
-    background: var(--color-bg-1);
-    color: var(--color-text);
-    border: 1px solid var(--color-border);
-    border-left: 3px solid var(--color-accent);
-    border-radius: var(--radius-sm);
-  }
-
-  .info-box header {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    margin-bottom: var(--space-3);
-  }
-
   .edit-field {
     box-sizing: border-box;
     width: 100%;
@@ -1089,16 +1069,7 @@
     margin-top: var(--space-3);
   }
 
-  .info-close {
-    margin-left: auto;
-    background: none;
-    border: none;
-    color: var(--color-md-card-muted);
-    font-size: var(--font-size-xl);
-    cursor: pointer;
-  }
-
-  .info-box dl {
+  dl {
     display: grid;
     grid-template-columns: 80px 1fr;
     gap: var(--space-1) var(--space-2);
@@ -1106,12 +1077,12 @@
     font-size: var(--font-size-xs);
   }
 
-  .info-box dt {
+  dt {
     color: var(--color-md-card-muted);
     font-size: var(--font-size-tag);
   }
 
-  .info-box dd {
+  dd {
     margin: 0;
     overflow-wrap: anywhere;
   }
@@ -1176,7 +1147,7 @@
     position: fixed;
     z-index: 21;
     display: grid;
-    min-width: 140px;
+    min-width: var(--size-140);
     padding: var(--space-1);
     background: var(--color-bg-1);
     color: var(--color-text);
@@ -1204,6 +1175,11 @@
     padding-top: var(--space-2);
     border-top: 1px solid var(--color-border);
     color: var(--color-danger);
+  }
+
+  .crash-strip {
+    color: var(--color-ds-warning);
+    font-size: var(--font-size-tag);
   }
 
   .status.crashed {

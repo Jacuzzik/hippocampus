@@ -2,7 +2,7 @@
 <script lang="ts">
   import PanelHeader from "../controls/PanelHeader.svelte";
   import Loading from "../controls/Loading.svelte";
-  import { dialogFocus } from "../controls/dialogFocus.ts";
+  import Dialog from "../controls/Dialog.svelte";
   import { every } from "../poll.ts";
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
@@ -311,22 +311,15 @@
               >
             </div>
             {#if confirmOpen}
-              <div
-                class="scrim"
-                role="presentation"
-                onclick={() => (confirmOpen = false)}
+              <Dialog
+                title="Change the AI model?"
+                onclose={() => (confirmOpen = false)}
+                center
+                dim
+                z={1000}
+                width="min(var(--size-420), calc(100vw - 2 * var(--space-4)))"
               >
-                <div
-                  class="dialog"
-                  role="dialog"
-                  aria-modal="true"
-                  aria-labelledby="engine-confirm-title"
-                  tabindex="-1"
-                  use:dialogFocus
-                  onclick={(e) => e.stopPropagation()}
-                  onkeydown={(e) => e.key === "Escape" && (confirmOpen = false)}
-                >
-                  <h3 id="engine-confirm-title">Change the AI model?</h3>
+                <div class="confirm">
                   <p>
                     Changing to <strong>{engineProvider}</strong> /
                     <strong>{engineModel}</strong> resets the terminal and starts
@@ -348,7 +341,7 @@
                     >
                   </div>
                 </div>
-              </div>
+              </Dialog>
             {/if}
             {#if engineError}<p class="status error">{engineError}</p>{/if}
             {#if engineDone}<p class="status">{engineDone}</p>{/if}
@@ -882,48 +875,23 @@
   .status.error {
     color: var(--color-md-danger);
   }
-  .scrim {
-    position: fixed;
-    inset: 0;
-    background: var(--color-scrim);
-    display: grid;
-    place-items: center;
-    z-index: 1000;
-  }
   /* Dark confirm box, the app's dark palette, with a warning bar on its left edge. */
-  .dialog {
-    background: var(--color-md-surface);
-    color: var(--color-md-text);
-    border: 1px solid var(--color-md-border);
-    border-left: 3px solid var(--color-accent);
-    border-radius: var(--radius-sm);
-    padding: var(--space-4);
-    max-width: 420px;
-    width: calc(100% - 32px);
-    box-shadow: 0 8px 24px var(--color-shadow-strong);
-  }
-  .dialog h3 {
-    margin: 0 0 var(--space-2);
-    font-size: var(--font-size-md);
-    font-weight: 600;
-    color: var(--color-md-text);
-  }
-  .dialog p {
+  .confirm p {
     margin: 0 0 var(--space-4);
     font-size: var(--font-size-sm);
     line-height: 1.45;
     color: var(--color-md-text-muted);
   }
-  .dialog p strong {
+  .confirm p strong {
     color: var(--color-md-text);
     font-weight: 600;
   }
-  .dialog .actions {
+  .confirm .actions {
     display: flex;
     justify-content: flex-end;
     gap: var(--space-2);
   }
-  .dialog .btn.solid {
+  .confirm .btn.solid {
     background: var(--color-md-accent);
     color: var(--color-md-accent-on);
     border-color: var(--color-md-accent);

@@ -127,6 +127,7 @@ A row is "closed" only when a check proves it: a test, a lint rule, or a screens
 | Change events for questions, approvals and helpers | (this commit) | B.01 (more: the backend pushes `changed` for `asks` (a question or an approval opens, is answered or closes) and `helpers` (a helper starts, finishes or fails); the Ask me and Helper jobs pages read on that event with the 30 second safety net, in place of 3 s and 2 s timers. Still on timers: the graph's system stats (3 s), the main agent's state (3 s), the app's graph read (5 s), the agent panel (5 s), spend (30 s), tokens (60 s), health (15 s), the queue clock (1 s)) | pytest 587 (1 new; `test_watcher::test_rename` failed once under load, passed alone), e2e control and settings 48 pass (`control.spec.ts:10` timed out once under load, passed alone), ESLint 0, svelte-check 0 |
 | Start-up budget | (this commit) | B.06 (a pytest starts the backend and fails if the first answer takes over 5 s or the backend holds over 200 MB, a loose budget so a busy computer does not fail it; another checks that `docs/perf/<version>.json` exists for the current version. Left: the window's own start time is not measured, and the measurement is run by hand per release), D.07 (the hook part was done; the choice of which "Not set up" items to build or hide is the owner's and is still pending, so each stays a Planned card) | pytest 589 |
 | Dashboards in the window and UI polish | 0873a14, f0598d9, 99a4a0f | Owner request 2026-11-21: a dashboard other than the graph takes the middle of the window, the bottom bar and Control Room go, the agent cards stand on the right, tiles fill the board; then docs/UI-POLISH-LIST.md U.01 to U.09 | e2e `dashboards.spec.ts` (layout on all nine), visual baselines, `matrix.spec.ts` |
+| UI round 2 | (this commit) | U.07 (missions and webhook forms share one two-column grid), 12.08 (`controls/CountUp.svelte`: context percent counts up, still when motion is off), 7.33 (agent card shows `⚠ N` earlier crashes from `crashes`, tooltip gives the last time), L.27 (`Tabs` sliding underline; baselines refreshed), B.05 (graph and monitor load on first use: separate chunks in `vite build`), 3.03 (fixed layout sizes now `--size-*` tokens; 1 to 8 px dots and lines kept), 3.08 (Dialog gained width, centre, dim, header and close options; Settings, Add agent, command box, agent info and rename, engine confirm now use it), 3.04/5.11/5.13 (part: Button now in Assistant, PanelBoundary, ShareNote, AccountDialog, AgentPanel, CapabilitiesSection, DashboardsView; the rest are icon, card and tab buttons with their own look and stay) | e2e 189, npm test 120, ESLint 0, svelte-check 0, vite build split checked |
 
 | Hide unbuilt features | (this commit) | D.07 (owner decision 2026-11-21: Teams, Dispatch assistant, Dictation, MCP, Plugins, Notion and calendars leave Helpers, Work, Advanced, Team and Connectors and show only under Settings > Planned; Share link and Slack stay; Slack is built later) | pytest 590, Playwright control+settings 48 |
 
@@ -147,10 +148,10 @@ A row is "closed" only when a check proves it: a test, a lint rule, or a screens
 - 12.08: the percent number does not count up; only the bar eases.
 - 7.14: rows carry no `agent` field yet, the window has no filter control, and the log has no export (the backend takes `since`, `until`, `agent`).
 - D.05: could not check the GitHub Actions run for `plan-finish-2026-11-21`: `gh` answered HTTP 401 Bad credentials in this session. Needs `gh auth login` by the owner, then `gh run list --branch plan-finish-2026-11-21`.
+- 7.14: no per-agent filter (activity rows have no agent field) and no export of the log.
 
-- 7.33 a crash strip on each agent card (the crash rows are written, the card does not show them).
 
-- L.21 History: open and resume a past session (the tab lists events only). L.27: sliding underline (tabs have no underline).
+- L.21 History: open and resume a past session (the tab lists events only).
 
 - N.24 Quiet mode: pausing background refresh entirely, and turning on by itself on battery power.
 

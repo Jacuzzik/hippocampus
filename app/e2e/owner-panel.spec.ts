@@ -368,3 +368,70 @@ test("Clear context asks the agent for its handoff first, then clears", async ({
       "/clear",
     ]);
 });
+
+test("a card shows how many times its agent crashed before (7.33)", async ({
+  page,
+}) => {
+  await page.evaluate(async () => {
+    const internals = (
+      window as unknown as {
+        __TAURI_INTERNALS__: {
+          invoke: (cmd: string, args: unknown) => Promise<unknown>;
+        };
+      }
+    ).__TAURI_INTERNALS__;
+    for (const at of ["2026-11-20T10:00:00Z", "2026-11-21T09:30:00Z"]) {
+      await internals.invoke("sidecar_call", {
+        method: "record_crash",
+        params: {
+          at,
+          source: "agent hippoherman",
+          message: "The CLI stopped with code 1.",
+        },
+      });
+    }
+  });
+  const strip = page.getByLabel("Agents").getByText("⚠ 2");
+  await expect(strip).toBeVisible({ timeout: 10000 });
+  await expect(strip).toHaveAttribute(
+    "title",
+    "2 earlier crashes, last 2026-11-21 09:30",
+  );
+});
+
+test("the context percentage counts up to its value (12.08)", async ({
+  page,
+}) => {
+  await page.evaluate(() => {
+    (window as unknown as { __cliCommand: string }).__cliCommand = "claude";
+  });
+  await expect(page.getByLabel("Agents").getByText("42%").first()).toBeVisible({
+    timeout: 10000,
+  });
+});
+
+test("the tab underline sits under the chosen tab and moves with it (L.27)", async ({
+  page,
+}) => {
+  const tabs = page.getByRole("tablist", { name: "Panels" });
+  const line = tabs.locator(".underline");
+  const under = async (name: string) => {
+    const tab = await tabs.getByRole("tab", { name }).boundingBox();
+    const bar = await line.boundingBox();
+    return { tab, bar };
+  };
+  await tabs.getByRole("tab", { name: "monitor" }).click();
+  await expect
+    .poll(async () => {
+      const { tab, bar } = await under("monitor");
+      return tab && bar ? Math.abs(tab.x - bar.x) < 2 : false;
+    })
+    .toBe(true);
+  await tabs.getByRole("tab", { name: "tasks" }).click();
+  await expect
+    .poll(async () => {
+      const { tab, bar } = await under("tasks");
+      return tab && bar ? Math.abs(tab.x - bar.x) < 2 : false;
+    })
+    .toBe(true);
+});

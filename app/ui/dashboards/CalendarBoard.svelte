@@ -245,7 +245,7 @@
 
   .add .wide {
     flex: 1;
-    min-width: 200px;
+    min-width: var(--size-200);
   }
 
   .error {

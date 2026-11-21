@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Button from "../controls/Button.svelte";
   import Dialog from "../controls/Dialog.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import SetupChecklist from "./SetupChecklist.svelte";
@@ -42,13 +43,13 @@
     <h3>Your data</h3>
     <p class="muted">Removes the index cache. Your notes are never deleted.</p>
     <div>
-      <button type="button" disabled={busy} onclick={removeData}>
+      <Button disabled={busy} onclick={removeData}>
         {busy
           ? "Removing…"
           : confirmRemove
             ? "Press again to remove Hippocampus data"
             : "Remove Hippocampus data"}
-      </button>
+      </Button>
     </div>
     {#if notice}
       <p class="muted">{notice}</p>
@@ -74,16 +75,6 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-1);
-  }
-
-  button {
-    font: inherit;
-    color: var(--color-text);
-    background: var(--color-bg-0);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    padding: var(--space-1) var(--space-3);
-    cursor: pointer;
   }
 
   .muted {

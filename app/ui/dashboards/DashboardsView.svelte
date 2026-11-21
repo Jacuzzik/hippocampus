@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Button from "../controls/Button.svelte";
   // The dashboards: a full-window view with a list of dashboards on the left and tiles on the right.
   // Numbers are read when a dashboard opens and when Refresh is pressed, never on a timer.
   // Locked (Settings > Dashboards) makes the tiles read-only: no click, no typing, no keyboard focus.
@@ -234,7 +235,7 @@
             placeholder="owner/name"
             bind:value={repoDraft}
           />
-          <button type="submit" disabled={!repoDraft.trim()}>Show</button>
+          <Button type="submit" disabled={!repoDraft.trim()}>Show</Button>
         </form>
         {#if prefs.dashboardsLocked && !prefs.dashboardRepo}
           <p class="note">
@@ -421,8 +422,7 @@
     margin-top: var(--space-3);
   }
 
-  .repo input,
-  .repo button {
+  .repo input {
     min-height: var(--size-28);
     padding: var(--space-1) var(--space-2);
     color: var(--color-text);

@@ -35,6 +35,28 @@
 
   let bar: HTMLDivElement;
 
+  // L.27: a thin line under the chosen tab that slides to the next one. Motion off or reduced is handled
+  // by global.css, which removes every transition, so the line then simply jumps.
+  let line = $state<{ x: number; y: number; w: number } | null>(null);
+  function place(): void {
+    const el = bar?.querySelector<HTMLElement>('[aria-selected="true"]');
+    line = el
+      ? {
+          x: el.offsetLeft,
+          y: el.offsetTop + el.offsetHeight,
+          w: el.offsetWidth,
+        }
+      : null;
+  }
+  $effect(() => {
+    void value;
+    void items.length;
+    place();
+    const watch = new ResizeObserver(place);
+    watch.observe(bar);
+    return () => watch.disconnect();
+  });
+
   // An element id cannot hold a space, and some tab ids do ("ask me").
   const tabId = (id: string): string =>
     `${idBase}-tab-${id.replace(/\W+/g, "-")}`;
@@ -108,10 +130,18 @@
       {/if}
     </button>
   {/each}
+  {#if line && !vertical}
+    <span
+      class="underline"
+      aria-hidden="true"
+      style="transform: translate({line.x}px, {line.y}px); width: {line.w}px"
+    ></span>
+  {/if}
 </div>
 
 <style>
   .tabs {
+    position: relative;
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-1);
@@ -199,6 +229,22 @@
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
+  }
+
+  .underline {
+    position: absolute;
+    top: -2px;
+    left: 0;
+    height: 2px;
+    background: var(--color-focus-ring);
+    pointer-events: none;
+    transition:
+      transform 220ms ease,
+      width 220ms ease;
+  }
+
+  .segmented .underline {
+    background: var(--color-md-accent-on);
   }
 
   .badge {
