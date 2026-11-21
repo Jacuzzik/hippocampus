@@ -812,7 +812,7 @@
     gap: var(--space-2);
     flex: none;
     min-height: var(--size-64);
-    min-width: 180px;
+    min-width: var(--size-180);
     padding: var(--space-2) var(--space-3);
     background: var(--color-md-card);
     color: var(--color-md-card-text);
@@ -842,7 +842,7 @@
   .add {
     box-shadow: none;
     flex: none;
-    min-height: 44px;
+    min-height: var(--layout-touch-target);
     padding: 0 var(--space-3);
     border: 1px dashed var(--color-border);
     border-radius: var(--radius-md);
@@ -873,7 +873,7 @@
   .chip {
     --hippo-purple: var(--color-accent);
     align-items: flex-start;
-    width: 320px;
+    width: var(--size-320);
     min-height: 0;
     padding: 8px 12px 8px;
     background: var(--color-md-card);
@@ -983,7 +983,7 @@
   /* One continuous loading-style bar: the fill's width is the context percentage. */
   .chip .ctx-bar {
     flex: 1;
-    min-width: 140px;
+    min-width: var(--size-140);
     height: 5px;
     border-radius: var(--radius-sm);
     background: var(--color-ctx-track);
@@ -1205,7 +1205,7 @@
     position: fixed;
     z-index: 21;
     display: grid;
-    min-width: 140px;
+    min-width: var(--size-140);
     padding: var(--space-1);
     background: var(--color-bg-1);
     color: var(--color-text);

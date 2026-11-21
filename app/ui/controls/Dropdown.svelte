@@ -133,7 +133,7 @@
     margin: 0;
     padding: 0;
     list-style: none;
-    max-height: 240px;
+    max-height: var(--size-240);
     overflow-y: auto;
     background: var(--color-md-card);
     border: 1px solid var(--color-md-border);

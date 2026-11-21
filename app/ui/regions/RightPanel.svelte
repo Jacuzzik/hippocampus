@@ -437,7 +437,7 @@
   /* The real terminal takes a fixed slice above the chat. */
   .live-wrap {
     flex: 1 1 0;
-    min-height: 300px;
+    min-height: var(--size-300);
     display: flex;
     flex-direction: column;
     margin-bottom: var(--space-2);

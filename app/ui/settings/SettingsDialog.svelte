@@ -1026,7 +1026,7 @@
   header input {
     flex: 1;
     min-width: 0;
-    max-width: 320px;
+    max-width: var(--size-320);
     margin-left: auto;
     padding: var(--space-1) var(--space-2);
     color: var(--color-text);
@@ -1160,7 +1160,7 @@
   }
 
   .backend-log {
-    max-height: 260px;
+    max-height: var(--size-260);
     margin: 0;
     padding: var(--space-2);
     overflow: auto;

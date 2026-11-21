@@ -898,7 +898,7 @@
     border-left: 3px solid var(--color-accent);
     border-radius: var(--radius-sm);
     padding: var(--space-4);
-    max-width: 420px;
+    max-width: var(--size-420);
     width: calc(100% - 32px);
     box-shadow: 0 8px 24px var(--color-shadow-strong);
   }

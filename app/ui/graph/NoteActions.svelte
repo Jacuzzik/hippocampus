@@ -260,8 +260,8 @@
     position: fixed;
     z-index: 21;
     display: grid;
-    min-width: 170px;
-    max-width: 280px;
+    min-width: var(--size-170);
+    max-width: var(--size-280);
     padding: var(--space-1);
     background: var(--color-bg-1);
     color: var(--color-text);

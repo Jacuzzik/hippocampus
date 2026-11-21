@@ -163,8 +163,8 @@
   }
   /* The mark is a mask, so it takes white and sits with no box of its own. */
   .logo {
-    width: 90px;
-    height: 90px;
+    width: var(--size-96);
+    height: var(--size-96);
     flex: none;
     max-width: 100%;
     background: var(--color-on-strong);
