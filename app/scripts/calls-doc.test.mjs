@@ -19,4 +19,4 @@ test("the files that call the backend without a waiting state do not grow in num
   );
 });
 
-const LIMIT = 8;
+const LIMIT = 6;
