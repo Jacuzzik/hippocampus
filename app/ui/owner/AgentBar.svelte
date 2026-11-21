@@ -1,5 +1,7 @@
 <!-- The bottom agent row: the main agent first (fixed), then added agents that can be moved. -->
 <script lang="ts">
+  import { still } from "../motion.ts";
+  import CountUp from "../controls/CountUp.svelte";
   import { dialogFocus } from "../controls/dialogFocus.ts";
   import { backend } from "../backend.svelte.ts";
   import { report } from "../notices.svelte.ts";
@@ -32,15 +34,6 @@
   >([]);
   let envelopeKey = 0;
   const ENVELOPES_MAX = 4;
-  function still(): boolean {
-    const motion = document.documentElement.dataset.motion;
-    return (
-      motion === "off" ||
-      (motion !== "on" &&
-        typeof matchMedia === "function" &&
-        matchMedia("(prefers-reduced-motion: reduce)").matches)
-    );
-  }
   function cardAt(id: string): DOMRect | null {
     const card = bar?.querySelector(`[data-agent="${CSS.escape(id)}"]`);
     return card ? card.getBoundingClientRect() : null;
@@ -281,7 +274,37 @@
   // Fallback is the account's own provider, not a guess: a Codex account with no running CLI must not show Ollama.
   const runningId = $derived(CLI_ID[cliWord] ?? account?.provider ?? "");
   const runningLogo = $derived(providerLogo(runningId));
+  // 7.33: the crash records the backend wrote for each agent ("agent <id>"), newest first.
+  let crashes = $state<Record<string, { count: number; last: string }>>({});
+  async function refreshCrashes(): Promise<void> {
+    try {
+      const rows = (
+        await invoke<{ crashes: { at: string; source: string }[] }>(
+          "sidecar_call",
+          { method: "crashes" },
+        )
+      ).crashes;
+      const next: Record<string, { count: number; last: string }> = {};
+      for (const row of rows) {
+        if (!row.source.startsWith("agent ")) continue;
+        const id = row.source.slice(6);
+        const seen = next[id];
+        if (seen) seen.count += 1;
+        else next[id] = { count: 1, last: row.at };
+      }
+      crashes = next;
+    } catch {
+      /* no records to show; the status word still says Crashed */
+    }
+  }
+  function crashNote(id: string): string {
+    const c = crashes[id];
+    return c
+      ? `${c.count} earlier ${c.count === 1 ? "crash" : "crashes"}, last ${c.last.slice(0, 16).replace("T", " ")}`
+      : "";
+  }
   async function refreshLive(): Promise<void> {
+    void refreshCrashes();
     for (const id of ["hippoherman", ...added.map((a) => a.id)]) {
       try {
         const info = await invoke<{
@@ -589,9 +612,7 @@
           ></span></span
         >
         <span class="pct"
-          >{live.hippoherman?.percent != null
-            ? `${live.hippoherman?.percent}%`
-            : NO_DATA}</span
+          ><CountUp value={live.hippoherman?.percent} none={NO_DATA} /></span
         >
       </span>
     </div>
@@ -619,6 +640,11 @@
       <span class="status" class:crashed={live.hippoherman?.crashed != null}
         >{statusOf("hippoherman")}</span
       >
+      {#if crashes.hippoherman}
+        <span class="crash-strip" title={crashNote("hippoherman")}
+          >⚠ {crashes.hippoherman.count}</span
+        >
+      {/if}
     </div>
   </div>
   {#each added as agent (agent.id)}
@@ -676,9 +702,7 @@
               ></span></span
             >
             <span class="pct"
-              >{live[agent.id]?.percent != null
-                ? `${live[agent.id]?.percent}%`
-                : NO_DATA}</span
+              ><CountUp value={live[agent.id]?.percent} none={NO_DATA} /></span
             >
           </span>
         </span>
@@ -699,6 +723,11 @@
         <span class="status" class:crashed={live[agent.id]?.crashed != null}
           >{statusOf(agent.id)}</span
         >
+        {#if crashes[agent.id]}
+          <span class="crash-strip" title={crashNote(agent.id)}
+            >⚠ {crashes[agent.id]?.count}</span
+          >
+        {/if}
       </div>
     </div>
   {/each}
@@ -1204,6 +1233,11 @@
     padding-top: var(--space-2);
     border-top: 1px solid var(--color-border);
     color: var(--color-danger);
+  }
+
+  .crash-strip {
+    color: var(--color-ds-warning);
+    font-size: var(--font-size-tag);
   }
 
   .status.crashed {
