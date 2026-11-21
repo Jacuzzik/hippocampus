@@ -244,9 +244,13 @@
         {/if}
       {/if}
       {#if current === "calendar"}
-        <div class="fill">{#key refreshed}<CalendarBoard />{/key}</div>
+        <div class="fill">
+          {#key refreshed}<CalendarBoard />{/key}
+        </div>
       {:else if current === "phone"}
-        <div class="fill">{#key refreshed}<PhoneBoard />{/key}</div>
+        <div class="fill">
+          {#key refreshed}<PhoneBoard />{/key}
+        </div>
       {:else if error === NEEDS_REPO}
         <!-- The empty board says what to do in the middle of the space it will fill. -->
         <div class="empty" role="status">

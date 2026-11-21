@@ -10,6 +10,12 @@ export function bootTask(name = "Starting"): () => void {
   return () => {
     const step = steps[index];
     if (step) step.done = true;
+    // B.06: the window counts as started when the last start-up task settles; the mark is read by e2e/startup.spec.ts.
+    if (
+      steps.every((one) => one.done) &&
+      !performance.getEntriesByName("hippo-ready").length
+    )
+      performance.mark("hippo-ready");
   };
 }
 

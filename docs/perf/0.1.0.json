@@ -11,5 +11,6 @@
       390
     ]
   },
-  "backend_memory_mb": 35.4
+  "backend_memory_mb": 35.4,
+  "window_ready_ms": 1360
 }

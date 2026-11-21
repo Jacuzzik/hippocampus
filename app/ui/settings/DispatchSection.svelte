@@ -4,10 +4,7 @@
   import { dispatchError } from "./model";
 
   // Sends a task to an agent. Nothing is sent until you confirm the exact task shown.
-  const AGENTS = [
-    { id: "helper", label: "Helper", ready: true },
-    { id: "assistant", label: "Assistant (planned)", ready: false },
-  ];
+  const AGENTS = [{ id: "helper", label: "Helper", ready: true }];
 
   let agent = $state("helper");
   let task = $state("");

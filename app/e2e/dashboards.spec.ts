@@ -350,7 +350,9 @@ test("a dashboard takes the notes, graph and Control Room space; the bottom bar 
     // No bottom bar, no Control Room, no note list, no graph: only the rail, the dashboard and the cards.
     await expect(page.locator("footer.status-bar")).toHaveCount(0);
     await expect(page.locator(".right-panel")).toBeHidden();
-    await expect(page.getByRole("complementary", { name: "Notes" })).toBeHidden();
+    await expect(
+      page.getByRole("complementary", { name: "Notes" }),
+    ).toBeHidden();
     await expect(page.getByRole("main", { name: "Brain graph" })).toBeHidden();
     const rail = page.getByRole("complementary", { name: "Agent cards" });
     await expect(rail.locator("[data-agent='hippoherman']")).toBeVisible();
@@ -369,5 +371,7 @@ test("a dashboard takes the notes, graph and Control Room space; the bottom bar 
   await view.getByRole("button", { name: "Graph", exact: true }).click();
   await expect(page.locator("footer.status-bar")).toBeVisible();
   await expect(page.getByRole("main", { name: "Brain graph" })).toBeVisible();
-  await expect(page.getByRole("complementary", { name: "Agent cards" })).toHaveCount(0);
+  await expect(
+    page.getByRole("complementary", { name: "Agent cards" }),
+  ).toHaveCount(0);
 });

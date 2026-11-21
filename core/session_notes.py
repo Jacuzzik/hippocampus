@@ -61,6 +61,7 @@ class NotesPart:
         saved = vault_tools(self.indexer, self.lock)["edit_note"].run(
             {"path": request.get("path"), "content": text}
         )
+        self.changed("notes")
         return {"saved": saved}
 
     def note_delete(self, request: dict[str, Any]) -> dict[str, Any]:
@@ -68,6 +69,7 @@ class NotesPart:
         deleted = note_actions.delete(
             self.indexer, self.lock, request.get("path"), str(request.get("scope"))
         )
+        self.changed("notes")
         return {"deleted": deleted}
 
     def note_colour(self, request: dict[str, Any]) -> dict[str, Any]:
@@ -79,4 +81,5 @@ class NotesPart:
             str(request.get("scope")),
             request.get("status"),
         )
+        self.changed("notes")
         return {"changed": changed}

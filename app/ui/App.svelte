@@ -14,7 +14,7 @@
   import HealthBar from "./overlays/HealthBar.svelte";
   import Notices from "./overlays/Notices.svelte";
   import PanelBoundary from "./controls/PanelBoundary.svelte";
-  import { every } from "./poll.ts";
+  import { onChanged } from "./changed.ts";
   import { bootTask, boot } from "./owner/bootTasks.svelte.ts";
   // The dialogs are loaded when first opened, so their code is not part of the start-up bundle.
   const ToolsDialog = () => import("./overlays/ToolsDialog.svelte");
@@ -242,7 +242,7 @@
     })),
   );
 
-  // Reloads every few seconds so notes the agents add or change show up. The data is swapped only when
+  // Reloads when the backend reports a note change (and every 15 s as a safety net) so notes the agents add or change show up. The data is swapped only when
   // notes or links changed, so the graph layout does not reset on each poll.
   // The loading screen lifts after the first attempt, whether it worked or not.
   let booted = $state(false);
@@ -283,9 +283,9 @@
     // The first graph load (the vault) counts as start-up work; later polls do not.
     const doneVault = bootTask("Notes and graph");
     void load().finally(doneVault);
-    const stopPoll = every(() => void load(), 5000);
-    const onChanged = () => void load();
-    window.addEventListener("graph-changed", onChanged);
+    const stopPoll = onChanged("notes", () => void load(), 15000);
+    const onGraphChanged = () => void load();
+    window.addEventListener("graph-changed", onGraphChanged);
     // TALK on a card needs the right panel on screen before its message box can take the cursor.
     const onTalk = () => (panelOpen = true);
     window.addEventListener("agent-talk", onTalk);
@@ -306,7 +306,7 @@
       window.removeEventListener("theme-changed", onTheme);
       window.removeEventListener("open-settings", onOpenSettings);
       stopPoll();
-      window.removeEventListener("graph-changed", onChanged);
+      window.removeEventListener("graph-changed", onGraphChanged);
       window.removeEventListener("agent-talk", onTalk);
     };
   });

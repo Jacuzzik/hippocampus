@@ -4,10 +4,9 @@ so a service that is failing is not asked again in a tight loop."""
 import time
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
-from pathlib import Path
 from typing import Any
 
-from core import added_agents, connectors
+from core import connectors
 from core import webhooks as webhook_store
 
 # How long a checked answer is kept: a good one briefly, a failing one longer. "fresh" skips the wait,
@@ -37,10 +36,6 @@ class ConnectorsPart:
 
     def connectors(self, request: dict[str, Any]) -> dict[str, Any]:
         fresh = request.get("fresh") is True
-        agent_folders = [
-            Path(a["folder"]) for a in added_agents.load(self.agents_path) if a.get("folder")
-        ]
-        folders = ([self.settings.vault] if self.settings.vault else []) + agent_folders
         host, model = self.settings.ollama_host, self.settings.ollama_model
         with ThreadPoolExecutor(max_workers=2) as pool:
             slow = {
@@ -50,7 +45,6 @@ class ConnectorsPart:
                 "github": pool.submit(self._checked, "github", connectors.github, fresh),
             }
             local = [
-                connectors.mcp(Path.home(), folders),
                 connectors.webhooks(len(webhook_store.load(self.webhooks_path))),
                 connectors.jobs(*self._job_counts()),
             ]
