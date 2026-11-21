@@ -1,6 +1,6 @@
 <script lang="ts">
   import Dropdown from "../controls/Dropdown.svelte";
-  import { dialogFocus } from "../controls/dialogFocus.ts";
+  import Dialog from "../controls/Dialog.svelte";
   import { report } from "../notices.svelte.ts";
   import { invoke } from "@tauri-apps/api/core";
   import { onMount } from "svelte";
@@ -175,297 +175,224 @@
     onclose();
   }
 
-  // Stops here so the graph's own Escape (which clears the selection) does not also run.
-  function onKey(e: KeyboardEvent): void {
-    if (e.key === "Escape") {
-      e.stopPropagation();
-      onclose();
-    }
-  }
-
   onMount(() => {
     void loadKeys();
     void loadWorkspaces();
   });
 </script>
 
-<div class="scrim" role="presentation" onmousedown={onclose}>
-  <div
-    class="box"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="add-agent-title"
-    tabindex="-1"
-    use:dialogFocus
-    onkeydown={onKey}
-    onmousedown={(e) => e.stopPropagation()}
-  >
-    <header>
-      <h2 id="add-agent-title">Add agent</h2>
+<Dialog
+  title="Add agent"
+  {onclose}
+  closeLabel="Close add agent"
+  center
+  dim
+  z={50}
+  width="min(32rem, calc(100vw - 2 * var(--space-4)))"
+>
+  <div class="progress" aria-hidden="true">
+    {#each AGENT_STEPS as label, i (label)}
+      <span class:done={i <= step}></span>
+    {/each}
+  </div>
+  <p class="stepname" role="status">
+    Step {step + 1} of {AGENT_STEPS.length} · {AGENT_STEPS[step]}
+  </p>
+
+  {#if step === 0}
+    <label>Name <input type="text" bind:value={draft.name} /></label>
+    <fieldset class="picker">
+      <legend>Avatar</legend>
+      <div class="faces">
+        {#each CARD_FACES as face (face.id)}
+          <button
+            type="button"
+            class="face-pick"
+            aria-label={face.id}
+            aria-pressed={draft.character === face.id}
+            class:on={draft.character === face.id}
+            onclick={() => (draft.character = face.id)}
+          >
+            <img src={face.url} alt="" />
+          </button>
+        {/each}
+      </div>
+    </fieldset>
+  {:else if step === 1}
+    <div class="choice" role="radiogroup" aria-label="Folder">
       <button
         type="button"
-        class="close"
-        aria-label="Close add agent"
-        onclick={onclose}>×</button
+        role="radio"
+        aria-checked={folderChoice === "other"}
+        class:on={folderChoice === "other"}
+        onclick={() => chooseFolder("other")}>Workspaces folder</button
       >
-    </header>
-
-    <div class="progress" aria-hidden="true">
-      {#each AGENT_STEPS as label, i (label)}
-        <span class:done={i <= step}></span>
-      {/each}
     </div>
-    <p class="stepname" role="status">
-      Step {step + 1} of {AGENT_STEPS.length} · {AGENT_STEPS[step]}
-    </p>
-
-    {#if step === 0}
-      <label>Name <input type="text" bind:value={draft.name} /></label>
-      <fieldset class="picker">
-        <legend>Avatar</legend>
-        <div class="faces">
-          {#each CARD_FACES as face (face.id)}
-            <button
-              type="button"
-              class="face-pick"
-              aria-label={face.id}
-              aria-pressed={draft.character === face.id}
-              class:on={draft.character === face.id}
-              onclick={() => (draft.character = face.id)}
-            >
-              <img src={face.url} alt="" />
-            </button>
-          {/each}
-        </div>
-      </fieldset>
-    {:else if step === 1}
-      <div class="choice" role="radiogroup" aria-label="Folder">
+    {#if folderChoice === "other"}
+      {#if workspaces.folders.length > 0}
+        <label
+          >Folder in workspaces
+          <select
+            onchange={(e) => chooseFolder("other", e.currentTarget.value)}
+          >
+            <option value="">Choose a folder</option>
+            {#each workspaces.folders as name (name)}
+              <option
+                value={name}
+                selected={draft.folder === `${workspaces.root}/${name}`}
+                >{name}</option
+              >
+            {/each}
+          </select>
+        </label>
+      {/if}
+      <label>
+        New folder inside workspaces
+        <input type="text" bind:value={newFolder} placeholder="Folder name" />
+      </label>
+      <div class="choice">
         <button
           type="button"
-          role="radio"
-          aria-checked={folderChoice === "other"}
-          class:on={folderChoice === "other"}
-          onclick={() => chooseFolder("other")}>Workspaces folder</button
+          disabled={!newFolder.trim() || folderBusy}
+          onclick={createWorkspace}>Create folder</button
         >
       </div>
-      {#if folderChoice === "other"}
-        {#if workspaces.folders.length > 0}
-          <label
-            >Folder in workspaces
-            <select
-              onchange={(e) => chooseFolder("other", e.currentTarget.value)}
-            >
-              <option value="">Choose a folder</option>
-              {#each workspaces.folders as name (name)}
-                <option
-                  value={name}
-                  selected={draft.folder === `${workspaces.root}/${name}`}
-                  >{name}</option
-                >
-              {/each}
-            </select>
-          </label>
-        {/if}
-        <label>
-          New folder inside workspaces
-          <input type="text" bind:value={newFolder} placeholder="Folder name" />
-        </label>
-        <div class="choice">
-          <button
-            type="button"
-            disabled={!newFolder.trim() || folderBusy}
-            onclick={createWorkspace}>Create folder</button
-          >
-        </div>
-        {#if workspaceError}<p class="error" role="alert">
-            {workspaceError}
-          </p>{/if}
-      {/if}
-    {:else if step === 2}
-      <div class="field">
-        <span>Provider</span>
-        <Dropdown
-          label="Provider"
-          bind:value={draft.provider}
-          options={AGENT_PROVIDERS.map((p) => ({
-            value: p.id,
-            label: p.label,
-          }))}
-          onchange={() => (draft.model = "")}
-        />
-      </div>
-      {#if custom}
-        <label
-          >Command <input
-            type="text"
-            bind:value={draft.command}
-            placeholder="e.g. aider --model sonnet"
-          /></label
-        >
-      {:else}
-        <label
-          >Model <input
-            type="text"
-            readonly
-            value={draft.model}
-            placeholder="Pick a model below"
-          /></label
-        >
-        <div class="choice" aria-label="Suggested models">
-          {#each AGENT_MODELS[draft.provider] ?? [] as m (m)}
-            <button
-              type="button"
-              class:on={draft.model === m}
-              onclick={() => (draft.model = m)}>{m}</button
-            >
-          {/each}
-        </div>
-      {/if}
-      <p class="command">
-        <span class="muted">Command</span>
-        <code
-          >{command ||
-            (custom
-              ? "Type a command to run."
-              : "Pick a model to see the command.")}</code
-        >
-      </p>
-      <fieldset class="picker">
-        <legend>Autonomy</legend>
-        <div class="choice" role="radiogroup" aria-label="Autonomy">
-          {#each AUTONOMY_LEVELS as level (level.id)}
-            <button
-              type="button"
-              role="radio"
-              aria-checked={draft.autonomy === level.id}
-              class:on={draft.autonomy === level.id}
-              title={level.hint}
-              onclick={() => (draft.autonomy = level.id)}>{level.label}</button
-            >
-          {/each}
-        </div>
-        <p class="muted">
-          {AUTONOMY_LEVELS.find((l) => l.id === draft.autonomy)?.hint}
-        </p>
-      </fieldset>
-      <p class={engine.ready ? "muted" : "error"} role="status">
-        {engine.text}
-      </p>
+      {#if workspaceError}<p class="error" role="alert">
+          {workspaceError}
+        </p>{/if}
+    {/if}
+  {:else if step === 2}
+    <div class="field">
+      <span>Provider</span>
+      <Dropdown
+        label="Provider"
+        bind:value={draft.provider}
+        options={AGENT_PROVIDERS.map((p) => ({
+          value: p.id,
+          label: p.label,
+        }))}
+        onchange={() => (draft.model = "")}
+      />
+    </div>
+    {#if custom}
+      <label
+        >Command <input
+          type="text"
+          bind:value={draft.command}
+          placeholder="e.g. aider --model sonnet"
+        /></label
+      >
     {:else}
-      <div class="choice" aria-label="Job">
-        {#each AGENT_TEMPLATES as t (t.id)}
+      <label
+        >Model <input
+          type="text"
+          readonly
+          value={draft.model}
+          placeholder="Pick a model below"
+        /></label
+      >
+      <div class="choice" aria-label="Suggested models">
+        {#each AGENT_MODELS[draft.provider] ?? [] as m (m)}
           <button
             type="button"
-            class:on={draft.description === t.description}
-            onclick={() => {
-              draft.description = t.description;
-              draft.goal = t.goal;
-            }}>{t.label}</button
+            class:on={draft.model === m}
+            onclick={() => (draft.model = m)}>{m}</button
           >
         {/each}
       </div>
-      <label
-        >Description
-        <textarea
-          rows="3"
-          maxlength="100"
-          bind:value={draft.description}
-          placeholder="What should this agent do? Pick a premade above or write your own."
-        ></textarea>
-      </label>
-      <p class="muted count">{draft.description.length} / 100</p>
-      <label
-        >Goal
-        <textarea
-          rows="3"
-          maxlength="4000"
-          bind:value={draft.goal}
-          placeholder="The outcome this agent is working toward."></textarea>
-      </label>
-      <p class="muted count">{draft.goal.length} / 4000</p>
-      <button
-        type="button"
-        disabled={previewBusy}
-        onclick={() => void previewBriefing()}>Preview briefing</button
-      >
-      {#if preview}
-        <p class="muted">
-          Briefing v{preview.version}, {preview.characters} characters. Two sections
-          are added when the agent starts: its start-up inbox and the limits in force.
-        </p>
-        <pre class="preview" aria-label="Briefing preview">{preview.text}</pre>
-      {/if}
     {/if}
-
-    {#if error}<p class="error" role="alert">{error}</p>{/if}
-
-    <div class="row">
-      <button type="button" disabled={step === 0} onclick={() => (step -= 1)}
-        >Back</button
+    <p class="command">
+      <span class="muted">Command</span>
+      <code
+        >{command ||
+          (custom
+            ? "Type a command to run."
+            : "Pick a model to see the command.")}</code
       >
-      <button type="button" onclick={onclose}>Cancel</button>
-      {#if step < AGENT_STEPS.length - 1}
-        <button type="button" class="primary" onclick={next}>Next</button>
-      {:else}
-        <button type="button" class="primary" onclick={spawn}>Spawn</button>
-      {/if}
+    </p>
+    <fieldset class="picker">
+      <legend>Autonomy</legend>
+      <div class="choice" role="radiogroup" aria-label="Autonomy">
+        {#each AUTONOMY_LEVELS as level (level.id)}
+          <button
+            type="button"
+            role="radio"
+            aria-checked={draft.autonomy === level.id}
+            class:on={draft.autonomy === level.id}
+            title={level.hint}
+            onclick={() => (draft.autonomy = level.id)}>{level.label}</button
+          >
+        {/each}
+      </div>
+      <p class="muted">
+        {AUTONOMY_LEVELS.find((l) => l.id === draft.autonomy)?.hint}
+      </p>
+    </fieldset>
+    <p class={engine.ready ? "muted" : "error"} role="status">
+      {engine.text}
+    </p>
+  {:else}
+    <div class="choice" aria-label="Job">
+      {#each AGENT_TEMPLATES as t (t.id)}
+        <button
+          type="button"
+          class:on={draft.description === t.description}
+          onclick={() => {
+            draft.description = t.description;
+            draft.goal = t.goal;
+          }}>{t.label}</button
+        >
+      {/each}
     </div>
+    <label
+      >Description
+      <textarea
+        rows="3"
+        maxlength="100"
+        bind:value={draft.description}
+        placeholder="What should this agent do? Pick a premade above or write your own."
+      ></textarea>
+    </label>
+    <p class="muted count">{draft.description.length} / 100</p>
+    <label
+      >Goal
+      <textarea
+        rows="3"
+        maxlength="4000"
+        bind:value={draft.goal}
+        placeholder="The outcome this agent is working toward."></textarea>
+    </label>
+    <p class="muted count">{draft.goal.length} / 4000</p>
+    <button
+      type="button"
+      disabled={previewBusy}
+      onclick={() => void previewBriefing()}>Preview briefing</button
+    >
+    {#if preview}
+      <p class="muted">
+        Briefing v{preview.version}, {preview.characters} characters. Two sections
+        are added when the agent starts: its start-up inbox and the limits in force.
+      </p>
+      <pre class="preview" aria-label="Briefing preview">{preview.text}</pre>
+    {/if}
+  {/if}
+
+  {#if error}<p class="error" role="alert">{error}</p>{/if}
+
+  <div class="row">
+    <button type="button" disabled={step === 0} onclick={() => (step -= 1)}
+      >Back</button
+    >
+    <button type="button" onclick={onclose}>Cancel</button>
+    {#if step < AGENT_STEPS.length - 1}
+      <button type="button" class="primary" onclick={next}>Next</button>
+    {:else}
+      <button type="button" class="primary" onclick={spawn}>Spawn</button>
+    {/if}
   </div>
-</div>
+</Dialog>
 
 <style>
-  .scrim {
-    position: fixed;
-    inset: 0;
-    z-index: 50;
-    display: grid;
-    place-items: center;
-    background: color-mix(in srgb, var(--color-bg-0) 70%, transparent);
-  }
-
-  .box {
-    width: min(32rem, calc(100vw - 2 * var(--space-4)));
-    max-height: calc(100vh - 2 * var(--space-4));
-    overflow-y: auto;
-    padding: var(--space-4);
-    color: var(--color-text);
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-left: 3px solid var(--color-accent);
-    border-radius: var(--radius-sm);
-    box-sizing: border-box;
-  }
-
-  header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-
-  h2 {
-    margin: 0;
-    font-size: var(--font-size-md);
-  }
-
-  .close {
-    font: inherit;
-    font-size: var(--font-size-md);
-    line-height: 1;
-    width: 1.75rem;
-    height: 1.75rem;
-    color: var(--color-text-muted);
-    background: none;
-    border: 1px solid transparent;
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-  }
-
-  .close:hover {
-    color: var(--color-text);
-    border-color: var(--color-border);
-    background: var(--color-bg-0);
-  }
-
   .face-pick {
     padding: 0;
     background: none;

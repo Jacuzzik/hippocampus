@@ -3,7 +3,7 @@
   import TokensSection from "./TokensSection.svelte";
   import SettingRow from "../controls/SettingRow.svelte";
   import Toggle from "../controls/Toggle.svelte";
-  import { dialogFocus } from "../controls/dialogFocus.ts";
+  import Dialog from "../controls/Dialog.svelte";
   import "./settings.css";
   import { invoke } from "@tauri-apps/api/core";
   import { getVersion } from "@tauri-apps/api/app";
@@ -319,26 +319,18 @@
   $effect(() => {
     if (page === "Advanced" && logLines === null && !logError) void readLogs();
   });
-
-  function onKey(e: KeyboardEvent): void {
-    if (e.key === "Escape") {
-      e.stopPropagation();
-      onclose();
-    }
-  }
 </script>
 
-<div class="scrim" role="presentation" onmousedown={onclose}>
-  <div
-    class="box"
-    role="dialog"
-    aria-modal="true"
-    aria-label="Settings"
-    tabindex="-1"
-    use:dialogFocus
-    onkeydown={onKey}
-    onmousedown={(e) => e.stopPropagation()}
-  >
+<Dialog
+  title="Settings"
+  {onclose}
+  center
+  dim
+  z={20}
+  width="min(1200px, calc(100vw - 2 * var(--space-4)))"
+  height="min(880px, 90vh)"
+>
+  {#snippet header()}
     <header>
       <h2>Settings</h2>
       <input
@@ -354,664 +346,632 @@
         onclick={onclose}>×</button
       >
     </header>
-    <div class="body">
-      <nav class="rail">
-        {#if items.length}
-          <Tabs
-            {items}
-            bind:value={page}
-            label="Settings pages"
-            idBase="settings"
-            vertical
+  {/snippet}
+  <div class="body">
+    <nav class="rail">
+      {#if items.length}
+        <Tabs
+          {items}
+          bind:value={page}
+          label="Settings pages"
+          idBase="settings"
+          vertical
+        />
+      {:else}
+        <p class="muted">No page matches "{query}".</p>
+      {/if}
+    </nav>
+    <div
+      class="page"
+      role="tabpanel"
+      id="settings-panel"
+      aria-labelledby={`settings-tab-${page}`}
+      tabindex="-1"
+    >
+      {#if page === "General"}
+        <section class="control-section">
+          <h3>General</h3>
+          <SettingRow title="Vault folder"
+            >{#snippet help()}Where your notes live. To change it, type a folder
+              that exists and open it.{/snippet}
+            <code>{saved ? (saved.general.vault ?? "Not chosen") : "…"}</code>
+          </SettingRow>
+          <form class="row" onsubmit={changeVault}>
+            <input
+              type="text"
+              aria-label="New vault folder"
+              placeholder="/home/you/notes"
+              bind:value={vaultDraft}
+            />
+            <button type="submit" disabled={!vaultDraft.trim() || vaultBusy}
+              >{vaultBusy ? "Opening…" : "Open folder"}</button
+            >
+          </form>
+          {#if vaultNote}<p class="muted" role="status">{vaultNote}</p>{/if}
+          {#if vaultError}<p class="error" role="alert">{vaultError}</p>{/if}
+          <SettingRow title="Open on the last tab"
+            >{#snippet help()}The Control Room opens on the tab you used last.{/snippet}
+            <Toggle
+              bind:checked={prefs.rememberTab}
+              ariaLabel="Open on the last tab"
+              label={prefs.rememberTab ? "On" : "Off"}
+            />
+          </SettingRow>
+          <SettingRow title="Move settings to another computer"
+            >{#snippet help()}Copy gives the settings as text. Paste that text
+              here on the other computer and press Import. Keys are never
+              included.{/snippet}
+            <button type="button" onclick={() => void exportSettings()}
+              >Copy settings</button
+            >
+          </SettingRow>
+          <form class="row" onsubmit={importSettings}>
+            <textarea
+              rows="2"
+              aria-label="Settings text to import"
+              placeholder="Paste settings text here"
+              bind:value={importDraft}></textarea>
+            <button type="submit" disabled={!importDraft.trim()}>Import</button>
+          </form>
+          {#if transferNote}<p class="muted" role="status">
+              {transferNote}
+            </p>{/if}
+          {#if transferError}<p class="error" role="alert">
+              {transferError}
+            </p>{/if}
+          <SettingRow title="Settings file"
+            >{#snippet help()}Backend settings are also in this file. No keys
+              are stored in it.{/snippet}
+            <code>config/settings.toml</code>
+          </SettingRow>
+        </section>
+        <AccountSection />
+      {:else if page === "Appearance"}
+        <section class="control-section">
+          <h3>Appearance</h3>
+          <SettingRow title="Theme"
+            >{#snippet help()}System follows your computer's light or dark
+              setting.{/snippet}
+            <Dropdown
+              label="Theme"
+              value={prefs.theme}
+              options={[
+                { value: "dark", label: "Dark" },
+                { value: "light", label: "Light" },
+                { value: "system", label: "System" },
+              ]}
+              onchange={(next) => (prefs.theme = next as Theme)}
+            />
+          </SettingRow>
+          <SettingRow title="Text size"
+            >{#snippet help()}All text outside the terminals. The terminals have
+              their own size below.{/snippet}
+            <Dropdown
+              label="Text size"
+              value={prefs.textSize}
+              options={[
+                { value: "normal", label: "Normal" },
+                { value: "large", label: "Large" },
+                { value: "larger", label: "Larger" },
+              ]}
+              onchange={(next) => (prefs.textSize = next as TextSize)}
+            />
+          </SettingRow>
+          <SettingRow title="Density"
+            >{#snippet help()}Compact tightens the gaps between things.{/snippet}
+            <Dropdown
+              label="Density"
+              value={prefs.density}
+              options={[
+                { value: "comfortable", label: "Comfortable" },
+                { value: "compact", label: "Compact" },
+              ]}
+              onchange={(next) => (prefs.density = next as Density)}
+            />
+          </SettingRow>
+          <SettingRow title="Motion"
+            >{#snippet help()}System follows your computer's reduced-motion
+              setting.{/snippet}
+            <Dropdown
+              label="Motion"
+              value={prefs.motion}
+              options={[
+                { value: "system", label: "System" },
+                { value: "on", label: "On" },
+                { value: "off", label: "Off" },
+              ]}
+              onchange={(next) => (prefs.motion = next as Motion)}
+            />
+          </SettingRow>
+          <SettingRow title="Quiet mode"
+            >{#snippet help()}Turns movement off and slows the background
+              refresh of the tabs to one fifth. Good on a battery.{/snippet}
+            <Toggle
+              bind:checked={prefs.quiet}
+              ariaLabel="Quiet mode"
+              label={prefs.quiet ? "On" : "Off"}
+            />
+          </SettingRow>
+          <SettingRow title="Start-up logo"
+            >{#snippet help()}How long the logo stays once the app has loaded.
+              Applies from the next start.{/snippet}
+            <Dropdown
+              label="Start-up logo"
+              value={prefs.intro}
+              options={[
+                { value: "long", label: "Long (10 s)" },
+                { value: "short", label: "Short (1 s)" },
+                { value: "off", label: "Off" },
+              ]}
+              onchange={(next) => (prefs.intro = next as Intro)}
+            />
+          </SettingRow>
+          <SettingRow title="Terminal text size"
+            >{#snippet help()}Used by every agent terminal. {FONT_MIN} to {FONT_MAX}
+              px.{/snippet}
+            <span class="stepper">
+              <button
+                type="button"
+                aria-label="Smaller terminal text"
+                disabled={prefs.terminalFontSize <= FONT_MIN}
+                onclick={() => (prefs.terminalFontSize -= 1)}>−</button
+              >
+              <output>{prefs.terminalFontSize}px</output>
+              <button
+                type="button"
+                aria-label="Larger terminal text"
+                disabled={prefs.terminalFontSize >= FONT_MAX}
+                onclick={() => (prefs.terminalFontSize += 1)}>+</button
+              >
+            </span>
+          </SettingRow>
+          <SettingRow title="Terminal scrollback"
+            >{#snippet help()}Lines kept above the screen in every agent
+              terminal. {SCROLLBACK_MIN} to {SCROLLBACK_MAX}.{/snippet}
+            <input
+              type="number"
+              aria-label="Terminal scrollback lines"
+              min={SCROLLBACK_MIN}
+              max={SCROLLBACK_MAX}
+              step="500"
+              value={prefs.terminalScrollback}
+              onchange={(e) =>
+                (prefs.terminalScrollback = Number(e.currentTarget.value))}
+            />
+          </SettingRow>
+          <SettingRow title="Terminal cursor"
+            >{#snippet help()}The shape of the cursor in every agent terminal.{/snippet}
+            <Dropdown
+              label="Terminal cursor"
+              value={prefs.terminalCursor}
+              options={[
+                { value: "block", label: "Block" },
+                { value: "bar", label: "Bar" },
+                { value: "underline", label: "Underline" },
+              ]}
+              onchange={(next) => (prefs.terminalCursor = next as Cursor)}
+            />
+          </SettingRow>
+          <SettingRow title="Copy on select"
+            >{#snippet help()}Selecting text in an agent terminal copies it to
+              the clipboard.{/snippet}
+            <Toggle
+              bind:checked={prefs.terminalCopyOnSelect}
+              ariaLabel="Copy on select"
+              label={prefs.terminalCopyOnSelect ? "On" : "Off"}
+            />
+          </SettingRow>
+          <SettingRow title="Terminal bell"
+            >{#snippet help()}What an agent terminal does when its program rings
+              the bell. Flash lights the border once; there is no sound.{/snippet}
+            <Dropdown
+              label="Terminal bell"
+              value={prefs.terminalBell}
+              options={[
+                { value: "off", label: "Off" },
+                { value: "flash", label: "Flash" },
+              ]}
+              onchange={(next) => (prefs.terminalBell = next as Bell)}
+            />
+          </SettingRow>
+          <SettingRow title="Font"
+            >{#snippet help()}One monospace face everywhere, bundled with the
+              app.{/snippet}
+            <code>JetBrains Mono</code>
+          </SettingRow>
+          <SettingRow title="Reset appearance"
+            >{#snippet help()}Back to the dark theme, 12 px text, system motion
+              and remembering the last tab.{/snippet}
+            <button type="button" onclick={() => prefs.reset()}>Reset</button>
+          </SettingRow>
+        </section>
+      {:else if page === "Agents"}
+        <section class="control-section">
+          <h3>Agents</h3>
+          <SettingRow title="Main agent engine"
+            >{#snippet help()}Change it on the Monitor tab of the Control Room.{/snippet}
+            <code
+              >{saved
+                ? `${saved.agents.provider} · ${saved.agents.model}`
+                : "…"}</code
+            >
+          </SettingRow>
+          <SettingRow title="Tool calls per request"
+            >{#snippet help()}The most tools the assistant may call for one
+              request. {range("ai.max_tool_calls")} Applies after the app restarts.{/snippet}
+            <input
+              type="number"
+              aria-label="Tool calls per request"
+              value={saved?.budgets.max_tool_calls ?? ""}
+              disabled={!saved}
+              onchange={(e) =>
+                void setNumber("ai.max_tool_calls", e.currentTarget.value)}
+            />
+          </SettingRow>
+          <SettingRow title="Message delivery"
+            >{#snippet help()}Seconds between two rounds of delivering messages
+              between agents. {range("inbox.delivery_seconds")}{/snippet}
+            <input
+              type="number"
+              aria-label="Message delivery seconds"
+              value={saved?.inbox?.delivery_seconds ?? ""}
+              disabled={!saved}
+              onchange={(e) =>
+                void setNumber("inbox.delivery_seconds", e.currentTarget.value)}
+            />
+          </SettingRow>
+          {#if numberError}<p class="error" role="alert">
+              {numberError}
+            </p>{/if}
+        </section>
+        <section class="control-section">
+          <h3>Shell and sandbox</h3>
+          <SettingRow title="Shell for every agent"
+            >{#snippet help()}On: each agent can run simple shell commands, and
+              its program runs in a sandbox that keeps the app and the system
+              read-only. Off: only the main agent has a shell. Applies the next
+              time an agent starts.{/snippet}
+            <Toggle
+              ariaLabel="Shell for every agent"
+              checked={saved?.shell?.on ?? false}
+              disabled={!saved?.shell?.sandbox_available}
+              onchange={(on) => void setShell(on)}
+              label={saved?.shell?.on ? "On" : "Off"}
+            />
+          </SettingRow>
+          {#if shellError}<p class="error" role="alert">{shellError}</p>{/if}
+          {#if saved?.shell}
+            <p class="hint">{saved.shell.note}</p>
+            <h4>Rules in force: main agent</h4>
+            <ul class="rules" aria-label="Main agent rules">
+              {#each saved.shell.main as line (line)}<li>{line}</li>{/each}
+            </ul>
+            <h4>Rules in force: other agents</h4>
+            <ul class="rules" aria-label="Other agents' rules">
+              {#each saved.shell.agents as line (line)}<li>{line}</li>{/each}
+            </ul>
+          {/if}
+        </section>
+        <NetworkSection />
+      {:else if page === "Work"}
+        <DispatchSection />
+        <JobsSection />
+        <TriggersSection />
+      {:else if page === "Questions"}
+        <AsksSection />
+      {:else if page === "Helpers and skills"}
+        <HelpersSection />
+        <CapabilitiesSection />
+        <SkillsSection />
+      {:else if page === "Team and sharing"}
+        <TeamsSection />
+        <ArchivedAgentsSection />
+        <ShareSection />
+      {:else if page === "Activity"}
+        <ActivitySection />
+      {:else if page === "Budgets"}
+        <BudgetSection />
+      {:else if page === "Models and keys"}
+        <KeysSection />
+      {:else if page === "Connectors"}
+        <ConnectorsSection />
+      {:else if page === "Dashboards"}
+        <section class="control-section">
+          <h3>Dashboards</h3>
+          <SettingRow title="Lock dashboards"
+            >{#snippet help()}Locked: a dashboard only shows numbers. Nothing on
+              it can be clicked or edited. Unlocked: its buttons and fields
+              work. You can still pick another dashboard, refresh and close the
+              view while locked.{/snippet}
+            <Toggle
+              bind:checked={prefs.dashboardsLocked}
+              ariaLabel="Lock dashboards"
+            />
+          </SettingRow>
+          <p class="muted" role="status">
+            Dashboards are {prefs.dashboardsLocked ? "locked" : "unlocked"}.
+          </p>
+        </section>
+        <AppsSection />
+      {:else if page === "Memory"}
+        <section class="control-section">
+          <h3>Memory</h3>
+          <SettingRow title="Memory size per agent"
+            >{#snippet help()}Notes past this size (bytes) have their oldest
+              sections moved to an archive note. {range(
+                "memory.max_bytes",
+              )}{/snippet}
+            <input
+              type="number"
+              aria-label="Memory size per agent in bytes"
+              step="1000"
+              value={saved?.memory.max_bytes ?? ""}
+              disabled={!saved}
+              onchange={(e) =>
+                void setNumber("memory.max_bytes", e.currentTarget.value)}
+            />
+          </SettingRow>
+          {#if numberError}<p class="error" role="alert">
+              {numberError}
+            </p>{/if}
+        </section>
+        <MemorySection />
+      {:else if page === "Privacy and data"}
+        <section class="control-section">
+          <h3>Privacy and data</h3>
+          <SettingRow title="Your data"
+            >{#snippet help()}Sign out or remove your data in Setup and account,
+              on the left ribbon.{/snippet}
+          </SettingRow>
+          <h4>What leaves this computer</h4>
+          <SettingRow title="Messages to your model provider"
+            >{#snippet help()}What you type to the assistant or an agent goes to
+              the provider you chose (Claude, OpenAI and so on), with your own
+              key or login, under that provider's terms. The network switch in
+              Settings, Agents can stop it.{/snippet}
+            <code>Only when you chat</code>
+          </SettingRow>
+          <SettingRow title="Local model (Ollama)"
+            >{#snippet help()}Runs on this computer. Nothing leaves it.{/snippet}
+            <code>Stays here</code>
+          </SettingRow>
+          <SettingRow title="GitHub issues"
+            >{#snippet help()}Asked through the gh tool with your own login. The
+              app stores no GitHub token.{/snippet}
+            <code>Only when you look</code>
+          </SettingRow>
+          <SettingRow title="Your notes"
+            >{#snippet help()}Stay in your vault folder. They leave only when an
+              agent you run reads one and sends it to its provider.{/snippet}
+            <code>Stay here</code>
+          </SettingRow>
+          <SettingRow title="Usage statistics"
+            >{#snippet help()}Nothing is collected or sent about how you use the
+              app.{/snippet}
+            <code>None</code>
+          </SettingRow>
+          <SettingRow title="Error log"
+            >{#snippet help()}Errors from this window and the backend, kept on
+              this computer in <code>crashes.jsonl</code>. Never sent.{/snippet}
+            <span class="row">
+              <code>{errorRows.length} recorded</code>
+              <button
+                type="button"
+                disabled={errorRows.length === 0}
+                onclick={clearErrors}>Clear</button
+              >
+            </span>
+          </SettingRow>
+          <SettingRow title="Export my notes"
+            >{#snippet help()}Copies every note into one zip file in the app's
+              exports folder. Your vault is not changed.{/snippet}
+            <button type="button" onclick={() => void exportNotes()}
+              >Export notes</button
+            >
+          </SettingRow>
+          {#if notesNote}<p class="muted" role="status">{notesNote}</p>{/if}
+          <SettingRow title="Activity history"
+            >{#snippet help()}The tool log and office events shown on the
+              Activity and History tabs, kept on this computer in
+              <code>activity.jsonl</code>. Never sent.{/snippet}
+            <button type="button" onclick={() => void clearHistory()}
+              >Empty history</button
+            >
+          </SettingRow>
+          {#if historyNote}<p class="muted" role="status">
+              {historyNote}
+            </p>{/if}
+          {#if errorRows.length}
+            <ul class="log" aria-label="Recorded errors">
+              {#each errorRows.slice(0, 10) as row, index (index)}
+                <li>
+                  <span class="muted"
+                    >{row.at.slice(0, 19).replace("T", " ")}</span
+                  > <b>{row.source}</b>
+                  {row.message}
+                </li>
+              {/each}
+            </ul>
+          {/if}
+        </section>
+        <div class="cards">
+          <StatusCard
+            name="Telemetry"
+            what="Anonymous usage numbers, off unless you turn them on."
+            status="Planned"
+            reason="Nothing is collected today."
           />
-        {:else}
-          <p class="muted">No page matches "{query}".</p>
-        {/if}
-      </nav>
-      <div
-        class="page"
-        role="tabpanel"
-        id="settings-panel"
-        aria-labelledby={`settings-tab-${page}`}
-        tabindex="-1"
-      >
-        {#if page === "General"}
-          <section class="control-section">
-            <h3>General</h3>
-            <SettingRow title="Vault folder"
-              >{#snippet help()}Where your notes live. To change it, type a
-                folder that exists and open it.{/snippet}
-              <code>{saved ? (saved.general.vault ?? "Not chosen") : "…"}</code>
-            </SettingRow>
-            <form class="row" onsubmit={changeVault}>
-              <input
-                type="text"
-                aria-label="New vault folder"
-                placeholder="/home/you/notes"
-                bind:value={vaultDraft}
-              />
-              <button type="submit" disabled={!vaultDraft.trim() || vaultBusy}
-                >{vaultBusy ? "Opening…" : "Open folder"}</button
-              >
-            </form>
-            {#if vaultNote}<p class="muted" role="status">{vaultNote}</p>{/if}
-            {#if vaultError}<p class="error" role="alert">{vaultError}</p>{/if}
-            <SettingRow title="Open on the last tab"
-              >{#snippet help()}The Control Room opens on the tab you used last.{/snippet}
+        </div>
+      {:else if page === "Advanced"}
+        <section class="control-section">
+          <h3>Advanced</h3>
+          <SettingRow title="Backend (Python)"
+            >{#snippet help()}Answers every request from this window.{/snippet}
+            <code>{sidecar}</code>
+          </SettingRow>
+        </section>
+        <section class="control-section">
+          <h3>Feature switches</h3>
+          <p class="hint">
+            Turn a part of the app off without a new build. A change applies the
+            next time that part opens.
+          </p>
+          {#each FLAGS as flag (flag.id)}
+            <SettingRow title={flag.name}>
+              {#snippet help()}{flag.what}{/snippet}
               <Toggle
-                bind:checked={prefs.rememberTab}
-                ariaLabel="Open on the last tab"
-                label={prefs.rememberTab ? "On" : "Off"}
+                ariaLabel={flag.name}
+                checked={flagOn(flag.id)}
+                onchange={(on) => setFlag(flag.id, on)}
+                label={flagOn(flag.id) ? "On" : "Off"}
               />
             </SettingRow>
-            <SettingRow title="Move settings to another computer"
-              >{#snippet help()}Copy gives the settings as text. Paste that text
-                here on the other computer and press Import. Keys are never
-                included.{/snippet}
-              <button type="button" onclick={() => void exportSettings()}
-                >Copy settings</button
-              >
-            </SettingRow>
-            <form class="row" onsubmit={importSettings}>
-              <textarea
-                rows="2"
-                aria-label="Settings text to import"
-                placeholder="Paste settings text here"
-                bind:value={importDraft}></textarea>
-              <button type="submit" disabled={!importDraft.trim()}
-                >Import</button
-              >
-            </form>
-            {#if transferNote}<p class="muted" role="status">
-                {transferNote}
-              </p>{/if}
-            {#if transferError}<p class="error" role="alert">
-                {transferError}
-              </p>{/if}
-            <SettingRow title="Settings file"
-              >{#snippet help()}Backend settings are also in this file. No keys
-                are stored in it.{/snippet}
-              <code>config/settings.toml</code>
-            </SettingRow>
-          </section>
-          <AccountSection />
-        {:else if page === "Appearance"}
-          <section class="control-section">
-            <h3>Appearance</h3>
-            <SettingRow title="Theme"
-              >{#snippet help()}System follows your computer's light or dark
-                setting.{/snippet}
-              <Dropdown
-                label="Theme"
-                value={prefs.theme}
-                options={[
-                  { value: "dark", label: "Dark" },
-                  { value: "light", label: "Light" },
-                  { value: "system", label: "System" },
-                ]}
-                onchange={(next) => (prefs.theme = next as Theme)}
-              />
-            </SettingRow>
-            <SettingRow title="Text size"
-              >{#snippet help()}All text outside the terminals. The terminals
-                have their own size below.{/snippet}
-              <Dropdown
-                label="Text size"
-                value={prefs.textSize}
-                options={[
-                  { value: "normal", label: "Normal" },
-                  { value: "large", label: "Large" },
-                  { value: "larger", label: "Larger" },
-                ]}
-                onchange={(next) => (prefs.textSize = next as TextSize)}
-              />
-            </SettingRow>
-            <SettingRow title="Density"
-              >{#snippet help()}Compact tightens the gaps between things.{/snippet}
-              <Dropdown
-                label="Density"
-                value={prefs.density}
-                options={[
-                  { value: "comfortable", label: "Comfortable" },
-                  { value: "compact", label: "Compact" },
-                ]}
-                onchange={(next) => (prefs.density = next as Density)}
-              />
-            </SettingRow>
-            <SettingRow title="Motion"
-              >{#snippet help()}System follows your computer's reduced-motion
-                setting.{/snippet}
-              <Dropdown
-                label="Motion"
-                value={prefs.motion}
-                options={[
-                  { value: "system", label: "System" },
-                  { value: "on", label: "On" },
-                  { value: "off", label: "Off" },
-                ]}
-                onchange={(next) => (prefs.motion = next as Motion)}
-              />
-            </SettingRow>
-            <SettingRow title="Quiet mode"
-              >{#snippet help()}Turns movement off and slows the background
-                refresh of the tabs to one fifth. Good on a battery.{/snippet}
-              <Toggle
-                bind:checked={prefs.quiet}
-                ariaLabel="Quiet mode"
-                label={prefs.quiet ? "On" : "Off"}
-              />
-            </SettingRow>
-            <SettingRow title="Start-up logo"
-              >{#snippet help()}How long the logo stays once the app has loaded.
-                Applies from the next start.{/snippet}
-              <Dropdown
-                label="Start-up logo"
-                value={prefs.intro}
-                options={[
-                  { value: "long", label: "Long (10 s)" },
-                  { value: "short", label: "Short (1 s)" },
-                  { value: "off", label: "Off" },
-                ]}
-                onchange={(next) => (prefs.intro = next as Intro)}
-              />
-            </SettingRow>
-            <SettingRow title="Terminal text size"
-              >{#snippet help()}Used by every agent terminal. {FONT_MIN} to {FONT_MAX}
-                px.{/snippet}
-              <span class="stepper">
-                <button
-                  type="button"
-                  aria-label="Smaller terminal text"
-                  disabled={prefs.terminalFontSize <= FONT_MIN}
-                  onclick={() => (prefs.terminalFontSize -= 1)}>−</button
-                >
-                <output>{prefs.terminalFontSize}px</output>
-                <button
-                  type="button"
-                  aria-label="Larger terminal text"
-                  disabled={prefs.terminalFontSize >= FONT_MAX}
-                  onclick={() => (prefs.terminalFontSize += 1)}>+</button
-                >
-              </span>
-            </SettingRow>
-            <SettingRow title="Terminal scrollback"
-              >{#snippet help()}Lines kept above the screen in every agent
-                terminal. {SCROLLBACK_MIN} to {SCROLLBACK_MAX}.{/snippet}
-              <input
-                type="number"
-                aria-label="Terminal scrollback lines"
-                min={SCROLLBACK_MIN}
-                max={SCROLLBACK_MAX}
-                step="500"
-                value={prefs.terminalScrollback}
-                onchange={(e) =>
-                  (prefs.terminalScrollback = Number(e.currentTarget.value))}
-              />
-            </SettingRow>
-            <SettingRow title="Terminal cursor"
-              >{#snippet help()}The shape of the cursor in every agent terminal.{/snippet}
-              <Dropdown
-                label="Terminal cursor"
-                value={prefs.terminalCursor}
-                options={[
-                  { value: "block", label: "Block" },
-                  { value: "bar", label: "Bar" },
-                  { value: "underline", label: "Underline" },
-                ]}
-                onchange={(next) => (prefs.terminalCursor = next as Cursor)}
-              />
-            </SettingRow>
-            <SettingRow title="Copy on select"
-              >{#snippet help()}Selecting text in an agent terminal copies it to
-                the clipboard.{/snippet}
-              <Toggle
-                bind:checked={prefs.terminalCopyOnSelect}
-                ariaLabel="Copy on select"
-                label={prefs.terminalCopyOnSelect ? "On" : "Off"}
-              />
-            </SettingRow>
-            <SettingRow title="Terminal bell"
-              >{#snippet help()}What an agent terminal does when its program
-                rings the bell. Flash lights the border once; there is no sound.{/snippet}
-              <Dropdown
-                label="Terminal bell"
-                value={prefs.terminalBell}
-                options={[
-                  { value: "off", label: "Off" },
-                  { value: "flash", label: "Flash" },
-                ]}
-                onchange={(next) => (prefs.terminalBell = next as Bell)}
-              />
-            </SettingRow>
-            <SettingRow title="Font"
-              >{#snippet help()}One monospace face everywhere, bundled with the
-                app.{/snippet}
-              <code>JetBrains Mono</code>
-            </SettingRow>
-            <SettingRow title="Reset appearance"
-              >{#snippet help()}Back to the dark theme, 12 px text, system
-                motion and remembering the last tab.{/snippet}
-              <button type="button" onclick={() => prefs.reset()}>Reset</button>
-            </SettingRow>
-          </section>
-        {:else if page === "Agents"}
-          <section class="control-section">
-            <h3>Agents</h3>
-            <SettingRow title="Main agent engine"
-              >{#snippet help()}Change it on the Monitor tab of the Control
-                Room.{/snippet}
-              <code
-                >{saved
-                  ? `${saved.agents.provider} · ${saved.agents.model}`
-                  : "…"}</code
-              >
-            </SettingRow>
-            <SettingRow title="Tool calls per request"
-              >{#snippet help()}The most tools the assistant may call for one
-                request. {range("ai.max_tool_calls")} Applies after the app restarts.{/snippet}
-              <input
-                type="number"
-                aria-label="Tool calls per request"
-                value={saved?.budgets.max_tool_calls ?? ""}
-                disabled={!saved}
-                onchange={(e) =>
-                  void setNumber("ai.max_tool_calls", e.currentTarget.value)}
-              />
-            </SettingRow>
-            <SettingRow title="Message delivery"
-              >{#snippet help()}Seconds between two rounds of delivering
-                messages between agents. {range(
-                  "inbox.delivery_seconds",
-                )}{/snippet}
-              <input
-                type="number"
-                aria-label="Message delivery seconds"
-                value={saved?.inbox?.delivery_seconds ?? ""}
-                disabled={!saved}
-                onchange={(e) =>
-                  void setNumber(
-                    "inbox.delivery_seconds",
-                    e.currentTarget.value,
-                  )}
-              />
-            </SettingRow>
-            {#if numberError}<p class="error" role="alert">
-                {numberError}
-              </p>{/if}
-          </section>
-          <section class="control-section">
-            <h3>Shell and sandbox</h3>
-            <SettingRow title="Shell for every agent"
-              >{#snippet help()}On: each agent can run simple shell commands,
-                and its program runs in a sandbox that keeps the app and the
-                system read-only. Off: only the main agent has a shell. Applies
-                the next time an agent starts.{/snippet}
-              <Toggle
-                ariaLabel="Shell for every agent"
-                checked={saved?.shell?.on ?? false}
-                disabled={!saved?.shell?.sandbox_available}
-                onchange={(on) => void setShell(on)}
-                label={saved?.shell?.on ? "On" : "Off"}
-              />
-            </SettingRow>
-            {#if shellError}<p class="error" role="alert">{shellError}</p>{/if}
-            {#if saved?.shell}
-              <p class="hint">{saved.shell.note}</p>
-              <h4>Rules in force: main agent</h4>
-              <ul class="rules" aria-label="Main agent rules">
-                {#each saved.shell.main as line (line)}<li>{line}</li>{/each}
-              </ul>
-              <h4>Rules in force: other agents</h4>
-              <ul class="rules" aria-label="Other agents' rules">
-                {#each saved.shell.agents as line (line)}<li>{line}</li>{/each}
-              </ul>
-            {/if}
-          </section>
-          <NetworkSection />
-        {:else if page === "Work"}
-          <DispatchSection />
-          <JobsSection />
-          <TriggersSection />
-        {:else if page === "Questions"}
-          <AsksSection />
-        {:else if page === "Helpers and skills"}
-          <HelpersSection />
-          <CapabilitiesSection />
-          <SkillsSection />
-        {:else if page === "Team and sharing"}
-          <TeamsSection />
-          <ArchivedAgentsSection />
-          <ShareSection />
-        {:else if page === "Activity"}
-          <ActivitySection />
-        {:else if page === "Budgets"}
-          <BudgetSection />
-        {:else if page === "Models and keys"}
-          <KeysSection />
-        {:else if page === "Connectors"}
-          <ConnectorsSection />
-        {:else if page === "Dashboards"}
-          <section class="control-section">
-            <h3>Dashboards</h3>
-            <SettingRow title="Lock dashboards"
-              >{#snippet help()}Locked: a dashboard only shows numbers. Nothing
-                on it can be clicked or edited. Unlocked: its buttons and fields
-                work. You can still pick another dashboard, refresh and close
-                the view while locked.{/snippet}
-              <Toggle
-                bind:checked={prefs.dashboardsLocked}
-                ariaLabel="Lock dashboards"
-              />
-            </SettingRow>
-            <p class="muted" role="status">
-              Dashboards are {prefs.dashboardsLocked ? "locked" : "unlocked"}.
-            </p>
-          </section>
-          <AppsSection />
-        {:else if page === "Memory"}
-          <section class="control-section">
-            <h3>Memory</h3>
-            <SettingRow title="Memory size per agent"
-              >{#snippet help()}Notes past this size (bytes) have their oldest
-                sections moved to an archive note. {range(
-                  "memory.max_bytes",
-                )}{/snippet}
-              <input
-                type="number"
-                aria-label="Memory size per agent in bytes"
-                step="1000"
-                value={saved?.memory.max_bytes ?? ""}
-                disabled={!saved}
-                onchange={(e) =>
-                  void setNumber("memory.max_bytes", e.currentTarget.value)}
-              />
-            </SettingRow>
-            {#if numberError}<p class="error" role="alert">
-                {numberError}
-              </p>{/if}
-          </section>
-          <MemorySection />
-        {:else if page === "Privacy and data"}
-          <section class="control-section">
-            <h3>Privacy and data</h3>
-            <SettingRow title="Your data"
-              >{#snippet help()}Sign out or remove your data in Setup and
-                account, on the left ribbon.{/snippet}
-            </SettingRow>
-            <h4>What leaves this computer</h4>
-            <SettingRow title="Messages to your model provider"
-              >{#snippet help()}What you type to the assistant or an agent goes
-                to the provider you chose (Claude, OpenAI and so on), with your
-                own key or login, under that provider's terms. The network
-                switch in Settings, Agents can stop it.{/snippet}
-              <code>Only when you chat</code>
-            </SettingRow>
-            <SettingRow title="Local model (Ollama)"
-              >{#snippet help()}Runs on this computer. Nothing leaves it.{/snippet}
-              <code>Stays here</code>
-            </SettingRow>
-            <SettingRow title="GitHub issues"
-              >{#snippet help()}Asked through the gh tool with your own login.
-                The app stores no GitHub token.{/snippet}
-              <code>Only when you look</code>
-            </SettingRow>
-            <SettingRow title="Your notes"
-              >{#snippet help()}Stay in your vault folder. They leave only when
-                an agent you run reads one and sends it to its provider.{/snippet}
-              <code>Stay here</code>
-            </SettingRow>
-            <SettingRow title="Usage statistics"
-              >{#snippet help()}Nothing is collected or sent about how you use
-                the app.{/snippet}
-              <code>None</code>
-            </SettingRow>
-            <SettingRow title="Error log"
-              >{#snippet help()}Errors from this window and the backend, kept on
-                this computer in <code>crashes.jsonl</code>. Never sent.{/snippet}
-              <span class="row">
-                <code>{errorRows.length} recorded</code>
-                <button
-                  type="button"
-                  disabled={errorRows.length === 0}
-                  onclick={clearErrors}>Clear</button
-                >
-              </span>
-            </SettingRow>
-            <SettingRow title="Export my notes"
-              >{#snippet help()}Copies every note into one zip file in the app's
-                exports folder. Your vault is not changed.{/snippet}
-              <button type="button" onclick={() => void exportNotes()}
-                >Export notes</button
-              >
-            </SettingRow>
-            {#if notesNote}<p class="muted" role="status">{notesNote}</p>{/if}
-            <SettingRow title="Activity history"
-              >{#snippet help()}The tool log and office events shown on the
-                Activity and History tabs, kept on this computer in
-                <code>activity.jsonl</code>. Never sent.{/snippet}
-              <button type="button" onclick={() => void clearHistory()}
-                >Empty history</button
-              >
-            </SettingRow>
-            {#if historyNote}<p class="muted" role="status">
-                {historyNote}
-              </p>{/if}
-            {#if errorRows.length}
-              <ul class="log" aria-label="Recorded errors">
-                {#each errorRows.slice(0, 10) as row, index (index)}
-                  <li>
-                    <span class="muted"
-                      >{row.at.slice(0, 19).replace("T", " ")}</span
-                    > <b>{row.source}</b>
-                    {row.message}
-                  </li>
-                {/each}
-              </ul>
-            {/if}
-          </section>
-          <div class="cards">
-            <StatusCard
-              name="Telemetry"
-              what="Anonymous usage numbers, off unless you turn them on."
-              status="Planned"
-              reason="Nothing is collected today."
-            />
-          </div>
-        {:else if page === "Advanced"}
-          <section class="control-section">
-            <h3>Advanced</h3>
-            <SettingRow title="Backend (Python)"
-              >{#snippet help()}Answers every request from this window.{/snippet}
-              <code>{sidecar}</code>
-            </SettingRow>
-          </section>
-          <section class="control-section">
-            <h3>Feature switches</h3>
-            <p class="hint">
-              Turn a part of the app off without a new build. A change applies
-              the next time that part opens.
-            </p>
-            {#each FLAGS as flag (flag.id)}
-              <SettingRow title={flag.name}>
-                {#snippet help()}{flag.what}{/snippet}
-                <Toggle
-                  ariaLabel={flag.name}
-                  checked={flagOn(flag.id)}
-                  onchange={(on) => setFlag(flag.id, on)}
-                  label={flagOn(flag.id) ? "On" : "Off"}
-                />
-              </SettingRow>
-            {/each}
-          </section>
-          <section class="control-section">
-            <h3>Backend log</h3>
-            <SettingRow title="Newest 200 lines"
-              >{#snippet help()}{logPath ||
-                  "The backend writes one log file and keeps three older copies. Keys are masked."}{/snippet}
-              <button type="button" onclick={() => void readLogs()}
-                >Refresh</button
-              >
-            </SettingRow>
-            {#if logError}
-              <p class="error" role="alert">{logError}</p>
-            {:else if logLines && logLines.length === 0}
-              <p class="muted">The log is empty.</p>
-            {:else if logLines}
-              <pre class="backend-log" aria-label="Backend log">{logLines.join(
-                  "\n",
-                )}</pre>
-            {/if}
-          </section>
-          <div class="cards">
-            <StatusCard
-              name="Dictation and meeting capture"
-              what="Speak into any field and capture meeting notes."
-              status="Planned"
-              reason="No speech-to-text source is set up in this build."
-            />
-          </div>
-        {:else if page === "Keyboard"}
-          <section class="control-section">
-            <h3>Keyboard</h3>
-            <table class="keys">
-              <thead>
-                <tr><th>Keys</th><th>What it does</th><th>Where</th></tr>
-              </thead>
-              <tbody>
-                {#each SHORTCUTS as row (row.keys + row.where)}
-                  <tr>
-                    <td><kbd>{row.keys}</kbd></td>
-                    <td>{row.does}</td>
-                    <td>{row.where}</td>
-                  </tr>
-                {/each}
-              </tbody>
-            </table>
-          </section>
-        {:else if page === "Design tokens"}
-          <TokensSection />
-        {:else if page === "Planned"}
-          <PlannedSection />
-        {:else if page === "Doctor"}
-          <section class="control-section">
-            <h3>Doctor</h3>
-            <p class="hint">
-              Everything the app needs, checked in one go. Each gap says what to
-              do next. Nothing is changed by looking.
-            </p>
-            <SettingRow
-              title={doctor
-                ? `${doctor.summary.ok} fine, ${doctor.summary.warn} to look at, ${doctor.summary.bad} to fix`
+          {/each}
+        </section>
+        <section class="control-section">
+          <h3>Backend log</h3>
+          <SettingRow title="Newest 200 lines"
+            >{#snippet help()}{logPath ||
+                "The backend writes one log file and keeps three older copies. Keys are masked."}{/snippet}
+            <button type="button" onclick={() => void readLogs()}
+              >Refresh</button
+            >
+          </SettingRow>
+          {#if logError}
+            <p class="error" role="alert">{logError}</p>
+          {:else if logLines && logLines.length === 0}
+            <p class="muted">The log is empty.</p>
+          {:else if logLines}
+            <pre class="backend-log" aria-label="Backend log">{logLines.join(
+                "\n",
+              )}</pre>
+          {/if}
+        </section>
+        <div class="cards">
+          <StatusCard
+            name="Dictation and meeting capture"
+            what="Speak into any field and capture meeting notes."
+            status="Planned"
+            reason="No speech-to-text source is set up in this build."
+          />
+        </div>
+      {:else if page === "Keyboard"}
+        <section class="control-section">
+          <h3>Keyboard</h3>
+          <table class="keys">
+            <thead>
+              <tr><th>Keys</th><th>What it does</th><th>Where</th></tr>
+            </thead>
+            <tbody>
+              {#each SHORTCUTS as row (row.keys + row.where)}
+                <tr>
+                  <td><kbd>{row.keys}</kbd></td>
+                  <td>{row.does}</td>
+                  <td>{row.where}</td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+        </section>
+      {:else if page === "Design tokens"}
+        <TokensSection />
+      {:else if page === "Planned"}
+        <PlannedSection />
+      {:else if page === "Doctor"}
+        <section class="control-section">
+          <h3>Doctor</h3>
+          <p class="hint">
+            Everything the app needs, checked in one go. Each gap says what to
+            do next. Nothing is changed by looking.
+          </p>
+          <SettingRow
+            title={doctor
+              ? `${doctor.summary.ok} fine, ${doctor.summary.warn} to look at, ${doctor.summary.bad} to fix`
+              : "Checking…"}
+          >
+            <button type="button" onclick={() => void readDoctor()}
+              >Check again</button
+            >
+          </SettingRow>
+          {#if doctorError}<p class="error" role="alert">
+              {doctorError}
+            </p>{/if}
+          {#if doctor}
+            <ul class="checks" aria-label="Checks">
+              {#each doctor.checks as check (check.name)}
+                <li>
+                  <span class="state {check.state}"
+                    >{check.state === "ok"
+                      ? "Fine"
+                      : check.state === "warn"
+                        ? "Look"
+                        : "Fix"}</span
+                  >
+                  <div>
+                    <b>{check.name}</b>
+                    <p>{check.found}</p>
+                    {#if check.fix}<p class="fix">{check.fix}</p>{/if}
+                  </div>
+                </li>
+              {/each}
+            </ul>
+          {/if}
+        </section>
+        <section class="control-section" aria-label="Link doctor">
+          <h3>Links in your notes</h3>
+          <SettingRow
+            title={links
+              ? `${links.notes} notes, ${links.broken_count} broken ${links.broken_count === 1 ? "link" : "links"}, ${links.lonely_count} with no links`
+              : linksError
+                ? "Not checked"
                 : "Checking…"}
+          >
+            {#snippet help()}A broken link points at a note that does not exist.
+              Nothing is repaired here; open the note to fix it.{/snippet}
+            <button type="button" onclick={() => void readLinks()}
+              >Check again</button
             >
-              <button type="button" onclick={() => void readDoctor()}
-                >Check again</button
-              >
-            </SettingRow>
-            {#if doctorError}<p class="error" role="alert">
-                {doctorError}
-              </p>{/if}
-            {#if doctor}
-              <ul class="checks" aria-label="Checks">
-                {#each doctor.checks as check (check.name)}
-                  <li>
-                    <span class="state {check.state}"
-                      >{check.state === "ok"
-                        ? "Fine"
-                        : check.state === "warn"
-                          ? "Look"
-                          : "Fix"}</span
-                    >
-                    <div>
-                      <b>{check.name}</b>
-                      <p>{check.found}</p>
-                      {#if check.fix}<p class="fix">{check.fix}</p>{/if}
-                    </div>
-                  </li>
-                {/each}
-              </ul>
-            {/if}
-          </section>
-          <section class="control-section" aria-label="Link doctor">
-            <h3>Links in your notes</h3>
-            <SettingRow
-              title={links
-                ? `${links.notes} notes, ${links.broken_count} broken ${links.broken_count === 1 ? "link" : "links"}, ${links.lonely_count} with no links`
-                : linksError
-                  ? "Not checked"
-                  : "Checking…"}
-            >
-              {#snippet help()}A broken link points at a note that does not
-                exist. Nothing is repaired here; open the note to fix it.{/snippet}
-              <button type="button" onclick={() => void readLinks()}
-                >Check again</button
-              >
-            </SettingRow>
-            {#if linksError}<p class="error" role="alert">{linksError}</p>{/if}
-            {#if links && links.broken.length > 0}
-              <ul class="checks" aria-label="Broken links">
-                {#each links.broken as row, i (i)}
-                  <li>
-                    <span class="state bad">Fix</span>
-                    <div>
-                      <b>{row.note}</b>
-                      <p>links to "{row.link}", which is not a note.</p>
-                    </div>
-                  </li>
-                {/each}
-              </ul>
-            {/if}
-            {#if links && links.lonely.length > 0}
-              <ul class="checks" aria-label="Notes with no links">
-                {#each links.lonely as path (path)}
-                  <li>
-                    <span class="state warn">Look</span>
-                    <div><b>{path}</b></div>
-                  </li>
-                {/each}
-              </ul>
-            {/if}
-          </section>
-        {:else}
-          <section class="control-section">
-            <h3>About</h3>
-            <SettingRow title="Hippocampus"
-              >{#snippet help()}A local notes vault with a graph and real
-                command-line agents.{/snippet}
-              <code>{version ? `v${version}` : "…"}</code>
-            </SettingRow>
-          </section>
-        {/if}
-      </div>
+          </SettingRow>
+          {#if linksError}<p class="error" role="alert">{linksError}</p>{/if}
+          {#if links && links.broken.length > 0}
+            <ul class="checks" aria-label="Broken links">
+              {#each links.broken as row, i (i)}
+                <li>
+                  <span class="state bad">Fix</span>
+                  <div>
+                    <b>{row.note}</b>
+                    <p>links to "{row.link}", which is not a note.</p>
+                  </div>
+                </li>
+              {/each}
+            </ul>
+          {/if}
+          {#if links && links.lonely.length > 0}
+            <ul class="checks" aria-label="Notes with no links">
+              {#each links.lonely as path (path)}
+                <li>
+                  <span class="state warn">Look</span>
+                  <div><b>{path}</b></div>
+                </li>
+              {/each}
+            </ul>
+          {/if}
+        </section>
+      {:else}
+        <section class="control-section">
+          <h3>About</h3>
+          <SettingRow title="Hippocampus"
+            >{#snippet help()}A local notes vault with a graph and real
+              command-line agents.{/snippet}
+            <code>{version ? `v${version}` : "…"}</code>
+          </SettingRow>
+        </section>
+      {/if}
     </div>
   </div>
-</div>
+</Dialog>
 
 <style>
-  .scrim {
-    position: fixed;
-    inset: 0;
-    z-index: 20;
-    display: grid;
-    place-items: center;
-    background: color-mix(in srgb, var(--color-bg-0) 70%, transparent);
-  }
-
-  .box {
-    display: flex;
-    flex-direction: column;
-    /* Large enough on a big screen that the page list and most pages show without scrolling. */
-    width: min(1200px, calc(100vw - 2 * var(--space-4)));
-    height: min(880px, 90vh);
-    padding: var(--space-4);
-    color: var(--color-text);
-    background: var(--color-bg-1);
-    border: 1px solid var(--color-border);
-    border-left: 3px solid var(--color-accent);
-    border-radius: var(--radius-sm);
-    box-shadow: var(--layout-drawer-shadow);
-  }
-
   header {
     display: flex;
     gap: var(--space-3);

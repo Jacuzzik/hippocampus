@@ -9,7 +9,7 @@
 </script>
 
 <script lang="ts">
-  import { dialogFocus } from "../controls/dialogFocus.ts";
+  import Dialog from "../controls/Dialog.svelte";
   import { onMount } from "svelte";
   import { fuzzyScore } from "../fuzzy";
 
@@ -70,80 +70,43 @@
   }
 </script>
 
-<div class="scrim" role="presentation" onmousedown={onclose}>
-  <div
-    class="box"
-    role="dialog"
-    aria-modal="true"
+<Dialog title={label} {onclose} bare>
+  <input
+    bind:this={input}
+    bind:value={query}
+    onkeydown={onKey}
+    {placeholder}
     aria-label={label}
-    tabindex="-1"
-    use:dialogFocus
-    onmousedown={(e) => e.stopPropagation()}
-  >
-    <input
-      bind:this={input}
-      bind:value={query}
-      onkeydown={onKey}
-      {placeholder}
-      aria-label={label}
-      autocomplete="off"
-      role="combobox"
-      aria-expanded="true"
-      aria-controls="command-box-list"
-      aria-activedescendant={shown[active]
-        ? `command-box-${active}`
-        : undefined}
-    />
-    <ul id="command-box-list" role="listbox" aria-label="Matches">
-      {#each shown as item, i (item.id)}
-        <li role="presentation">
-          <button
-            type="button"
-            id="command-box-{i}"
-            role="option"
-            tabindex="-1"
-            aria-selected={i === active}
-            class:active={i === active}
-            onmouseenter={() => (active = i)}
-            onclick={() => choose(item)}
-          >
-            <span>{item.label}</span>
-            {#if item.hint}<span class="hint">{item.hint}</span>{/if}
-          </button>
-        </li>
-      {:else}
-        <li class="muted" role="presentation">No matches.</li>
-      {/each}
-    </ul>
-  </div>
-</div>
+    autocomplete="off"
+    role="combobox"
+    aria-expanded="true"
+    aria-controls="command-box-list"
+    aria-activedescendant={shown[active] ? `command-box-${active}` : undefined}
+  />
+  <ul id="command-box-list" role="listbox" aria-label="Matches">
+    {#each shown as item, i (item.id)}
+      <li role="presentation">
+        <button
+          type="button"
+          id="command-box-{i}"
+          role="option"
+          tabindex="-1"
+          aria-selected={i === active}
+          class:active={i === active}
+          onmouseenter={() => (active = i)}
+          onclick={() => choose(item)}
+        >
+          <span>{item.label}</span>
+          {#if item.hint}<span class="hint">{item.hint}</span>{/if}
+        </button>
+      </li>
+    {:else}
+      <li class="muted" role="presentation">No matches.</li>
+    {/each}
+  </ul>
+</Dialog>
 
 <style>
-  .scrim {
-    position: fixed;
-    inset: 0;
-    z-index: 10;
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-    padding-top: 12vh;
-    background: transparent;
-  }
-
-  .box {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-    width: min(560px, 90vw);
-    max-height: 60vh;
-    padding: var(--space-4);
-    background: var(--color-bg-1);
-    border: 1px solid var(--color-border);
-    border-left: 3px solid var(--color-accent);
-    border-radius: var(--radius-sm);
-    color: var(--color-text);
-  }
-
   input {
     font: inherit;
     min-width: 0;

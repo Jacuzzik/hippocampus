@@ -2,7 +2,7 @@
 <script lang="ts">
   import { still } from "../motion.ts";
   import CountUp from "../controls/CountUp.svelte";
-  import { dialogFocus } from "../controls/dialogFocus.ts";
+  import Dialog from "../controls/Dialog.svelte";
   import { backend } from "../backend.svelte.ts";
   import { report } from "../notices.svelte.ts";
   import { every } from "../poll.ts";
@@ -456,99 +456,76 @@
 {/if}
 
 {#if agentEdit.current}
-  <div
-    class="info-scrim"
-    role="presentation"
-    onmousedown={() => (agentEdit.current = null)}
+  <Dialog
+    title={agentEdit.current.mode === "rename" ? "Rename agent" : "Agent note"}
+    heading={agentEdit.current.mode === "rename"
+      ? "Rename"
+      : "Note (only you can see this)"}
+    onclose={() => (agentEdit.current = null)}
+    center
+    dim
+    z={30}
+    width="min(var(--size-320), calc(100vw - 2 * var(--space-4)))"
   >
-    <div
-      class="info-box"
-      role="dialog"
-      aria-modal="true"
-      aria-label={agentEdit.current.mode === "rename"
-        ? "Rename agent"
-        : "Agent note"}
-      tabindex="-1"
-      use:dialogFocus
-      onmousedown={(e) => e.stopPropagation()}
-    >
-      <header>
-        <b
-          >{agentEdit.current.mode === "rename"
-            ? "Rename"
-            : "Note (only you can see this)"}</b
-        >
-      </header>
-      {#if agentEdit.current.mode === "rename"}
-        <input
-          class="edit-field"
-          bind:value={agentEdit.current.value}
-          aria-label="Name"
-        />
-      {:else}
-        <textarea
-          class="edit-field"
-          rows="5"
-          bind:value={agentEdit.current.value}
-          aria-label="Note"></textarea>
-      {/if}
-      <div class="edit-actions">
-        <button type="button" onclick={() => (agentEdit.current = null)}
-          >Cancel</button
-        >
-        <button type="button" onclick={saveEdit}>Save</button>
-      </div>
+    {#if agentEdit.current.mode === "rename"}
+      <input
+        class="edit-field"
+        bind:value={agentEdit.current.value}
+        aria-label="Name"
+      />
+    {:else}
+      <textarea
+        class="edit-field"
+        rows="5"
+        bind:value={agentEdit.current.value}
+        aria-label="Note"></textarea>
+    {/if}
+    <div class="edit-actions">
+      <button type="button" onclick={() => (agentEdit.current = null)}
+        >Cancel</button
+      >
+      <button type="button" onclick={saveEdit}>Save</button>
     </div>
-  </div>
+  </Dialog>
 {/if}
 
 {#if info}
-  <div class="info-scrim" role="presentation" onmousedown={() => (info = null)}>
-    <div
-      class="info-box"
-      role="dialog"
-      aria-modal="true"
-      aria-label="{info.name} details"
-      tabindex="-1"
-      use:dialogFocus
-      onmousedown={(e) => e.stopPropagation()}
-    >
-      <header>
-        <b>{info.name}</b>
-        <button
-          type="button"
-          class="info-close"
-          aria-label="Close info"
-          onclick={() => (info = null)}>×</button
-        >
-      </header>
-      <dl>
-        <dt>ROLE</dt>
-        <dd>{info.role}</dd>
-        <dt>PROVIDER</dt>
-        <dd>{info.provider}</dd>
-        <dt>MODEL</dt>
-        <dd>{info.model}</dd>
-        {#if info.folder}
-          <dt>FOLDER</dt>
-          <dd>{info.folder}</dd>
-        {/if}
-        <dt>STATUS</dt>
-        <dd>{info.status}</dd>
-        <dt>CTX</dt>
-        <dd>{info.ctx}</dd>
-        <dt>BRIEFING</dt>
-        <dd>{info.briefing}</dd>
-        <dt>DELIVERY</dt>
-        <dd class:undelivered={info.undelivered}>
-          {info.delivery}{#if info.undelivered}. Use Resend briefing in the card
-            menu.{/if}
-        </dd>
-        <dt>AUTONOMY</dt>
-        <dd>{info.autonomy}</dd>
-      </dl>
-    </div>
-  </div>
+  <Dialog
+    title="{info.name} details"
+    heading={info.name}
+    closeLabel="Close info"
+    onclose={() => (info = null)}
+    center
+    dim
+    z={30}
+    width="min(var(--size-320), calc(100vw - 2 * var(--space-4)))"
+  >
+    <dl>
+      <dt>ROLE</dt>
+      <dd>{info.role}</dd>
+      <dt>PROVIDER</dt>
+      <dd>{info.provider}</dd>
+      <dt>MODEL</dt>
+      <dd>{info.model}</dd>
+      {#if info.folder}
+        <dt>FOLDER</dt>
+        <dd>{info.folder}</dd>
+      {/if}
+      <dt>STATUS</dt>
+      <dd>{info.status}</dd>
+      <dt>CTX</dt>
+      <dd>{info.ctx}</dd>
+      <dt>BRIEFING</dt>
+      <dd>{info.briefing}</dd>
+      <dt>DELIVERY</dt>
+      <dd class:undelivered={info.undelivered}>
+        {info.delivery}{#if info.undelivered}. Use Resend briefing in the card
+          menu.{/if}
+      </dd>
+      <dt>AUTONOMY</dt>
+      <dd>{info.autonomy}</dd>
+    </dl>
+  </Dialog>
 {/if}
 
 <div
@@ -1074,32 +1051,6 @@
     color: var(--hippo-purple);
   }
 
-  .info-scrim {
-    position: fixed;
-    inset: 0;
-    z-index: 30;
-    display: grid;
-    place-items: center;
-    background: var(--color-shadow-strong);
-  }
-
-  .info-box {
-    width: min(340px, calc(100vw - 32px));
-    padding: var(--space-4);
-    background: var(--color-bg-1);
-    color: var(--color-text);
-    border: 1px solid var(--color-border);
-    border-left: 3px solid var(--color-accent);
-    border-radius: var(--radius-sm);
-  }
-
-  .info-box header {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    margin-bottom: var(--space-3);
-  }
-
   .edit-field {
     box-sizing: border-box;
     width: 100%;
@@ -1118,16 +1069,7 @@
     margin-top: var(--space-3);
   }
 
-  .info-close {
-    margin-left: auto;
-    background: none;
-    border: none;
-    color: var(--color-md-card-muted);
-    font-size: var(--font-size-xl);
-    cursor: pointer;
-  }
-
-  .info-box dl {
+  dl {
     display: grid;
     grid-template-columns: 80px 1fr;
     gap: var(--space-1) var(--space-2);
@@ -1135,12 +1077,12 @@
     font-size: var(--font-size-xs);
   }
 
-  .info-box dt {
+  dt {
     color: var(--color-md-card-muted);
     font-size: var(--font-size-tag);
   }
 
-  .info-box dd {
+  dd {
     margin: 0;
     overflow-wrap: anywhere;
   }
