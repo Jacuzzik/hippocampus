@@ -409,3 +409,29 @@ test("the context percentage counts up to its value (12.08)", async ({
     timeout: 10000,
   });
 });
+
+test("the tab underline sits under the chosen tab and moves with it (L.27)", async ({
+  page,
+}) => {
+  const tabs = page.getByRole("tablist", { name: "Panels" });
+  const line = tabs.locator(".underline");
+  const under = async (name: string) => {
+    const tab = await tabs.getByRole("tab", { name }).boundingBox();
+    const bar = await line.boundingBox();
+    return { tab, bar };
+  };
+  await tabs.getByRole("tab", { name: "monitor" }).click();
+  await expect
+    .poll(async () => {
+      const { tab, bar } = await under("monitor");
+      return tab && bar ? Math.abs(tab.x - bar.x) < 2 : false;
+    })
+    .toBe(true);
+  await tabs.getByRole("tab", { name: "tasks" }).click();
+  await expect
+    .poll(async () => {
+      const { tab, bar } = await under("tasks");
+      return tab && bar ? Math.abs(tab.x - bar.x) < 2 : false;
+    })
+    .toBe(true);
+});
