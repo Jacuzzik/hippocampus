@@ -20,7 +20,6 @@
   import JobsSection from "./JobsSection.svelte";
   import ShareSection from "./ShareSection.svelte";
   import SkillsSection from "./SkillsSection.svelte";
-  import TeamsSection from "./TeamsSection.svelte";
   import TriggersSection from "./TriggersSection.svelte";
   import ConnectorsSection from "./ConnectorsSection.svelte";
   import KeysSection from "./KeysSection.svelte";
@@ -679,7 +678,6 @@
           <CapabilitiesSection />
           <SkillsSection />
         {:else if page === "Team and sharing"}
-          <TeamsSection />
           <ArchivedAgentsSection />
           <ShareSection />
         {:else if page === "Activity"}
@@ -862,14 +860,6 @@
                 )}</pre>
             {/if}
           </section>
-          <div class="cards">
-            <StatusCard
-              name="Dictation and meeting capture"
-              what="Speak into any field and capture meeting notes."
-              status="Planned"
-              reason="No speech-to-text source is set up in this build."
-            />
-          </div>
         {:else if page === "Keyboard"}
           <section class="control-section">
             <h3>Keyboard</h3>

@@ -201,7 +201,6 @@ def test_the_session_lists_rows_checks_once_and_logs_without_secrets(
     assert {one["id"] for one in first} >= {
         "ollama",
         "github",
-        "mcp",
         "webhooks",
         "jobs",
         "slack",

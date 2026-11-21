@@ -200,6 +200,42 @@
       reason:
         "Needs multi-window support in the shell; the vault switch inside one window works.",
     },
+    {
+      id: "D.07",
+      name: "Teams",
+      what: "A team sees the same agents, tasks and notes, each person with their own sign-in.",
+      reason: "Needs a team service, which this build does not include.",
+    },
+    {
+      id: "D.07",
+      name: "Dispatch assistant",
+      what: "Send a task to the assistant from the Work page, not only to a helper.",
+      reason: "Dispatch reaches helpers only; the assistant is not wired in.",
+    },
+    {
+      id: "D.07",
+      name: "MCP servers",
+      what: "Outside tools the assistant can call through the Model Context Protocol (MCP).",
+      reason: "Adding, removing and turning one on per agent is not built.",
+    },
+    {
+      id: "D.07",
+      name: "Plugins",
+      what: "Packs that add several tools and skills in one install.",
+      reason: "No plugin format is defined yet.",
+    },
+    {
+      id: "D.07",
+      name: "Notion",
+      what: "Read pages and databases into notes.",
+      reason: "No Notion calls are built; needs a sign-in and a token store.",
+    },
+    {
+      id: "D.07",
+      name: "Calendars",
+      what: "Show today's events from Google Calendar in the daily brief.",
+      reason: "No calendar calls are built; needs a sign-in and a token store.",
+    },
   ] as const;
 </script>
 
@@ -210,7 +246,7 @@
     them sends anything anywhere.
   </p>
   <div class="grid">
-    {#each PLANNED as item (item.id)}
+    {#each PLANNED as item (item.name)}
       <StatusCard
         name={item.name}
         what={item.what}

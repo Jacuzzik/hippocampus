@@ -18,7 +18,7 @@ test("the work pages open from Settings and each lists its panels", async ({
     Work: ["Dispatch", "Scheduled notes jobs", "Triggers"],
     Questions: ["Ask me"],
     "Helpers and skills": ["Helper jobs", "Capabilities", "Skills"],
-    "Team and sharing": ["Teams", "Sharing"],
+    "Team and sharing": ["Sharing"],
     Activity: ["Activity log"],
   };
   for (const [name, headings] of Object.entries(tabs)) {
@@ -236,25 +236,37 @@ test("a dispatch is sent only after the confirm card", async ({ page }) => {
   await expect(dialog.getByText("Sent to helper.")).toBeVisible();
 });
 
-test("teams are a Planned card with no button that cannot work", async ({
+test("Teams, MCP, Plugins, Notion, calendars and the Dispatch assistant show only under Planned", async ({
   page,
 }) => {
   await mockSidecar(page);
   await page.goto("/");
   await openControl(page);
   const dialog = page.getByRole("dialog", { name: "Settings" });
-  await dialog.getByRole("tab", { name: "Team and sharing" }).click();
-  const teams = dialog.locator("article", {
-    hasText: "Share agents with other people",
-  });
-  await expect(teams.getByText("Planned", { exact: true })).toBeVisible();
-  await expect(teams.getByText("Nobody is enrolled")).toBeVisible();
-  await expect(
-    dialog.getByRole("button", { name: "Start a team" }),
-  ).toHaveCount(0);
+  for (const tab of ["Team and sharing", "Helpers and skills", "Work"]) {
+    await dialog.getByRole("tab", { name: tab, exact: true }).click();
+    await expect(dialog.getByRole("tabpanel")).not.toContainText(
+      /Share agents with other people|MCP servers|Plugins|Assistant \(planned\)/,
+    );
+  }
+  await dialog.getByRole("tab", { name: "Planned", exact: true }).click();
+  for (const name of [
+    "Teams",
+    "Dispatch assistant",
+    "MCP servers",
+    "Plugins",
+    "Notion",
+    "Calendars",
+  ]) {
+    await expect(
+      dialog
+        .locator("article")
+        .filter({ has: page.getByText(name, { exact: true }) }),
+    ).toBeVisible();
+  }
 });
 
-test("capabilities list the skills and show MCP servers and plugins as Planned", async ({
+test("capabilities list the skills and no unbuilt feature card", async ({
   page,
 }) => {
   await mockSidecar(page);
@@ -264,12 +276,7 @@ test("capabilities list the skills and show MCP servers and plugins as Planned",
   await dialog.getByRole("tab", { name: "Helpers and skills" }).click();
   const caps = dialog.locator("#control-capabilities").locator("..");
   await expect(caps.getByText("tidy-notes")).toBeVisible();
-  for (const name of ["MCP servers", "Plugins"]) {
-    const card = caps
-      .locator("article")
-      .filter({ has: page.getByText(name, { exact: true }) });
-    await expect(card.getByText("Planned", { exact: true })).toBeVisible();
-  }
+  await expect(caps.locator("article")).toHaveCount(0);
   await expect(caps.getByRole("button", { name: /Not set up/ })).toHaveCount(0);
 });
 

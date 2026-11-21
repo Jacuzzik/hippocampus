@@ -252,22 +252,6 @@ def planned() -> list[Row]:
             "Slack or a webhook connector",
         ),
         row(
-            "notion",
-            "Notion",
-            "Read pages and databases into notes.",
-            "Needs setup",
-            "No Notion calls are built yet.",
-            token,
-        ),
-        row(
-            "calendar",
-            "Google Calendar",
-            "Show today's events in the daily brief.",
-            "Needs setup",
-            "No Calendar calls are built yet.",
-            token,
-        ),
-        row(
             "gmail",
             "Gmail",
             "Read-only search of your mail for an agent.",
@@ -290,14 +274,6 @@ def planned() -> list[Row]:
             "Needs setup",
             "Waits for a connector that an agent could use.",
             "At least one connected service",
-        ),
-        row(
-            "plugins",
-            "Plugins",
-            "Bundles of skills and tools that install in one step.",
-            "Needs setup",
-            "No plugin format is defined yet.",
-            "A plugin format",
         ),
     ]
     return [{**one, "kind": "card"} for one in rows]

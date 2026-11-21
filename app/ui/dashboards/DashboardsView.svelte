@@ -238,9 +238,13 @@
         {/if}
       {/if}
       {#if current === "calendar"}
-        <div class="fill">{#key refreshed}<CalendarBoard />{/key}</div>
+        <div class="fill">
+          {#key refreshed}<CalendarBoard />{/key}
+        </div>
       {:else if current === "phone"}
-        <div class="fill">{#key refreshed}<PhoneBoard />{/key}</div>
+        <div class="fill">
+          {#key refreshed}<PhoneBoard />{/key}
+        </div>
       {:else if error === NEEDS_REPO}
         <p class="note" role="status">
           Write a repository as owner/name and press Show. It is read with the
