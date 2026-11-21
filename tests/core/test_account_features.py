@@ -152,3 +152,56 @@ def test_offline_says_so_and_changes_nothing(tmp_path: Path) -> None:
     service.offline = True
     with pytest.raises(ValueError, match="Could not reach"):
         acct.shares()
+
+
+def test_plan_is_free_unless_the_owner_set_supporter(tmp_path: Path) -> None:
+    """14.05: the plan comes from app_metadata, which only the owner can write."""
+    acct, service = make(tmp_path)
+    sign_in(acct, service)
+    assert acct.status()["plan"] == "free"
+    service.user["app_metadata"] = {"plan": "supporter"}
+    acct.sign_out()
+    sign_in(acct, service)
+    assert acct.status()["plan"] == "supporter"
+    service.user["user_metadata"] = {"plan": "supporter"}  # a user cannot give themselves the plan
+    service.user.pop("app_metadata")
+    acct.sign_out()
+    sign_in(acct, service)
+    assert acct.status()["plan"] == "free"
+
+
+def test_a_banned_account_is_signed_out_with_a_plain_reason(tmp_path: Path) -> None:
+    """14.06: a ban set by the owner ends the sign-in and says so; the app keeps working."""
+    acct, service = make(tmp_path)
+    sign_in(acct, service)
+    service.deleted_on_web = True
+    acct._checked_at = 0
+    original = service.__call__
+
+    def banned(request: urllib.request.Request) -> Any:  # noqa: ANN401
+        if request.full_url.endswith("/auth/v1/user"):
+            raise account.Refused("User is banned")
+        return original(request)
+
+    acct.fetch = banned
+    status = acct.status()
+    assert status["signed_in"] is False and "suspended" in status["problem"]
+
+
+def test_the_database_holds_the_limits_a_changed_app_cannot_skip() -> None:
+    """14.06: the limits are in the SQL file, not only in the app. Static check: no database runs here."""
+    sql = (
+        Path(__file__).parents[2] / "supabase/migrations/20261118_account_features.sql"
+    ).read_text()
+    for rule in (
+        "enable row level security",
+        ">= 20",  # live links
+        ">= 50",  # links per day
+        "hit.failed >= 10",  # wrong passwords lock a link
+        "octet_length(body) <= 262144",  # sync size
+        "octet_length(body) <= 204800",  # share size
+        "revoke all on function public.create_share",
+    ):
+        assert rule in sql
+    for table in ("sync_items", "usage_days", "shares"):
+        assert f"alter table public.{table} enable row level security" in sql

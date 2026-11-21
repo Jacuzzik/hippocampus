@@ -397,6 +397,7 @@
 
   // The graph as a picture: an SVG file in the app's exports folder; the place is said under the tools.
   let exportNote = $state<string | null>(null);
+  let exportBusy = $state(false);
   async function exportSvg(): Promise<void> {
     exportNote = null;
     const svg = graphSvg(
@@ -410,6 +411,7 @@
         text: cssToken("text"),
       },
     );
+    exportBusy = true;
     try {
       const saved = await invoke<{ path: string }>("sidecar_call", {
         method: "save_export",
@@ -418,6 +420,8 @@
       exportNote = `Saved to ${saved.path}`;
     } catch (cause) {
       exportNote = `Could not save the picture: ${String(cause)}`;
+    } finally {
+      exportBusy = false;
     }
   }
 
@@ -996,8 +1000,11 @@
         />
       </span>
     {/if}
-    <button type="button" class="fit" onclick={() => void exportSvg()}
-      >Export picture</button
+    <button
+      type="button"
+      class="fit"
+      disabled={exportBusy}
+      onclick={() => void exportSvg()}>Export picture</button
     >
   </div>
   {#if exportNote}

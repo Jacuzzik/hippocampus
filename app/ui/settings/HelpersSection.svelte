@@ -1,6 +1,6 @@
 <script lang="ts">
   import ErrorRow from "../controls/ErrorRow.svelte";
-  import { every } from "../poll.ts";
+  import { onChanged } from "../changed.ts";
   import { invoke } from "@tauri-apps/api/core";
   import { onDestroy, onMount } from "svelte";
 
@@ -57,7 +57,7 @@
 
   onMount(() => {
     void load();
-    stopPoll = every(load, 2000);
+    stopPoll = onChanged("helpers", load);
   });
   onDestroy(() => stopPoll?.());
 </script>

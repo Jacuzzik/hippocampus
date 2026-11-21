@@ -2,8 +2,9 @@
 
 ## Reporting a problem
 
-Please report a security problem privately, not in a public issue. Open a private advisory on the
-project's GitHub page (Security, then "Report a vulnerability"). Say what you did, what happened, and
+Please report a security problem privately, not in a public issue. The security contact is GitHub
+private vulnerability reporting on the `Jacuzzik/hippocampus` repository: open
+<https://github.com/Jacuzzik/hippocampus/security/advisories/new> (Security, then "Report a vulnerability"). Say what you did, what happened, and
 which version you used. You should get an answer within 7 days.
 
 ## What the app protects

@@ -4,8 +4,7 @@
 then reads one JSON request per line on stdin and answers each with one line on stdout.
 Requests: {"id": ..., "method": "graph"}, {"id": ..., "method": "open", "vault": "<folder>"} and
 {"id": ..., "method": "read", "path": "<note id>"} (answers {"id": <note id>, "text": ...}).
-{"method": "account"} answers {"claude": true|false}; {"method": "sign_in", "key": "<key>"} saves
-the Claude key in the keychain and {"method": "sign_out"} removes it. Neither ever returns the key.
+{"method": "account"} answers {"claude": true|false}; it never returns the key.
 {"method": "remove_data"} deletes the index cache and the key; the vault is never touched.
 Answers: {"id": ..., "result": ...} or {"id": ..., "error": "<message>", "code": "<kind>"}, with a
 "hint" (the next step) when one is known. A bad line gets an
@@ -167,6 +166,7 @@ class Session(
         now = datetime.now()
         self.compact_day: str | None = now.date().isoformat() if now.hour >= 3 else None
         self.compact_waiting: dict[str, float] = {}
+        self.resend_after_compact: dict[str, float] = {}
         # Agents whose start-up inbox has not yet been typed into their terminal (agent -> inbox file path).
         self.inbox_pending: dict[str, str] = {}
         self.boot = uuid.uuid4().hex
@@ -185,8 +185,8 @@ class Session(
         self.cards = CardStore(storage / "cards")
         self.lock = threading.RLock()
         self.kill = KillSwitch()
-        self.gate = ConfirmGate()
-        self.asks = AskQueue()
+        self.gate = ConfirmGate(lambda: self.changed("asks"))
+        self.asks = AskQueue(lambda: self.changed("asks"))
         self.paused: list[dict[str, Any]] | None = (
             None  # messages of a request that hit its tool limit
         )
@@ -196,7 +196,7 @@ class Session(
         )
         self.ledger = budgets.Ledger(storage / "usage.jsonl")
         self.user_account = user_account.Account(storage)
-        self.helpers = Helpers(self._helper_run, lambda e: self.note("handoff", text=e["text"]))
+        self.helpers = Helpers(self._helper_run, self._helper_event)
         network.set_mode(self.settings.network_mode)
 
     def account(self) -> dict[str, Any]:
@@ -260,17 +260,7 @@ class Session(
             str(a["id"]) for a in added_agents.load(self.agents_path) if a.get("id")
         }
 
-    def sign_in(self, request: dict[str, Any]) -> dict[str, Any]:
-        key = request.get("key")
-        if not isinstance(key, str) or not key.strip():
-            raise ValueError('"sign_in" needs a non-empty "key"')
-        try:
-            set_api_key(key.strip())
-        except KeyringError as error:
-            raise ValueError(KEYCHAIN_MISSING) from error
-        return {"claude": True}
-
-    def sign_out(self) -> dict[str, Any]:
+    def _forget_claude_key(self) -> dict[str, Any]:
         try:
             clear_api_key()
         except KeyringError as error:
@@ -283,7 +273,7 @@ class Session(
         index = self.storage / "index"
         if index.exists():
             shutil.rmtree(index)
-        return self.sign_out()
+        return self._forget_claude_key()
 
     # The graph's right-click actions. The app asks for each one after the user picks it; deletes are confirmed there.
 
@@ -403,6 +393,10 @@ class Session(
         except OSError:
             logger.exception("Could not write the activity log")
         self.changed("activity")
+
+    def _helper_event(self, event: dict[str, Any]) -> None:
+        self.note("handoff", text=event["text"])
+        self.changed("helpers")
 
     def changed(self, what: str) -> None:
         """Tell the window that one kind of data changed, so it reads again now and does not wait for a timer."""

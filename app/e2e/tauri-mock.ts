@@ -614,14 +614,6 @@ export async function mockSidecar(
                 claudeKey !== null ||
                 !(window as unknown as { __noOllama?: boolean }).__noOllama,
             };
-          case "sign_in":
-            if (!String(args.params?.key ?? "").trim())
-              throw new Error('"sign_in" needs a non-empty "key"');
-            claudeKey = String(args.params?.key).trim();
-            return { claude: true };
-          case "sign_out":
-            claudeKey = null;
-            return { claude: false };
           case "read": {
             const path = String(args.params?.path);
             if (!(path in texts)) throw new Error(`mock: no note ${path}`);

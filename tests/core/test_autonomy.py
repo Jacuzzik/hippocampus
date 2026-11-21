@@ -98,3 +98,32 @@ def test_the_installed_app_and_its_data_are_read_only_in_the_sandbox(
     # The vault inside the data folder stays writable, because the deeper rule comes later.
     assert argv.index(str(vault)) > argv.index(str(home / ".local/share/dev.hippocampus.desktop"))
     assert ("--bind", str(vault)) in pairs
+
+
+@pytest.mark.parametrize(("provider", "program"), [("codex", "codex"), ("gemini-cli", "gemini")])
+def test_every_flag_and_value_is_in_the_installed_clis_own_help(
+    provider: str, program: str
+) -> None:
+    """10.10: Codex's workspace-write sandbox and Gemini's approval modes are checked against the CLI's help,
+    not remembered. Skipped on a computer without that CLI."""
+    import shutil
+    import subprocess
+
+    binary = shutil.which(program)
+    if binary is None:
+        pytest.skip(f"{program} is not installed here")
+    help_text = subprocess.run(  # noqa: S603 (a fixed program and flag)
+        [binary, "--help"], capture_output=True, text=True, timeout=30, check=False
+    ).stdout
+    for level in autonomy.LEVELS:
+        for word in autonomy.flags(provider, level):
+            # A flag is named in the help as it is; a value such as auto_edit may be written with or without "_".
+            assert word.replace("_", "") in help_text.replace("_", ""), (provider, word)
+
+
+def test_opencode_gets_no_permission_flag_and_says_its_own_rules_apply(clis: None) -> None:
+    """10.10: OpenCode has no per-run permission setting except --auto (approve all), which the app never passes."""
+    argv = terminal._command("ada", "gemini", "gemini-2.5-pro", level="full")
+    assert "--auto" not in argv and not any("approv" in part for part in argv)
+    assert autonomy.flags("gemini", "full") == []
+    assert autonomy.describe("gemini", "full", "full") == "Autonomy: set by the program itself"

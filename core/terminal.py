@@ -283,15 +283,37 @@ class Terminals:
             self.briefing_delivery[agent] = "Not delivered: the CLI stopped first"
             return
         message = f"Your briefing is in {brief_path}. Read it now and follow it for this session."
-        try:
-            os.write(master, message.encode("utf-8"))
-            time.sleep(SUBMIT_DELAY_S)
-            os.write(master, b"\r")
+        for attempt in range(1, BRIEFING_TRIES + 1):
+            sent_at = time.time()
+            try:
+                os.write(master, message.encode("utf-8"))
+                time.sleep(SUBMIT_DELAY_S)
+                os.write(master, b"\r")
+            except OSError as cause:
+                self._log_event(agent, f"briefing pointer failed (try {attempt}): {cause}")
+                if attempt == BRIEFING_TRIES or proc.poll() is not None:
+                    self.briefing_delivery[agent] = "Not delivered: typing it in failed"
+                    return
+                time.sleep(BRIEFING_RETRY_S)
+                continue
             self._log_event(agent, "briefing pointer sent")
-            self.briefing_delivery[agent] = "Delivered: typed into the terminal"
-        except OSError as cause:
-            self._log_event(agent, f"briefing pointer failed: {cause}")
-            self.briefing_delivery[agent] = "Not delivered: typing it in failed"
+            # A CLI that took the line draws something in answer; one that is still starting up does not.
+            if self._reacted(agent, sent_at):
+                note = "" if attempt == 1 else f" (took {attempt} tries)"
+                self.briefing_delivery[agent] = f"Delivered: typed into the terminal{note}"
+                return
+            self._log_event(agent, f"briefing pointer: no reaction from the CLI (try {attempt})")
+        self.briefing_delivery[agent] = "Typed, but the CLI did not react: use Resend briefing"
+
+    def _reacted(self, agent: str, since: float) -> bool:
+        """True when the CLI printed something after `since`, within BRIEFING_REACT_S."""
+        deadline = time.time() + BRIEFING_REACT_S
+        while True:
+            if self.last_output.get(agent, 0.0) > since:
+                return True
+            if time.time() >= deadline:
+                return False
+            time.sleep(0.05)
 
     def _send_remote_control(self, agent: str, proc: subprocess.Popen, master: int) -> None:
         """Types /remote-control hipcmps-<agent> into a Claude terminal once it has drawn. Skipped if that terminal has stopped or been replaced."""
@@ -622,6 +644,10 @@ BLOCKED_CLAUDE_TOOLS = (
 # The briefing pointer is typed in once a CLI has printed and had BRIEFING_DELAY_S to draw its screen. It does not wait for quiet: TUIs such as OpenCode keep redrawing, so quiet never came and the pointer was dropped.
 BRIEFING_DELAY_S = 6.0
 BRIEFING_WAIT_MAX_S = 60.0
+# The pointer is typed again when the CLI shows no reaction within BRIEFING_REACT_S, up to BRIEFING_TRIES times in all.
+BRIEFING_TRIES = 3
+BRIEFING_REACT_S = 8.0
+BRIEFING_RETRY_S = 2.0
 # Gap between typing a message and pressing Enter, so the CLI reads them as typing and not as one paste.
 SUBMIT_DELAY_S = 0.5
 # A line typed this recently means the CLI is about to be busy, even before it prints.

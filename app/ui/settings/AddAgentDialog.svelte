@@ -97,7 +97,9 @@
     version: number;
     characters: number;
   } | null>(null);
+  let previewBusy = $state(false);
   async function previewBriefing(): Promise<void> {
+    previewBusy = true;
     try {
       preview = await invoke("sidecar_call", {
         method: "briefing_preview",
@@ -110,6 +112,8 @@
       });
     } catch (cause) {
       report("Could not build the briefing preview", cause);
+    } finally {
+      previewBusy = false;
     }
   }
 
@@ -129,9 +133,11 @@
     }
   }
 
+  let folderBusy = $state(false);
   async function createWorkspace(): Promise<void> {
     const name = newFolder.trim();
     workspaceError = null;
+    folderBusy = true;
     try {
       workspaces = await invoke<{ root: string; folders: string[] }>(
         "sidecar_call",
@@ -144,6 +150,8 @@
       chooseFolder("other", name);
     } catch (cause) {
       workspaceError = String(cause);
+    } finally {
+      folderBusy = false;
     }
   }
 
@@ -265,7 +273,7 @@
         <div class="choice">
           <button
             type="button"
-            disabled={!newFolder.trim()}
+            disabled={!newFolder.trim() || folderBusy}
             onclick={createWorkspace}>Create folder</button
           >
         </div>
@@ -375,8 +383,10 @@
           placeholder="The outcome this agent is working toward."></textarea>
       </label>
       <p class="muted count">{draft.goal.length} / 4000</p>
-      <button type="button" onclick={() => void previewBriefing()}
-        >Preview briefing</button
+      <button
+        type="button"
+        disabled={previewBusy}
+        onclick={() => void previewBriefing()}>Preview briefing</button
       >
       {#if preview}
         <p class="muted">
