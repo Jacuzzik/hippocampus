@@ -157,6 +157,12 @@
       onclose();
     }
   }
+  // Columns for n tiles (about as many as rows), and how far the last tile stretches so no row ends empty.
+  const columns = (n: number): number => Math.max(1, Math.ceil(Math.sqrt(n)));
+  function spanLast(n: number): number {
+    const left = n % columns(n);
+    return left === 0 ? 1 : columns(n) - left + 1;
+  }
   const title = $derived(
     items.find((item) => item.id === current)?.label ?? "",
   );
@@ -254,10 +260,15 @@
         <!-- About as many columns as rows, so a few tiles still fill the board in a grid, not one tall row. -->
         <ul
           class="tiles"
-          style:--cols={Math.max(1, Math.ceil(Math.sqrt(tiles.length)))}
+          style:--cols={columns(tiles.length)}
         >
-          {#each tiles as tile (tile.label)}
-            <li class:warn={tile.tone === "warn"}>
+          {#each tiles as tile, i (tile.label)}
+            <li
+              class:warn={tile.tone === "warn"}
+              style:grid-column={i === tiles.length - 1 && spanLast(tiles.length) > 1
+                ? `span ${spanLast(tiles.length)}`
+                : null}
+            >
               <span class="label">{tile.label}</span>
               <b>{tile.value}</b>
               {#if tile.note}<span class="note">{tile.note}</span>{/if}
@@ -413,32 +424,97 @@
     list-style: none;
   }
 
+  /* A tile: label at the top, the number in the middle sized to the tile, the note at the bottom.
+     container-type lets the number scale with the tile (cqmin), so a big board reads from across the room. */
   .tiles li {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
+    position: relative;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
     gap: var(--space-2);
     min-width: 0;
-    padding: var(--space-4);
-    background: var(--color-bg-1);
+    min-height: 0;
+    padding: var(--space-4) var(--space-4) var(--space-3);
+    overflow: hidden;
+    container-type: size;
+    background:
+      linear-gradient(
+        160deg,
+        color-mix(in srgb, var(--color-accent) 7%, transparent),
+        transparent 55%
+      ),
+      var(--color-bg-1);
     border: 1px solid var(--color-border);
-    border-left: 3px solid var(--color-border);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
+    transition:
+      border-color var(--duration-fast) var(--ease-standard),
+      translate var(--duration-fast) var(--ease-standard);
   }
 
+  /* A thin accent bar along the top, the tile's one coloured mark. */
+  .tiles li::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto;
+    height: 3px;
+    background: var(--color-accent);
+    opacity: 0.6;
+  }
+
+  .tiles li:hover {
+    border-color: color-mix(in srgb, var(--color-accent) 45%, var(--color-border));
+    translate: 0 -1px;
+  }
+
+  /* A number that needs the user: the bar, the tint and the number turn to the warning colour. */
   .tiles li.warn {
-    border-left-color: var(--color-danger);
+    background:
+      linear-gradient(
+        160deg,
+        color-mix(in srgb, var(--color-danger) 12%, transparent),
+        transparent 60%
+      ),
+      var(--color-bg-1);
+    border-color: color-mix(in srgb, var(--color-danger) 40%, var(--color-border));
   }
 
-  .label,
+  .tiles li.warn::before {
+    background: var(--color-danger);
+    opacity: 1;
+  }
+
+  .tiles li.warn b {
+    color: var(--color-danger);
+  }
+
+  .label {
+    color: var(--color-text-muted);
+    font-size: var(--font-size-xs);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    overflow-wrap: anywhere;
+  }
+
   .note {
     color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
     overflow-wrap: anywhere;
   }
 
   .tiles b {
-    font-size: calc(var(--font-size-xl) * 1.6);
-    line-height: 1.1;
+    align-self: center;
+    font-size: clamp(var(--font-size-xl), 22cqmin, calc(var(--font-size-xl) * 5));
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    letter-spacing: -0.02em;
     overflow-wrap: anywhere;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tiles li {
+      transition: none;
+    }
+    .tiles li:hover {
+      translate: none;
+    }
   }
 </style>
