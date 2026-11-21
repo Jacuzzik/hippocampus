@@ -248,10 +248,13 @@
       {:else if current === "phone"}
         <div class="fill">{#key refreshed}<PhoneBoard />{/key}</div>
       {:else if error === NEEDS_REPO}
-        <p class="note" role="status">
-          Write a repository as owner/name and press Show. It is read with the
-          gh tool you are logged in to.
-        </p>
+        <!-- The empty board says what to do in the middle of the space it will fill. -->
+        <div class="empty" role="status">
+          <p>
+            Write a repository as owner/name and press Show. It is read with the
+            gh tool you are logged in to.
+          </p>
+        </div>
       {:else if error}
         <ErrorRow message={error} onretry={() => void load()} />
       {:else if tiles === null}
@@ -380,8 +383,25 @@
   }
 
   .board > .tiles,
+  .board > .empty,
   .fill {
     flex: 1 1 auto;
+  }
+
+  .empty {
+    display: grid;
+    place-items: center;
+    margin-top: var(--space-3);
+    padding: var(--space-6);
+    color: var(--color-text-muted);
+    text-align: center;
+    border: 1px dashed var(--color-border);
+    border-radius: var(--radius-md);
+  }
+
+  .empty p {
+    max-width: 40ch;
+    margin: 0;
   }
 
   .fill {
