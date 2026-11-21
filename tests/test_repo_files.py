@@ -56,3 +56,15 @@ def test_the_account_page_offers_download_plan_links_usage_and_delete() -> None:
     assert "Delete your account" in page
     script = (ROOT / "website" / "account.js").read_text(encoding="utf-8")
     assert "supporter" in script and "share" in script
+
+
+def test_privacy_terms_and_the_security_contact_exist_and_link_each_other() -> None:
+    """15.07: privacy and terms pages on every page's footer; SECURITY.md names GitHub private reporting."""
+    for page in sorted((ROOT / "website").glob("*.html")):
+        text = page.read_text(encoding="utf-8")
+        assert 'href="privacy.html"' in text and 'href="terms.html"' in text, page.name
+    terms = (ROOT / "website" / "terms.html").read_text(encoding="utf-8")
+    assert "<h1>Terms</h1>" in terms and "MIT" in terms
+    contact = "https://github.com/Jacuzzik/hippocampus/security/advisories/new"
+    assert contact in (ROOT / "SECURITY.md").read_text(encoding="utf-8")
+    assert contact in (ROOT / "website" / "security.html").read_text(encoding="utf-8")
