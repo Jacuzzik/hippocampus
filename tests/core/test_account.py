@@ -31,7 +31,7 @@ def session(tmp_path: Path) -> sidecar.Session:
     return sidecar.Session(tmp_path, Settings(), emit=lambda event: None)
 
 
-def test_sign_in_saves_the_key_and_status_never_returns_it(
+def test_account_status_never_returns_the_key(
     keychain: Keychain, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setattr("ai.router.cli_ready", lambda: False)  # the CLI would count as a key
@@ -39,38 +39,26 @@ def test_sign_in_saves_the_key_and_status_never_returns_it(
     account = s.dispatch({"method": "account"})
     assert (account["claude"], account["model"]) == (False, "qwen2.5:1.5b")
     assert account["ready"] is False  # nothing set up: replies depend on Ollama
-    assert s.dispatch({"method": "sign_in", "key": " sk-test "}) == {"claude": True}
-    assert keychain.key == "sk-test"
+    keychain.set("sk-test")
     account = s.dispatch({"method": "account"})
     assert (account["claude"], account["model"]) == (True, "claude-sonnet-5-5")
     assert account["ready"] is True
     assert "sk-test" not in str(s.dispatch({"method": "account"}))
 
 
-def test_sign_in_rejects_an_empty_key(keychain: Keychain, tmp_path: Path) -> None:
-    with pytest.raises(ValueError, match="non-empty"):
-        session(tmp_path).dispatch({"method": "sign_in", "key": "   "})
-    assert keychain.key is None
-
-
-def test_sign_out_removes_the_key(keychain: Keychain, tmp_path: Path) -> None:
-    s = session(tmp_path)
-    s.dispatch({"method": "sign_in", "key": "sk-test"})
-    assert s.dispatch({"method": "sign_out"}) == {"claude": False}
-    assert keychain.key is None
+def test_the_old_single_key_calls_are_gone(tmp_path: Path) -> None:
+    for method in ("sign_in", "sign_out"):
+        with pytest.raises(ValueError, match="Unknown method|unknown method"):
+            session(tmp_path).dispatch({"method": method})
 
 
 def test_keychain_failure_is_a_plain_error(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     def broken(*_: object) -> None:
         raise KeyringError("no backend")
 
-    monkeypatch.setattr(sidecar, "set_api_key", broken)
     monkeypatch.setattr(sidecar, "clear_api_key", broken)
-    s = session(tmp_path)
     with pytest.raises(ValueError, match="keychain is not available"):
-        s.dispatch({"method": "sign_in", "key": "sk-test"})
-    with pytest.raises(ValueError, match="keychain is not available"):
-        s.dispatch({"method": "sign_out"})
+        session(tmp_path).dispatch({"method": "remove_data"})
 
 
 def test_remove_data_deletes_the_index_and_the_key_but_not_the_vault(

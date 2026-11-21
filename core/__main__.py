@@ -4,8 +4,7 @@
 then reads one JSON request per line on stdin and answers each with one line on stdout.
 Requests: {"id": ..., "method": "graph"}, {"id": ..., "method": "open", "vault": "<folder>"} and
 {"id": ..., "method": "read", "path": "<note id>"} (answers {"id": <note id>, "text": ...}).
-{"method": "account"} answers {"claude": true|false}; {"method": "sign_in", "key": "<key>"} saves
-the Claude key in the keychain and {"method": "sign_out"} removes it. Neither ever returns the key.
+{"method": "account"} answers {"claude": true|false}; it never returns the key.
 {"method": "remove_data"} deletes the index cache and the key; the vault is never touched.
 Answers: {"id": ..., "result": ...} or {"id": ..., "error": "<message>", "code": "<kind>"}, with a
 "hint" (the next step) when one is known. A bad line gets an
@@ -253,17 +252,7 @@ class Session(
             str(a["id"]) for a in added_agents.load(self.agents_path) if a.get("id")
         }
 
-    def sign_in(self, request: dict[str, Any]) -> dict[str, Any]:
-        key = request.get("key")
-        if not isinstance(key, str) or not key.strip():
-            raise ValueError('"sign_in" needs a non-empty "key"')
-        try:
-            set_api_key(key.strip())
-        except KeyringError as error:
-            raise ValueError(KEYCHAIN_MISSING) from error
-        return {"claude": True}
-
-    def sign_out(self) -> dict[str, Any]:
+    def _forget_claude_key(self) -> dict[str, Any]:
         try:
             clear_api_key()
         except KeyringError as error:
@@ -276,7 +265,7 @@ class Session(
         index = self.storage / "index"
         if index.exists():
             shutil.rmtree(index)
-        return self.sign_out()
+        return self._forget_claude_key()
 
     # The graph's right-click actions. The app asks for each one after the user picks it; deletes are confirmed there.
 

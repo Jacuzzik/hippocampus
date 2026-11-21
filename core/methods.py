@@ -35,8 +35,6 @@ METHODS: dict[str, Method] = {
     "note_colour": _m("Colour a note through its tags."),
     # Account and keys
     "account": _m("Whether a Claude key is saved."),
-    "sign_in": _m("Save the Claude key in the keychain."),
-    "sign_out": _m("Remove the Claude key."),
     "user_account": _m(
         "The Hippocampus account: set up or not, signed in or not, name, plan, consent."
     ),
