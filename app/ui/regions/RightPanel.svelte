@@ -20,6 +20,7 @@
   import { every } from "../poll.ts";
   import { onMount, tick } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
+  import FirstRunNotice from "../overlays/FirstRunNotice.svelte";
   import Assistant from "../assistant/Assistant.svelte";
   import Tabs, { type TabItem } from "../controls/Tabs.svelte";
   import { createTerminalQueue } from "./terminalQueue.svelte";
@@ -259,6 +260,7 @@
           >
         </span>
       </div>
+      <FirstRunNotice />
       <div class="live-wrap">
         {#key terminalKey}
           <LiveTerminal

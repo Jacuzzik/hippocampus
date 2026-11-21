@@ -70,9 +70,8 @@
             aria-label="{note.agent} memory size"
           ></meter>
           <span class="counts"
-            >{note.rules ?? 0} rules · {note.notes ?? 0} notes{#if (note.repeated ?? 0) > 0}&nbsp;· <span
-                class="near">{note.repeated} repeated</span
-              >{/if}</span
+            >{note.rules ?? 0} rules · {note.notes ?? 0} notes{#if (note.repeated ?? 0) > 0}&nbsp;·
+              <span class="near">{note.repeated} repeated</span>{/if}</span
           >
           {#if note.bytes >= cap * 0.8}
             <span class="near"

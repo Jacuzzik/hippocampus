@@ -89,3 +89,20 @@ def test_remove_data_deletes_the_index_and_the_key_but_not_the_vault(
     assert not (storage / "index").exists()
     assert keychain.key is None
     assert (vault / "note.md").read_text(encoding="utf-8") == "keep me"
+
+
+def test_account_says_whether_a_local_model_answers(tmp_path, monkeypatch) -> None:
+    """2.09: with no primary ready, `local` is whether Ollama answers; the window shows a first-run notice when both are false."""
+    from core import connectors
+
+    session = sidecar.Session(
+        storage=tmp_path / "s", settings=Settings(), settings_path=tmp_path / "t.toml"
+    )
+    monkeypatch.setattr("core.__main__.get_api_key", lambda: None)
+    monkeypatch.setattr("core.__main__.primary_ready", lambda *_: False)
+    down = connectors.row("ollama", "x", "y", "Not connected", "no")
+    monkeypatch.setattr(connectors, "ollama", lambda *a, **k: down)
+    assert session.account()["local"] is False
+    up = connectors.row("ollama", "x", "y", "Connected", "yes")
+    monkeypatch.setattr(connectors, "ollama", lambda *a, **k: up)
+    assert session.account()["local"] is True

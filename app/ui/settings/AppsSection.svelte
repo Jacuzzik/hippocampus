@@ -3,6 +3,7 @@
   // through the backend; it is never shown again, only its last four characters.
   import { invoke } from "@tauri-apps/api/core";
   import { onMount } from "svelte";
+  import Button from "../controls/Button.svelte";
   import ErrorRow from "../controls/ErrorRow.svelte";
   import Loading from "../controls/Loading.svelte";
 
@@ -115,18 +116,16 @@
                 : "Not connected"}</span
             >
             {#if row.connected}
-              <button
-                type="button"
+              <Button
                 aria-label={`Disconnect ${row.name}`}
                 disabled={busy}
                 onclick={() => send("app_disconnect", { id: row.id })}
-                >Disconnect</button
+                >Disconnect</Button
               >
             {:else if open !== row.id}
-              <button
-                type="button"
+              <Button
                 aria-label={`Connect ${row.name}`}
-                onclick={() => start(row)}>Connect</button
+                onclick={() => start(row)}>Connect</Button
               >
             {/if}
           </div>
@@ -161,11 +160,11 @@
               </p>
               {#if formError}<p class="error" role="alert">{formError}</p>{/if}
               <div class="buttons">
-                <button type="button" onclick={() => (open = null)}
-                  >Cancel</button
-                >
-                <button type="submit" disabled={busy || !key.trim()}
-                  >Save key</button
+                <Button onclick={() => (open = null)}>Cancel</Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  disabled={busy || !key.trim()}>Save key</Button
                 >
               </div>
             </form>
@@ -240,8 +239,7 @@
     justify-content: flex-end;
   }
 
-  input,
-  button {
+  input {
     min-height: var(--size-28);
     padding: var(--space-1) var(--space-2);
     color: var(--color-text);
@@ -249,15 +247,6 @@
     background: var(--color-surface);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
-  }
-
-  button {
-    cursor: pointer;
-  }
-
-  button:disabled {
-    cursor: default;
-    opacity: 0.5;
   }
 
   .muted {

@@ -609,7 +609,7 @@
         onclick={() =>
           (info = {
             name: "Hippoherman",
-            role: "Main · fixed",
+            role: "Orchestrator: routes work, asks you only what needs you",
             provider: runningProvider,
             model: account?.model ?? "Loading model",
             folder: "",

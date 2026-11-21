@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { dialogFocus } from "../controls/dialogFocus.ts";
+  import Dialog from "../controls/Dialog.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { onMount } from "svelte";
   import { allowlistAfter, type ToolRow } from "./allowlist";
@@ -57,103 +57,55 @@
     void save(tools.map((tool) => tool.name));
   }
 
-  function onKey(e: KeyboardEvent): void {
-    // Stops here so the graph's own Escape (which clears the selection) does not also run.
-    if (e.key === "Escape") {
-      e.stopPropagation();
-      onclose();
-    }
-  }
-
   onMount(() => {
     void load();
   });
 </script>
 
-<div class="scrim" role="presentation" onmousedown={onclose}>
-  <div
-    class="box"
-    role="dialog"
-    aria-modal="true"
-    aria-label="Assistant tools"
-    tabindex="-1"
-    use:dialogFocus
-    onkeydown={onKey}
-    onmousedown={(e) => e.stopPropagation()}
-  >
-    <h2>Assistant tools</h2>
-    <p class="muted">
-      Tools the assistant may use. A tool left unticked is refused, even when
-      asked.
-    </p>
+<Dialog title="Assistant tools" {onclose}>
+  <p class="muted">
+    Tools the assistant may use. A tool left unticked is refused, even when
+    asked.
+  </p>
 
-    <label class="every">
-      <input
-        type="checkbox"
-        checked={every}
-        onchange={(e) => toggleEvery(e.currentTarget.checked)}
-      />
-      Every tool
-    </label>
+  <label class="every">
+    <input
+      type="checkbox"
+      checked={every}
+      onchange={(e) => toggleEvery(e.currentTarget.checked)}
+    />
+    Every tool
+  </label>
 
-    {#if !loaded}
-      <Loading what="the tools" />
-    {:else if tools.length === 0}
-      <p class="muted">Open a brain folder to see the assistant's tools.</p>
-    {:else}
-      <ul>
-        {#each tools as tool (tool.name)}
-          <li>
-            <label>
-              <input
-                type="checkbox"
-                checked={tool.allowed}
-                disabled={every}
-                onchange={(e) => toggle(tool.name, e.currentTarget.checked)}
-              />
-              <span class="name">{tool.name}</span>
-              <span class="tier">{tool.tier}</span>
-            </label>
-          </li>
-        {/each}
-      </ul>
-    {/if}
+  {#if !loaded}
+    <Loading what="the tools" />
+  {:else if tools.length === 0}
+    <p class="muted">Open a brain folder to see the assistant's tools.</p>
+  {:else}
+    <ul>
+      {#each tools as tool (tool.name)}
+        <li>
+          <label>
+            <input
+              type="checkbox"
+              checked={tool.allowed}
+              disabled={every}
+              onchange={(e) => toggle(tool.name, e.currentTarget.checked)}
+            />
+            <span class="name">{tool.name}</span>
+            <span class="tier">{tool.tier}</span>
+          </label>
+        </li>
+      {/each}
+    </ul>
+  {/if}
 
-    {#if error}
-      <p role="alert" class="error">{error}</p>
-    {/if}
-  </div>
-</div>
+  {#if error}
+    <p role="alert" class="error">{error}</p>
+  {/if}
+</Dialog>
 
 <style>
-  .scrim {
-    position: fixed;
-    inset: 0;
-    z-index: 10;
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-    padding-top: 12vh;
-  }
-
-  .box {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-    width: min(560px, 90vw);
-    padding: var(--space-4);
-    background: var(--color-bg-1);
-    border: 1px solid var(--color-border);
-    border-left: 3px solid var(--color-accent);
-    border-radius: var(--radius-sm);
-    color: var(--color-text);
-  }
-
-  h2 {
-    margin: 0;
-    font-size: var(--font-size-sm);
-  }
-
   p {
     margin: 0;
   }

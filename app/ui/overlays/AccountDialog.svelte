@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { dialogFocus } from "../controls/dialogFocus.ts";
+  import Dialog from "../controls/Dialog.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import SetupChecklist from "./SetupChecklist.svelte";
 
@@ -30,88 +30,37 @@
       busy = false;
     }
   }
-
-  function onKey(e: KeyboardEvent): void {
-    // Stops here so the graph's own Escape (which clears the selection) does not also run.
-    if (e.key === "Escape") {
-      e.stopPropagation();
-      onclose();
-    }
-  }
 </script>
 
-<div class="scrim" role="presentation" onmousedown={onclose}>
-  <div
-    class="box"
-    role="dialog"
-    aria-modal="true"
-    aria-label="Setup and account"
-    tabindex="-1"
-    use:dialogFocus
-    onkeydown={onKey}
-    onmousedown={(e) => e.stopPropagation()}
-  >
-    <h2>Setup and account</h2>
+<Dialog title="Setup and account" {onclose}>
+  <div class="section">
+    <h3>Setup checks</h3>
+    <SetupChecklist />
+  </div>
 
-    <div class="section">
-      <h3>Setup checks</h3>
-      <SetupChecklist />
+  <div class="section">
+    <h3>Your data</h3>
+    <p class="muted">Removes the index cache. Your notes are never deleted.</p>
+    <div>
+      <button type="button" disabled={busy} onclick={removeData}>
+        {busy
+          ? "Removing…"
+          : confirmRemove
+            ? "Press again to remove Hippocampus data"
+            : "Remove Hippocampus data"}
+      </button>
     </div>
-
-    <div class="section">
-      <h3>Your data</h3>
-      <p class="muted">
-        Removes the index cache. Your notes are never deleted.
-      </p>
-      <div>
-        <button type="button" disabled={busy} onclick={removeData}>
-          {busy
-            ? "Removing…"
-            : confirmRemove
-              ? "Press again to remove Hippocampus data"
-              : "Remove Hippocampus data"}
-        </button>
-      </div>
-      {#if notice}
-        <p class="muted">{notice}</p>
-      {/if}
-    </div>
-
-    {#if error}
-      <p role="alert" class="error">{error}</p>
+    {#if notice}
+      <p class="muted">{notice}</p>
     {/if}
   </div>
-</div>
+
+  {#if error}
+    <p role="alert" class="error">{error}</p>
+  {/if}
+</Dialog>
 
 <style>
-  .scrim {
-    position: fixed;
-    inset: 0;
-    z-index: 10;
-    display: flex;
-    justify-content: center;
-    align-items: flex-start;
-    padding-top: 12vh;
-  }
-
-  .box {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-    width: min(560px, 90vw);
-    padding: var(--space-4);
-    background: var(--color-bg-1);
-    border: 1px solid var(--color-border);
-    border-left: 3px solid var(--color-accent);
-    border-radius: var(--radius-sm);
-    color: var(--color-text);
-  }
-
-  h2 {
-    margin: 0;
-    font-size: var(--font-size-sm);
-  }
-
   h3 {
     margin: 0;
     font-size: var(--font-size-sm);

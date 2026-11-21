@@ -13,6 +13,8 @@ test("the bottom agent bar shows HIPPO with its provider", async ({ page }) => {
   await bar.getByRole("button", { name: "Info", exact: true }).first().click();
   const info = page.getByRole("dialog", { name: "Hippoherman details" });
   await expect(info.getByText(/Claude|Ollama/)).toBeVisible();
+  // 7.04: the lead agent is the orchestrator.
+  await expect(info.getByText(/Orchestrator: routes work/)).toBeVisible();
   await page.keyboard.press("Escape");
 });
 

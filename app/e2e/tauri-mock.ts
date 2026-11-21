@@ -609,6 +609,10 @@ export async function mockSidecar(
               model: claudeKey !== null ? "claude-sonnet-5-5" : "qwen2.5:1.5b",
               provider: claudeKey !== null ? "claude" : "ollama",
               ready: claudeKey !== null,
+              // A test sets window.__noOllama to act out no key and no Ollama.
+              local:
+                claudeKey !== null ||
+                !(window as unknown as { __noOllama?: boolean }).__noOllama,
             };
           case "sign_in":
             if (!String(args.params?.key ?? "").trim())

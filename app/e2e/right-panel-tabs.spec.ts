@@ -256,7 +256,9 @@ test("a slow skill install shows elapsed time, and Stop waiting hides it without
 }) => {
   await page.getByRole("tab", { name: "skills" }).click();
   const region = page.getByRole("region", { name: "Skills" });
-  await region.getByLabel("Skill folder to install").fill("/home/me/slow-skill");
+  await region
+    .getByLabel("Skill folder to install")
+    .fill("/home/me/slow-skill");
   await region.getByRole("button", { name: "Install" }).click();
   await region.getByRole("button", { name: "Confirm install" }).click();
   await expect(region.getByRole("status")).toContainText("Installing a skill");
