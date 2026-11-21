@@ -184,8 +184,8 @@ class Session(
         self.cards = CardStore(storage / "cards")
         self.lock = threading.RLock()
         self.kill = KillSwitch()
-        self.gate = ConfirmGate()
-        self.asks = AskQueue()
+        self.gate = ConfirmGate(lambda: self.changed("asks"))
+        self.asks = AskQueue(lambda: self.changed("asks"))
         self.paused: list[dict[str, Any]] | None = (
             None  # messages of a request that hit its tool limit
         )
@@ -195,7 +195,7 @@ class Session(
         )
         self.ledger = budgets.Ledger(storage / "usage.jsonl")
         self.user_account = user_account.Account(storage)
-        self.helpers = Helpers(self._helper_run, lambda e: self.note("handoff", text=e["text"]))
+        self.helpers = Helpers(self._helper_run, self._helper_event)
         network.set_mode(self.settings.network_mode)
 
     def account(self) -> dict[str, Any]:
@@ -386,6 +386,10 @@ class Session(
         except OSError:
             logger.exception("Could not write the activity log")
         self.changed("activity")
+
+    def _helper_event(self, event: dict[str, Any]) -> None:
+        self.note("handoff", text=event["text"])
+        self.changed("helpers")
 
     def changed(self, what: str) -> None:
         """Tell the window that one kind of data changed, so it reads again now and does not wait for a timer."""

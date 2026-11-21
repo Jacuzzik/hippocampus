@@ -28,7 +28,8 @@ class FakeTerminals:
 
 
 def test_the_briefing_is_pointed_at_again_once_the_compaction_is_done(tmp_path: Path) -> None:
-    session = sidecar.Session(tmp_path, Settings(), emit=lambda e: None)
+    # A long delivery interval, so the background loop does not run these steps too.
+    session = sidecar.Session(tmp_path, Settings(delivery_seconds=60), emit=lambda e: None)
     fake = FakeTerminals()
     session.terminals = fake  # type: ignore[assignment]
     session.compact_day = datetime.now().date().isoformat()  # today's round already ran

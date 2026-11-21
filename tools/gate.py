@@ -1,6 +1,7 @@
 """The kill switch and the confirm gate. Both are shared between threads."""
 
 import threading
+from collections.abc import Callable
 
 
 class Stopped(Exception):
@@ -25,15 +26,21 @@ class KillSwitch:
 class ConfirmGate:
     """Confirmations waiting for the user. `None` means still waiting."""
 
-    def __init__(self) -> None:
+    def __init__(self, on_change: Callable[[], None] | None = None) -> None:
         self._lock = threading.Lock()
         self._pending: dict[str, bool | None] = {}
         self._shown: dict[str, tuple[str, str]] = {}
+        self._on_change = on_change  # told when the list of waiting confirmations changes
+
+    def _changed(self) -> None:
+        if self._on_change is not None:
+            self._on_change()
 
     def open(self, call_id: str, name: str = "", preview: str = "") -> None:
         with self._lock:
             self._pending[call_id] = None
             self._shown[call_id] = (name, preview)
+        self._changed()
 
     def waiting(self) -> list[tuple[str, str, str]]:
         """(call id, tool name, preview) for every confirmation still waiting, oldest first (7.19)."""
@@ -50,7 +57,8 @@ class ConfirmGate:
             if call_id not in self._pending or self._pending[call_id] is not None:
                 return False  # not waiting: unknown, or already answered
             self._pending[call_id] = approve
-            return True
+        self._changed()
+        return True
 
     def decision(self, call_id: str) -> bool | None:
         with self._lock:
@@ -60,20 +68,27 @@ class ConfirmGate:
         with self._lock:
             self._pending.pop(call_id, None)
             self._shown.pop(call_id, None)
+        self._changed()
 
 
 class AskQueue:
     """Questions the assistant put to the user, in the order asked. `None` means still waiting."""
 
-    def __init__(self) -> None:
+    def __init__(self, on_change: Callable[[], None] | None = None) -> None:
         self._lock = threading.Lock()
         self._pending: dict[str, str | None] = {}
         self._questions: dict[str, str] = {}
+        self._on_change = on_change  # told when the list of waiting questions changes
+
+    def _changed(self) -> None:
+        if self._on_change is not None:
+            self._on_change()
 
     def open(self, ask_id: str, question: str = "") -> None:
         with self._lock:
             self._pending[ask_id] = None
             self._questions[ask_id] = question
+        self._changed()
 
     def answer(self, ask_id: str, text: str) -> bool:
         """Record the user's answer. False when no question with that id is waiting."""
@@ -81,7 +96,8 @@ class AskQueue:
             if ask_id not in self._pending or self._pending[ask_id] is not None:
                 return False  # not waiting: unknown, or already answered
             self._pending[ask_id] = text
-            return True
+        self._changed()
+        return True
 
     def answer_of(self, ask_id: str) -> str | None:
         with self._lock:
@@ -100,3 +116,4 @@ class AskQueue:
         with self._lock:
             self._pending.pop(ask_id, None)
             self._questions.pop(ask_id, None)
+        self._changed()
