@@ -3,15 +3,15 @@
   // Stopping only stops the window waiting: the job itself is not cancelled.
   import { onDestroy, onMount } from "svelte";
 
-  let {
-    label,
-    onstop,
-  }: { label: string; onstop: () => void } = $props();
+  let { label, onstop }: { label: string; onstop: () => void } = $props();
   const started = Date.now();
   let seconds = $state(0);
   let timer: ReturnType<typeof setInterval> | undefined;
   onMount(() => {
-    timer = setInterval(() => (seconds = Math.floor((Date.now() - started) / 1000)), 1000);
+    timer = setInterval(
+      () => (seconds = Math.floor((Date.now() - started) / 1000)),
+      1000,
+    );
   });
   onDestroy(() => clearInterval(timer));
 </script>

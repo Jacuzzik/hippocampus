@@ -54,6 +54,7 @@ from core import (
     __version__,
     added_agents,
     app_log,
+    connectors,
     crash_log,
     inbox,
     migrate,
@@ -201,10 +202,16 @@ class Session(
     def account(self) -> dict[str, Any]:
         # Only whether a key is saved and the model name; the key itself never leaves the keychain.
         api_key = get_api_key()
+        ready = primary_ready(self.settings, api_key)
+        # 2.09: only when nothing else is set up, ask whether Ollama answers (short limit), so the window can say what is missing.
+        local = ready or (
+            connectors.ollama(self.settings.ollama_host, "", timeout=1.5)["state"] == "Connected"
+        )
         return {
             "claude": api_key is not None,
             "model": model_name(self.settings, api_key),
-            "ready": primary_ready(self.settings, api_key),
+            "ready": ready,
+            "local": local,
             "provider": self.settings.provider,
         }
 

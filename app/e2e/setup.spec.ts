@@ -25,3 +25,29 @@ test("the first start opens the setup checklist once, with a mark and next step 
   await expect(page.getByLabel("Agents").getByText("HIPPO")).toBeVisible();
   await expect(dialog).toHaveCount(0);
 });
+
+test("2.09 with no key and no Ollama the main screen says so, with a key button and an Ollama link", async ({
+  page,
+}) => {
+  await mockSidecar(page);
+  await page.addInitScript(() => {
+    (window as unknown as { __noOllama: boolean }).__noOllama = true;
+  });
+  await page.goto("/");
+  const notice = page.getByLabel("No model set up");
+  await expect(notice).toContainText("Ollama is not running");
+  await expect(
+    notice.getByRole("link", { name: "Install Ollama" }),
+  ).toHaveAttribute("href", "https://ollama.com/download");
+  await notice.getByRole("button", { name: "Add a key" }).click();
+  await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
+});
+
+test("2.09 the notice stays away when a model is reachable", async ({
+  page,
+}) => {
+  await mockSidecar(page);
+  await page.goto("/");
+  await expect(page.getByLabel("Agents")).toBeVisible();
+  await expect(page.getByLabel("No model set up")).toHaveCount(0);
+});
