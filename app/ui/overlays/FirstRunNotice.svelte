@@ -3,6 +3,8 @@
   import { invoke } from "@tauri-apps/api/core";
   import { onMount } from "svelte";
 
+  // Nothing shows until the first answer, so the notice never flashes while the backend starts.
+  let loaded = $state(false);
   let nothingSetUp = $state(false);
 
   async function check(): Promise<void> {
@@ -14,6 +16,8 @@
       nothingSetUp = !a.ready && a.local === false;
     } catch {
       nothingSetUp = false; // the backend not answering is shown elsewhere
+    } finally {
+      loaded = true;
     }
   }
   onMount(() => {
@@ -23,7 +27,7 @@
   });
 </script>
 
-{#if nothingSetUp}
+{#if loaded && nothingSetUp}
   <section class="first-run" aria-label="No model set up">
     <h3>No model is set up yet</h3>
     <p>
