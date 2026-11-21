@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Button from "../controls/Button.svelte";
   import ErrorRow from "../controls/ErrorRow.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { onMount } from "svelte";
@@ -87,8 +88,8 @@
       placeholder="Search memory notes"
       bind:value={query}
     />
-    <button type="submit" class="primary" disabled={busy}
-      >{busy ? "Searching…" : "Search"}</button
+    <Button type="submit" variant="primary" disabled={busy}
+      >{busy ? "Searching…" : "Search"}</Button
     >
   </form>
   {#if results}
