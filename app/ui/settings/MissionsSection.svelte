@@ -217,12 +217,19 @@
     gap: var(--space-2);
   }
 
+  /* One two-column grid, shared in shape with the webhook form (U.07). */
   .add {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     align-items: end;
     gap: var(--space-2);
     margin-top: var(--space-2);
+  }
+
+  .add :global(input:not([type="checkbox"])),
+  .add select {
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .add label,
@@ -234,8 +241,14 @@
     color: var(--color-text-muted);
   }
 
-  .add .wide {
-    flex: 1 1 100%;
+  .add .wide,
+  fieldset {
+    grid-column: 1 / -1;
+  }
+
+  .add :global(button[type="submit"]) {
+    grid-column: 1 / -1;
+    justify-self: start;
   }
 
   fieldset {
