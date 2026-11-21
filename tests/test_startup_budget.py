@@ -22,6 +22,7 @@ def test_every_release_has_a_measurement_file() -> None:
     saved = json.loads((ROOT / "docs" / "perf" / f"{__version__}.json").read_text(encoding="utf-8"))
     assert saved["version"] == __version__
     assert saved["backend_first_answer_ms"]["median"] > 0
+    assert saved["window_ready_ms"] > 0, "run e2e/startup.spec.ts with HIPPO_PERF_FILE to record it"
 
 
 @pytest.mark.skipif(sys.platform != "linux", reason="the memory number reads /proc")

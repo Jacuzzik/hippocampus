@@ -1,7 +1,7 @@
 """Measure how long the backend takes to answer its first call and how much memory it holds then.
 
 Run: uv run python scripts/measure_startup.py
-Writes docs/perf/<version>.json, one file per release, so a later release can be compared with it.
+Writes docs/perf/<version>.json (the window start time is added by `HIPPO_PERF_FILE=../docs/perf/<version>.json npx playwright test e2e/startup.spec.ts` in app/), one file per release, so a later release can be compared with it.
 Linux only for the memory number (it reads /proc); elsewhere memory is left out.
 """
 
@@ -71,6 +71,11 @@ def main() -> None:
         "backend_memory_mb": max(memory) if memory else None,
     }
     out = ROOT / "docs" / "perf" / f"{__version__}.json"
+    if out.exists():
+        # The window's own start time is written by app/e2e/startup.spec.ts; keep it.
+        old = json.loads(out.read_text(encoding="utf-8"))
+        if "window_ready_ms" in old:
+            result["window_ready_ms"] = old["window_ready_ms"]
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     print(json.dumps(result))

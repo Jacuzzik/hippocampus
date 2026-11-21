@@ -6,6 +6,7 @@
   import EmptyState from "../controls/EmptyState.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { every } from "../poll.ts";
+  import { onChanged } from "../changed.ts";
   import LiveTerminal, {
     type TerminalState,
   } from "../regions/LiveTerminal.svelte";
@@ -179,7 +180,10 @@
   $effect(() => {
     if (view !== "messages" && view !== "traces") return;
     void loadView();
-    return every(loadView, 5000);
+    // Messages follow the inbox event; traces have no backend event, so they keep a timer.
+    return view === "messages"
+      ? onChanged("inbox", loadView, 15000)
+      : every(loadView, 5000);
   });
 
   function showGit(): void {
