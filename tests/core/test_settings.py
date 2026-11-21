@@ -96,7 +96,7 @@ def test_engine_models_match_the_app_list() -> None:
     from core.settings import ENGINE_MODELS
 
     source = (
-        Path(__file__).resolve().parents[2] / "app" / "ui" / "control" / "model.ts"
+        Path(__file__).resolve().parents[2] / "app" / "ui" / "settings" / "model.ts"
     ).read_text(encoding="utf-8")
     block = source.split("export const AGENT_MODELS", 1)[1].split("\n};", 1)[0]
     listed: dict[str, tuple[str, ...]] = {}
