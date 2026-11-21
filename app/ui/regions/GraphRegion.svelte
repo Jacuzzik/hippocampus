@@ -1,8 +1,8 @@
 <script lang="ts">
+  import Loading from "../controls/Loading.svelte";
   import { every } from "../poll.ts";
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
-  import BrainGraph from "../graph/BrainGraph.svelte";
   import type { GraphData } from "../graph/model.ts";
   import { prefs } from "../prefs.svelte.ts";
 
@@ -153,7 +153,14 @@
     <div class="body">
       {#if data}
         {#key viewKey}
-          <BrainGraph {data} {query} {tag} {memory} {selectedId} {onselect} />
+          <!-- B.05: the graph code loads when the first graph is shown, not at start-up. -->
+          {#await import("../graph/BrainGraph.svelte")}
+            <Loading what="the graph" />
+          {:then { default: BrainGraph }}
+            <BrainGraph {data} {query} {tag} {memory} {selectedId} {onselect} />
+          {:catch cause}
+            <p role="alert">Could not load the graph: {String(cause)}</p>
+          {/await}
         {/key}
       {:else if error}
         <p role="alert">Could not load the vault: {error}</p>
