@@ -2,39 +2,43 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Account · Hippocampus</title>
-    <meta name="description" content="Optional account for share links, sync and usage history." />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Your account · Hippocampus</title>
+    <meta name="description" content="Sign in to your optional Hippocampus account." />
+    <meta name="referrer" content="no-referrer" />
     <link rel="icon" href="img/hippocampus-mark-purple.png" />
     <link rel="stylesheet" href="site.css" />
-    <link rel="stylesheet" href="motion.css" />
-    <link rel="stylesheet" href="studio.css" />
-    
+    <style>
+      .delete-dialog { max-width: 440px; width: calc(100% - 32px); border: 1px solid var(--line, #444); border-radius: 12px; padding: 24px; background: var(--bg, #1b1b22); color: var(--fg, #eee); }
+      .delete-dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
+      .delete-dialog h2 { margin-top: 0; }
+      .hold-wrap { display: grid; gap: 8px; justify-items: start; }
+      .hold { position: relative; overflow: hidden; min-width: 220px; touch-action: none; user-select: none; -webkit-user-select: none; }
+      .hold-fill { position: absolute; inset: 0; width: 0%; background: rgba(255, 90, 90, 0.55); pointer-events: none; }
+      .hold-label { position: relative; }
+      .hold.done { background: #c0392b; }
+    </style>
   </head>
   <body>
-    <a class="skip" href="#main">Skip to the page</a>
-    <div class="announce" role="note">
-      <span class="tag">New</span>
-      <a href="changelog.html">Share a note with a password link is out. Read the changelog <span aria-hidden="true">→</span></a>
-    </div>
-    <header class="top" data-top>
-      <div class="top-in">
-        <a class="brand" href="index.html"><span class="logo" aria-hidden="true"></span>Hippocampus</a>
-        <nav class="menu" aria-label="Site">
-          
+    <a class="skip" href="index.html#main">Skip to the page</a>
+    <header class="topbar">
+      <div class="wrap">
+        <nav aria-label="Site">
+          <a class="name" href="index.html"><span class="logo" aria-hidden="true"></span>Hippocampus</a>
+          <a href="index.html#graph">Graph</a>
+          <a href="index.html#team">Team</a>
+          <a href="index.html#engines">Engines</a>
+          <a href="index.html#yours">Yours</a>
+          <a href="index.html#faq">FAQ</a>
           <a href="docs.html">Docs</a>
-          <a href="changelog.html">Changelog</a>
-          <a class="keep" href="account.html">Sign in</a>
+          <a href="account.html">Sign in</a>
           <a class="button" href="download.html">Download</a>
         </nav>
       </div>
-      <div class="progress" aria-hidden="true"><i data-progress></i></div>
     </header>
-    <main id="main" tabindex="-1">
-      <div class="doc-wrap single">
-        <article class="doc">
-          <p class="chapter-no">Account</p>
-<div class="wrap">
+
+    <main id="main">
+      <div class="wrap">
         <h1>Your account</h1>
         <p class="lead">
           Optional. The app works fully without one. An account adds share
@@ -80,57 +84,72 @@
             touched.
           </p>
           <button id="delete" class="button quiet" type="button">Delete account</button>
-          <div id="confirm-delete" class="actions" hidden>
-            <button id="delete-yes" class="button" type="button">Yes, delete my account</button>
-            <button id="keep" class="button quiet" type="button">Keep it</button>
-          </div>
         </section>
+
+        <dialog id="delete-dialog" class="delete-dialog" aria-labelledby="delete-title">
+          <h2 id="delete-title">Delete your account?</h2>
+          <p class="muted">
+            This removes your sign-in, share links, synced settings and usage
+            history from the service. It cannot be undone. Notes on your
+            computer are not touched.
+          </p>
+          <p id="delete-problem" class="muted" role="alert"></p>
+          <div class="hold-wrap">
+            <button id="delete-hold" class="button hold" type="button">
+              <span class="hold-fill" aria-hidden="true"></span>
+              <span class="hold-label">Hold to delete</span>
+            </button>
+            <p class="muted hold-hint">Press and hold for 3 seconds. Let go to cancel.</p>
+          </div>
+          <div class="actions" style="margin: 16px 0 0">
+            <button id="keep" class="button quiet" type="button">Keep my account</button>
+          </div>
+        </dialog>
 
         <section id="deleted" data-view class="panel" hidden>
           <h2>Your account is deleted.</h2>
           <p class="muted">You can keep using the app without one, or sign in again to start fresh.</p>
         </section>
       </div>
-        </article>
-      </div>
     </main>
-    <footer class="foot">
-      <div class="wrap">
-        <div class="foot-cols">
-          <div>
-            <h3>Hippocampus</h3>
-            <p>Your notes, a graph of them, and agents that work in them. Free and open source. This site sets no cookies and loads nothing from other sites.</p>
-          </div>
-          <div>
-            <h3>Product</h3>
-            <ul>
-              <li><a href="download.html">Download</a></li>
-              <li><a href="docs.html">Docs</a></li>
-              <li><a href="changelog.html">Changelog</a></li>
-              <li><a href="account.html">Account</a></li>
-            </ul>
-          </div>
-          <div>
-            <h3>Help</h3>
-            <ul>
-              <li><a href="status.html">Status</a></li>
-              <li><a href="feedback.html">Feedback</a></li>
-              <li><a href="https://github.com/Jacuzzik/hippocampus">GitHub</a></li>
-            </ul>
-          </div>
-          <div>
-            <h3>Trust</h3>
-            <ul>
-              <li><a href="privacy.html">Privacy</a></li>
-              <li><a href="security.html">Security</a></li>
-            </ul>
-          </div>
+
+    <footer>
+      <div class="wrap footer-grid">
+        <div>
+          <h3>Hippocampus</h3>
+          <p>
+            Your notes, a graph of them, and agents that work in them. Free
+            and open source. This site sets no cookies and loads nothing from
+            other sites.
+          </p>
         </div>
-        <p class="wordmark" aria-hidden="true">HIPPOCAMPUS</p>
+        <div>
+          <h3>Product</h3>
+          <ul>
+            <li><a href="download.html">Download</a></li>
+            <li><a href="docs.html">Docs</a></li>
+            <li><a href="changelog.html">Changelog</a></li>
+            <li><a href="account.html">Account</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Help</h3>
+          <ul>
+            <li><a href="status.html">Status</a></li>
+            <li><a href="feedback.html">Feedback</a></li>
+            <li><a class="with-icon" href="https://github.com/Jacuzzik/hippocampus"><img class="pxicon" src="img/icons/tile/github.svg" width="16" height="16" alt="" />GitHub</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3>Trust</h3>
+          <ul>
+            <li><a href="privacy.html">Privacy</a></li>
+            <li><a href="security.html">Security</a></li>
+          </ul>
+        </div>
       </div>
     </footer>
-    <script type="module" src="studio.js"></script>
-<script type="module">
+    <script type="module">
       import { accountPage } from "./account.js"; accountPage();
     </script>
   </body>

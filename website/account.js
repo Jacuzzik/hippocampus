@@ -32,7 +32,13 @@ async function call(path, { method = "POST", body, token, prefer } = {}) {
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   const text = await reply.text();
-  const data = text ? JSON.parse(text) : null;
+  let data = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    // Some errors (for example the delete function) answer with plain text.
+    data = { message: text };
+  }
   if (!reply.ok) throw new Error((data && (data.message || data.msg)) || `error ${reply.status}`);
   return data;
 }
@@ -145,17 +151,68 @@ export async function accountPage() {
     if (s) await call("/auth/v1/logout", { token: s.token }).catch(() => {});
     show("signed-out");
   };
-  $("delete").onclick = () => ($("confirm-delete").hidden = false);
-  $("keep").onclick = () => ($("confirm-delete").hidden = true);
-  $("delete-yes").onclick = async () => {
+  // Delete opens a pop-up. The delete only runs when the button is held for 3 seconds.
+  const dialog = $("delete-dialog");
+  const hold = $("delete-hold");
+  const fill = hold.querySelector(".hold-fill");
+  const HOLD_MS = 3000;
+  let started = 0;
+  let frame = 0;
+  const reset = () => {
+    cancelAnimationFrame(frame);
+    started = 0;
+    fill.style.width = "0%";
+  };
+  const finish = async () => {
+    reset();
     const s = store.get("hc-session");
+    $("delete-problem").textContent = "";
+    if (!s?.token) {
+      $("delete-problem").textContent = "You are not signed in on this browser. Sign in again, then try once more.";
+      return;
+    }
+    hold.disabled = true;
+    hold.querySelector(".hold-label").textContent = "Deleting…";
     try {
       await call("/functions/v1/delete-account", { token: s.token, body: {} });
       store.set("hc-session", null);
+      dialog.close();
       show("deleted");
     } catch (e) {
-      $("problem").textContent = `Nothing was deleted: ${e.message}`;
+      hold.disabled = false;
+      hold.querySelector(".hold-label").textContent = "Hold to delete";
+      $("delete-problem").textContent = `Nothing was deleted: ${e.message}`;
     }
+  };
+  const tick = (now) => {
+    const t = Math.min(1, (now - started) / HOLD_MS);
+    fill.style.width = `${t * 100}%`;
+    if (t >= 1) return finish();
+    frame = requestAnimationFrame(tick);
+  };
+  const begin = (e) => {
+    if (hold.disabled) return;
+    e.preventDefault();
+    started = performance.now();
+    frame = requestAnimationFrame(tick);
+  };
+  hold.addEventListener("pointerdown", begin);
+  ["pointerup", "pointerleave", "pointercancel"].forEach((ev) => hold.addEventListener(ev, reset));
+  // Keyboard: hold Space or Enter the same way.
+  hold.addEventListener("keydown", (e) => {
+    if ((e.key === " " || e.key === "Enter") && !e.repeat) begin(e);
+  });
+  hold.addEventListener("keyup", reset);
+  $("delete").onclick = () => {
+    $("delete-problem").textContent = "";
+    hold.disabled = false;
+    hold.querySelector(".hold-label").textContent = "Hold to delete";
+    reset();
+    dialog.showModal();
+  };
+  $("keep").onclick = () => {
+    reset();
+    dialog.close();
   };
   try {
     const s = await session();
