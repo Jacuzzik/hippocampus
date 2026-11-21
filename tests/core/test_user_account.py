@@ -25,6 +25,7 @@ class FakeService:
         self.user = {"email": "ada@example.com", "user_metadata": {"full_name": "Ada"}}
         self.calls: list[str] = []
         self.challenge = ""
+        self.deleted_on_web = False
 
     def __call__(self, request: urllib.request.Request) -> dict[str, Any]:
         url = request.full_url
@@ -54,6 +55,8 @@ class FakeService:
                 "expires_in": 3600,
                 "user": self.user,
             }
+        if url.endswith("/auth/v1/user") and self.deleted_on_web:
+            raise account.Refused("401")  # the account was deleted on the web
         return {}
 
 
@@ -164,6 +167,16 @@ def test_deleting_an_account(tmp_path: Path, chain: dict) -> None:
     assert chain
     service.offline = False
     assert acct.delete()["signed_in"] is False and "delete-account" in service.calls[-1]
+
+
+def test_an_account_deleted_on_the_web_signs_the_app_out(tmp_path: Path, chain: dict) -> None:
+    acct, service = make(tmp_path)
+    sign_in(acct, service)
+    assert acct.status()["signed_in"]
+    service.deleted_on_web = True
+    acct._checked_at = 0  # the check runs at most every 5 minutes; force it now
+    status = acct.status()
+    assert not status["signed_in"] and "was deleted" in status["problem"] and not chain
 
 
 def test_consent_is_off_until_chosen(tmp_path: Path, chain: dict) -> None:
