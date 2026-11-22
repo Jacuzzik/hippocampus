@@ -181,6 +181,8 @@
     gap: var(--space-0);
     min-width: 0;
     overflow-wrap: anywhere;
+    /* The name takes the free space, so the buttons sit together at the right on every row. */
+    flex: 1;
   }
 
   button {

@@ -40,7 +40,7 @@
     color: var(--color-text);
     font-family: var(--font-ui);
     font-size: var(--font-size-sm);
-    background: var(--color-bg-1);
+    background: var(--pop-bg);
     border: 1px solid var(--color-border);
     border-left: 3px solid var(--color-danger);
     border-radius: var(--radius-sm);

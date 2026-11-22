@@ -50,6 +50,34 @@ textarea {
   font-family: inherit;
 }
 
+/* Every field looks the same in every tab. :where() keeps this at zero weight, so a component's own field
+   style still wins; a field no component styled (a plain select, a date box) no longer shows the browser's look. */
+:where(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"]), select, textarea) {
+  min-width: 0;
+  min-height: var(--size-28);
+  padding: var(--space-1) var(--space-2);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  background-color: var(--color-bg-0);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+:where(input, textarea)::placeholder {
+  color: var(--color-text-muted);
+  opacity: 1;
+}
+
+:where(input, select, textarea):focus-visible {
+  outline: none;
+  border-color: var(--color-focus-ring);
+}
+
+:where(input, select, textarea):disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Code and paths use the monospace face, as notes app does. */
 code,
 kbd,
@@ -249,7 +277,7 @@ button:active:not(:disabled) {
   font-size: var(--font-size-xs);
   white-space: nowrap;
   color: var(--color-text);
-  background: var(--color-bg-1);
+  background: var(--pop-bg);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   pointer-events: none;

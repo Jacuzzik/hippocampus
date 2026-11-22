@@ -264,7 +264,7 @@
         aside={`${active.length + 1} active · ${hidden.length} archived`}
       />
       {#if active.length === 0}
-        <p class="muted">No agents yet. Agents you add appear here.</p>
+        <p class="muted">Only the main agent so far. Agents you add appear here.</p>
       {/if}
       <div class="cards">
         <div class="card main">

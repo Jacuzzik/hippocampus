@@ -1238,7 +1238,7 @@
     padding: var(--space-1) var(--space-2);
     font-size: var(--font-size-xs);
     color: var(--color-text);
-    background: var(--color-bg-1);
+    background: var(--pop-bg);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
   }

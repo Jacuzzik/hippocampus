@@ -98,27 +98,58 @@
   // What each dashboard reads. One that fails shows its reason and a Try again button.
   const READERS: Partial<Record<DashboardId, () => Promise<Tile[]>>> = {
     overview: async () => {
-      const [agents, used, cards, asks, system] = await Promise.all([
+      const [agents, used, cards, asks, system, activity] = await Promise.all([
         call<{ agents: unknown[] }>("agents"),
         spend(),
         tasks(),
         call<{ asks: unknown[] }>("asks"),
         call<SystemShape>("system").catch(() => null),
+        call<{ rows: ActivityRow[] }>("activity")
+          .then((found) => found.rows)
+          .catch(() => null),
       ]);
+      const next: Panel[] = [];
       if (system)
-        panels = [
-          {
-            kind: "rings",
-            title: "Machine",
-            note: "Share of the machine in use now.",
-            rings: [
-              { label: "CPU", percent: system.cpu, warn: system.cpu >= 90 },
-              { label: "RAM", percent: system.ram, warn: system.ram >= 90 },
-            ],
-          },
-        ];
+        next.push({
+          kind: "rings",
+          title: "Machine",
+          note: "Share of the machine in use now.",
+          rings: [
+            { label: "CPU", percent: system.cpu, warn: system.cpu >= 90 },
+            { label: "RAM", percent: system.ram, warn: system.ram >= 90 },
+          ],
+        });
+      if (cards.length)
+        next.push({
+          kind: "breakdown",
+          title: "Tasks by status",
+          note: `${cards.length} in all.`,
+          rows: breakdown(
+            ["todo", "doing", "blocked", "done"].map(
+              (status) =>
+                [
+                  status.charAt(0).toUpperCase() + status.slice(1),
+                  cards.filter((task) => task.status === status).length,
+                  status === "blocked" &&
+                    cards.some((task) => task.status === status),
+                ] as [string, number, boolean],
+            ),
+          ),
+        });
+      if (activity) {
+        const days = activityByDay(activity);
+        next.push({
+          kind: "trend",
+          title: "Events per day",
+          note: "Last 14 days",
+          labels: days.labels,
+          values: days.values,
+        });
+      }
+      panels = next;
       return overviewTiles({
-        agents: agents.agents.length,
+        // The main agent is always on the floor; the list holds only the agents added beside it.
+        agents: agents.agents.length + 1,
         tokens: Object.values(used).reduce((sum, n) => sum + n, 0),
         tasks: cards,
         asks: asks.asks.length,
@@ -359,7 +390,7 @@
         type="button"
         class="icon-btn"
         aria-label="Graph"
-        title="Graph"
+        data-tip="Graph"
         onclick={onclose}
       >
         <DashIcon name="graph" />
@@ -371,7 +402,7 @@
           class:on={current === item.id}
           aria-label={item.label}
           aria-pressed={current === item.id}
-          title={item.label}
+          data-tip={item.label}
           onclick={() => (current = item.id)}
         >
           <DashIcon name={item.id.startsWith("app:") ? "app" : item.id} />
@@ -535,6 +566,14 @@
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-1);
+  }
+
+  /* The icon's name shows under it on hover or keyboard focus, not beside it over the next icon. */
+  .icon-btn:hover::after,
+  .icon-btn:focus-visible::after {
+    left: 50%;
+    top: calc(100% + var(--space-1));
+    transform: translateX(-50%);
   }
 
   .icon-btn {

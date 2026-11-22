@@ -158,7 +158,12 @@
       }}
     >
       <label
-        >Name <input type="text" bind:value={newName} maxlength="80" /></label
+        >Name <input
+          type="text"
+          bind:value={newName}
+          maxlength="80"
+          placeholder="Nightly link check"
+        /></label
       >
       <label
         >Runs

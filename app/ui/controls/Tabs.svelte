@@ -231,6 +231,11 @@
     text-overflow: ellipsis;
   }
 
+  /* Every tab bar reads in sentence case ("Ask me"), whatever case its id is written in. */
+  button > span:first-child::first-letter {
+    text-transform: uppercase;
+  }
+
   .underline {
     position: absolute;
     top: -2px;

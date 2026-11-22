@@ -128,9 +128,10 @@
     padding-bottom: var(--space-2);
   }
 
+  /* The search box takes its own row when the panel is narrow, so it never shrinks to a few letters. */
   .filters input[type="search"] {
-    flex: 1;
-    min-width: 0;
+    flex: 1 1 12rem;
+    min-width: 10rem;
   }
 
   .filters .date {

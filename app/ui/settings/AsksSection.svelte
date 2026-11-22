@@ -5,6 +5,7 @@
   import { onDestroy, onMount } from "svelte";
   import type { AskCard } from "../assistant/model";
   import Loading from "../controls/Loading.svelte";
+  import Button from "../controls/Button.svelte";
 
   // Questions the assistant cannot answer alone, from every chat, in one place.
   let asks = $state<AskCard[]>([]);
@@ -100,14 +101,10 @@
         <li>
           <p><strong>{row.name}</strong> · {row.preview}</p>
           <div class="row">
-            <button
-              type="button"
-              class="primary"
-              onclick={() => decide(row, true)}>Approve</button
+            <Button variant="primary" onclick={() => decide(row, true)}
+              >Approve</Button
             >
-            <button type="button" onclick={() => decide(row, false)}
-              >Deny</button
-            >
+            <Button onclick={() => decide(row, false)}>Deny</Button>
           </div>
         </li>
       {/each}
@@ -129,10 +126,11 @@
               type="text"
               aria-label={`Answer: ${ask.question}`}
               bind:value={answers[ask.call]}
+              placeholder="Type your answer, then press Enter"
               onkeydown={(e) => e.key === "Enter" && respond(ask)}
             />
-            <button type="button" class="primary" onclick={() => respond(ask)}
-              >Respond</button
+            <Button variant="primary" onclick={() => respond(ask)}
+              >Respond</Button
             >
           </div>
         </li>
@@ -152,3 +150,34 @@
   {/if}
   {#if error}<ErrorRow message={error} onretry={load} />{/if}
 </section>
+
+<style>
+  ul {
+    display: grid;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  li {
+    padding: var(--space-2) var(--space-3);
+    background: var(--color-bg-1);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+  }
+
+  li p {
+    margin: 0 0 var(--space-2);
+  }
+
+  .row {
+    display: flex;
+    gap: var(--space-2);
+    align-items: center;
+  }
+
+  .row input {
+    flex: 1;
+  }
+</style>

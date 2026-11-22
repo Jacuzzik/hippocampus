@@ -100,12 +100,17 @@
     padding: 0 var(--space-3);
     font: inherit;
     font-size: var(--font-size-sm);
-    color: var(--color-md-card-text);
-    background: var(--color-md-card);
-    border: 1px solid var(--color-md-border);
-    border-radius: 0;
+    color: var(--color-text);
+    background: var(--color-bg-0);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
     cursor: pointer;
     text-align: left;
+  }
+
+  .trigger:hover:not(:disabled),
+  .trigger[aria-expanded="true"] {
+    border-color: var(--color-accent);
   }
 
   .trigger:disabled {
@@ -135,8 +140,9 @@
     list-style: none;
     max-height: var(--size-240);
     overflow-y: auto;
-    background: var(--color-md-card);
-    border: 1px solid var(--color-md-border);
+    background: var(--pop-bg);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
     border-top: 0;
   }
 
@@ -146,7 +152,7 @@
     font: inherit;
     font-size: var(--font-size-sm);
     text-align: left;
-    color: var(--color-md-card-text);
+    color: var(--color-text);
     background: transparent;
     border: 0;
     border-radius: 0;
@@ -157,7 +163,7 @@
   .item:focus-visible,
   .item.on {
     background: var(--color-accent);
-    color: var(--color-md-card);
+    color: var(--color-accent-on);
     outline: none;
   }
 </style>

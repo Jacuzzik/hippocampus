@@ -162,7 +162,7 @@ export function overviewTiles(found: {
     {
       label: "Agents",
       value: String(found.agents),
-      note: "Added to this office.",
+      note: "The main agent and the ones you added.",
     },
     { label: "Tokens today", value: short(found.tokens) },
     { label: "Open tasks", value: String(open), share: fraction(open, found.tasks.length) },

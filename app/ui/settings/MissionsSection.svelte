@@ -151,7 +151,14 @@
     void add();
   }}
 >
-  <label>Label <input type="text" bind:value={label} maxlength="60" /></label>
+  <label
+    >Label <input
+      type="text"
+      bind:value={label}
+      maxlength="60"
+      placeholder="Morning summary"
+    /></label
+  >
   <label
     >To
     <select bind:value={agent}>
@@ -159,7 +166,12 @@
     </select>
   </label>
   <label class="wide"
-    >Message <input type="text" bind:value={message} maxlength="2000" /></label
+    >Message <input
+      type="text"
+      bind:value={message}
+      maxlength="2000"
+      placeholder="Summarise yesterday's notes and list what is still open"
+    /></label
   >
   <label
     >Schedule

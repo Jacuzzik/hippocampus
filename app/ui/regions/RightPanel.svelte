@@ -435,9 +435,10 @@
   }
 
   /* The real terminal takes a fixed slice above the chat. */
+  /* The terminal gives way first, so the message box and its buttons stay in view on a short window. */
   .live-wrap {
     flex: 1 1 0;
-    min-height: var(--size-300);
+    min-height: var(--size-240);
     display: flex;
     flex-direction: column;
     margin-bottom: var(--space-2);
