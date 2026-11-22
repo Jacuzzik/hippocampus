@@ -1,3 +1,12 @@
+/* Popups (dialogs, menus, confirm boxes): the website's grid, fading in from the bottom with a soft accent glow. */
+:root {
+  --pop-bg:
+    radial-gradient(120% 100% at 50% 100%, color-mix(in srgb, var(--color-accent) 22%, transparent), transparent 70%),
+    linear-gradient(color-mix(in srgb, var(--color-border) 55%, transparent) 1px, transparent 1px) center / 96px 96px,
+    linear-gradient(90deg, color-mix(in srgb, var(--color-border) 55%, transparent) 1px, transparent 1px) center / 96px 96px,
+    var(--color-bg-1);
+}
+
 *,
 *::before,
 *::after {

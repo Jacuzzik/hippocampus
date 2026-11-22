@@ -569,22 +569,35 @@
     opacity: 0.4;
   }
 
-  /* A dashboard other than the graph: rail, dashboard, agent cards. The notes, graph and Control Room stay
-     mounted but hidden, so terminals keep running; the bottom bar is not drawn. */
+  /* A dashboard other than the graph: the rail on the far left, the agent cards in a column beside the
+     dashboard, and the top bar kept at the top. The notes, graph and Control Room stay mounted but
+     hidden, so terminals keep running; the bottom bar is not drawn and there is no right sidebar. */
   .shell.dash,
   .shell.dash.terminal-only {
-    grid-template-columns: var(--layout-ribbon-width) minmax(0, 1fr) var(
-        --agent-rail-col
-      );
-    grid-template-rows: minmax(0, 1fr);
-    grid-template-areas: "rail board agents";
+    grid-template-columns: var(--layout-ribbon-width) var(--agent-rail-col) minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-areas:
+      "rail top top"
+      "rail agents board";
     --agent-rail-col: 344px; /* one agent card (320px) and the rail padding */
   }
 
   .shell.dash > :global(.sidebar),
-  .shell.dash > :global(.graph),
   .shell.dash > :global(.right-panel) {
     display: none;
+  }
+
+  /* The graph region's box is dropped, so its top bar joins the shell's grid; everything else in it is hidden. */
+  .shell.dash > :global(.graph) {
+    display: contents;
+  }
+
+  .shell.dash > :global(.graph) > :global(*:not(.topbar)) {
+    display: none;
+  }
+
+  .shell.dash > :global(.graph) > :global(.topbar) {
+    grid-area: top;
   }
 
   .agent-rail {
@@ -592,7 +605,8 @@
     min-height: 0;
     padding: var(--space-3);
     background: var(--color-bg-1);
-    border-left: 1px solid var(--color-border);
+    border-right: 1px solid var(--color-border);
+    overflow-y: auto;
   }
 
   .shell.terminal-only {

@@ -114,10 +114,10 @@
     max-height: calc(100vh - 2 * var(--space-4));
     overflow-y: auto;
     padding: var(--space-4);
-    background: var(--color-bg-1);
-    border: 1px solid var(--color-border);
-    border-left: 3px solid var(--color-accent);
-    border-radius: var(--radius-sm);
+    background: var(--pop-bg);
+    border: 1px solid color-mix(in srgb, var(--color-accent) 45%, var(--color-border));
+    border-radius: var(--radius-md);
+    box-shadow: 0 16px 48px color-mix(in srgb, var(--color-bg-0) 60%, transparent);
     color: var(--color-text);
   }
 

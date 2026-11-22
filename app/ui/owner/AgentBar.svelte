@@ -1149,7 +1149,7 @@
     display: grid;
     min-width: var(--size-140);
     padding: var(--space-1);
-    background: var(--color-bg-1);
+    background: var(--pop-bg);
     color: var(--color-text);
     border: 1px solid var(--color-border);
     border-radius: 0;

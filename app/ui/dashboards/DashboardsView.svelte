@@ -4,14 +4,22 @@
   // Numbers are read when a dashboard opens and when Refresh is pressed, never on a timer.
   // Locked (Settings > Dashboards) makes the tiles read-only: no click, no typing, no keyboard focus.
   import { invoke } from "@tauri-apps/api/core";
+  import { SvelteMap } from "svelte/reactivity";
   import ErrorRow from "../controls/ErrorRow.svelte";
   import Loading from "../controls/Loading.svelte";
-  import Tabs from "../controls/Tabs.svelte";
+  import DashIcon from "./DashIcon.svelte";
   import CalendarBoard from "./CalendarBoard.svelte";
   import PhoneBoard from "./PhoneBoard.svelte";
+  import AnalyticPanel from "./AnalyticPanel.svelte";
   import { prefs } from "../prefs.svelte.ts";
   import {
+    activityByDay,
+    short,
     activityTiles,
+    breakdown,
+    heatValues,
+    percentOf,
+    type Panel,
     appTiles,
     DASHBOARDS,
     githubTiles,
@@ -63,6 +71,8 @@
     ...apps.map((app) => ({ id: `app:${app.id}`, label: app.name })),
   ]);
   let tiles = $state<Tile[] | null>(null);
+  // Charts and breakdowns drawn above the tiles, set by the dashboard that reads them.
+  let panels = $state<Panel[]>([]);
   let error = $state<string | null>(null);
   let readAt = $state("");
   // Bumped by Refresh, so a dashboard that loads itself reads again.
@@ -95,6 +105,18 @@
         call<{ asks: unknown[] }>("asks"),
         call<SystemShape>("system").catch(() => null),
       ]);
+      if (system)
+        panels = [
+          {
+            kind: "rings",
+            title: "Machine",
+            note: "Share of the machine in use now.",
+            rings: [
+              { label: "CPU", percent: system.cpu, warn: system.cpu >= 90 },
+              { label: "RAM", percent: system.ram, warn: system.ram >= 90 },
+            ],
+          },
+        ];
       return overviewTiles({
         agents: agents.agents.length,
         tokens: Object.values(used).reduce((sum, n) => sum + n, 0),
@@ -103,10 +125,75 @@
         system,
       });
     },
-    agents: async () => spendTiles(await spend()),
-    tasks: async () => taskTiles(await tasks()),
-    notes: async () => noteTiles(await call<GraphShape>("graph")),
-    system: async () => systemTiles(await call<SystemShape>("system")),
+    agents: async () => {
+      const byAgent = await spend();
+      const rows = Object.entries(byAgent).sort((a, b) => b[1] - a[1]);
+      panels = [
+        {
+          kind: "breakdown",
+          title: "Tokens by agent",
+          note: "Today's share of all tokens.",
+          rows: breakdown(rows, short),
+        },
+      ];
+      return spendTiles(byAgent);
+    },
+    tasks: async () => {
+      const found = await tasks();
+      const columns = ["todo", "doing", "blocked", "done"].map(
+        (status) =>
+          [
+            status.charAt(0).toUpperCase() + status.slice(1),
+            found.filter((task) => task.status === status).length,
+          ] as [string, number],
+      );
+      panels = [
+        {
+          kind: "breakdown",
+          title: "Tasks by status",
+          note: `${found.length} in all.`,
+          rows: breakdown(columns),
+        },
+      ];
+      return taskTiles(found);
+    },
+    notes: async () => {
+      const graph = await call<GraphShape>("graph");
+      const counts = new SvelteMap<string, number>();
+      for (const node of graph.nodes)
+        for (const tag of node.tags) counts.set(tag, (counts.get(tag) ?? 0) + 1);
+      const top = [...counts.entries()]
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+        .slice(0, 8);
+      panels = top.length
+        ? [
+            {
+              kind: "breakdown",
+              title: "Top tags",
+              note: "Notes that carry each tag.",
+              rows: breakdown(top),
+            },
+          ]
+        : [];
+      return noteTiles(graph);
+    },
+    system: async () => {
+      const system = await call<SystemShape>("system");
+      panels = [
+        {
+          kind: "rings",
+          title: "Machine",
+          note: "Share of each resource in use now.",
+          rings: [
+            { label: "CPU", percent: system.cpu, warn: system.cpu >= 90 },
+            { label: "RAM", percent: system.ram, warn: system.ram >= 90 },
+            { label: "Swap", percent: system.swap, warn: system.swap >= 50 },
+            { label: "Disk", percent: system.disk, warn: system.disk >= 90 },
+          ],
+        },
+      ];
+      return systemTiles(system);
+    },
     github: async () => {
       if (!prefs.dashboardRepo) throw new Error(NEEDS_REPO);
       const found = await invoke<GithubShape | { error: string }>(
@@ -114,28 +201,87 @@
         { method: "github_board", params: { repo: prefs.dashboardRepo } },
       );
       if ("error" in found) throw new Error(found.error);
+      const runs = found.runs;
+      const passed = Math.max(0, runs - found.failed_runs - found.running_runs);
+      const open = Math.max(0, found.pulls - found.drafts);
+      panels = [
+        {
+          kind: "breakdown",
+          title: "Recent CI runs",
+          note: `${runs} read.`,
+          rows: breakdown(
+            [
+              ["Passed", passed],
+              ["Failed", found.failed_runs, found.failed_runs > 0],
+              ["Running", found.running_runs],
+            ] as [string, number, boolean?][],
+          ),
+        },
+        {
+          kind: "breakdown",
+          title: "Pull requests",
+          note: `${found.pulls} open.`,
+          rows: breakdown([
+            ["Ready", open],
+            ["Drafts", found.drafts],
+          ]),
+        },
+      ];
       return githubTiles(found);
     },
-    activity: async () =>
-      activityTiles((await call<{ rows: ActivityRow[] }>("activity")).rows),
+    activity: async () => {
+      const rows = (await call<{ rows: ActivityRow[] }>("activity")).rows;
+      const days = activityByDay(rows);
+      panels = [
+        {
+          kind: "trend",
+          title: "Events per day",
+          note: "Last 14 days",
+          labels: days.labels,
+          values: days.values,
+        },
+        {
+          kind: "heat",
+          title: "Activity, 13 weeks",
+          note: "Each square is one day.",
+          values: heatValues(rows),
+        },
+      ];
+      return activityTiles(rows);
+    },
   };
 
   async function load(): Promise<void> {
     const wanted = current;
     tiles = null;
+    panels = [];
     error = null;
     try {
       // A dashboard with no reader here (the calendar, the phone) draws and loads itself.
-      const found = wanted.startsWith("app:")
-        ? appTiles(
-            (
-              await invoke<{ numbers: AppNumber[] }>("sidecar_call", {
-                method: "app_board",
-                params: { id: wanted.slice(4) },
-              })
-            ).numbers,
-          )
+      let appNumbers: AppNumber[] | null = null;
+      if (wanted.startsWith("app:")) {
+        appNumbers = (
+          await invoke<{ numbers: AppNumber[] }>("sidecar_call", {
+            method: "app_board",
+            params: { id: wanted.slice(4) },
+          })
+        ).numbers;
+      }
+      const found = appNumbers
+        ? appTiles(appNumbers)
         : ((await READERS[wanted as DashboardId]?.()) ?? []);
+      if (appNumbers) {
+        // A connected app's percentages are drawn as rings; other numbers have no whole to measure against.
+        const rings = appNumbers.flatMap((number) => {
+          const percent = percentOf(number.value);
+          return percent === null || number.error
+            ? []
+            : [{ label: number.label, percent, warn: percent >= 90 }];
+        });
+        panels = rings.length
+          ? [{ kind: "rings", title: "Percentages", note: "From the connected app.", rings }]
+          : [];
+      }
       if (wanted !== current) return; // the user moved on while it was read
       tiles = found;
       readAt = new Date().toLocaleTimeString([], {
@@ -207,16 +353,30 @@
     >
   </header>
   <div class="body">
-    <nav>
-      <!-- The graph is the main dashboard: choosing it goes back to the normal layout. -->
-      <button type="button" class="to-graph" onclick={onclose}>Graph</button>
-      <Tabs
-        {items}
-        bind:value={current}
-        label="Dashboards"
-        idBase="dashboards"
-        vertical
-      />
+    <!-- Icons pick the dashboard. The graph is the main one: choosing it goes back to the normal layout. -->
+    <nav class="icons" aria-label="Dashboards">
+      <button
+        type="button"
+        class="icon-btn"
+        aria-label="Graph"
+        title="Graph"
+        onclick={onclose}
+      >
+        <DashIcon name="graph" />
+      </button>
+      {#each items as item (item.id)}
+        <button
+          type="button"
+          class="icon-btn"
+          class:on={current === item.id}
+          aria-label={item.label}
+          aria-pressed={current === item.id}
+          title={item.label}
+          onclick={() => (current = item.id)}
+        >
+          <DashIcon name={item.id.startsWith("app:") ? "app" : item.id} />
+        </button>
+      {/each}
     </nav>
     <div
       class="board"
@@ -266,6 +426,13 @@
         <Loading what={title} />
       {:else}
         <!-- About as many columns as rows, so a few tiles still fill the board in a grid, not one tall row. -->
+        {#if panels.length}
+          <div class="panels">
+            {#each panels as panel (panel.title)}
+              <AnalyticPanel {panel} />
+            {/each}
+          </div>
+        {/if}
         <ul
           class="tiles"
           style:--cols={columns(tiles.length)}
@@ -278,7 +445,16 @@
                 : null}
             >
               <span class="label">{tile.label}</span>
-              <b>{tile.value}</b>
+              <div class="figure">
+                <b>{tile.value}</b>
+                {#if tile.share !== undefined}
+                  <span
+                    class="bar"
+                    role="img"
+                    aria-label={`${Math.round(tile.share * 100)}% of the whole`}
+                  ><span style:width={`${tile.share * 100}%`}></span></span>
+                {/if}
+              </div>
               {#if tile.note}<span class="note">{tile.note}</span>{/if}
             </li>
           {/each}
@@ -347,36 +523,53 @@
   }
 
   .body {
-    display: grid;
-    grid-template-columns: 220px minmax(0, 1fr);
-    gap: var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
     flex: 1;
     min-height: 0;
     padding-top: var(--space-3);
   }
 
-  nav {
+  nav.icons {
     display: flex;
-    flex-direction: column;
+    flex-wrap: wrap;
     gap: var(--space-1);
-    overflow-y: auto;
   }
 
-  .to-graph {
-    min-height: var(--size-28);
-    padding: var(--space-1) var(--space-3);
-    color: var(--color-text);
-    font: inherit;
-    text-align: left;
-    background: none;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
+  .icon-btn {
+    display: inline-grid;
+    place-items: center;
+    width: var(--size-40);
+    height: var(--size-40);
+    padding: 0;
+    color: var(--color-text-muted);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
     cursor: pointer;
+    transition:
+      color var(--duration-fast) var(--ease-standard),
+      background var(--duration-fast) var(--ease-standard);
   }
 
-  .to-graph:hover {
-    background: var(--color-surface);
+  .icon-btn:hover {
+    color: var(--color-text);
+    background: var(--color-bg-1);
   }
+
+  .icon-btn.on {
+    color: var(--color-accent);
+    background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+    border-color: color-mix(in srgb, var(--color-accent) 45%, transparent);
+  }
+
+  .icon-btn:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+
 
   /* The board fills its column: the tiles, the calendar and the phone stretch to the bottom. */
   .board {
@@ -506,8 +699,44 @@
     opacity: 1;
   }
 
+  /* Charts and breakdowns sit above the tile grid, at the height their content needs. */
+  .panels {
+    display: grid;
+    gap: var(--space-3);
+    margin-top: var(--space-3);
+    min-width: 0;
+  }
+
+  .panels > :global(.panel) {
+    padding: var(--space-4);
+    background: var(--color-bg-1);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+  }
+
   .tiles li.warn b {
     color: var(--color-danger);
+  }
+
+  /* The share bar under a number: a track, and a fill in the tile's graph colour (the warn tile's, too). */
+  .bar {
+    display: block;
+    height: 6px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-text-muted) 18%, transparent);
+    overflow: hidden;
+  }
+
+  .bar > span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--color-graph-1);
+    transition: width var(--duration-base) var(--ease-standard);
+  }
+
+  .tiles li.warn .bar > span {
+    background: var(--color-danger);
   }
 
   .label {
@@ -524,8 +753,16 @@
     overflow-wrap: anywhere;
   }
 
-  .tiles b {
+  /* The number and its share bar form one row of the tile, centred in the tile's middle row. */
+  .figure {
     align-self: center;
+    display: grid;
+    gap: var(--space-2);
+    width: 100%;
+    min-width: 0;
+  }
+
+  .tiles b {
     font-size: clamp(var(--font-size-xl), 22cqmin, calc(var(--font-size-xl) * 5));
     font-variant-numeric: tabular-nums;
     line-height: 1;

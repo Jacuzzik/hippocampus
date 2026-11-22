@@ -180,6 +180,7 @@
     padding: var(--space-3);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
+    background: var(--pop-bg);
   }
 
   .confirm p {

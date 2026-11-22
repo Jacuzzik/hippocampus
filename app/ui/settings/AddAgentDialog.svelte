@@ -1,6 +1,7 @@
 <script lang="ts">
   import Dropdown from "../controls/Dropdown.svelte";
   import Dialog from "../controls/Dialog.svelte";
+  import AgentCardPreview from "../owner/AgentCardPreview.svelte";
   import { report } from "../notices.svelte.ts";
   import { invoke } from "@tauri-apps/api/core";
   import { onMount } from "svelte";
@@ -13,6 +14,7 @@
     AGENT_STEPS,
     AVATARS,
     CARD_FACES,
+    providerLogo,
     agentCommand,
     agentStepError,
     engineStatus,
@@ -190,6 +192,15 @@
   z={50}
   width="min(32rem, calc(100vw - 2 * var(--space-4)))"
 >
+  <!-- The agent card as the bottom bar draws it, filled in as each step is answered. -->
+  <AgentCardPreview
+    name={draft.name.trim()}
+    face={CARD_FACES.find((f) => f.id === draft.character)?.url ?? ""}
+    provider={AGENT_PROVIDERS.find((p) => p.id === draft.provider)?.label ?? ""}
+    logo={providerLogo(draft.provider)}
+    model={draft.model.trim()}
+    cmd={command}
+  />
   <div class="progress" aria-hidden="true">
     {#each AGENT_STEPS as label, i (label)}
       <span class:done={i <= step}></span>

@@ -34,7 +34,13 @@ test("dashboards open from the top bar, list six dashboards and show numbers fro
     .getByRole("button", { name: "Dashboards", exact: true })
     .click();
   const view = page.getByRole("region", { name: "Dashboards" });
-  await expect(view.getByRole("tab")).toHaveText([
+  // The dashboards are icon buttons; each one is named by its label.
+  await expect(view.locator("nav.icons button")).toHaveCount(10);
+  const names = await view
+    .locator("nav.icons button")
+    .evaluateAll((buttons) => buttons.map((b) => b.getAttribute("aria-label")));
+  expect(names).toEqual([
+    "Graph",
     "Overview",
     "Agents and spend",
     "Tasks",
@@ -53,16 +59,16 @@ test("dashboards open from the top bar, list six dashboards and show numbers fro
   await expect(
     board.locator("li", { hasText: "Questions waiting" }),
   ).toContainText("1");
-  await view.getByRole("tab", { name: "Notes" }).click();
+  await view.getByRole("button", { name: "Notes", exact: true }).click();
   await expect(board.locator("li", { hasText: "Links" }).first()).toContainText(
     "2",
   );
-  await view.getByRole("tab", { name: "System" }).click();
+  await view.getByRole("button", { name: "System", exact: true }).click();
   await expect(board.locator("li", { hasText: "Free disk" })).toContainText(
     "120.5 GB",
   );
-  await view.getByRole("tab", { name: "Agents and spend" }).click();
-  await expect(board.locator("li", { hasText: "kevin" })).toContainText("3.4k");
+  await view.getByRole("button", { name: "Agents and spend", exact: true }).click();
+  await expect(board.locator("li:has(b)", { hasText: "kevin" })).toContainText("3.4k");
   await expect(view.getByText(/^Read at /)).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(view).toBeHidden();
@@ -97,7 +103,7 @@ test("dashboards are locked by default, and the switch in Settings unlocks them 
   );
   await expect(board).toHaveAttribute("inert", "");
   // Locked: the failed dashboard's own button cannot be reached, but Refresh in the header can.
-  await view.getByRole("tab", { name: "Notes" }).click();
+  await view.getByRole("button", { name: "Notes", exact: true }).click();
   await expect(board.getByRole("alert")).toBeVisible();
   await expect(view.getByRole("button", { name: "Refresh" })).toBeEnabled();
   const retry = board.getByRole("button", { name: "Try again" });
@@ -111,7 +117,7 @@ test("dashboards are locked by default, and the switch in Settings unlocks them 
   await view.getByRole("button", { name: /locked/ }).click();
   const settings = page.getByRole("dialog", { name: "Settings" });
   await expect(
-    settings.getByRole("tab", { name: "Dashboards" }),
+    settings.getByRole("tab", { name: "Dashboards", exact: true }),
   ).toHaveAttribute("aria-selected", "true");
   const lock = settings.getByRole("checkbox", { name: "Lock dashboards" });
   await expect(lock).toBeChecked();
@@ -148,7 +154,7 @@ test("the GitHub dashboard asks for a repository, shows its numbers and says why
   await page.goto("/");
   await page.keyboard.press("Control+d");
   const view = page.getByRole("region", { name: "Dashboards" });
-  await view.getByRole("tab", { name: "GitHub" }).click();
+  await view.getByRole("button", { name: "GitHub", exact: true }).click();
   const board = view.getByRole("tabpanel");
   await expect(
     board.getByText(/Write a repository as owner\/name/),
@@ -171,7 +177,7 @@ test("the GitHub dashboard asks for a repository, shows its numbers and says why
   // The repository is kept for the next visit.
   await page.reload();
   await page.keyboard.press("Control+d");
-  await view.getByRole("tab", { name: "GitHub" }).click();
+  await view.getByRole("button", { name: "GitHub", exact: true }).click();
   await expect(board.getByLabel("Repository")).toHaveValue("nobody/nothing");
 });
 
@@ -190,7 +196,7 @@ test("the calendar shows events and job days, adds and removes an event, and cha
   await page.goto("/");
   await page.keyboard.press("Control+d");
   const view = page.getByRole("region", { name: "Dashboards" });
-  await view.getByRole("tab", { name: "Calendar and scheduling" }).click();
+  await view.getByRole("button", { name: "Calendar and scheduling", exact: true }).click();
   const board = view.getByRole("tabpanel");
   await expect(board.getByText("November 2026")).toBeVisible();
   await expect(board.getByRole("gridcell")).toHaveCount(30);
@@ -236,7 +242,7 @@ test("the Phone dashboard lists devices and starts and stops mirroring; a phone 
   await page.goto("/");
   await page.keyboard.press("Control+d");
   const view = page.getByRole("region", { name: "Dashboards" });
-  await view.getByRole("tab", { name: "Phone" }).click();
+  await view.getByRole("button", { name: "Phone", exact: true }).click();
   const board = view.getByRole("tabpanel");
   const ready = board.locator("li", { hasText: "SM A525F" });
   await expect(ready).toContainText("R58M123ABC · Ready");
@@ -267,7 +273,7 @@ test("an app is connected in Settings with a key that is never shown again, gets
   await page.goto("/");
   await page.keyboard.press("Control+d");
   const view = page.getByRole("region", { name: "Dashboards" });
-  await expect(view.getByRole("tab", { name: "Shopify" })).toHaveCount(0);
+  await expect(view.getByRole("button", { name: "Shopify", exact: true })).toHaveCount(0);
   await view.getByRole("button", { name: /locked/ }).click();
   const settings = page.getByRole("dialog", { name: "Settings" });
   await expect(settings.getByText("0 of 3 connected")).toBeVisible();
@@ -297,7 +303,7 @@ test("an app is connected in Settings with a key that is never shown again, gets
   expect(await page.content()).not.toContain("shpat_secret1234");
   await settings.getByRole("button", { name: "Close settings" }).click();
 
-  await view.getByRole("tab", { name: "Shopify" }).click();
+  await view.getByRole("button", { name: "Shopify", exact: true }).click();
   const board = view.getByRole("tabpanel");
   await expect(board.locator("li", { hasText: "Orders" })).toContainText("12");
   await expect(board.locator("li", { hasText: "Customers" })).toContainText(
@@ -311,9 +317,9 @@ test("an app is connected in Settings with a key that is never shown again, gets
   await settings.getByRole("button", { name: "Disconnect Shopify" }).click();
   await expect(settings.getByText("0 of 3 connected")).toBeVisible();
   await settings.getByRole("button", { name: "Close settings" }).click();
-  await expect(view.getByRole("tab", { name: "Shopify" })).toHaveCount(0);
-  await expect(view.getByRole("tab", { name: "Overview" })).toHaveAttribute(
-    "aria-selected",
+  await expect(view.getByRole("button", { name: "Shopify", exact: true })).toHaveCount(0);
+  await expect(view.getByRole("button", { name: "Overview", exact: true })).toHaveAttribute(
+    "aria-pressed",
     "true",
   );
 });
@@ -346,24 +352,27 @@ test("a dashboard takes the notes, graph and Control Room space; the bottom bar 
     "Calendar and scheduling",
     "Phone",
   ]) {
-    await view.getByRole("tab", { name, exact: true }).click();
+    await view.getByRole("button", { name, exact: true }).click();
     // No bottom bar, no Control Room, no note list, no graph: only the rail, the dashboard and the cards.
     await expect(page.locator("footer.status-bar")).toHaveCount(0);
     await expect(page.locator(".right-panel")).toBeHidden();
     await expect(
       page.getByRole("complementary", { name: "Notes" }),
     ).toBeHidden();
-    await expect(page.getByRole("main", { name: "Brain graph" })).toBeHidden();
+    // The top bar stays; the graph itself is not drawn.
+    await expect(page.locator("header.topbar")).toBeVisible();
+    await expect(page.locator("main.graph > :not(header.topbar)").first()).toBeHidden();
     const rail = page.getByRole("complementary", { name: "Agent cards" });
     await expect(rail.locator("[data-agent='hippoherman']")).toBeVisible();
-    // The dashboard reaches the bottom of the window and the rail's left edge.
+    // The agent cards sit left of the dashboard; the dashboard reaches the right and bottom edges.
     const box = await box_(view);
     const railBox = await box_(rail);
     expect(Math.round(box.y + box.height)).toBe(1080);
-    expect(Math.round(box.x + box.width)).toBe(Math.round(railBox.x));
+    expect(Math.round(box.x + box.width)).toBe(1920);
+    expect(Math.round(box.x)).toBe(Math.round(railBox.x + railBox.width));
   }
   // The tiles fill the board: the last row ends near the board's bottom.
-  await view.getByRole("tab", { name: "Overview", exact: true }).click();
+  await view.getByRole("button", { name: "Overview", exact: true }).click();
   const board = await box_(view.getByRole("tabpanel"));
   const tiles = await box_(view.locator(".tiles"));
   expect(tiles.y + tiles.height).toBeGreaterThan(board.y + board.height - 40);

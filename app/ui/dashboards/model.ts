@@ -8,7 +8,14 @@ export type Tile = {
   note?: string;
   /** "warn" marks a number that needs the user. */
   tone?: "plain" | "warn";
+  /** The part of the whole this number is, 0 to 1: drawn as a bar under the number. */
+  share?: number;
 };
+
+/** Clamp a fraction to 0..1 so a bar never draws past its track. */
+export function fraction(part: number, whole: number): number {
+  return whole > 0 ? Math.min(1, Math.max(0, part / whole)) : 0;
+}
 
 /** The dashboards built into the app, in the order the list shows them. */
 export const DASHBOARDS = [
@@ -52,12 +59,14 @@ export function taskTiles(tasks: TaskRow[]): Tile[] {
     ...COLUMNS.map((column) => ({
       label: column.charAt(0).toUpperCase() + column.slice(1),
       value: String(tasks.filter((task) => task.status === column).length),
+      share: fraction(tasks.filter((task) => task.status === column).length, tasks.length),
     })),
     {
       label: "Waiting on you",
       value: String(waiting),
       note: waiting ? "Answer them on the ask me tab." : "Nothing needs you.",
       tone: waiting ? ("warn" as const) : ("plain" as const),
+      share: fraction(waiting, tasks.length),
     },
   ];
 }
@@ -93,6 +102,7 @@ export function systemTiles(system: SystemShape): Tile[] {
     label,
     value: `${Math.round(value)}%`,
     tone: value >= limit ? "warn" : "plain",
+    share: fraction(value, 100),
   });
   return [
     percent("CPU", system.cpu, 90),
@@ -112,6 +122,7 @@ export function spendTiles(byAgent: Record<string, number>): Tile[] {
       label: agent,
       value: short(used),
       note: total ? `${Math.round((100 * used) / total)}% of today.` : "",
+      share: fraction(used, total),
     })),
   ];
 }
@@ -127,7 +138,11 @@ export function activityTiles(rows: ActivityRow[]): Tile[] {
     { label: "Events kept", value: String(rows.length) },
     ...[...kinds.entries()]
       .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-      .map(([kind, count]) => ({ label: kind, value: String(count) })),
+      .map(([kind, count]) => ({
+        label: kind,
+        value: String(count),
+        share: fraction(count, rows.length),
+      })),
     {
       label: "Newest",
       value: newest ? newest.slice(0, 16).replace("T", " ") : "None",
@@ -150,7 +165,7 @@ export function overviewTiles(found: {
       note: "Added to this office.",
     },
     { label: "Tokens today", value: short(found.tokens) },
-    { label: "Open tasks", value: String(open) },
+    { label: "Open tasks", value: String(open), share: fraction(open, found.tasks.length) },
     {
       label: "Questions waiting",
       value: String(found.asks),
@@ -279,4 +294,87 @@ export function appTiles(numbers: AppNumber[]): Tile[] {
         }
       : { label: number.label, value: number.value },
   );
+}
+
+/** Events per day for the last `days` days, oldest first. Days are the local dates the rows were written with. */
+export function activityByDay(
+  rows: ActivityRow[],
+  days = 14,
+  now = new Date(),
+): { labels: string[]; values: number[] } {
+  const keys: string[] = [];
+  for (let back = days - 1; back >= 0; back--) {
+    const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() - back);
+    keys.push(
+      `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`,
+    );
+  }
+  const counts = new Map<string, number>();
+  for (const row of rows) {
+    const key = String(row.ts).slice(0, 10);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return {
+    labels: keys.map((key) => key.slice(5)),
+    values: keys.map((key) => counts.get(key) ?? 0),
+  };
+}
+
+/** A chart or breakdown drawn above a dashboard's tiles. */
+export type Panel =
+  | { kind: "trend"; title: string; note: string; labels: string[]; values: number[] }
+  | {
+      kind: "breakdown";
+      title: string;
+      note: string;
+      rows: { label: string; value: string; share: number; warn?: boolean }[];
+    }
+  | {
+      kind: "rings";
+      title: string;
+      note: string;
+      rings: { label: string; percent: number; warn: boolean }[];
+    }
+  | { kind: "heat"; title: string; note: string; values: number[] };
+
+/** The last `days` local dates, oldest first, as YYYY-MM-DD. */
+export function dayKeys(days: number, now = new Date()): string[] {
+  const keys: string[] = [];
+  for (let back = days - 1; back >= 0; back--) {
+    const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() - back);
+    keys.push(
+      `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`,
+    );
+  }
+  return keys;
+}
+
+/** Events per day for the last 13 weeks, oldest first: the cells of the activity heat map. */
+export function heatValues(rows: ActivityRow[], now = new Date()): number[] {
+  const counts = new Map<string, number>();
+  for (const row of rows) {
+    const key = String(row.ts).slice(0, 10);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return dayKeys(91, now).map((key) => counts.get(key) ?? 0);
+}
+
+/** A share-of-whole breakdown: one row per entry, largest first. */
+export function breakdown(
+  entries: [label: string, count: number, warn?: boolean][],
+  format: (n: number) => string = String,
+): { label: string; value: string; share: number; warn?: boolean }[] {
+  const total = entries.reduce((sum, [, count]) => sum + count, 0);
+  return entries.map(([label, count, warn]) => ({
+    label,
+    value: format(count),
+    share: fraction(count, total),
+    warn,
+  }));
+}
+
+/** A percentage as a number, or null when the text is not a percentage. */
+export function percentOf(text: string): number | null {
+  const match = /^(\d+(?:\.\d+)?)%$/.exec(text.trim());
+  return match ? Number(match[1]) : null;
 }
