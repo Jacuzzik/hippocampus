@@ -571,19 +571,8 @@
     width: var(--size-140);
     aspect-ratio: 1;
     padding: var(--space-3);
-    color: var(--color-on-strong);
-    background:
-      radial-gradient(
-        circle at 20% 15%,
-        color-mix(in srgb, var(--color-holo-1) 85%, transparent),
-        transparent 60%
-      ),
-      radial-gradient(
-        circle at 85% 90%,
-        color-mix(in srgb, var(--color-success) 70%, transparent),
-        transparent 55%
-      ),
-      linear-gradient(150deg, var(--color-accent), var(--color-graph-3));
+    color: var(--color-accent-on);
+    background: var(--color-accent);
     border-radius: var(--radius-md);
   }
 
