@@ -93,12 +93,6 @@
         "Needs a global shortcut, which the operating system must allow first.",
     },
     {
-      id: "N.21",
-      name: "Note history",
-      what: "Per-note history with a diff view and restore.",
-      reason: "Needs a snapshot on every save, keeping the last 20.",
-    },
-    {
       id: "N.22",
       name: "Playbooks",
       what: "Named workflows, such as 'review this folder', that send a briefing and create cards.",

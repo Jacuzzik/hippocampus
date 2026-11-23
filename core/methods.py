@@ -33,6 +33,9 @@ METHODS: dict[str, Method] = {
     "note_save": _m("Save a note."),
     "note_delete": _m("Delete a note."),
     "note_colour": _m("Colour a note through its tags."),
+    "note_history": _m("The kept earlier versions of a note, newest first (the last 20)."),
+    "note_version": _m("The text of one kept version of a note."),
+    "note_restore": _m("Put a kept version of a note back; the text it replaces is kept first."),
     # Account and keys
     "account": _m("Whether a Claude key is saved."),
     "user_account": _m(

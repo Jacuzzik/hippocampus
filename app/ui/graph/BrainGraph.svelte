@@ -9,6 +9,7 @@
   import { hexOf, parse, token } from "./colors";
   import NoteActions, { type MenuTarget } from "./NoteActions.svelte";
   import ShareNote from "./ShareNote.svelte";
+  import NoteHistory from "./NoteHistory.svelte";
   import { parseNote, type Block, type Inline } from "./markdown";
   import type { Rgba } from "./renderer";
   import { BrainRenderer } from "./renderer";
@@ -532,6 +533,7 @@
   // Typing saves after a short pause, and leaving the text or the note saves at once. There are no Save or Cancel buttons.
   let editText = $state<string | null>(null);
   let sharing = $state(false);
+  let history = $state(false);
   let editError = $state<string | null>(null);
   // The note the right-click Edit asked for: the drawer opens straight into editing it.
   let wantEdit = $state<string | null>(null);
@@ -609,6 +611,16 @@
       .catch((cause: unknown) => {
         if (nodeId === id) editError = String(cause);
       });
+  }
+  // A restored version is now the note's text: show it, and take it into an open edit.
+  function restored(text: string): void {
+    const id = nodeId;
+    if (!id) return;
+    clearTimeout(saveTimer);
+    savedText = text;
+    if (editText !== null) editText = text;
+    body = { id, blocks: parseNote(text) };
+    window.dispatchEvent(new Event("graph-changed"));
   }
   const shown = $derived(body && node && body.id === node.id ? body : null);
 
@@ -1034,6 +1046,11 @@
           >
           <button
             type="button"
+            aria-pressed={history}
+            onclick={() => (history = !history)}>History</button
+          >
+          <button
+            type="button"
             class="close"
             aria-label="Close note details"
             onclick={() => onselect(null)}>×</button
@@ -1044,6 +1061,11 @@
       {#if sharing}<ShareNote
           path={node.id}
           onclose={() => (sharing = false)}
+        />{/if}
+      {#if history}<NoteHistory
+          path={node.id}
+          onclose={() => (history = false)}
+          onrestored={restored}
         />{/if}
       {#if node.tags.length}
         <p class="tags">{node.tags.map((t) => `#${t}`).join(" ")}</p>
@@ -1265,6 +1287,9 @@
 
   /* Beside the canvas, as the notes app's side panels are, so it never covers the graph. */
   .drawer {
+    /* Above the graph's tool strip, which can run under it when the canvas is narrow. */
+    position: relative;
+    z-index: 2;
     flex: none;
     width: min(320px, 45%);
     overflow-y: auto;
@@ -1282,6 +1307,8 @@
 
   .head-actions {
     display: flex;
+    flex-wrap: wrap;
+    justify-content: end;
     gap: var(--space-2);
   }
 

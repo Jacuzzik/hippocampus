@@ -177,6 +177,7 @@ export async function mockSidecar(
       let crashRows: { at: string; source: string; message: string }[] = [];
 
       // The note text the drawer reads through the "read" method.
+      const noteHistory: Record<string, { id: string; text: string }[]> = {};
       const texts: Record<string, string> = {
         "alpha.md": [
           "# Alpha",
@@ -625,9 +626,44 @@ export async function mockSidecar(
               id: args.params?.path,
               text: texts[String(args.params?.path)],
             };
-          case "note_save":
-            texts[String(args.params?.path)] = String(args.params?.text);
-            return { saved: `edited ${args.params?.path}` };
+          case "note_save": {
+            const at = String(args.params?.path);
+            (noteHistory[at] ??= []).unshift({
+              id: String(1_800_000_000_000 + noteHistory[at].length),
+              text: texts[at] ?? "",
+            });
+            texts[at] = String(args.params?.text);
+            return { saved: `edited ${at}` };
+          }
+          // Note history, as core/session_notes.py answers it.
+          case "note_history":
+            return {
+              id: args.params?.path,
+              versions: (noteHistory[String(args.params?.path)] ?? []).map(
+                (v) => ({
+                  id: v.id,
+                  time: Number(v.id),
+                  chars: v.text.length,
+                  first: v.text.split("\n").find((l) => l.trim()) ?? "",
+                }),
+              ),
+            };
+          case "note_version":
+          case "note_restore": {
+            const at = String(args.params?.path);
+            const kept = (noteHistory[at] ?? []).find(
+              (v) => v.id === args.params?.version,
+            );
+            if (!kept) throw new Error("That version is no longer kept.");
+            if (args.method === "note_restore") {
+              noteHistory[at].unshift({
+                id: String(1_800_000_000_000 + noteHistory[at].length),
+                text: texts[at] ?? "",
+              });
+              texts[at] = kept.text;
+            }
+            return { id: at, version: kept.id, text: kept.text };
+          }
           case "note_colour":
             return { changed: [args.params?.path] };
           case "note_delete":

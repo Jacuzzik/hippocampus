@@ -5,6 +5,7 @@ from typing import Any
 
 from core import (
     note_actions,
+    note_history,
 )
 from core.vault import open_index
 from core.vault.changes import ChangeFlag
@@ -58,11 +59,49 @@ class NotesPart:
         text = request.get("text")
         if not isinstance(text, str):
             raise ValueError('"note_save" needs the note "text"')
+        self._keep_version(request.get("path"))
         saved = vault_tools(self.indexer, self.lock)["edit_note"].run(
             {"path": request.get("path"), "content": text}
         )
         self.changed("notes")
         return {"saved": saved}
+
+    def _keep_version(self, path: object, force: bool = False) -> None:
+        """Keep the note's current text before it is overwritten. A new note has nothing to keep.
+        History is best effort: a failure to keep a copy never stops the save."""
+        try:
+            before = note_actions.read_full(self.indexer, self.lock, path)
+        except (OSError, ValueError):
+            return
+        try:
+            note_history.keep(self.storage, str(path), before, force=force)
+        except OSError:
+            pass
+
+    def note_history(self, request: dict[str, Any]) -> dict[str, Any]:
+        self._open_vault()
+        path = request.get("path")
+        note_actions.read_full(self.indexer, self.lock, path)  # the same path checks as a read
+        return {"id": path, "versions": note_history.versions(self.storage, str(path))}
+
+    def note_version(self, request: dict[str, Any]) -> dict[str, Any]:
+        self._open_vault()
+        path = request.get("path")
+        note_actions.read_full(self.indexer, self.lock, path)
+        text = note_history.text_of(self.storage, str(path), request.get("version"))
+        return {"id": path, "version": request.get("version"), "text": text}
+
+    def note_restore(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Put a kept version back. The text it replaces is kept first, so a restore can be undone."""
+        self._open_vault()
+        path = request.get("path")
+        note_actions.read_full(self.indexer, self.lock, path)
+        text = note_history.text_of(self.storage, str(path), request.get("version"))
+        self._keep_version(path, force=True)
+        vault_tools(self.indexer, self.lock)["edit_note"].run({"path": path, "content": text})
+        self.changed("notes")
+        self.note("setting", text=f"restored an earlier version of {path}")
+        return {"id": path, "text": text}
 
     def note_delete(self, request: dict[str, Any]) -> dict[str, Any]:
         self._open_vault()
