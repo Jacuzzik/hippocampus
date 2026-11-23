@@ -54,3 +54,23 @@ test("an edit keeps the earlier version, which can be shown and restored", async
   await expect(box.getByLabel("Note text")).toHaveValue(/Steps/);
   await expect(versions.locator("li")).toHaveCount(2);
 });
+
+test("text selected while editing becomes a card under Your cards", async ({
+  page,
+}) => {
+  await page.getByRole("button", { name: "Alpha" }).click();
+  const box = drawer(page);
+  await box.getByRole("button", { name: "Edit" }).click();
+  await box.getByRole("button", { name: "Make card" }).click();
+  await expect(box.getByRole("status")).toContainText("Select some text");
+  await box.getByLabel("Note text").evaluate((el: HTMLTextAreaElement) => {
+    el.focus();
+    el.setSelectionRange(0, 7);
+  });
+  await box.getByRole("button", { name: "Make card" }).click();
+  await expect(box.getByRole("status")).toContainText("Card made: # Alpha");
+  await page.getByRole("tab", { name: "tasks" }).click();
+  await expect(page.getByRole("list", { name: "Your cards" })).toContainText(
+    "# Alpha",
+  );
+});

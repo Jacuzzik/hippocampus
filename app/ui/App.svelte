@@ -288,6 +288,15 @@
 
   // The graph menu and sidebar fire this after a change, so it redraws at once rather than at the next poll.
   onMount(() => watchAlerts());
+  // A card's note page (and other panels) ask for a note to open in the graph.
+  onMount(() => {
+    const open = (e: Event): void => {
+      const path = (e as CustomEvent<string>).detail;
+      if (typeof path === "string" && path) selectedId = path;
+    };
+    window.addEventListener("open-note", open);
+    return () => window.removeEventListener("open-note", open);
+  });
   onMount(() => {
     // 7.29: on the very first start, Setup and account opens by itself to show the setup checks. Once only.
     try {

@@ -93,13 +93,6 @@
         "Needs the briefing split into blocks; the briefing wording is held until the owner answers.",
     },
     {
-      id: "N.10",
-      name: "Note to card, card to note",
-      what: "Select text in a note to make a card with a link back, and give every card a note page.",
-      reason:
-        "Needs a new selection action in the note editor and a link kind in the graph; not built.",
-    },
-    {
       id: "N.12",
       name: "Approvals with the exact command and diff",
       what: "A risky request shows the command or file change, with approve once, approve for this folder, or deny.",

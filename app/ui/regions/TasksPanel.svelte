@@ -2,6 +2,7 @@
      A card that is not done can start a temp (a short-lived helper) on its text; the board itself is not changed. -->
 <script lang="ts">
   import PanelHeader from "../controls/PanelHeader.svelte";
+  import OwnerCards from "./OwnerCards.svelte";
   import Loading from "../controls/Loading.svelte";
   import { onMount } from "svelte";
   import { every } from "../poll.ts";
@@ -115,6 +116,7 @@
       {/if}
     {/each}
   {/if}
+  <OwnerCards />
 </section>
 
 <style>

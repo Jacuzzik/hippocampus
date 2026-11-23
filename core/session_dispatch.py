@@ -98,6 +98,8 @@ class DispatchPart:
             "answer": self.answer,
             "set_tools": self.set_tools,
             "card_create": self.card_create,
+            "card_from_note": self.card_from_note,
+            "card_note": self.card_note,
             "card_update": self.card_update,
             "issues": lambda request: issues_in(request.get("folder")),
             "ci": lambda request: ci_in(request.get("folder")),

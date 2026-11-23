@@ -178,6 +178,12 @@ export async function mockSidecar(
 
       // The note text the drawer reads through the "read" method.
       const noteHistory: Record<string, { id: string; text: string }[]> = {};
+      const ownerCards: {
+        id: string;
+        title: string;
+        body: string;
+        source: string;
+      }[] = [];
       const texts: Record<string, string> = {
         "alpha.md": [
           "# Alpha",
@@ -671,6 +677,25 @@ export async function mockSidecar(
               state: "connected",
               url: "https://claude.ai/code/session_mock",
             };
+          case "cards":
+            return { cards: ownerCards };
+          case "card_from_note": {
+            const card = {
+              id: `c${ownerCards.length + 1}`,
+              title:
+                String(args.params?.text ?? "")
+                  .trim()
+                  .split("\n")[0] ?? "",
+              body: String(args.params?.text ?? ""),
+              source: String(args.params?.path),
+            };
+            if (!card.title)
+              throw new Error("Select some text in the note first.");
+            ownerCards.push(card);
+            return { card };
+          }
+          case "card_note":
+            return { note: `Cards/${String(args.params?.id)}.md` };
           case "playbook_run":
             return { message: "m2", steps: 3 };
           case "playbooks":

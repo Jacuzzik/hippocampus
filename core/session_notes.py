@@ -106,6 +106,40 @@ class NotesPart:
         self.note("setting", text=f"restored an earlier version of {path}")
         return {"id": path, "text": text}
 
+    def card_from_note(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Note to card (N.10): the selected text of a note becomes an owner card with a link back."""
+        self._open_vault()
+        path = request.get("path")
+        note_actions.read_full(self.indexer, self.lock, path)  # the same path checks as a read
+        text = str(request.get("text") or "").strip()
+        if not text:
+            raise ValueError("Select some text in the note first.")
+        first = next(line for line in text.splitlines() if line.strip()).strip().lstrip("#-* ")
+        link = str(path).removesuffix(".md")
+        card = self.cards.create(first[:120] or link, f"{text}\n\nFrom [[{link}]]", "owner")
+        card = self.cards.set_fields(card["id"], source=str(path))
+        self.changed("cards")
+        return {"card": card}
+
+    def card_note(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Card to note (N.10): the card's own page in the vault's Cards folder, made or updated."""
+        self._open_vault()
+        card = next((c for c in self.cards.list() if c.get("id") == request.get("id")), None)
+        if card is None:
+            raise ValueError("No card has that id.")
+        safe = "".join(ch for ch in card["title"] if ch.isalnum() or ch in " -_")[:60].strip()
+        path = card.get("note") or f"Cards/{safe or 'Card'} {card['id'][:6]}.md"
+        text = f"# {card['title']}\n\n{card['body']}\n"
+        tools = vault_tools(self.indexer, self.lock)
+        try:
+            tools["edit_note"].run({"path": path, "content": text})
+        except FileNotFoundError:
+            tools["create_note"].run({"path": path, "content": text})
+        self.cards.set_fields(card["id"], note=path)
+        self.changed("notes")
+        self.changed("cards")
+        return {"note": path}
+
     def playbook_list(self) -> dict[str, Any]:
         """Every playbook in the vault's Playbooks folder, with its steps."""
         if self.indexer is None:

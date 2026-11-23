@@ -91,6 +91,8 @@ METHODS: dict[str, Method] = {
     ),
     "export_notes": _m("Zip the notes of the open vault into the exports folder."),
     "cards": _m("The agent cards."),
+    "card_from_note": _m("Make a card from text selected in a note, with a link back."),
+    "card_note": _m("Make or update a card's own note page in the vault's Cards folder."),
     "card_create": _m("Add a card."),
     "card_update": _m("Change a card."),
     "inbox": _m("The inbox messages."),

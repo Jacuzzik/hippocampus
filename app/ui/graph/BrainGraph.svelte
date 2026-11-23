@@ -613,6 +613,26 @@
         if (nodeId === id) editError = String(cause);
       });
   }
+  // Note to card (N.10): the text selected in the editor becomes a card with a link back.
+  let editor = $state<HTMLTextAreaElement | null>(null);
+  let cardNote = $state<string | null>(null);
+  async function makeCard(): Promise<void> {
+    const id = nodeId;
+    const box = editor;
+    if (!id || !box) return;
+    const text = box.value.slice(box.selectionStart, box.selectionEnd);
+    cardNote = null;
+    try {
+      const answer = await invoke<{ card: { title: string } }>("sidecar_call", {
+        method: "card_from_note",
+        params: { path: id, text },
+      });
+      cardNote = `Card made: ${answer.card.title}. It is under Your cards in Tasks.`;
+    } catch (cause) {
+      cardNote = String(cause).replace(/^Error: /, "");
+    }
+  }
+
   // A restored version is now the note's text: show it, and take it into an open edit.
   function restored(text: string): void {
     const id = nodeId;
@@ -1078,8 +1098,18 @@
             rows="20"
             aria-label="Note text"
             value={editText}
+            bind:this={editor}
             oninput={(e) => onEditInput(e.currentTarget.value)}
             onblur={() => saveNow(nodeId)}></textarea>
+          <div class="edit-actions">
+            <button
+              type="button"
+              onmousedown={(e) => e.preventDefault()}
+              onclick={makeCard}>Make card</button
+            >
+            {#if cardNote}<span class="muted" role="status">{cardNote}</span
+              >{/if}
+          </div>
           {#if editError}<p class="muted" role="alert">{editError}</p>{/if}
         </section>
       {:else}
@@ -1305,6 +1335,14 @@
     justify-content: space-between;
     align-items: start;
     gap: var(--space-2);
+  }
+
+  .edit-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    align-items: center;
+    margin-top: var(--space-2);
   }
 
   .head-actions {

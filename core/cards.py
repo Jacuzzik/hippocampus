@@ -60,6 +60,13 @@ class CardStore:
         self._write(card)
         return card
 
+    def set_fields(self, card_id: object, **fields: str) -> dict[str, Any]:
+        """Set app-kept fields (the note a card came from, its own note page). Not for agents."""
+        card = self._read(card_id)
+        card.update(fields)
+        self._write(card)
+        return card
+
     def _read(self, card_id: object) -> dict[str, Any]:
         if not isinstance(card_id, str) or not card_id.isalnum():
             raise ValueError('"id" must name a card')
