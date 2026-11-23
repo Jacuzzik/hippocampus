@@ -60,9 +60,16 @@ test("dashboards open from the top bar, list the dashboards and show numbers fro
   await expect(
     board.locator("li", { hasText: "Claude Code" }).first(),
   ).toContainText("2.4M");
+  await expect(board.getByText("Keeps no token counts here.")).toBeVisible();
+  // Every tool the app supports is listed, set up here or not.
+  const tools = board.locator(".panel", {
+    hasText: "Every tool the app supports",
+  });
+  for (const name of ["OpenCode", "Ollama", "OpenAI", "OpenRouter", "Groq"])
+    await expect(tools.getByText(name, { exact: true })).toBeVisible();
   await expect(
-    board.getByText(/Antigravity keeps no token counts/),
-  ).toBeVisible();
+    tools.locator("li", { hasText: "OpenAI" }).first(),
+  ).toContainText("key saved");
   await expect(board.getByText("Codex · gpt-6-luna")).toBeVisible();
   await view.getByRole("button", { name: "Vault", exact: true }).click();
   await expect(
