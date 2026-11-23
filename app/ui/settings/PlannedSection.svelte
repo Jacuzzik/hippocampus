@@ -32,13 +32,6 @@
         "Needs an embedded editor such as Monaco or CodeMirror. The IDE button opens the folder in VS Code.",
     },
     {
-      id: "7.21",
-      name: "Circuit breaker",
-      what: "Steers, then constrains, then stops an agent that loops, errors again and again or overspends.",
-      reason:
-        "Needs a watcher on tokens, repeats and errors; only the kill switch and budgets exist.",
-    },
-    {
       id: "7.25",
       name: "Slack bot",
       what: "One bot that answers in chosen channels and direct messages and replies in threads.",

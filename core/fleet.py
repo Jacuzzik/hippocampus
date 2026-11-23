@@ -1,7 +1,8 @@
 """The live fleet file: fleet.json in the hive folder, one row per agent, for agents and outside tools.
 
 Format 1, stable: {"format": 1, "updated": <epoch seconds>, "agents": [row, ...]} with each row
-{"id", "name", "status", "model", "context_percent", "inbox", "started", "last_output", "crashed"}.
+{"id", "name", "status", "model", "context_percent", "inbox", "started", "last_output", "crashed",
+"breaker"}, where "breaker" is the circuit breaker's level: "healthy", "warn" or "tripped".
 "status" is "working", "idle", "stopped" or "crashed"; times are epoch seconds or null. Keys and
 commands are never written. The file is rewritten only when a row changes, through a temporary file
 and a rename, so a reader never sees half a file.

@@ -177,6 +177,9 @@ METHODS: dict[str, Method] = {
     "calendar_mark": _m("Mark a calendar event done or failed, or schedule it again."),
     "helpers": _m("Short-lived helper jobs."),
     "start_helper": _m("Start a helper job."),
+    "breakers": _m(
+        "The circuit breaker's last check of each agent: healthy, warn or tripped, and why."
+    ),
     "fleet": _m("Every agent's status, model, context use and inbox backlog, as in fleet.json."),
     "watchers": _m("Folder watchers."),
     "webhooks": _m("Saved webhooks."),

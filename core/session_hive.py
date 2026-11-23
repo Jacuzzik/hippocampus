@@ -9,6 +9,8 @@ from typing import Any
 from ai import cli_sessions
 from core import (
     added_agents,
+    breaker,
+    crash_log,
     fleet,
     inbox,
     startup_inbox,
@@ -43,15 +45,61 @@ class HivePart:
         )
 
     def fleet_state(self) -> dict[str, Any]:
-        return {"path": str(self.hive_path / fleet.NAME), "agents": self.fleet_rows()}
+        rows = self.fleet_rows()
+        for row in rows:
+            row["breaker"] = self.breakers.get(row["id"], {}).get("level", "healthy")
+        return {"path": str(self.hive_path / fleet.NAME), "agents": rows}
+
+    def _check_breakers(self, rows: list[dict[str, Any]]) -> None:
+        """Assess each running agent and steer a tripped one, once per reason per cooldown."""
+        crashes = crash_log.recent(self.storage, 200)
+        now = time.time()
+        seen: dict[str, dict[str, Any]] = {}
+        for row in rows:
+            agent = row["id"]
+            if row["status"] not in ("working", "idle"):
+                found = breaker.assess(agent, [], None, crashes)
+            else:
+                found = breaker.assess(
+                    agent, cli_sessions.tool_trace(agent, 20), row["context_percent"], crashes
+                )
+            seen[agent] = found
+            for reason in found["reasons"]:
+                key = (agent, reason["kind"])
+                line = breaker.steer_text(reason, COMPACT_PROMPT.format(agent=agent))
+                if line is None or now - self.breaker_sent.get(key, 0.0) < breaker.COOLDOWN_S:
+                    continue
+                if row["status"] not in ("working", "idle"):
+                    continue
+                self.breaker_sent[key] = now
+                try:
+                    self.terminals.send_line(agent, line)
+                except RuntimeError:
+                    continue
+                self.note("budget", text=f"circuit breaker steered {agent}: {reason['text']}")
+        if {a: f["level"] for a, f in seen.items()} != {
+            a: f["level"] for a, f in self.breakers.items()
+        }:
+            self.changed("fleet")
+        self.breakers = seen
+
+    def breakers_state(self) -> dict[str, Any]:
+        return {"breakers": list(self.breakers.values())}
 
     def _write_fleet(self) -> None:
         now = time.time()
         if now - self.last_fleet < FLEET_SECONDS:
             return
         self.last_fleet = now
+        rows = self.fleet_rows()
         try:
-            fleet.write(self.hive_path, self.fleet_rows(), now)
+            self._check_breakers(rows)
+        except OSError:
+            logging.exception("Could not check the circuit breakers")
+        for row in rows:
+            row["breaker"] = self.breakers.get(row["id"], {}).get("level", "healthy")
+        try:
+            fleet.write(self.hive_path, rows, now)
         except OSError:
             logging.exception("Could not write the fleet file")
 

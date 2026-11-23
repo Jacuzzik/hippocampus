@@ -636,6 +636,12 @@ export async function mockSidecar(
             texts[at] = String(args.params?.text);
             return { saved: `edited ${at}` };
           }
+          case "breakers":
+            return {
+              breakers:
+                (window as unknown as { __breakers?: unknown[] }).__breakers ??
+                [],
+            };
           case "fleet":
             return {
               path: "/home/me/.hippocampus/office/fleet.json",

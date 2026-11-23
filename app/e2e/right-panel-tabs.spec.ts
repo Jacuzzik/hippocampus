@@ -277,3 +277,28 @@ test("the tasks tab marks a card that waits on an answer from you", async ({
     region.getByRole("listitem").filter({ hasText: "MDF-1" }),
   ).not.toContainText("Waiting on you");
 });
+
+test("a tripped circuit breaker shows on the agent's Monitor card", async ({
+  page,
+}) => {
+  await page.evaluate(() => {
+    (window as unknown as { __breakers: unknown[] }).__breakers = [
+      {
+        agent: "hippoherman",
+        level: "tripped",
+        reasons: [
+          {
+            kind: "looping",
+            tripped: true,
+            text: "The same call 5 times in a row.",
+          },
+        ],
+      },
+    ];
+  });
+  await page.getByRole("tab", { name: "monitor" }).click();
+  const region = page.getByRole("region", { name: "Monitor" });
+  await expect(
+    region.getByRole("status").filter({ hasText: "Circuit breaker" }),
+  ).toContainText("Circuit breaker tripped: The same call 5 times in a row.");
+});

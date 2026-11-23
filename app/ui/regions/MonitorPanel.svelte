@@ -216,6 +216,29 @@
     return every(() => loadTokens(directories), 60000);
   });
 
+  // The circuit breaker's last check of each agent (7.21): shown on a card only when it is not healthy.
+  type Breaker = {
+    agent: string;
+    level: "healthy" | "warn" | "tripped";
+    reasons: { kind: string; tripped: boolean; text: string }[];
+  };
+  let breakers = $state<Record<string, Breaker>>({});
+  function loadBreakers(): void {
+    invoke<{ breakers: Breaker[] }>("sidecar_call", {
+      method: "breakers",
+    }).then(
+      (value) =>
+        (breakers = Object.fromEntries(
+          value.breakers.map((b) => [b.agent, b]),
+        )),
+      (cause) => console.error("Could not read the circuit breaker", cause),
+    );
+  }
+  onMount(() => {
+    loadBreakers();
+    return every(loadBreakers, 15000);
+  });
+
   // Whether the gh tool is logged in, from the same check Settings, Connectors uses. Issues need it.
   let github = $state<{ state: string; reason: string } | null>(null);
   onMount(() => {
@@ -250,6 +273,16 @@
   });
 </script>
 
+{#snippet breakerLine(id: string)}
+  {@const found = breakers[id]}
+  {#if found && found.level !== "healthy"}
+    <p class="breaker {found.level}" role="status">
+      Circuit breaker {found.level === "tripped" ? "tripped" : "warning"}:
+      {found.reasons.map((r) => r.text).join(" ")}
+    </p>
+  {/if}
+{/snippet}
+
 <section class="monitor" aria-label="Monitor">
   {#if !loaded}
     <Loading what="the monitor" />
@@ -264,7 +297,9 @@
         aside={`${active.length + 1} active · ${hidden.length} archived`}
       />
       {#if active.length === 0}
-        <p class="muted">Only the main agent so far. Agents you add appear here.</p>
+        <p class="muted">
+          Only the main agent so far. Agents you add appear here.
+        </p>
       {/if}
       <div class="cards">
         <div class="card main">
@@ -285,6 +320,7 @@
                 <span class="subtitle">{engine.model}</span>{/if}
             </div>
           </div>
+          {@render breakerLine("hippoherman")}
           {#if engine}
             <div class="dir">{engine.folder}</div>
             <div class="picker">
@@ -395,6 +431,7 @@
                   : "none this month"}</span
               >
             </div>
+            {@render breakerLine(agent.id)}
             <div class="row">
               <span class="zone-tag">DANGER ZONE</span>
               <div class="row-btns">
@@ -633,6 +670,17 @@
   .dir {
     overflow-wrap: anywhere;
     opacity: 0.75;
+  }
+
+  .breaker {
+    margin: 0;
+    padding: var(--space-1) var(--space-2);
+    font-size: var(--font-size-xs);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+  }
+  .breaker.tripped {
+    border-color: var(--color-danger);
   }
 
   .meta {
