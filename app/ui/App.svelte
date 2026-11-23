@@ -23,8 +23,9 @@
   const SettingsDialog = () => import("./settings/SettingsDialog.svelte");
   const DashboardsView = () => import("./dashboards/DashboardsView.svelte");
   import CommandBox, { type Item } from "./overlays/CommandBox.svelte";
+  import SearchEverything from "./overlays/SearchEverything.svelte";
   import type { GraphData } from "./graph/model.ts";
-  import { selection } from "./owner/addedAgents.svelte.ts";
+  import { selectAgent, selection } from "./owner/addedAgents.svelte.ts";
   import { SETTINGS_PAGES, type SettingsPage } from "./settings/model.ts";
   import { tick } from "svelte";
 
@@ -79,7 +80,7 @@
     window.addEventListener("pointerup", up);
   }
   // Which overlay box is open: the quick switcher (Ctrl+O) or the command palette (Ctrl+P).
-  let box = $state<"switcher" | "palette" | null>(null);
+  let box = $state<"switcher" | "palette" | "search" | null>(null);
   let searchEl = $state<HTMLInputElement | null>(null);
   // Bumping this remounts the graph, which refits it to the canvas.
   let viewKey = $state(0);
@@ -125,6 +126,16 @@
       void toggleFullscreen();
       return;
     }
+    if (
+      (e.ctrlKey || e.metaKey) &&
+      e.shiftKey &&
+      !e.altKey &&
+      e.key.toLowerCase() === "f"
+    ) {
+      e.preventDefault();
+      box = "search";
+      return;
+    }
     if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return;
     if (e.key === "o") box = "switcher";
     else if (e.key === "p") box = "palette";
@@ -161,6 +172,11 @@
       run: () => (panelOpen = !panelOpen),
     },
     { id: "search", label: "Search notes", run: focusSearch },
+    {
+      id: "search-all",
+      label: "Search everything (Ctrl+Shift+F)",
+      run: () => (box = "search"),
+    },
     {
       id: "fullscreen",
       label: "Toggle full screen (F11)",
@@ -322,6 +338,13 @@
     placeholder="Type a command"
     label="Command palette"
     onclose={() => (box = null)}
+  />
+{:else if box === "search"}
+  <SearchEverything
+    onclose={() => (box = null)}
+    onnote={(path) => (selectedId = path)}
+    onagent={(id) => selectAgent(id)}
+    ondashboards={() => (dashOpen = true)}
   />
 {:else if box === "switcher"}
   <CommandBox

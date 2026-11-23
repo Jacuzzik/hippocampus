@@ -71,6 +71,7 @@ class DispatchPart:
             "note_version": self.note_version,
             "note_restore": self.note_restore,
             "handoff": self.handoff,
+            "search_all": self.search_all,
             "chat": self.chat,
             "create_workspace": self.create_workspace,
             "agent_session": self.agent_session,

@@ -12,9 +12,11 @@ from ai import chat_history, cli_sessions
 from core import (
     account_sync,
     added_agents,
+    calendar_board,
     inbox,
     pins,
     safe_write,
+    search_all,
     share,
 )
 from core import handoff as handoff_note
@@ -174,6 +176,25 @@ class AgentsPart:
         self.changed("inbox")
         self.note("handoff", text=f"handed {names[giver]}'s work to {names[taker]}")
         return {"note": path, "message": message}
+
+    def search_all(self, request: dict[str, Any]) -> dict[str, Any]:
+        """One search over notes, messages, tasks, calendar events and agents (N.01)."""
+        query = str(request.get("query") or "")[:200]
+        if self.indexer is not None:
+            with self.lock:
+                titled = self.indexer.store.search(query, 50) if query.strip() else []
+                paths = sorted(self.indexer.store.note_states())
+            vault = self.indexer.vault
+        else:
+            titled, paths, vault = [], [], None
+        return search_all.everything(
+            query,
+            search_all.notes(query, titled, vault, paths),
+            inbox.all_messages(self.hive_path),
+            self.tasks()["tasks"],
+            calendar_board.load(self.events_path),
+            [{"id": "hippoherman", "name": "Hippoherman"}, *added_agents.load(self.agents_path)],
+        )
 
     def share_note(self, request: dict[str, Any]) -> dict[str, Any]:
         """A password link to one note (14.04). Needs a signed-in account; the link opens on the website."""

@@ -58,13 +58,6 @@
         "Nothing is collected or sent. If it is ever added, it will be off by default and documented.",
     },
     {
-      id: "N.01",
-      name: "One search box for everything",
-      what: "Ctrl+K across notes, agent memory, inbox, history and cards, with the source of every hit.",
-      reason:
-        "Needs one index in the backend; notes search exists, the rest does not.",
-    },
-    {
       id: "N.17",
       name: "Quick capture hotkey",
       what: "A global hotkey drops a thought into an Inbox note, stamped with the time and the active agent.",

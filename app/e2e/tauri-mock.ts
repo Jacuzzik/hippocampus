@@ -636,6 +636,36 @@ export async function mockSidecar(
             texts[at] = String(args.params?.text);
             return { saved: `edited ${at}` };
           }
+          case "search_all": {
+            const q = String(args.params?.query ?? "").toLowerCase();
+            return {
+              notes: Object.keys(texts)
+                .filter((path) =>
+                  (path + texts[path]).toLowerCase().includes(q),
+                )
+                .map((path) => ({
+                  path,
+                  title: path.replace(/\.md$/, ""),
+                  snippet: "",
+                })),
+              messages: "release".includes(q)
+                ? [
+                    {
+                      id: "m9",
+                      from: "pam",
+                      to: "user",
+                      subject: "Release notes",
+                      snippet: "",
+                    },
+                  ]
+                : [],
+              tasks: [],
+              events: [],
+              agents: "hippoherman".includes(q)
+                ? [{ id: "hippoherman", name: "Hippoherman" }]
+                : [],
+            };
+          }
           case "handoff":
             return {
               note: `Handoffs/2026-11-23 1400 ${String(args.params?.from)} to Hippoherman.md`,
