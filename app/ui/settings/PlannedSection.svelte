@@ -65,13 +65,6 @@
         "Needs one index in the backend; notes search exists, the rest does not.",
     },
     {
-      id: "N.09",
-      name: "Daily brief note",
-      what: "Each morning a Today note: open cards, waiting questions, agent states and yesterday's work.",
-      reason:
-        "Needs a scheduled job and a template; off by default when built.",
-    },
-    {
       id: "N.11",
       name: "Session replay",
       what: "Scrub a past agent session like a recording, text only, and jump to its tool calls.",

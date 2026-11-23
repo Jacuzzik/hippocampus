@@ -2,15 +2,17 @@
 
 import asyncio
 from dataclasses import asdict
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 from ai.keys import get_api_key
 from ai.router import build_router
+from core import activity as journal
 from core import (
     calendar_board,
     contract,
+    daily_brief,
     inbox,
     link_doctor,
     webhooks,
@@ -20,6 +22,7 @@ from core import memory as memory_notes
 from core import missions as mission_store
 from core.helpers import HelperLimit
 from core.vault.scanner import iter_notes
+from tools.vault_tools import vault_tools
 
 
 def _watcher(
@@ -72,7 +75,7 @@ class JobsPart:
             job_store.load(self.jobs_path),
             job_id,
             datetime.now().astimezone(),
-            {"link_check": self._link_check},
+            {"link_check": self._link_check, "daily_brief": self._daily_brief},
         )
         job_store.save(self.jobs_path, jobs)
         self.note("approval", tool="run_job", tier="act", approved=True, by="card")
@@ -214,7 +217,7 @@ class JobsPart:
         sent = self.run_calendar(now) + self.run_missions(now)
         if self.indexer is None:
             return sent
-        runners = {"link_check": self._link_check}
+        runners = {"link_check": self._link_check, "daily_brief": self._daily_brief}
         jobs, results = job_store.run_due(
             job_store.load(self.jobs_path), now or datetime.now().astimezone(), runners
         )
@@ -235,6 +238,30 @@ class JobsPart:
                 if target is None
             )
         return f"{broken} broken link(s)"
+
+    def _daily_brief(self) -> str:
+        """Write today's brief note from what the app already holds; no model is called."""
+        if self.indexer is None:
+            raise ValueError("no vault is open")
+        now = datetime.now().astimezone()
+        day = now.date()
+        yesterday = (day - timedelta(days=1)).isoformat()
+        text = daily_brief.compose(
+            day,
+            calendar_board.upcoming(self.events_path, now.replace(hour=0, minute=0), 12),
+            self.tasks()["tasks"],
+            self.fleet_state()["agents"],
+            len(inbox.pending(self.hive_path, inbox.USER)),
+            journal.read(self.storage, since=yesterday, until=yesterday),
+        )
+        path = daily_brief.path_for(day)
+        tools = vault_tools(self.indexer, self.lock)
+        try:
+            tools["edit_note"].run({"path": path, "content": text})
+        except FileNotFoundError:
+            tools["create_note"].run({"path": path, "content": text})
+        self.changed("notes")
+        return f"wrote the daily brief {path}"
 
     def link_doctor(self) -> dict[str, Any]:
         with self.lock:

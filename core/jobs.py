@@ -14,9 +14,10 @@ from pathlib import Path
 from core import safe_write
 
 logger = logging.getLogger("hippocampus.jobs")
-KINDS = ("link_check",)
+KINDS = ("link_check", "daily_brief")
 DEFAULTS = (
     {"id": "link-check", "name": "Weekly link check", "kind": "link_check", "every_days": 7},
+    {"id": "daily-brief", "name": "Daily brief note", "kind": "daily_brief", "every_days": 1},
 )
 _lock = threading.Lock()
 

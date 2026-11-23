@@ -316,7 +316,7 @@ def test_a_job_runs_when_due_and_then_waits_for_its_interval(tmp_path: Path) -> 
 def test_job_state_is_saved_and_a_bad_request_is_refused(tmp_path: Path) -> None:
     path = tmp_path / "jobs.json"
     listed = jobs.load(path)
-    assert [j.enabled for j in listed] == [False]
+    assert [j.enabled for j in listed] == [False, False]
     jobs.save(path, jobs.set_job(listed, "link-check", True, 3))
     again = jobs.load(path)
     assert again[0].enabled and again[0].every_days == 3
@@ -549,7 +549,7 @@ def test_watchers_list_each_background_piece_and_its_status(tmp_path: Path) -> N
     def watchers() -> list[dict[str, Any]]:
         return session.dispatch({"method": "watchers"})["watchers"]
 
-    assert [(w["kind"], w["status"]) for w in watchers()] == [("trigger", "stopped")]
+    assert [(w["kind"], w["status"]) for w in watchers()] == [("trigger", "stopped")] * 2
     session.open(vault)
     session.dispatch({"method": "set_job", "id": "link-check", "enabled": True})
     session.dispatch({"method": "save_webhook", "name": "Nightly check", "kind": "link_check"})
@@ -566,6 +566,7 @@ def test_watchers_list_each_background_piece_and_its_status(tmp_path: Path) -> N
         assert [(w["kind"], w["status"]) for w in rows] == [
             ("vault watcher", "stopped"),
             ("trigger", "running"),
+            ("trigger", "stopped"),
             ("webhook", "stopped"),
             ("helper", "running"),
         ]
