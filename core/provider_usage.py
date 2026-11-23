@@ -259,17 +259,30 @@ def _has_key(provider: str) -> bool:
         return False
 
 
+def _server_answers(name: str) -> bool:
+    """True when a local model server answers (Ollama on its usual port). Waits at most a second."""
+    import urllib.request
+
+    try:
+        with urllib.request.urlopen("http://127.0.0.1:11434/api/tags", timeout=1):  # noqa: S310
+            return name == "ollama"
+    except OSError:
+        return False
+
+
 def report(
     storage: Path,
     home: Path | None = None,
     today: date | None = None,
     has_key: Callable[[str], bool] = _has_key,
     which: Callable[[str], str | None] = shutil.which,
+    running: Callable[[str], bool] | None = None,
 ) -> dict[str, Any]:
     """Every provider the app supports, set up here or not, with tokens today, in 7 days and this
     month, by model."""
     home = home or Path.home()
     today = today or datetime.now().astimezone().date()
+    running = running or _server_answers
     since = min(today.replace(day=1), today - timedelta(days=DAYS))
     providers = []
 
@@ -339,7 +352,7 @@ def report(
     )
 
     ollama = by_provider.get("ollama", {})
-    ollama_here = bool(which("ollama"))
+    ollama_here = bool(which("ollama")) or running("ollama")
     providers.append(
         _summary(
             "ollama",

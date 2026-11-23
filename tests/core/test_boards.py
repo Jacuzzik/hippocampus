@@ -73,6 +73,7 @@ def test_every_supported_provider_is_listed_and_opencode_is_split_by_provider(
             date(2026, 11, 23),
             has_key=lambda provider: provider == "groq",
             which=lambda _name: None,
+            running=lambda _name: False,
         )["providers"]
     }
     assert list(found) == [
