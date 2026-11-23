@@ -10,6 +10,7 @@
   import NoteActions, { type MenuTarget } from "./NoteActions.svelte";
   import ShareNote from "./ShareNote.svelte";
   import NoteHistory from "./NoteHistory.svelte";
+  import PlaybookRun from "./PlaybookRun.svelte";
   import { parseNote, type Block, type Inline } from "./markdown";
   import type { Rgba } from "./renderer";
   import { BrainRenderer } from "./renderer";
@@ -1067,6 +1068,7 @@
           onclose={() => (history = false)}
           onrestored={restored}
         />{/if}
+      {#if node.id.startsWith("Playbooks/")}<PlaybookRun path={node.id} />{/if}
       {#if node.tags.length}
         <p class="tags">{node.tags.map((t) => `#${t}`).join(" ")}</p>
       {/if}

@@ -4,9 +4,12 @@ from pathlib import Path
 from typing import Any
 
 from core import (
+    inbox,
     note_actions,
     note_history,
+    playbooks,
 )
+from core.session_shared import DELIVERY_BODY_MAX
 from core.vault import open_index
 from core.vault.changes import ChangeFlag
 from tools.vault_tools import vault_tools
@@ -102,6 +105,45 @@ class NotesPart:
         self.changed("notes")
         self.note("setting", text=f"restored an earlier version of {path}")
         return {"id": path, "text": text}
+
+    def playbook_list(self) -> dict[str, Any]:
+        """Every playbook in the vault's Playbooks folder, with its steps."""
+        if self.indexer is None:
+            return {"playbooks": [], "folder": playbooks.FOLDER}
+        with self.lock:
+            paths = sorted(p for p in self.indexer.store.note_states() if playbooks.is_playbook(p))
+        found = []
+        for path in paths:
+            try:
+                text = note_actions.read_full(self.indexer, self.lock, path)
+            except (OSError, ValueError):
+                continue
+            found.append(playbooks.parse(path, text))
+        return {"playbooks": found, "folder": playbooks.FOLDER}
+
+    def playbook_run(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Send a playbook's steps to an agent as one inbox message. The user's click runs it."""
+        self._open_vault()
+        path, agent = request.get("path"), request.get("agent")
+        if not isinstance(path, str) or not playbooks.is_playbook(path):
+            raise ValueError(f"Only a note in the {playbooks.FOLDER} folder is a playbook.")
+        if agent not in self._agent_ids():
+            raise ValueError(f'No agent has the id "{agent}".')
+        found = playbooks.parse(path, note_actions.read_full(self.indexer, self.lock, path))
+        if not found["steps"]:
+            raise ValueError("This playbook has no steps: add a numbered or bulleted list.")
+        sent = inbox.send(
+            self.hive_path,
+            inbox.USER,
+            str(agent),
+            f"Playbook: {found['title']}",
+            playbooks.message(found, str(request.get("note") or ""))[:DELIVERY_BODY_MAX],
+            act="request",
+            work=f"playbook {found['title']}"[:80],
+        )
+        self.changed("inbox")
+        self.note("handoff", text=f"ran the playbook {path} with {agent}")
+        return {"message": sent, "steps": len(found["steps"])}
 
     def note_delete(self, request: dict[str, Any]) -> dict[str, Any]:
         self._open_vault()

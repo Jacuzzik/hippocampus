@@ -36,6 +36,12 @@ METHODS: dict[str, Method] = {
     "note_history": _m("The kept earlier versions of a note, newest first (the last 20)."),
     "note_version": _m("The text of one kept version of a note."),
     "search_all": _m("Search notes, messages, tasks, calendar events and agents at once."),
+    "playbooks": _m("Every playbook note in the vault's Playbooks folder, with its steps."),
+    "playbook_run": _m(
+        "Send a playbook's steps to an agent as one inbox message.",
+        ("path", 'a playbook "path"'),
+        ("agent", 'an "agent" id'),
+    ),
     "handoff": _m(
         "Hand one agent's work to another: a note in Handoffs and an inbox message to the receiver.",
         ("from", 'a "from" agent id'),

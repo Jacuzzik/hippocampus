@@ -666,6 +666,10 @@ export async function mockSidecar(
                 : [],
             };
           }
+          case "playbook_run":
+            return { message: "m2", steps: 3 };
+          case "playbooks":
+            return { playbooks: [], folder: "Playbooks" };
           case "handoff":
             return {
               note: `Handoffs/2026-11-23 1400 ${String(args.params?.from)} to Hippoherman.md`,
