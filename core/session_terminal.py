@@ -113,6 +113,9 @@ class TerminalPart:
             self.terminals.stop(agent)
         return {"ok": True}
 
+    def remote_status(self, request: dict[str, Any]) -> dict[str, Any]:
+        return self.terminals.remote_status(request["agent"])
+
     def terminal_context(self, request: dict[str, Any]) -> dict[str, Any]:
         return {"percent": cli_sessions.context_percent(request["agent"])}
 

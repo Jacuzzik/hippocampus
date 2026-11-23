@@ -666,6 +666,11 @@ export async function mockSidecar(
                 : [],
             };
           }
+          case "remote_status":
+            return {
+              state: "connected",
+              url: "https://claude.ai/code/session_mock",
+            };
           case "playbook_run":
             return { message: "m2", steps: 3 };
           case "playbooks":

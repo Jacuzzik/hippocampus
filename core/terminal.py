@@ -7,6 +7,7 @@ import codecs
 import json
 import logging
 import os
+import re
 import shlex
 import shutil
 import signal
@@ -89,6 +90,8 @@ class Terminals:
         self.replaced: set[str] = set()
         # The last start or stop of each agent's terminal: (time, "started" or "stopped"), shown on the Monitor tab.
         self.events: dict[str, tuple[float, str]] = {}
+        # When /remote-control was typed into each agent's terminal in this run (7.32).
+        self.remote_sent: dict[str, float] = {}
 
     def _log_event(self, agent: str, what: str) -> None:
         """Remember and append one start or stop of an agent's terminal, to agent-events.jsonl beside the screens."""
@@ -342,6 +345,7 @@ class Terminals:
             try:
                 if self.send_line_when_quiet(agent, f"/remote-control hipcmps-{agent}"):
                     self._log_event(agent, "remote control sent")
+                    self.remote_sent[agent] = time.time()
                     return
             except (OSError, RuntimeError) as cause:
                 self._log_event(agent, f"remote control failed: {cause}")
@@ -420,6 +424,23 @@ class Terminals:
             # A stop we asked for is not a failure: _pump shows no error line for it.
             self.stopping.add(agent)
             running[0].terminate()
+
+    def remote_status(self, agent: str) -> dict[str, Any]:
+        """Remote control (7.32), read back from the agent's own terminal: "connected" with the link
+        the CLI printed, "waiting" when the command was typed but no link is on screen yet, "off"
+        when it was never typed in this run, or "stopped" when the terminal is not running."""
+        running = self.procs.get(agent)
+        if running is None or running[0].poll() is not None:
+            return {"state": "stopped", "url": None}
+        if agent not in self.remote_sent:
+            return {"state": "off", "url": None}
+        with self.lock:
+            screen = bytes(self.screens.get(agent, b"")[-REMOTE_SCAN_BYTES:])
+        text = ANSI_ESCAPE.sub("", screen.decode("utf-8", errors="replace"))
+        links = REMOTE_LINK.findall(text)
+        if links:
+            return {"state": "connected", "url": links[-1].rstrip(".,)")}
+        return {"state": "waiting", "url": None}
 
     def info(self, agent: str) -> dict[str, Any]:
         """The command the agent's terminal runs and its status: Working or Idle, or None when stopped."""
@@ -653,6 +674,12 @@ SUBMIT_DELAY_S = 0.5
 # A line typed this recently means the CLI is about to be busy, even before it prints.
 TYPE_GAP_S = 10.0
 REMOTE_CONTROL_RETRY_S = 2.0
+# Remote control status: the end of the screen that is read, and the shapes of a link and an escape.
+REMOTE_SCAN_BYTES = 200_000
+REMOTE_LINK = re.compile(r"https://claude\.ai/[A-Za-z0-9/_\-?=.&%]+")
+ANSI_ESCAPE = re.compile(
+    r"\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\\\)|\x1b[@-Z\\-_]"
+)
 # A Claude terminal gets /remote-control this long after it first draws.
 REMOTE_CONTROL_DELAY_S = 15.0
 # How long to wait for an idle Claude terminal before typing /remote-control anyway.

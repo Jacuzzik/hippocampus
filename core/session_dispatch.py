@@ -78,6 +78,7 @@ class DispatchPart:
             "create_workspace": self.create_workspace,
             "agent_session": self.agent_session,
             "terminal_context": self.terminal_context,
+            "remote_status": self.remote_status,
             "terminal_traces": self.terminal_traces,
             "terminal_rebrief": self.terminal_rebrief,
             "briefing_preview": self.briefing_preview,

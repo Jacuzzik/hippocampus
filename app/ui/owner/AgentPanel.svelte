@@ -22,6 +22,36 @@
 
   let { agent }: { agent: SavedAgent } = $props();
 
+  // Remote control status (7.32): read back from the agent's own terminal every 15 seconds.
+  let remote = $state<{ state: string; url: string | null } | null>(null);
+  function loadRemote(): void {
+    invoke<{ state: string; url: string | null }>("sidecar_call", {
+      method: "remote_status",
+      params: { agent: agent.id },
+    }).then(
+      (value) => (remote = value),
+      () => (remote = null),
+    );
+  }
+  $effect(() => {
+    void agent.id;
+    loadRemote();
+    return every(loadRemote, 15000);
+  });
+  const REMOTE_TEXT: Record<string, string> = {
+    connected: "Remote control on",
+    waiting: "Remote control asked, no link yet",
+    off: "Remote control off",
+    stopped: "",
+  };
+  function openRemote(): void {
+    if (!remote?.url) return;
+    invoke("sidecar_call", {
+      method: "open_link",
+      params: { url: remote.url },
+    }).catch((cause) => (error = String(cause)));
+  }
+
   // One-click handoff (N.06): a note in the vault's Handoffs folder and an inbox message to the receiver.
   let handingOff = $state(false);
   let handTo = $state("hippoherman");
@@ -366,6 +396,13 @@
   <div class="live">
     <span class="dot" aria-hidden="true"></span>
     <span>{stateLabel}</span>
+    {#if remote && REMOTE_TEXT[remote.state]}
+      <span class="remote" aria-label="Remote control status"
+        >{REMOTE_TEXT[remote.state]}{#if remote.url}
+          <button type="button" class="link" onclick={openRemote}>open</button
+          >{/if}</span
+      >
+    {/if}
     <span class="size"
       ><button
         type="button"
@@ -742,6 +779,18 @@
     font-family: var(--font-mono);
     font-size: var(--font-size-tag);
     white-space: pre;
+  }
+  .remote {
+    color: var(--color-md-text-muted);
+  }
+  .remote .link {
+    font: inherit;
+    color: var(--color-md-accent);
+    background: none;
+    border: 0;
+    padding: 0 var(--space-1);
+    cursor: pointer;
+    text-decoration: underline;
   }
   .replay-toggle {
     align-self: start;

@@ -55,6 +55,9 @@ test("an added agent runs in the same terminal, and block tools restarts it", as
   expect(String((await own())[0].folder)).toContain("IT");
 
   await page.getByLabel("Agents").getByText("Ada").click();
+  await expect(page.getByLabel("Remote control status")).toContainText(
+    "Remote control on",
+  );
   // Blocking tools ends the session, so it asks first; Cancel changes nothing.
   await page.getByRole("button", { name: "block tools" }).click();
   await page.getByRole("button", { name: "Cancel" }).click();

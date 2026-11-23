@@ -72,3 +72,25 @@ def test_traces_take_a_limit_for_the_replay(tmp_path: Path, monkeypatch: object)
     session.dispatch({"method": "terminal_traces", "agent": "a", "limit": 300})
     session.dispatch({"method": "terminal_traces", "agent": "a", "limit": 9999})
     assert asked == [300, 100]
+
+
+def test_remote_control_status_is_read_from_the_terminal_screen(tmp_path: Path) -> None:
+    session = sidecar.Session(tmp_path, Settings())
+    terms = session.terminals
+    assert session.dispatch({"method": "remote_status", "agent": "a"})["state"] == "stopped"
+
+    class Running:
+        def poll(self) -> None:
+            return None
+
+    terms.procs["a"] = (Running(), 0)  # type: ignore[assignment]
+    assert terms.remote_status("a")["state"] == "off"
+    terms.remote_sent["a"] = 1.0
+    terms.screens["a"] = bytearray(b"\x1b[1mworking\x1b[0m")
+    assert terms.remote_status("a") == {"state": "waiting", "url": None}
+    terms.screens["a"] += b"Remote control: \x1b[4mhttps://claude.ai/code/session_x1\x1b[0m."
+    assert terms.remote_status("a") == {
+        "state": "connected",
+        "url": "https://claude.ai/code/session_x1",
+    }
+    terms.procs.clear()

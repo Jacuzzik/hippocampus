@@ -121,13 +121,6 @@
         "Needs sample notes and a tour overlay designed first; not built.",
     },
     {
-      id: "7.32",
-      name: "Remote control status",
-      what: "A status light and a copyable link when an agent can be driven from another device.",
-      reason:
-        "Needs the agent's own remote link read back from its terminal; today the app only types the command.",
-    },
-    {
       id: "7.35",
       name: "File-based requests",
       what: "Spawn, clear and connect requests as small files the app acts on.",
