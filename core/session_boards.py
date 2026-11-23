@@ -11,7 +11,9 @@ from core import (
     contract,
     github_repos,
     inbox,
+    mail_receipts,
     provider_usage,
+    spend_auto,
     spend_plans,
     vault_board,
 )
@@ -33,9 +35,19 @@ class BoardsPart:
         today = datetime.now().astimezone().date()
         plans = spend_plans.load(self.spend_plans_path)
         usage = provider_usage.report(self.storage, today=today)
+        # What was found in receipts and added files fills the board beside the user's own rows.
+        events = self.found_events()
+        found_subs = mail_receipts.summarise(events, today)["subscriptions"] if events else []
+        merged = spend_auto.fill(
+            plans, found_subs, events, fresh=not self.spend_plans_path.exists()
+        )
+        report = spend_plans.report(merged, usage, today)
+        report["wallets"] = spend_auto.wallets(merged, report["subs"], events, found_subs, today)
+        report["history"] = spend_auto.history(events, merged["currency"], today)
+        report["found"] = len(events)
         return {
-            "plans": plans,
-            "report": spend_plans.report(plans, usage, today),
+            "plans": {**plans, "currency": merged["currency"]},
+            "report": report,
             "providers": [{"id": p["id"], "name": p["name"]} for p in usage["providers"]],
             "currencies": list(spend_plans.CURRENCIES),
         }

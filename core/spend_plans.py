@@ -41,10 +41,12 @@ WALLETS = {
     "paypal": "https://www.paypal.com/myaccount/summary",
     "stripe": "https://dashboard.stripe.com/balance/overview",
     "builtbybit": "https://builtbybit.com/",
+    "shopify": "https://admin.shopify.com/",
     "bank": "",
     "crypto": "",
     "other": "",
 }
+HIDDEN_MAX = 200
 DAY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _lock = threading.Lock()
 
@@ -195,11 +197,16 @@ def check(raw: object) -> dict[str, Any]:
                 "per_million": _money(row.get("per_million"), "per_million"),
             }
         )
+    hidden = raw.get("hidden") or []
+    if not isinstance(hidden, list) or len(hidden) > HIDDEN_MAX:
+        raise ValueError(f"Up to {HIDDEN_MAX} found rows can be hidden.")
     return {
         "currency": currency,
         "plans": plans,
         "subs": _subs(raw.get("subs") or []),
         "wallets": _wallets(raw.get("wallets") or []),
+        # Found rows (from receipts and files) the user chose not to see.
+        "hidden": sorted({str(h).strip()[:80] for h in hidden if str(h).strip()}),
     }
 
 
@@ -207,7 +214,7 @@ def load(path: Path) -> dict[str, Any]:
     try:
         return check(json.loads(path.read_text(encoding="utf-8")))
     except (OSError, ValueError):
-        return {"currency": "USD", "plans": [], "subs": [], "wallets": []}
+        return {"currency": "USD", "plans": [], "subs": [], "wallets": [], "hidden": []}
 
 
 def save(path: Path, raw: object) -> dict[str, Any]:
@@ -241,15 +248,19 @@ def report(plans: dict[str, Any], usage: dict[str, Any], today: date) -> dict[st
             }
         )
     subs = sub_rows(plans.get("subs", []), today)
-    fixed = sum(row["monthly"] for row in rows) + sum(s["monthly"] for s in subs if s["active"])
-    metered = sum(row["metered"] for row in rows)
+    # A found row in another currency is shown but not added: no exchange rate is guessed.
+    cur = plans["currency"]
+    counted = [r for r in rows if r.get("currency", "") in ("", cur)]
+    live = [s for s in subs if s["active"] and s.get("currency", "") in ("", cur)]
+    fixed = sum(row["monthly"] for row in counted) + sum(s["monthly"] for s in live)
+    metered = sum(row["metered"] for row in counted)
     return {
         "currency": plans["currency"],
         "rows": rows,
         "subs": subs,
         "wallets": wallet_rows(plans.get("wallets", [])),
         "wallet_totals": wallet_totals(plans.get("wallets", [])),
-        "subs_monthly": round(sum(s["monthly"] for s in subs if s["active"]), 2),
+        "subs_monthly": round(sum(s["monthly"] for s in live), 2),
         "fixed": round(fixed, 2),
         "metered": round(metered, 2),
         "total": round(fixed + metered, 2),

@@ -18,6 +18,8 @@
     monthly: number;
     per_million: number;
   };
+  // Rows found in receipts and added files carry `auto`; they are shown, never saved unless kept.
+  type Found_ = { auto?: boolean; currency?: string; store_name?: string };
   type Sub = {
     name: string;
     store: "apple" | "google" | "other";
@@ -27,37 +29,60 @@
     status: "active" | "cancelled" | "expired";
     link: string;
   };
-  type SubRow = Sub & {
-    state: Sub["status"];
-    active: boolean;
-    monthly: number;
-    manage: string;
-    resubscribe: string;
-  };
+  type SubRow = Sub &
+    Found_ & {
+      state: Sub["status"];
+      active: boolean;
+      monthly: number;
+      manage: string;
+      resubscribe: string;
+    };
   type Wallet = {
     name: string;
-    kind: "paypal" | "stripe" | "builtbybit" | "bank" | "crypto" | "other";
+    kind:
+      | "paypal"
+      | "stripe"
+      | "builtbybit"
+      | "shopify"
+      | "bank"
+      | "crypto"
+      | "other";
     balance: number;
     currency: string;
     updated: string;
     link: string;
   };
-  type WalletRow = Wallet & { open: string };
+  type WalletRow = Wallet & {
+    open: string;
+    auto: boolean;
+    received_month: number;
+    received_year: number;
+    spent_month: number;
+    last: string;
+    moves: number;
+    pays_for: string[];
+    pays_monthly: number;
+    covers_months: number | null;
+  };
   type Finance = {
     plans: {
       currency: string;
       plans: Plan[];
       subs: Sub[];
       wallets: Wallet[];
+      hidden?: string[];
     };
     report: {
       currency: string;
-      rows: (Plan & {
-        provider_name: string;
-        tokens: number;
-        metered: number;
-        total: number;
-      })[];
+      history: { month: string; spent: number; received: number }[];
+      found: number;
+      rows: (Plan &
+        Found_ & {
+          provider_name: string;
+          tokens: number;
+          metered: number;
+          total: number;
+        })[];
       fixed: number;
       metered: number;
       total: number;
@@ -174,6 +199,8 @@
     mailNote = "";
     try {
       mail = await invoke<Mail>("sidecar_call", { method, params });
+      // What was found fills the plans, subscriptions, wallets and overview.
+      if (method !== "mail_status") void read();
     } catch (cause) {
       mailError = String(cause);
     } finally {
@@ -294,7 +321,7 @@
   function keepFound(): void {
     const f = mail?.found;
     if (!found || !f) return;
-    const have = new Set(found.report.subs.map((s) => s.name.toLowerCase()));
+    const have = new Set(own().map((s) => s.name.toLowerCase()));
     const fresh = f.subscriptions
       .filter((s) => !have.has(s.name.toLowerCase()))
       .map((s): Sub => ({
@@ -311,7 +338,7 @@
               : "expired",
         link: "",
       }));
-    void saveSubs([...found.report.subs.map(plain), ...fresh]).then(() => {
+    void saveSubs([...own().map(plain), ...fresh]).then(() => {
       if (!subError)
         mailNote = fresh.length
           ? `Added ${fresh.length} to your subscriptions.`
@@ -319,8 +346,21 @@
     });
   }
 
-  async function save(event: SubmitEvent): Promise<void> {
-    event.preventDefault();
+  function keepPlan(row: Plan): void {
+    draft = [
+      ...draft,
+      {
+        name: row.name,
+        provider: row.provider,
+        monthly: row.monthly,
+        per_million: 0,
+      },
+    ];
+    void save();
+  }
+
+  async function save(event?: SubmitEvent): Promise<void> {
+    event?.preventDefault();
     formError = null;
     saved = "";
     try {
@@ -360,6 +400,24 @@
     }
   }
 
+  const own = (): SubRow[] => found?.report.subs.filter((s) => !s.auto) ?? [];
+  // Hiding a found row keeps it off the board; it comes back if the user unhides it in the file.
+  async function hide(name: string): Promise<void> {
+    if (!found) return;
+    try {
+      found = await invoke<Finance>("sidecar_call", {
+        method: "finance_save",
+        params: {
+          plans: {
+            ...found.plans,
+            hidden: [...(found.plans.hidden ?? []), name],
+          },
+        },
+      });
+    } catch (cause) {
+      subError = String(cause);
+    }
+  }
   const plain = (row: SubRow): Sub => ({
     name: row.name,
     store: row.store,
@@ -372,23 +430,33 @@
 
   function setStatus(row: SubRow, status: Sub["status"]): void {
     if (!found) return;
-    void saveSubs(
-      found.report.subs.map((s) =>
-        s === row ? { ...plain(s), status } : plain(s),
-      ),
-    );
+    // A found row the user acts on becomes one of theirs.
+    void saveSubs([
+      ...own()
+        .filter((s) => s !== row)
+        .map(plain),
+      { ...plain(row), status },
+    ]);
   }
 
   function removeSub(row: SubRow): void {
     if (!found) return;
-    void saveSubs(found.report.subs.filter((s) => s !== row).map(plain));
+    if (row.auto) {
+      void hide(row.name);
+      return;
+    }
+    void saveSubs(
+      own()
+        .filter((s) => s !== row)
+        .map(plain),
+    );
   }
 
   function addSub(event: SubmitEvent): void {
     event.preventDefault();
     if (!found || !adding.name.trim()) return;
     void saveSubs([
-      ...found.report.subs.map(plain),
+      ...own().map(plain),
       { ...adding, price: Number(adding.price) || 0 },
     ]).then(() => {
       if (!subError) adding = blank();
@@ -416,6 +484,8 @@
     link: row.link,
   });
 
+  const ownWallets = (): WalletRow[] =>
+    found?.report.wallets.filter((w) => !w.auto) ?? [];
   async function saveWallets(wallets: Wallet[]): Promise<boolean> {
     walletError = null;
     if (!found) return false;
@@ -435,7 +505,7 @@
     event.preventDefault();
     if (!found || !wallet.name.trim()) return;
     void saveWallets([
-      ...found.report.wallets.map(plainWallet),
+      ...ownWallets().map(plainWallet),
       { ...wallet, balance: Number(wallet.balance) || 0 },
     ]).then((ok) => {
       if (ok) wallet = blankWallet();
@@ -446,19 +516,24 @@
     if (!found) return;
     const balance = Number(value);
     if (!Number.isFinite(balance) || balance < 0) return;
-    void saveWallets(
-      found.report.wallets.map((w) =>
-        w === row
-          ? { ...plainWallet(w), balance, updated: today() }
-          : plainWallet(w),
-      ),
-    );
+    void saveWallets([
+      ...ownWallets()
+        .filter((w) => w !== row)
+        .map(plainWallet),
+      { ...plainWallet(row), balance, updated: today() },
+    ]);
   }
 
   function removeWallet(row: WalletRow): void {
     if (!found) return;
+    if (row.auto) {
+      void hide(`wallet:${row.name}`);
+      return;
+    }
     void saveWallets(
-      found.report.wallets.filter((w) => w !== row).map(plainWallet),
+      ownWallets()
+        .filter((w) => w !== row)
+        .map(plainWallet),
     );
   }
 
@@ -466,6 +541,7 @@
     paypal: "PayPal",
     stripe: "Stripe",
     builtbybit: "BuiltByBit",
+    shopify: "Shopify",
     bank: "Bank",
     crypto: "Crypto wallet",
     other: "Other",
@@ -541,6 +617,19 @@
         labels: dayLabels(days),
         values: report.daily,
       },
+      ...(report.found
+        ? [
+            {
+              kind: "trend" as const,
+              title: "Spent per month, from receipts",
+              note: `Last 12 months. Received: ${money(
+                report.history.reduce((n, m) => n + m.received, 0),
+              )}.`,
+              labels: report.history.map((m) => m.month.slice(2)),
+              values: report.history.map((m) => m.spent),
+            },
+          ]
+        : []),
     ];
   });
 </script>
@@ -599,7 +688,11 @@
         <span class="note"
           >{report.wallets.length} wallet{report.wallets.length === 1
             ? ""
-            : "s"}, as you last entered them.</span
+            : "s"} · {money(
+            report.wallets
+              .filter((w) => w.currency === report.currency)
+              .reduce((n, w) => n + w.received_month, 0),
+          )} came in this month.</span
         >
       </li>
       <li>
@@ -851,9 +944,9 @@
           </div>
         </div>
         <p class="hint">
-          Apple does not let other apps read your subscriptions, so add each one
-          here. Cancel and Resubscribe open Apple's own subscriptions page,
-          where you sign in and make the change; then mark it here.
+          The ones found in your receipts and added files are filled in for you,
+          marked "found for you"; add any others here. Cancel opens the store's
+          own page, where you sign in and make the change; then mark it here.
         </p>
         {#if subError}<p class="error" role="alert">{subError}</p>{/if}
         <ul class="sublist" aria-label="Active subscriptions">
@@ -862,10 +955,13 @@
               <span class="subname"
                 ><b>{row.name}</b>
                 <span class="note"
-                  >{STORE[row.store]} · {money(row.price)}
+                  >{row.store_name || STORE[row.store]} · {row.currency &&
+                  row.currency !== report.currency
+                    ? inCurrency(row.price, row.currency)
+                    : money(row.price)}
                   {PER[row.period]}{row.renews
                     ? ` · renews ${row.renews}`
-                    : ""}</span
+                    : ""}{row.auto ? " · found for you" : ""}</span
                 ></span
               >
               <span class="buttons">
@@ -883,12 +979,13 @@
                   size="sm"
                   variant="ghost"
                   aria-label={`Remove ${row.name}`}
-                  onclick={() => removeSub(row)}>Remove</Button
+                  onclick={() => removeSub(row)}
+                  >{row.auto ? "Hide" : "Remove"}</Button
                 >
               </span>
             </li>
           {:else}
-            <li class="note">No active subscription added yet.</li>
+            <li class="note">No active subscription added or found yet.</li>
           {/each}
         </ul>
         <form class="row" onsubmit={addSub} aria-label="Add a subscription">
@@ -952,10 +1049,11 @@
       <section class="plans wallets" aria-label="Wallets">
         <div class="head"><h4>Wallets</h4></div>
         <p class="hint">
-          The money you hold with PayPal, Stripe, a bank or a crypto wallet.
-          These services have no way for an app to read a wallet balance, so
-          enter it here and update it when it changes. Open goes to the
-          service's own wallet page.
+          Where your money comes in and goes out. From your receipts and
+          statements, each wallet shows what came in and went out this month,
+          which subscriptions it pays for and, with its balance entered, how
+          many months those are covered. Services seen in your receipts are
+          added for you. Balances can't be read by any app, so type them in.
         </p>
         {#if walletError}<p class="error" role="alert">{walletError}</p>{/if}
         <ul class="sublist" aria-label="Your wallets">
@@ -964,11 +1062,32 @@
               <span class="subname"
                 ><b>{row.name}</b>
                 <span class="note"
-                  >{KIND[row.kind]} · {inCurrency(
-                    row.balance,
-                    row.currency,
-                  )}{row.updated ? ` · as of ${row.updated}` : ""}</span
-                ></span
+                  >{KIND[row.kind]} · {row.updated || !row.auto
+                    ? inCurrency(row.balance, row.currency)
+                    : "balance not entered"}{row.updated
+                    ? ` · as of ${row.updated}`
+                    : ""}{row.auto ? " · found for you" : ""}</span
+                >
+                {#if row.moves}
+                  <span class="note"
+                    >In this month {inCurrency(
+                      row.received_month,
+                      row.currency,
+                    )} · this year {inCurrency(row.received_year, row.currency)} ·
+                    out this month {inCurrency(row.spent_month, row.currency)} · last
+                    {row.last}</span
+                  >
+                {/if}
+                {#if row.pays_for.length}
+                  <span class="note"
+                    >Pays for {row.pays_for.join(", ")} ({inCurrency(
+                      row.pays_monthly,
+                      row.currency,
+                    )} a month){row.covers_months !== null
+                      ? ` · balance covers ${row.covers_months} months`
+                      : ""}</span
+                  >
+                {/if}</span
               >
               <span class="buttons">
                 <input
@@ -989,7 +1108,8 @@
                   size="sm"
                   variant="ghost"
                   aria-label={`Remove ${row.name}`}
-                  onclick={() => removeWallet(row)}>Remove</Button
+                  onclick={() => removeWallet(row)}
+                  >{row.auto ? "Hide" : "Remove"}</Button
                 >
               </span>
             </li>
@@ -1063,8 +1183,37 @@
         <p class="hint">
           Add each thing you pay for: a subscription's monthly price, and for a
           pay-as-you-go key, its price per million tokens and the tool whose
-          tokens it pays for.
+          tokens it pays for. AI plans found in your receipts are listed below;
+          they already count on the Overview.
         </p>
+        {#if report.rows.some((r) => r.auto)}
+          <ul class="sublist" aria-label="Plans found for you">
+            {#each report.rows.filter((r) => r.auto) as row (row.name)}
+              <li>
+                <span class="subname"
+                  ><b>{row.name}</b>
+                  <span class="note"
+                    >Found for you · {row.currency &&
+                    row.currency !== report.currency
+                      ? inCurrency(row.monthly, row.currency)
+                      : money(row.monthly)} a month{row.provider_name
+                      ? ` · ${row.provider_name}`
+                      : ""}</span
+                  ></span
+                >
+                <span class="buttons">
+                  <Button size="sm" onclick={() => keepPlan(row)}>Keep</Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    aria-label={`Hide ${row.name}`}
+                    onclick={() => hide(row.name)}>Hide</Button
+                  >
+                </span>
+              </li>
+            {/each}
+          </ul>
+        {/if}
         {#each draft as plan, i (i)}
           <div class="row">
             <label class="wide"
@@ -1322,6 +1471,11 @@
     grid-auto-rows: minmax(0, 1fr);
     gap: var(--space-3);
     margin-top: var(--space-3);
+  }
+
+  /* A third panel (spend from receipts) takes the whole last row. */
+  .panels > :global(:nth-child(3):last-child) {
+    grid-column: 1 / -1;
   }
 
   .panels > :global(.panel) {

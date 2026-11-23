@@ -49,6 +49,17 @@ class MailPart:
         files = _read_json(self.purchase_files_path).get("files")
         return [f for f in files if isinstance(f, dict)] if isinstance(files, list) else []
 
+    def found_events(self) -> list[dict[str, Any]]:
+        """Every event found: the connected Gmail's last scan, then each added file's."""
+        saved = self._mail_saved()
+        connected = bool(saved.get("account")) and keys.get_key(ACCOUNT) is not None
+        events = (
+            [e for e in (saved.get("events") or []) if isinstance(e, dict)] if connected else []
+        )
+        return events + [
+            e for f in self._files_saved() for e in f.get("events") or [] if isinstance(e, dict)
+        ]
+
     def mail_status(self) -> dict[str, Any]:
         saved = self._mail_saved()
         address = saved.get("account", "")

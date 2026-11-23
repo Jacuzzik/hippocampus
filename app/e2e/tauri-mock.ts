@@ -1252,7 +1252,9 @@ export async function mockSidecar(
                   updated: string;
                   link: string;
                 }[];
+                hidden?: string[];
               };
+              __mail?: string;
             };
             if (args.method === "finance_save")
               w.__plans = args.params?.plans as typeof w.__plans;
@@ -1283,6 +1285,21 @@ export async function mockSidecar(
                 total: plan.monthly + metered,
               };
             });
+            // With Gmail connected, found rows fill the board beside the user's own.
+            const hidden = new Set(plans.hidden ?? []);
+            const autoOn = Boolean(w.__mail);
+            if (autoOn && !hidden.has("Claude Pro"))
+              rows.push({
+                name: "Claude Pro",
+                provider: "claude",
+                monthly: 20,
+                per_million: 0,
+                auto: true,
+                provider_name: "Claude Code",
+                tokens: 0,
+                metered: 0,
+                total: 20,
+              } as (typeof rows)[number]);
             const stores: Record<string, string> = {
               apple: "https://apps.apple.com/account/subscriptions",
               google: "https://play.google.com/store/account/subscriptions",
@@ -1296,13 +1313,69 @@ export async function mockSidecar(
               manage: stores[sub.store] ?? "",
               resubscribe: sub.link || (stores[sub.store] ?? ""),
             }));
+            if (
+              autoOn &&
+              !hidden.has("Netflix") &&
+              !(plans.subs ?? []).some((sub) => sub.name === "Netflix")
+            )
+              subs.push({
+                name: "Netflix",
+                store: "other",
+                store_name: "Netflix",
+                price: 39,
+                period: "month",
+                renews: "",
+                status: "active",
+                link: "",
+                auto: true,
+                state: "active",
+                active: true,
+                monthly: 39,
+                manage: "",
+                resubscribe: "",
+              } as (typeof subs)[number]);
             const walletPages: Record<string, string> = {
               paypal: "https://www.paypal.com/myaccount/summary",
             };
+            const activity = {
+              auto: false,
+              received_month: 0,
+              received_year: 0,
+              spent_month: 0,
+              last: "",
+              moves: 0,
+              pays_for: [] as string[],
+              pays_monthly: 0,
+              covers_months: null as number | null,
+            };
             const wallets = (plans.wallets ?? []).map((wallet) => ({
               ...wallet,
+              ...activity,
+              ...(autoOn && wallet.kind === "paypal"
+                ? { received_month: 25, received_year: 25, moves: 1 }
+                : {}),
               open: wallet.link || (walletPages[wallet.kind] ?? ""),
             }));
+            if (
+              autoOn &&
+              !hidden.has("wallet:PayPal") &&
+              !wallets.some((wallet) => wallet.kind === "paypal")
+            )
+              wallets.push({
+                name: "PayPal",
+                kind: "paypal",
+                balance: 0,
+                currency: plans.currency,
+                updated: "",
+                link: "",
+                open: walletPages.paypal ?? "",
+                ...activity,
+                auto: true,
+                received_month: 25,
+                received_year: 25,
+                moves: 1,
+                last: "2026-11-21",
+              });
             const walletTotals: Record<string, number> = {};
             for (const wallet of wallets)
               walletTotals[wallet.currency] =
@@ -1332,6 +1405,12 @@ export async function mockSidecar(
                 day: 17,
                 days_in_month: 30,
                 daily: Array.from({ length: 14 }, () => 0),
+                found: autoOn ? 5 : 0,
+                history: Array.from({ length: 12 }, (_, i) => ({
+                  month: `2026-${String(i + 1).padStart(2, "0")}`,
+                  spent: autoOn ? 40 + i : 0,
+                  received: autoOn && i === 10 ? 25 : 0,
+                })),
               },
               providers: [
                 { id: "claude", name: "Claude Code" },

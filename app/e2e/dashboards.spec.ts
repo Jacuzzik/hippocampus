@@ -261,7 +261,7 @@ test("GitHub lists every repository with what each agent did there; the vault as
   await expect(wallets).toContainText("$80.00");
   await tab("Overview");
   await expect(
-    board.locator("li", { hasText: "as you last entered them" }),
+    board.locator("li", { hasText: "came in this month" }),
   ).toContainText("$80.00");
   await tab("Wallets");
   await wallets.getByRole("button", { name: "Open PayPal" }).click();
@@ -298,6 +298,21 @@ test("GitHub lists every repository with what each agent did there; the vault as
   await expect(
     board.getByRole("list", { name: "Active subscriptions" }),
   ).toContainText("PhotoApp Pro");
+
+  // Found rows fill the other tabs: a found plan can be kept, a found wallet shows its money.
+  await tab("Plans and prices");
+  const foundPlans = board.getByRole("list", { name: "Plans found for you" });
+  await expect(foundPlans).toContainText("Claude Pro");
+  await foundPlans.getByRole("button", { name: "Hide Claude Pro" }).click();
+  await expect(foundPlans).toHaveCount(0);
+  await tab("Wallets");
+  const walletList = board.getByRole("list", { name: "Your wallets" });
+  // The PayPal wallet entered earlier now shows the payment received in the receipts.
+  await expect(walletList).toContainText("In this month $25.00");
+  await tab("Overview");
+  await expect(
+    board.locator(".panel", { hasText: "Spent per month, from receipts" }),
+  ).toBeVisible();
 
   // A bank statement added as a file: its monthly charge is found as a subscription; a file that
   // holds no purchases is refused with a plain reason, and an added file can be removed.
