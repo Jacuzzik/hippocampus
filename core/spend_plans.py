@@ -3,10 +3,16 @@
 The user enters each plan (a monthly subscription) and, for pay-as-you-go use, a price per million
 tokens. Token counts come from provider_usage, so the cost is the user's price times the real count.
 No price is guessed. The plans live in data/storage/spend_plans.json.
+
+Subscriptions (Apple, Google Play or anything else) are kept beside the plans. Apple offers no way
+for an app to read a person's subscriptions, so the user enters each one; "Manage" opens Apple's
+own subscriptions page, where cancelling and resubscribing happen. A cancelled subscription whose
+renewal date has passed counts as expired.
 """
 
 import calendar
 import json
+import re
 import threading
 from datetime import date
 from pathlib import Path
@@ -18,7 +24,84 @@ PLANS_MAX = 40
 NAME_MAX = 60
 MONEY_MAX = 1_000_000.0
 CURRENCIES = ("USD", "EUR", "GBP", "AED", "INR", "SAR", "CAD", "AUD", "JPY")
+SUBS_MAX = 60
+STORES = {
+    "apple": "https://apps.apple.com/account/subscriptions",
+    "google": "https://play.google.com/store/account/subscriptions",
+    "other": "",
+}
+PERIODS = ("month", "year", "week")
+STATUSES = ("active", "cancelled", "expired")
+DAY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _lock = threading.Lock()
+
+
+def _link(value: object) -> str:
+    link = str(value or "").strip()
+    if link and (
+        not link.startswith("https://") or len(link) > 500 or any(c in link for c in " \r\n")
+    ):
+        raise ValueError("A link must be an https address.")
+    return link
+
+
+def _subs(rows: object) -> list[dict[str, Any]]:
+    if not isinstance(rows, list) or len(rows) > SUBS_MAX:
+        raise ValueError(f"Up to {SUBS_MAX} subscriptions can be kept.")
+    out = []
+    for row in rows:
+        if not isinstance(row, dict):
+            raise ValueError("Each subscription must be an object.")
+        name = str(row.get("name") or "").strip()
+        if not name or len(name) > NAME_MAX:
+            raise ValueError(f"Each subscription needs a name of up to {NAME_MAX} characters.")
+        store = str(row.get("store") or "apple")
+        period = str(row.get("period") or "month")
+        status = str(row.get("status") or "active")
+        renews = str(row.get("renews") or "")
+        if store not in STORES or period not in PERIODS or status not in STATUSES:
+            raise ValueError("A subscription's store, period or status is not one of the choices.")
+        if renews and not DAY.match(renews):
+            raise ValueError("A renewal date must look like 2026-12-31.")
+        out.append(
+            {
+                "name": name,
+                "store": store,
+                "price": _money(row.get("price"), "price"),
+                "period": period,
+                "renews": renews,
+                "status": status,
+                "link": _link(row.get("link")),
+            }
+        )
+    return out
+
+
+def monthly(sub: dict[str, Any]) -> float:
+    """A subscription's price as a monthly amount."""
+    per = {"month": 1.0, "year": 1 / 12, "week": 52 / 12}[sub["period"]]
+    return round(sub["price"] * per, 2)
+
+
+def sub_rows(subs: list[dict[str, Any]], today: date) -> list[dict[str, Any]]:
+    """Each subscription with its state for today and the page that manages or renews it."""
+    rows = []
+    for sub in subs:
+        state = sub["status"]
+        if state == "cancelled" and sub["renews"] and sub["renews"] < today.isoformat():
+            state = "expired"
+        rows.append(
+            {
+                **sub,
+                "state": state,
+                "active": state == "active",
+                "monthly": monthly(sub),
+                "manage": STORES[sub["store"]],
+                "resubscribe": sub["link"] or STORES[sub["store"]],
+            }
+        )
+    rows.sort(key=lambda row: (not row["active"], row["renews"] or "9999", row["name"].lower()))
+    return rows
 
 
 def _money(value: object, name: str) -> float:
@@ -54,14 +137,14 @@ def check(raw: object) -> dict[str, Any]:
                 "per_million": _money(row.get("per_million"), "per_million"),
             }
         )
-    return {"currency": currency, "plans": plans}
+    return {"currency": currency, "plans": plans, "subs": _subs(raw.get("subs") or [])}
 
 
 def load(path: Path) -> dict[str, Any]:
     try:
         return check(json.loads(path.read_text(encoding="utf-8")))
     except (OSError, ValueError):
-        return {"currency": "USD", "plans": []}
+        return {"currency": "USD", "plans": [], "subs": []}
 
 
 def save(path: Path, raw: object) -> dict[str, Any]:
@@ -94,11 +177,14 @@ def report(plans: dict[str, Any], usage: dict[str, Any], today: date) -> dict[st
                 "total": round(plan["monthly"] + metered, 2),
             }
         )
-    fixed = sum(row["monthly"] for row in rows)
+    subs = sub_rows(plans.get("subs", []), today)
+    fixed = sum(row["monthly"] for row in rows) + sum(s["monthly"] for s in subs if s["active"])
     metered = sum(row["metered"] for row in rows)
     return {
         "currency": plans["currency"],
         "rows": rows,
+        "subs": subs,
+        "subs_monthly": round(sum(s["monthly"] for s in subs if s["active"]), 2),
         "fixed": round(fixed, 2),
         "metered": round(metered, 2),
         "total": round(fixed + metered, 2),

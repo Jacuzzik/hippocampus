@@ -76,21 +76,39 @@
   }
 
   // The window's picture tag shows only the first frame of a multipart stream, so the stream is read
-  // here and each whole JPEG frame is put into the picture as it arrives.
-  function live(img: HTMLImageElement, url: string) {
+  // here and each whole JPEG frame is decoded and painted on a canvas as it arrives (no blob: address,
+  // which the window's content rules would block). A stand-in still (data: address) is painted once.
+  function live(canvas: HTMLCanvasElement, url: string) {
     const stop = new AbortController();
-    let shown = "";
+    const paint = (
+      image: HTMLImageElement | ImageBitmap,
+      w: number,
+      h: number,
+    ): void => {
+      if (canvas.width !== w) canvas.width = w;
+      if (canvas.height !== h) canvas.height = h;
+      canvas.getContext("2d")?.drawImage(image, 0, 0);
+    };
+    let drawing = false;
     const put = (bytes: Uint8Array): void => {
-      const next = URL.createObjectURL(
+      if (drawing) return; // still decoding the last frame: skip this one, keep up with the phone
+      drawing = true;
+      createImageBitmap(
         new Blob([bytes.slice().buffer], { type: "image/jpeg" }),
-      );
-      img.src = next;
-      if (shown) URL.revokeObjectURL(shown);
-      shown = next;
+      )
+        .then((bitmap) => {
+          paint(bitmap, bitmap.width, bitmap.height);
+          bitmap.close();
+        })
+        .catch(() => {})
+        .finally(() => (drawing = false));
     };
     async function run(): Promise<void> {
       if (!url.startsWith("http")) {
-        img.src = url; // a still picture (the test stand-in)
+        const still = new Image();
+        still.onload = () =>
+          paint(still, still.naturalWidth, still.naturalHeight);
+        still.src = url;
         return;
       }
       const reply = await fetch(url, { signal: stop.signal });
@@ -125,7 +143,6 @@
     return {
       destroy() {
         stop.abort();
-        if (shown) URL.revokeObjectURL(shown);
       },
     };
   }
@@ -137,13 +154,13 @@
     y: number;
     landscape: boolean;
   } {
-    const img = event.currentTarget as HTMLImageElement;
-    const box = img.getBoundingClientRect();
+    const screen = event.currentTarget as HTMLCanvasElement;
+    const box = screen.getBoundingClientRect();
     const clamp = (n: number): number => Math.min(1, Math.max(0, n));
     return {
       x: clamp((event.clientX - box.left) / box.width),
       y: clamp((event.clientY - box.top) / box.height),
-      landscape: img.naturalWidth > img.naturalHeight,
+      landscape: screen.width > screen.height,
     };
   }
   function down(event: PointerEvent): void {
@@ -226,13 +243,14 @@
         </div>
         <div class="screen" class:on={!!shown}>
           {#if shown}
-            <img
+            <canvas
               use:live={shown}
-              alt="Screen of {device.model || device.serial}"
-              draggable="false"
+              aria-label="Screen of {device.model || device.serial}"
+              width="360"
+              height="780"
               onpointerdown={down}
               onpointerup={(event) => up(event, device.serial)}
-            />
+            ></canvas>
           {:else}
             <span class="off">
               {ready
@@ -367,7 +385,7 @@
     border-radius: var(--radius-md);
   }
 
-  .screen img {
+  .screen canvas {
     display: block;
     max-width: 100%;
     max-height: 62vh;

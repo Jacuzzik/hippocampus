@@ -191,18 +191,45 @@ test("GitHub lists every repository with what each agent did there; the vault as
   await expect(
     board.locator("li", { hasText: "This month so far" }),
   ).toContainText("$200");
-  await board.getByRole("button", { name: "Add a plan" }).click();
-  await board.getByLabel("Name").nth(1).fill("Codex API");
-  await board.getByRole("button", { name: "Tokens from, plan 2" }).click();
+  const form = board.getByRole("form", { name: "Your plans and prices" });
+  await form.getByRole("button", { name: "Add a plan" }).click();
+  await form.getByLabel("Name").nth(1).fill("Codex API");
+  await form.getByRole("button", { name: "Tokens from, plan 2" }).click();
   await board.getByRole("option", { name: "Codex" }).click();
-  await board.getByLabel("Per million tokens").nth(1).fill("10");
-  await board.getByRole("button", { name: "Save" }).click();
+  await form.getByLabel("Per million tokens").nth(1).fill("10");
+  await form.getByRole("button", { name: "Save" }).click();
   await expect(
     board.getByRole("status").filter({ hasText: "Saved." }),
   ).toBeVisible();
   await expect(
     board.locator("li", { hasText: "Real tokens times your price" }),
   ).toContainText("$0.90");
+
+  // An Apple subscription is added, cancelled on Apple's page, marked cancelled, and resubscribed.
+  const add = board.getByRole("form", { name: "Add a subscription" });
+  await add.getByLabel("Name").fill("iCloud+");
+  await add.getByLabel("Price").fill("2.99");
+  await add.getByRole("button", { name: "Add subscription" }).click();
+  const active = board.getByRole("list", { name: "Active subscriptions" });
+  await expect(active).toContainText("iCloud+");
+  await expect(
+    board.locator("li", { hasText: "Subscriptions" }).first(),
+  ).toContainText("$2.99");
+  await active.getByRole("button", { name: "Cancel on Apple" }).click();
+  await active.getByRole("button", { name: "Mark cancelled" }).click();
+  const inactive = board.getByRole("region", {
+    name: "Inactive subscriptions",
+  });
+  await expect(inactive).toContainText("Cancelled");
+  await expect(active).not.toContainText("iCloud+");
+  await inactive.getByRole("button", { name: "Resubscribe" }).click();
+  const opened = await page.evaluate(
+    () => (window as unknown as { __opened: string[] }).__opened,
+  );
+  expect(opened).toEqual([
+    "https://apps.apple.com/account/subscriptions",
+    "https://apps.apple.com/account/subscriptions",
+  ]);
 });
 
 test("the calendar shows a week with checks and crosses, adds, marks and removes an event, and shows a month", async ({
@@ -311,11 +338,9 @@ test("the Phone dashboard lists devices and starts and stops mirroring; a phone 
   // The screen is shown inside the app, below the phone's row.
   await ready.getByRole("button", { name: "Show here" }).click();
   await expect(ready).toContainText("mirroring");
-  await expect(
-    board.getByRole("img", { name: "Screen of SM A525F" }),
-  ).toBeVisible();
+  await expect(board.getByLabel("Screen of SM A525F")).toBeVisible();
   // A click on the screen taps the phone; the buttons under it press keys; text is typed.
-  await board.getByRole("img", { name: "Screen of SM A525F" }).click();
+  await board.getByLabel("Screen of SM A525F").click();
   await ready.getByRole("button", { name: "Home" }).click();
   await ready.getByLabel("Type on SM A525F").fill("hello there");
   await ready.getByLabel("Type on SM A525F").press("Enter");
@@ -326,9 +351,7 @@ test("the Phone dashboard lists devices and starts and stops mirroring; a phone 
   // scrcpy's own window can be opened as well.
   await ready.getByRole("button", { name: "Own window" }).click();
   await ready.getByRole("button", { name: "Stop mirroring" }).click();
-  await expect(
-    board.getByRole("img", { name: "Screen of SM A525F" }),
-  ).toHaveCount(0);
+  await expect(board.getByLabel("Screen of SM A525F")).toHaveCount(0);
   await expect(ready.getByRole("button", { name: "Show here" })).toBeEnabled();
 });
 

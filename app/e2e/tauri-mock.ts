@@ -926,6 +926,15 @@ export async function mockSidecar(
                   monthly: number;
                   per_million: number;
                 }[];
+                subs?: {
+                  name: string;
+                  store: string;
+                  price: number;
+                  period: string;
+                  renews: string;
+                  status: string;
+                  link: string;
+                }[];
               };
             };
             if (args.method === "finance_save")
@@ -957,13 +966,31 @@ export async function mockSidecar(
                 total: plan.monthly + metered,
               };
             });
-            const fixed = rows.reduce((n, r) => n + r.monthly, 0);
+            const stores: Record<string, string> = {
+              apple: "https://apps.apple.com/account/subscriptions",
+              google: "https://play.google.com/store/account/subscriptions",
+              other: "",
+            };
+            const subs = (plans.subs ?? []).map((sub) => ({
+              ...sub,
+              state: sub.status,
+              active: sub.status === "active",
+              monthly: sub.period === "year" ? sub.price / 12 : sub.price,
+              manage: stores[sub.store] ?? "",
+              resubscribe: sub.link || (stores[sub.store] ?? ""),
+            }));
+            const subsMonthly = subs
+              .filter((sub) => sub.active)
+              .reduce((n, sub) => n + sub.monthly, 0);
+            const fixed = rows.reduce((n, r) => n + r.monthly, 0) + subsMonthly;
             const metered = rows.reduce((n, r) => n + r.metered, 0);
             return {
-              plans,
+              plans: { ...plans, subs: plans.subs ?? [] },
               report: {
                 currency: plans.currency,
                 rows,
+                subs,
+                subs_monthly: subsMonthly,
                 fixed,
                 metered,
                 total: fixed + metered,
@@ -978,6 +1005,11 @@ export async function mockSidecar(
               ],
               currencies: ["USD", "EUR", "AED"],
             };
+          }
+          case "open_link": {
+            const w = window as unknown as { __opened?: string[] };
+            (w.__opened ??= []).push(String(args.params?.url));
+            return { opened: args.params?.url };
           }
           case "vault_board":
           case "vault_insights_request": {

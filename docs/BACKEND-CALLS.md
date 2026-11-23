@@ -12,7 +12,7 @@ A name the file builds at run time is not listed.
 | `ui/crashLog.svelte.ts` | `record_crash` | no |
 | `ui/dashboards/CalendarBoard.svelte` | `calendar`, `calendar_add`, `calendar_mark`, `calendar_remove` | yes |
 | `ui/dashboards/DashboardsView.svelte` | `app_board`, `apps`, `github_all` | yes |
-| `ui/dashboards/FinanceBoard.svelte` | `finance`, `finance_save` | yes |
+| `ui/dashboards/FinanceBoard.svelte` | `finance`, `finance_save`, `open_link` | yes |
 | `ui/dashboards/PhoneBoard.svelte` | `phone_control`, `phone_status` | yes |
 | `ui/graph/BrainGraph.svelte` | `note_save`, `note_text`, `read`, `save_export` | yes |
 | `ui/graph/NoteActions.svelte` | (built at run time) | yes |

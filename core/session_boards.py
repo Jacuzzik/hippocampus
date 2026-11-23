@@ -1,6 +1,7 @@
 """The dashboards that read several sources: providers and models, money and spend, the vault, GitHub."""
 
 import time
+import webbrowser
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -38,6 +39,14 @@ class BoardsPart:
             "providers": [{"id": p["id"], "name": p["name"]} for p in usage["providers"]],
             "currencies": list(spend_plans.CURRENCIES),
         }
+
+    def open_link(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Opens an https page in the user's browser (a subscription's manage or renew page)."""
+        link = spend_plans._link(request.get("url"))
+        if not link:
+            raise ValueError("No link to open.")
+        webbrowser.open(link)
+        return {"opened": link}
 
     def finance_save(self, request: dict[str, Any]) -> dict[str, Any]:
         spend_plans.save(self.spend_plans_path, request.get("plans"))

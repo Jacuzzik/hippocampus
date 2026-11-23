@@ -101,7 +101,7 @@
       <p class="muted">Nothing matches.</p>
     {/if}
     <ul>
-      {#each shown as row (row.ts + row.kind + label(row))}
+      {#each shown as row, i (`${i}:${row.ts}`)}
         <li>
           <span class="kind {row.kind}">{row.kind}</span>
           <span class="text">{label(row)}</span>

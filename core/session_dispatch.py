@@ -156,6 +156,7 @@ class DispatchPart:
             "provider_usage": lambda request: self.provider_usage(),
             "finance": lambda request: self.finance(),
             "finance_save": self.finance_save,
+            "open_link": self.open_link,
             "vault_board": lambda request: self.vault_board(),
             "vault_insights_request": lambda request: self.vault_insights_request(),
             "github_all": lambda request: self.github_all(),

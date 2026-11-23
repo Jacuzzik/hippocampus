@@ -164,6 +164,7 @@ METHODS: dict[str, Method] = {
     "provider_usage": _m("Tokens used per provider and model, from each AI tool's own logs."),
     "finance": _m("What AI costs each month, from the plans and prices you enter."),
     "finance_save": _m("Save your AI plans and prices."),
+    "open_link": _m("Open an https page in the browser."),
     "vault_board": _m("Counts about the vault, and the main agent's summary of it."),
     "vault_insights_request": _m("Ask the main agent to write the vault summary."),
     "github_all": _m("Every GitHub repository you have, and what the agents did in each."),

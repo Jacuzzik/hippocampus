@@ -138,3 +138,44 @@ def test_github_lists_every_repository_with_the_agents_work_from_their_folders(
         )
 
     assert "gh auth login" in github_repos.board([], lambda _n: "/bin/gh", signed_out)["error"]
+
+
+def test_subscriptions_are_checked_and_a_cancelled_one_past_its_date_is_expired() -> None:
+    from datetime import date
+
+    from core import spend_plans
+
+    plans = spend_plans.check(
+        {
+            "currency": "USD",
+            "plans": [],
+            "subs": [
+                {"name": "iCloud+", "store": "apple", "price": 2.99, "period": "month",
+                 "status": "active", "renews": "2026-12-01"},
+                {"name": "Arcade", "store": "apple", "price": 60, "period": "year",
+                 "status": "cancelled", "renews": "2026-11-01"},
+                {"name": "Music", "store": "other", "price": 5, "status": "cancelled",
+                 "renews": "2026-12-30", "link": "https://example.com/renew"},
+            ],
+        }
+    )  # fmt: skip
+    rows = spend_plans.sub_rows(plans["subs"], date(2026, 11, 23))
+    assert [(r["name"], r["state"]) for r in rows] == [
+        ("iCloud+", "active"),
+        ("Arcade", "expired"),
+        ("Music", "cancelled"),
+    ]
+    assert rows[0]["manage"] == "https://apps.apple.com/account/subscriptions"
+    assert rows[2]["resubscribe"] == "https://example.com/renew"
+    report = spend_plans.report(plans, {"providers": [], "days": 0}, date(2026, 11, 23))
+    assert report["subs_monthly"] == 2.99
+    assert report["fixed"] == 2.99
+
+
+def test_a_subscription_link_must_be_https() -> None:
+    import pytest
+
+    from core import spend_plans
+
+    with pytest.raises(ValueError, match="https"):
+        spend_plans.check({"subs": [{"name": "x", "link": "javascript:alert(1)"}]})

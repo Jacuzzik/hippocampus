@@ -574,7 +574,9 @@
      hidden, so terminals keep running; the bottom bar is not drawn and there is no right sidebar. */
   .shell.dash,
   .shell.dash.terminal-only {
-    grid-template-columns: var(--layout-ribbon-width) var(--agent-rail-col) minmax(0, 1fr);
+    grid-template-columns: var(--layout-ribbon-width) var(
+        --agent-rail-col
+      ) minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr);
     grid-template-areas:
       "rail top top"
@@ -584,6 +586,11 @@
 
   .shell.dash > :global(.sidebar),
   .shell.dash > :global(.right-panel) {
+    display: none;
+  }
+
+  /* A hidden region that failed must not take a column or row of its own on the dashboards page. */
+  .shell.dash > :global(.failed:not([data-area="board"])) {
     display: none;
   }
 

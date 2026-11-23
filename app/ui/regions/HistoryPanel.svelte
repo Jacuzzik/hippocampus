@@ -63,7 +63,7 @@
       <p class="muted">No event matches "{query.trim()}".</p>
     {:else}
       <ul>
-        {#each shown as row (row.ts + row.kind + (row.text ?? ""))}
+        {#each shown as row, i (`${i}:${row.ts}`)}
           <li>
             <span class="kind">{row.kind}</span>
             <span class="text">{row.text ?? row.method ?? ""}</span>

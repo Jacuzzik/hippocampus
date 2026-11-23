@@ -15,7 +15,12 @@
 <svelte:boundary onerror={(cause) => recordError(name, cause)}>
   {@render children()}
   {#snippet failed(cause, reset)}
-    <div class="failed" role="alert" style:grid-area={area || null}>
+    <div
+      class="failed"
+      role="alert"
+      data-area={area || null}
+      style:grid-area={area || null}
+    >
       <b>{name} hit an error</b>
       <p>{errorText(cause)}</p>
       <Button onclick={reset}>Reload panel</Button>

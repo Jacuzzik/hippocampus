@@ -18,8 +18,24 @@
     monthly: number;
     per_million: number;
   };
+  type Sub = {
+    name: string;
+    store: "apple" | "google" | "other";
+    price: number;
+    period: "month" | "year" | "week";
+    renews: string;
+    status: "active" | "cancelled" | "expired";
+    link: string;
+  };
+  type SubRow = Sub & {
+    state: Sub["status"];
+    active: boolean;
+    monthly: number;
+    manage: string;
+    resubscribe: string;
+  };
   type Finance = {
-    plans: { currency: string; plans: Plan[] };
+    plans: { currency: string; plans: Plan[]; subs: Sub[] };
     report: {
       currency: string;
       rows: (Plan & {
@@ -35,6 +51,8 @@
       day: number;
       days_in_month: number;
       daily: number[];
+      subs: SubRow[];
+      subs_monthly: number;
     };
     providers: { id: string; name: string }[];
     currencies: string[];
@@ -46,6 +64,17 @@
   let saved = $state("");
   let draft = $state<Plan[]>([]);
   let currency = $state("USD");
+  let subError = $state<string | null>(null);
+  const blank = (): Sub => ({
+    name: "",
+    store: "apple",
+    price: 0,
+    period: "month",
+    renews: "",
+    status: "active",
+    link: "",
+  });
+  let adding = $state<Sub>(blank());
 
   async function read(): Promise<void> {
     error = null;
@@ -69,6 +98,7 @@
         params: {
           plans: {
             currency,
+            subs: found?.plans.subs ?? [],
             plans: draft.map((plan) => ({
               ...plan,
               monthly: Number(plan.monthly) || 0,
@@ -83,6 +113,75 @@
       formError = String(cause);
     }
   }
+
+  // Subscriptions are saved at once, with the plans as they are saved now.
+  async function saveSubs(subs: Sub[]): Promise<void> {
+    subError = null;
+    if (!found) return;
+    try {
+      found = await invoke<Finance>("sidecar_call", {
+        method: "finance_save",
+        params: { plans: { ...found.plans, subs } },
+      });
+    } catch (cause) {
+      subError = String(cause);
+    }
+  }
+
+  const plain = (row: SubRow): Sub => ({
+    name: row.name,
+    store: row.store,
+    price: row.price,
+    period: row.period,
+    renews: row.renews,
+    status: row.status,
+    link: row.link,
+  });
+
+  function setStatus(row: SubRow, status: Sub["status"]): void {
+    if (!found) return;
+    void saveSubs(
+      found.report.subs.map((s) =>
+        s === row ? { ...plain(s), status } : plain(s),
+      ),
+    );
+  }
+
+  function removeSub(row: SubRow): void {
+    if (!found) return;
+    void saveSubs(found.report.subs.filter((s) => s !== row).map(plain));
+  }
+
+  function addSub(event: SubmitEvent): void {
+    event.preventDefault();
+    if (!found || !adding.name.trim()) return;
+    void saveSubs([
+      ...found.report.subs.map(plain),
+      { ...adding, price: Number(adding.price) || 0 },
+    ]).then(() => {
+      if (!subError) adding = blank();
+    });
+  }
+
+  async function openLink(url: string): Promise<void> {
+    subError = null;
+    try {
+      await invoke("sidecar_call", { method: "open_link", params: { url } });
+    } catch (cause) {
+      subError = String(cause);
+    }
+  }
+
+  const STORE: Record<Sub["store"], string> = {
+    apple: "Apple",
+    google: "Google Play",
+    other: "Other",
+  };
+  const PER: Record<Sub["period"], string> = {
+    month: "a month",
+    year: "a year",
+    week: "a week",
+  };
 
   const money = (n: number): string =>
     new Intl.NumberFormat([], {
@@ -158,6 +257,13 @@
       <span class="note">Fixed monthly prices.</span>
     </li>
     <li>
+      <span class="label">Subscriptions</span>
+      <b>{money(report.subs_monthly)}</b>
+      <span class="note"
+        >{report.subs.filter((s) => s.active).length} active, as a monthly amount.</span
+      >
+    </li>
+    <li>
       <span class="label">Pay-as-you-go</span>
       <b>{money(report.metered)}</b>
       <span class="note">Real tokens times your price per million.</span>
@@ -169,6 +275,114 @@
       <AnalyticPanel {panel} />
     {/each}
   </div>
+
+  {@const live = report.subs.filter((s) => s.active)}
+  {@const gone = report.subs.filter((s) => !s.active)}
+  <section class="plans subs" aria-label="Subscriptions">
+    <div class="head">
+      <h4>Subscriptions</h4>
+      <div class="buttons">
+        <Button
+          size="sm"
+          onclick={() =>
+            openLink("https://apps.apple.com/account/subscriptions")}
+          >Open Apple subscriptions</Button
+        >
+      </div>
+    </div>
+    <p class="hint">
+      Apple does not let other apps read your subscriptions, so add each one
+      here. Cancel and Resubscribe open Apple's own subscriptions page, where
+      you sign in and make the change; then mark it here.
+    </p>
+    {#if subError}<p class="error" role="alert">{subError}</p>{/if}
+    <ul class="sublist" aria-label="Active subscriptions">
+      {#each live as row, i (`${i}:${row.name}`)}
+        <li>
+          <span class="subname"
+            ><b>{row.name}</b>
+            <span class="note"
+              >{STORE[row.store]} · {money(row.price)}
+              {PER[row.period]}{row.renews
+                ? ` · renews ${row.renews}`
+                : ""}</span
+            ></span
+          >
+          <span class="buttons">
+            {#if row.manage || row.link}
+              <Button size="sm" onclick={() => openLink(row.link || row.manage)}
+                >Cancel on {STORE[row.store]}</Button
+              >
+            {/if}
+            <Button size="sm" onclick={() => setStatus(row, "cancelled")}
+              >Mark cancelled</Button
+            >
+            <Button
+              size="sm"
+              variant="ghost"
+              aria-label={`Remove ${row.name}`}
+              onclick={() => removeSub(row)}>Remove</Button
+            >
+          </span>
+        </li>
+      {:else}
+        <li class="note">No active subscription added yet.</li>
+      {/each}
+    </ul>
+    <form class="row" onsubmit={addSub} aria-label="Add a subscription">
+      <label class="wide"
+        >Name <input
+          type="text"
+          maxlength="60"
+          placeholder="iCloud+"
+          bind:value={adding.name}
+        /></label
+      >
+      <div class="pick">
+        <span>Store</span>
+        <Dropdown
+          label="Store"
+          options={[
+            { value: "apple", label: "Apple" },
+            { value: "google", label: "Google Play" },
+            { value: "other", label: "Other" },
+          ]}
+          bind:value={adding.store}
+        />
+      </div>
+      <label
+        >Price <input
+          type="number"
+          min="0"
+          step="0.01"
+          bind:value={adding.price}
+        /></label
+      >
+      <div class="pick">
+        <span>Every</span>
+        <Dropdown
+          label="Billing period"
+          options={[
+            { value: "month", label: "Month" },
+            { value: "year", label: "Year" },
+            { value: "week", label: "Week" },
+          ]}
+          bind:value={adding.period}
+        />
+      </div>
+      <label>Renews <input type="date" bind:value={adding.renews} /></label>
+      <label class="wide"
+        >Renew link (optional) <input
+          type="url"
+          placeholder="https://…"
+          bind:value={adding.link}
+        /></label
+      >
+      <Button type="submit" variant="primary" disabled={!adding.name.trim()}
+        >Add subscription</Button
+      >
+    </form>
+  </section>
 
   <form class="plans" onsubmit={save} aria-label="Your plans and prices">
     <div class="head">
@@ -245,12 +459,53 @@
     </div>
     {#if formError}<p class="error" role="alert">{formError}</p>{/if}
   </form>
+
+  <section class="plans inactive" aria-label="Inactive subscriptions">
+    <h4>Inactive subscriptions</h4>
+    <ul class="sublist">
+      {#each gone as row, i (`${i}:${row.name}`)}
+        <li>
+          <span class="subname"
+            ><b>{row.name}</b>
+            <span class="note"
+              >{row.state === "expired" ? "Expired" : "Cancelled"} · {STORE[
+                row.store
+              ]} · {money(row.price)}
+              {PER[row.period]}{row.renews
+                ? ` · ${row.state === "expired" ? "ended" : "ends"} ${row.renews}`
+                : ""}</span
+            ></span
+          >
+          <span class="buttons">
+            {#if row.resubscribe}
+              <Button
+                size="sm"
+                variant="primary"
+                onclick={() => openLink(row.resubscribe)}>Resubscribe</Button
+              >
+            {/if}
+            <Button size="sm" onclick={() => setStatus(row, "active")}
+              >Mark active</Button
+            >
+            <Button
+              size="sm"
+              variant="ghost"
+              aria-label={`Remove ${row.name}`}
+              onclick={() => removeSub(row)}>Remove</Button
+            >
+          </span>
+        </li>
+      {:else}
+        <li class="note">No cancelled or expired subscription.</li>
+      {/each}
+    </ul>
+  </section>
 {/if}
 
 <style>
   .tiles {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 168px), 1fr));
     gap: var(--space-3);
     margin: var(--space-3) 0 0;
     padding: 0;
@@ -267,8 +522,7 @@
         color-mix(in srgb, var(--color-accent) 16%, transparent),
         transparent 70%
       ),
-      var(--tile-grid),
-      var(--color-bg-1);
+      var(--tile-grid), var(--color-bg-1);
     border: 1px solid var(--color-border);
     border-top: 3px solid var(--color-accent);
     border-radius: var(--radius-md);
@@ -367,5 +621,35 @@
 
   .error {
     color: var(--color-danger);
+  }
+
+  .sublist {
+    display: grid;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .sublist li {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-2) var(--space-3);
+    background: var(--color-bg-1);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+  }
+
+  .subname {
+    display: grid;
+    gap: var(--space-0);
+    min-width: 0;
+  }
+
+  .inactive .sublist li:not(.note) {
+    opacity: 0.75;
   }
 </style>

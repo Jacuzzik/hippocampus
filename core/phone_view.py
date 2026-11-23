@@ -22,7 +22,7 @@ from pathlib import Path
 SERVER_JAR = Path("/usr/share/scrcpy/scrcpy-server")
 REMOTE_JAR = "/data/local/tmp/hippocampus-scrcpy-server.jar"
 MAX_SIZE = 720
-MAX_FPS = 15
+MAX_FPS = 24
 CONNECT_S = 10.0
 BOUNDARY = "hippoframe"
 
@@ -94,7 +94,8 @@ class View:
         )  # fmt: skip
         self.sock = self._connect()
         self.ffmpeg = subprocess.Popen(
-            ["ffmpeg", "-loglevel", "error", "-f", "h264", "-i", "pipe:0", "-an",
+            ["ffmpeg", "-loglevel", "error", "-fflags", "nobuffer", "-flags", "low_delay",
+             "-probesize", "32", "-analyzeduration", "0", "-f", "h264", "-i", "pipe:0", "-an",
              "-f", "image2pipe", "-c:v", "mjpeg", "-q:v", "7", "pipe:1"],
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
         )  # fmt: skip

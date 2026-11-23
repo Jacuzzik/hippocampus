@@ -7,6 +7,7 @@
   import { SvelteMap } from "svelte/reactivity";
   import ErrorRow from "../controls/ErrorRow.svelte";
   import Loading from "../controls/Loading.svelte";
+  import AppIcon from "./AppIcon.svelte";
   import DashIcon from "./DashIcon.svelte";
   import CalendarBoard from "./CalendarBoard.svelte";
   import PhoneBoard from "./PhoneBoard.svelte";
@@ -548,6 +549,7 @@
             .slice(0, 10)
             .map(line),
           empty: "No errors.",
+          wide: true,
         },
         {
           kind: "list",
@@ -683,7 +685,11 @@
       >
         <DashIcon name="graph" />
       </button>
-      {#each items as item (item.id)}
+      {#each items as item, i (item.id)}
+        {#if item.id.startsWith("app:") && !items[i - 1]?.id.startsWith("app:")}
+          <span class="divider" role="separator" aria-label="Connected apps"
+          ></span>
+        {/if}
         <button
           type="button"
           class="icon-btn"
@@ -693,7 +699,11 @@
           data-tip={item.label}
           onclick={() => (current = item.id)}
         >
-          <DashIcon name={item.id.startsWith("app:") ? "app" : item.id} />
+          {#if item.id.startsWith("app:")}
+            <AppIcon id={item.id.slice(4)} />
+          {:else}
+            <DashIcon name={item.id} />
+          {/if}
         </button>
       {/each}
     </nav>
@@ -854,6 +864,15 @@
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-1);
+    align-items: center;
+  }
+
+  /* A thin upright line between the built-in dashboards and the connected apps. */
+  nav.icons .divider {
+    align-self: stretch;
+    width: 1px;
+    margin: var(--space-1) var(--space-2);
+    background: var(--color-border);
   }
 
   /* The icon's name shows under it on hover or keyboard focus, not beside it over the next icon. */
@@ -969,8 +988,7 @@
         color-mix(in srgb, var(--color-accent) 16%, transparent),
         transparent 70%
       ),
-      var(--tile-grid),
-      var(--color-bg-1);
+      var(--tile-grid), var(--color-bg-1);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
     transition:
@@ -1005,8 +1023,7 @@
         color-mix(in srgb, var(--color-danger) 18%, transparent),
         transparent 70%
       ),
-      var(--tile-grid),
-      var(--color-bg-1);
+      var(--tile-grid), var(--color-bg-1);
     border-color: color-mix(
       in srgb,
       var(--color-danger) 40%,
