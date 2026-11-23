@@ -1,0 +1,140 @@
+"""The providers, money, vault and GitHub dashboards read real logs and the user's own numbers."""
+
+import json
+import subprocess
+from datetime import date
+from pathlib import Path
+
+import pytest
+
+from core import github_repos, provider_usage, spend_plans, vault_board
+
+
+def test_provider_usage_reads_each_tool_s_own_log_by_model_and_day(tmp_path: Path) -> None:
+    home = tmp_path / "home"
+    claude = home / ".claude" / "projects" / "-work"
+    claude.mkdir(parents=True)
+    reply = {
+        "timestamp": "2026-11-23T10:00:00Z",
+        "message": {
+            "id": "m1",
+            "model": "claude-x",
+            "usage": {"input_tokens": 10, "output_tokens": 5},
+        },
+    }
+    # The same reply logged twice (one line per content block) counts once.
+    (claude / "s.jsonl").write_text(json.dumps(reply) + "\n" + json.dumps(reply) + "\n")
+    codex = home / ".codex" / "sessions" / "2026" / "11" / "23"
+    codex.mkdir(parents=True)
+    rows = [
+        {"type": "turn_context", "payload": {"model": "gpt-x"}},
+        {
+            "timestamp": "2026-11-23T11:00:00Z",
+            "payload": {"type": "token_count", "info": {"last_token_usage": {"total_tokens": 7}}},
+        },
+    ]
+    (codex / "rollout-2026-11-23-a.jsonl").write_text("\n".join(json.dumps(r) for r in rows))
+    (home / ".gemini" / "antigravity-cli" / "conversations").mkdir(parents=True)
+    (home / ".gemini" / "antigravity-cli" / "conversations" / "a.db").write_bytes(b"")
+    found = {
+        p["id"]: p for p in provider_usage.report(tmp_path, home, date(2026, 11, 23))["providers"]
+    }
+    assert (found["claude"]["today"], found["claude"]["models"]) == (
+        15,
+        [{"model": "claude-x", "tokens": 15}],
+    )
+    assert found["codex"]["month"] == 7 and found["codex"]["days"][-1] == 7
+    assert found["antigravity"]["month"] == 0 and "1 conversations" in found["antigravity"]["note"]
+
+
+def test_money_is_the_user_s_plans_plus_their_price_times_real_tokens(tmp_path: Path) -> None:
+    path = tmp_path / "plans.json"
+    plans = spend_plans.save(
+        path,
+        {
+            "currency": "USD",
+            "plans": [
+                {"name": "Claude Max", "provider": "claude", "monthly": 200},
+                {"name": "Codex API", "provider": "codex", "per_million": 2},
+            ],
+        },
+    )
+    usage = {
+        "days": 2,
+        "providers": [
+            {"id": "claude", "name": "Claude Code", "month": 9_000_000, "days": [1, 1]},
+            {"id": "codex", "name": "Codex", "month": 3_000_000, "days": [1_000_000, 2_000_000]},
+        ],
+    }
+    money = spend_plans.report(plans, usage, date(2026, 11, 10))
+    assert (money["fixed"], money["metered"], money["total"]) == (200, 6, 206)
+    assert money["projected"] == 218  # 6 over 10 days is 18 over 30
+    assert money["daily"] == [2, 4]
+    assert spend_plans.load(path)["plans"][1]["per_million"] == 2
+    for bad, reason in [
+        ({"currency": "XYZ"}, "currency"),
+        ({"plans": [{"name": ""}]}, "needs a name"),
+        ({"plans": [{"name": "x", "monthly": -1}]}, "from 0"),
+    ]:
+        with pytest.raises(ValueError, match=reason):
+            spend_plans.check(bad)
+
+
+def test_vault_counts_projects_important_daily_orphans_and_reads_the_agent_summary(
+    tmp_path: Path,
+) -> None:
+    graph = {
+        "nodes": [
+            {"id": "Projects/Alpha/plan.md", "title": "Plan", "tags": []},
+            {"id": "Projects/Alpha/notes.md", "title": "Notes", "tags": ["important"]},
+            {"id": "Projects/Beta.md", "title": "Beta", "tags": []},
+            {"id": "Ideas/gamma.md", "title": "Gamma", "tags": ["project"]},
+            {"id": "Daily/2026-11-23.md", "title": "Today", "tags": [], "memory": True},
+        ],
+        "edges": [["Projects/Beta.md", "Ideas/gamma.md"]],
+    }
+    now = 10**18
+    found = vault_board.stats(graph, {"Daily/2026-11-23.md": now}, 2, now)
+    assert (found["projects"], found["important"], found["daily"], found["memory"]) == (3, 1, 1, 1)
+    assert (found["orphans"], found["broken"], found["changed_week"]) == (3, 2, 1)
+    path = tmp_path / "insights.json"
+    assert vault_board.load_insights(path) is None
+    path.write_text(
+        json.dumps({"summary": "Two projects.", "numbers": [{"label": "Active", "value": 2}]})
+    )
+    assert vault_board.load_insights(path)["numbers"] == [
+        {"label": "Active", "value": "2", "note": ""}
+    ]
+
+
+def test_github_lists_every_repository_with_the_agents_work_from_their_folders(
+    tmp_path: Path,
+) -> None:
+    folder = tmp_path / "agent"
+    (folder / ".git").mkdir(parents=True)
+
+    def run(args: list[str], **_kw: object) -> subprocess.CompletedProcess[str]:
+        if args[:3] == ["gh", "repo", "list"]:
+            out = json.dumps(
+                [
+                    {"nameWithOwner": "me/old", "pushedAt": "2026-01-01"},
+                    {"nameWithOwner": "me/app", "pushedAt": "2026-11-20", "isPrivate": True},
+                ]
+            )
+        elif "remote" in args:
+            out = "git@github.com:me/app.git\n"
+        else:
+            out = "2026-11-22\tFix the tabs\n2026-11-21\tAdd the calendar\n"
+        return subprocess.CompletedProcess(args, 0, out, "")
+
+    found = github_repos.board([("ada", "Ada", folder)], lambda _n: "/bin/gh", run)
+    assert [r["repo"] for r in found["repos"]] == ["me/app", "me/old"]
+    work = found["repos"][0]["agents"][0]
+    assert (work["name"], work["commits"], work["subjects"][0]) == ("Ada", 2, "Fix the tabs")
+
+    def signed_out(args: list[str], **_kw: object) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(
+            args, 1, "", "To get started with GitHub CLI, please run: gh auth login"
+        )
+
+    assert "gh auth login" in github_repos.board([], lambda _n: "/bin/gh", signed_out)["error"]

@@ -67,6 +67,7 @@ from core.cards import CardStore
 from core.helpers import Helpers
 from core.session_agents import AgentsPart
 from core.session_apps import AppsPart
+from core.session_boards import BoardsPart
 from core.session_budget import BudgetPart
 from core.session_connectors import ConnectorsPart
 from core.session_dispatch import DispatchPart
@@ -119,6 +120,7 @@ def _waits_on_human(task: dict[str, Any]) -> bool:
 
 
 class Session(
+    BoardsPart,
     JobsPart,
     HivePart,
     RecordsPart,

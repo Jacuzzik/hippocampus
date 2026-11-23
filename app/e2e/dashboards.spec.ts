@@ -24,7 +24,7 @@ test("the top bar has icons for dashboards, the lock, adding an agent and the pa
   ).toBeVisible();
 });
 
-test("dashboards open from the top bar, list six dashboards and show numbers from the backend", async ({
+test("dashboards open from the top bar, list the dashboards and show numbers from the backend", async ({
   page,
 }) => {
   await mockSidecar(page);
@@ -41,10 +41,10 @@ test("dashboards open from the top bar, list six dashboards and show numbers fro
     .evaluateAll((buttons) => buttons.map((b) => b.getAttribute("aria-label")));
   expect(names).toEqual([
     "Graph",
-    "Overview",
-    "Agents and spend",
-    "Tasks",
-    "Notes",
+    "Connected apps",
+    "Providers and models",
+    "Money and spend",
+    "Vault",
     "System",
     "Activity",
     "GitHub",
@@ -52,26 +52,25 @@ test("dashboards open from the top bar, list six dashboards and show numbers fro
     "Phone",
   ]);
   const board = view.getByRole("tabpanel");
-  await expect(board.getByText("Tokens today")).toBeVisible();
-  await expect(board.locator("li", { hasText: "Tokens today" })).toContainText(
-    "15.4k",
-  );
+  // With no app connected, the first board says where to connect one.
+  await expect(board.getByText(/No app is connected yet/)).toBeVisible();
+  await view
+    .getByRole("button", { name: "Providers and models", exact: true })
+    .click();
   await expect(
-    board.locator("li", { hasText: "Questions waiting" }),
-  ).toContainText("1");
-  await view.getByRole("button", { name: "Notes", exact: true }).click();
-  await expect(board.locator("li", { hasText: "Links" }).first()).toContainText(
-    "2",
-  );
+    board.locator("li", { hasText: "Claude Code" }).first(),
+  ).toContainText("2.4M");
+  await expect(
+    board.getByText(/Antigravity keeps no token counts/),
+  ).toBeVisible();
+  await expect(board.getByText("Codex · gpt-6-luna")).toBeVisible();
+  await view.getByRole("button", { name: "Vault", exact: true }).click();
+  await expect(
+    board.locator("li", { hasText: "Projects" }).first(),
+  ).toContainText("3");
   await view.getByRole("button", { name: "System", exact: true }).click();
   await expect(board.locator("li", { hasText: "Free disk" })).toContainText(
     "120.5 GB",
-  );
-  await view
-    .getByRole("button", { name: "Agents and spend", exact: true })
-    .click();
-  await expect(board.locator("li:has(b)", { hasText: "kevin" })).toContainText(
-    "3.4k",
   );
   await expect(view.getByText(/^Read at /)).toBeVisible();
   await page.keyboard.press("Escape");
@@ -97,7 +96,7 @@ test("Ctrl+D and the palette open the dashboards", async ({ page }) => {
 test("dashboards are locked by default, and the switch in Settings unlocks them and is kept", async ({
   page,
 }) => {
-  await mockSidecar(page, { fail: ["graph"] });
+  await mockSidecar(page, { fail: ["vault_board"] });
   await page.goto("/");
   await page.keyboard.press("Control+d");
   const view = page.getByRole("region", { name: "Dashboards" });
@@ -107,7 +106,7 @@ test("dashboards are locked by default, and the switch in Settings unlocks them 
   );
   await expect(board).toHaveAttribute("inert", "");
   // Locked: the failed dashboard's own button cannot be reached, but Refresh in the header can.
-  await view.getByRole("button", { name: "Notes", exact: true }).click();
+  await view.getByRole("button", { name: "Vault", exact: true }).click();
   await expect(board.getByRole("alert")).toBeVisible();
   await expect(view.getByRole("button", { name: "Refresh" })).toBeEnabled();
   const retry = board.getByRole("button", { name: "Try again" });
@@ -142,11 +141,10 @@ test("dashboards are locked by default, and the switch in Settings unlocks them 
   ).toBeVisible();
 });
 
-test("the GitHub dashboard asks for a repository, shows its numbers and says why a read failed", async ({
+test("GitHub lists every repository with what each agent did there; the vault asks the agent for a summary; money adds a plan", async ({
   page,
 }) => {
   await mockSidecar(page);
-  // Unlocked for this test, set once so the reload below keeps what the test saved.
   await page.addInitScript(() => {
     if (sessionStorage.getItem("seeded")) return;
     sessionStorage.setItem("seeded", "1");
@@ -158,31 +156,53 @@ test("the GitHub dashboard asks for a repository, shows its numbers and says why
   await page.goto("/");
   await page.keyboard.press("Control+d");
   const view = page.getByRole("region", { name: "Dashboards" });
-  await view.getByRole("button", { name: "GitHub", exact: true }).click();
   const board = view.getByRole("tabpanel");
-  await expect(
-    board.getByText(/Write a repository as owner\/name/),
-  ).toBeVisible();
-  await expect(board.getByRole("button", { name: "Show" })).toBeDisabled();
-  await board.getByLabel("Repository").fill("octocat/hello-world");
-  await board.getByRole("button", { name: "Show" }).click();
-  await expect(
-    board.locator("li", { hasText: "Open pull requests" }),
-  ).toContainText("2");
-  await expect(board.locator("li", { hasText: "Newest CI run" })).toContainText(
-    "tests on main.",
-  );
-  await expect(
-    board.locator("li", { hasText: "Pull request #7" }),
-  ).toContainText("Add dashboards");
-  await board.getByLabel("Repository").fill("nobody/nothing");
-  await board.getByRole("button", { name: "Show" }).click();
-  await expect(board.getByRole("alert")).toContainText("HTTP 404: Not Found");
-  // The repository is kept for the next visit.
-  await page.reload();
-  await page.keyboard.press("Control+d");
   await view.getByRole("button", { name: "GitHub", exact: true }).click();
-  await expect(board.getByLabel("Repository")).toHaveValue("nobody/nothing");
+  await expect(
+    board.locator("li", { hasText: "Repositories" }).first(),
+  ).toContainText("2");
+  const worked = board.locator(".panel", {
+    hasText: "Where the agents worked",
+  });
+  await expect(worked).toContainText("me/hippocampus");
+  await expect(worked).toContainText("Frank: 4 commits in 30 days");
+  await expect(worked).not.toContainText("me/notes");
+  await expect(
+    board.locator(".panel", { hasText: "All repositories" }),
+  ).toContainText("me/notes");
+
+  await view.getByRole("button", { name: "Vault", exact: true }).click();
+  await expect(board.getByText(/No summary yet/)).toBeVisible();
+  await board
+    .getByRole("button", { name: "Ask the agent for a summary" })
+    .click();
+  await expect(
+    board.getByRole("status").filter({ hasText: "Sent to Hippoherman" }),
+  ).toBeVisible();
+  await view.getByRole("button", { name: "Refresh" }).click();
+  await expect(board.getByText("Three projects are active")).toBeVisible();
+  await expect(
+    board.getByText("Alpha/plan.md has 5 unchecked boxes"),
+  ).toBeVisible();
+
+  await view
+    .getByRole("button", { name: "Money and spend", exact: true })
+    .click();
+  await expect(
+    board.locator("li", { hasText: "This month so far" }),
+  ).toContainText("$200");
+  await board.getByRole("button", { name: "Add a plan" }).click();
+  await board.getByLabel("Name").nth(1).fill("Codex API");
+  await board.getByRole("button", { name: "Tokens from, plan 2" }).click();
+  await board.getByRole("option", { name: "Codex" }).click();
+  await board.getByLabel("Per million tokens").nth(1).fill("10");
+  await board.getByRole("button", { name: "Save" }).click();
+  await expect(
+    board.getByRole("status").filter({ hasText: "Saved." }),
+  ).toBeVisible();
+  await expect(
+    board.locator("li", { hasText: "Real tokens times your price" }),
+  ).toContainText("$0.90");
 });
 
 test("the calendar shows a week with checks and crosses, adds, marks and removes an event, and shows a month", async ({
@@ -360,6 +380,14 @@ test("an app is connected in Settings with a key that is never shown again, gets
   await expect(board.locator("li", { hasText: "Customers" })).toContainText(
     "needs read access",
   );
+  // Every connected app is also on one board together.
+  await view
+    .getByRole("button", { name: "Connected apps", exact: true })
+    .click();
+  const shopify = board.locator(".panel", { hasText: "Shopify" });
+  await expect(shopify.locator("li", { hasText: "Orders" })).toContainText(
+    "12",
+  );
 
   await view.getByRole("button", { name: /locked/ }).click();
   await settings.getByRole("button", { name: "Disconnect Shopify" }).click();
@@ -369,7 +397,7 @@ test("an app is connected in Settings with a key that is never shown again, gets
     view.getByRole("button", { name: "Shopify", exact: true }),
   ).toHaveCount(0);
   await expect(
-    view.getByRole("button", { name: "Overview", exact: true }),
+    view.getByRole("button", { name: "Connected apps", exact: true }),
   ).toHaveAttribute("aria-pressed", "true");
 });
 
@@ -391,10 +419,10 @@ test("a dashboard takes the notes, graph and Control Room space; the bottom bar 
   await page.keyboard.press("Control+d");
   const view = page.getByRole("region", { name: "Dashboards" });
   for (const name of [
-    "Overview",
-    "Agents and spend",
-    "Tasks",
-    "Notes",
+    "Connected apps",
+    "Providers and models",
+    "Money and spend",
+    "Vault",
     "System",
     "Activity",
     "GitHub",
@@ -422,11 +450,11 @@ test("a dashboard takes the notes, graph and Control Room space; the bottom bar 
     expect(Math.round(box.x + box.width)).toBe(1920);
     expect(Math.round(box.x)).toBe(Math.round(railBox.x + railBox.width));
   }
-  // The tiles fill the board: the last row ends near the board's bottom.
-  await view.getByRole("button", { name: "Overview", exact: true }).click();
+  // The tiles and charts fill the board: the last one ends near the board's bottom.
+  await view.getByRole("button", { name: "System", exact: true }).click();
   const board = await box_(view.getByRole("tabpanel"));
-  const tiles = await box_(view.locator(".tiles"));
-  expect(tiles.y + tiles.height).toBeGreaterThan(board.y + board.height - 40);
+  const last = await box_(view.locator(".panels"));
+  expect(last.y + last.height).toBeGreaterThan(board.y + board.height - 40);
   // The graph is the main dashboard: choosing it brings the normal layout back.
   await view.getByRole("button", { name: "Graph", exact: true }).click();
   await expect(page.locator("footer.status-bar")).toBeVisible();

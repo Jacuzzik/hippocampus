@@ -11,7 +11,10 @@
   );
 </script>
 
-<div class="panel">
+<div
+  class="panel"
+  class:wide={(panel.kind === "list" || panel.kind === "text") && panel.wide}
+>
   <div class="head">
     <span class="label">{panel.title}</span>
     <span class="note">{panel.note}</span>
@@ -19,14 +22,22 @@
 
   {#if panel.kind === "trend"}
     <div class="body">
-      <TrendChart values={panel.values} labels={panel.labels} label={panel.title} />
+      <TrendChart
+        values={panel.values}
+        labels={panel.labels}
+        label={panel.title}
+      />
     </div>
   {:else if panel.kind === "breakdown"}
     <ul class="rows">
       {#each panel.rows as row (row.label)}
         <li class:warn={row.warn}>
           <span class="name">{row.label}</span>
-          <span class="track" role="img" aria-label={`${Math.round(row.share * 100)}% of the whole`}>
+          <span
+            class="track"
+            role="img"
+            aria-label={`${Math.round(row.share * 100)}% of the whole`}
+          >
             <span style:width={`${row.share * 100}%`}></span>
           </span>
           <span class="value">{row.value}</span>
@@ -37,7 +48,11 @@
     <ul class="rings">
       {#each panel.rings as ring (ring.label)}
         <li class:warn={ring.warn}>
-          <svg viewBox="0 0 100 100" role="img" aria-label={`${ring.label} ${Math.round(ring.percent)} percent`}>
+          <svg
+            viewBox="0 0 100 100"
+            role="img"
+            aria-label={`${ring.label} ${Math.round(ring.percent)} percent`}
+          >
             <circle cx="50" cy="50" r={RING + 6} class="ring-track" />
             <circle
               cx="50"
@@ -47,12 +62,35 @@
               stroke-dasharray={`${(Math.min(100, ring.percent) / 100) * 2 * Math.PI * (RING + 6)} ${2 * Math.PI * (RING + 6)}`}
               transform="rotate(-90 50 50)"
             />
-            <text x="50" y="54" text-anchor="middle" class="ring-value">{Math.round(ring.percent)}%</text>
+            <text x="50" y="54" text-anchor="middle" class="ring-value"
+              >{Math.round(ring.percent)}%</text
+            >
           </svg>
           <span class="name">{ring.label}</span>
         </li>
       {/each}
     </ul>
+  {:else if panel.kind === "text"}
+    <p class="text">{panel.text}</p>
+  {:else if panel.kind === "list"}
+    {#if panel.rows.length}
+      <ul class="list">
+        {#each panel.rows as row, i (i)}
+          <li class={row.tone ?? "plain"}>
+            <div class="line">
+              <span class="title">{row.title}</span>
+              {#if row.badge}<span class="badge">{row.badge}</span>{/if}
+              {#if row.meta}<span class="meta">{row.meta}</span>{/if}
+            </div>
+            {#each row.lines ?? [] as line, j (j)}
+              <span class="detail">{line}</span>
+            {/each}
+          </li>
+        {/each}
+      </ul>
+    {:else}
+      <p class="text muted">{panel.empty ?? "Nothing here yet."}</p>
+    {/if}
   {:else}
     <div class="heat" role="img" aria-label="Events per day over 13 weeks">
       {#each panel.values as value, i (i)}
@@ -66,7 +104,9 @@
     <div class="legend">
       <span>Fewer</span>
       <span class="swatches">
-        <i style:--v="12%"></i><i style:--v="40%"></i><i style:--v="70%"></i><i style:--v="100%"></i>
+        <i style:--v="12%"></i><i style:--v="40%"></i><i style:--v="70%"></i><i
+          style:--v="100%"
+        ></i>
       </span>
       <span>More</span>
     </div>
@@ -79,6 +119,67 @@
     gap: var(--space-3);
     align-content: start;
     min-width: 0;
+  }
+  .text {
+    margin: 0;
+    max-width: 75ch;
+    line-height: 1.5;
+    white-space: pre-line;
+  }
+  .muted {
+    color: var(--color-text-muted);
+  }
+  .list {
+    display: grid;
+    gap: var(--space-2);
+    max-height: 420px;
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+    list-style: none;
+  }
+  .list li {
+    display: grid;
+    gap: 2px;
+    padding: var(--space-2) var(--space-3);
+    background: var(--color-bg-0);
+    border: 1px solid var(--color-border);
+    border-left: 3px solid var(--color-graph-1);
+    border-radius: var(--radius-sm);
+  }
+  .list li.warn {
+    border-left-color: var(--color-danger);
+  }
+  .list li.good {
+    border-left-color: var(--color-success);
+  }
+  .line {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1) var(--space-2);
+    align-items: baseline;
+    min-width: 0;
+  }
+  .title {
+    overflow-wrap: anywhere;
+  }
+  .badge {
+    padding: 0 var(--space-1);
+    color: var(--color-text-muted);
+    font-size: var(--font-size-xs);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+  }
+  .meta {
+    margin-left: auto;
+    color: var(--color-text-muted);
+    font-size: var(--font-size-xs);
+    font-variant-numeric: tabular-nums;
+  }
+  .detail {
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+    overflow-wrap: anywhere;
   }
   .head {
     display: flex;
@@ -208,6 +309,10 @@
     width: 12px;
     height: 12px;
     border-radius: 2px;
-    background: color-mix(in srgb, var(--color-graph-1) var(--v), var(--color-bg-1));
+    background: color-mix(
+      in srgb,
+      var(--color-graph-1) var(--v),
+      var(--color-bg-1)
+    );
   }
 </style>

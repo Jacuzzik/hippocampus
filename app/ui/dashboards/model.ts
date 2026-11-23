@@ -19,10 +19,10 @@ export function fraction(part: number, whole: number): number {
 
 /** The dashboards built into the app, in the order the list shows them. */
 export const DASHBOARDS = [
-  { id: "overview", label: "Overview" },
-  { id: "agents", label: "Agents and spend" },
-  { id: "tasks", label: "Tasks" },
-  { id: "notes", label: "Notes" },
+  { id: "apps", label: "Connected apps" },
+  { id: "providers", label: "Providers and models" },
+  { id: "finance", label: "Money and spend" },
+  { id: "vault", label: "Vault" },
   { id: "system", label: "System" },
   { id: "activity", label: "Activity" },
   { id: "github", label: "GitHub" },
@@ -43,9 +43,17 @@ export type SystemShape = {
   disk: number;
   disk_free: number;
 };
-export type ActivityRow = { ts: string; kind: string };
+export type ActivityRow = {
+  ts: string;
+  kind: string;
+  text?: string;
+  method?: string;
+  tool?: string;
+  agent?: string;
+};
 
 export function short(n: number): string {
+  if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(2)}B`;
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
   return String(n);
@@ -422,7 +430,26 @@ export type Panel =
       note: string;
       rings: { label: string; percent: number; warn: boolean }[];
     }
-  | { kind: "heat"; title: string; note: string; values: number[] };
+  | { kind: "heat"; title: string; note: string; values: number[] }
+  | { kind: "text"; title: string; note: string; text: string; wide?: boolean }
+  | {
+      kind: "list";
+      title: string;
+      note: string;
+      rows: ListRow[];
+      wide?: boolean;
+      /** What the list says when it has no rows. */
+      empty?: string;
+    };
+
+/** One row of a list panel: a title, a small badge, a line under it and any detail lines. */
+export type ListRow = {
+  title: string;
+  badge?: string;
+  meta?: string;
+  lines?: string[];
+  tone?: "plain" | "warn" | "good";
+};
 
 /** The last `days` local dates, oldest first, as YYYY-MM-DD. */
 export function dayKeys(days: number, now = new Date()): string[] {
@@ -468,4 +495,16 @@ export function breakdown(
 export function percentOf(text: string): number | null {
   const match = /^(\d+(?:\.\d+)?)%$/.exec(text.trim());
   return match ? Number(match[1]) : null;
+}
+
+/** Day/month labels for the last `count` days, oldest first: the x-axis of a per-day chart. */
+export function dayLabels(count: number, now = new Date()): string[] {
+  return Array.from({ length: count }, (_, i) => {
+    const day = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() - (count - 1 - i),
+    );
+    return `${day.getDate()}/${day.getMonth() + 1}`;
+  });
 }

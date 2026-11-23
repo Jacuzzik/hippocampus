@@ -10,6 +10,7 @@
   import DashIcon from "./DashIcon.svelte";
   import CalendarBoard from "./CalendarBoard.svelte";
   import PhoneBoard from "./PhoneBoard.svelte";
+  import FinanceBoard from "./FinanceBoard.svelte";
   import AnalyticPanel from "./AnalyticPanel.svelte";
   import { prefs } from "../prefs.svelte.ts";
   import {
@@ -17,24 +18,18 @@
     short,
     activityTiles,
     breakdown,
+    dayLabels,
+    fraction,
     heatValues,
     percentOf,
     type Panel,
     appTiles,
     DASHBOARDS,
-    githubTiles,
-    noteTiles,
-    overviewTiles,
-    spendTiles,
     systemTiles,
-    taskTiles,
     type ActivityRow,
     type AppNumber,
     type DashboardId,
-    type GithubShape,
-    type GraphShape,
     type SystemShape,
-    type TaskRow,
     type Tile,
   } from "./model.ts";
 
@@ -42,7 +37,7 @@
     $props();
 
   // A built-in dashboard's id, or "app:<id>" for a connected app.
-  let current = $state<string>("overview");
+  let current = $state<string>("apps");
   // The connected apps: each one gets a dashboard after the built-in ones.
   let apps = $state<{ id: string; name: string }[]>([]);
   async function readApps(): Promise<void> {
@@ -55,7 +50,7 @@
         current.startsWith("app:") &&
         !apps.some((a) => `app:${a.id}` === current)
       )
-        current = "overview";
+        current = "apps";
     } catch (cause) {
       console.error("Could not read the connected apps", cause);
     }
@@ -80,133 +75,334 @@
 
   const call = <T,>(method: string): Promise<T> =>
     invoke<T>("sidecar_call", { method });
-  const spend = async (): Promise<Record<string, number>> =>
-    (await call<{ by_agent?: Record<string, number> }>("budget")).by_agent ??
-    {};
-  const tasks = async (): Promise<TaskRow[]> =>
-    (await call<{ tasks: TaskRow[] }>("tasks")).tasks;
 
-  // The GitHub dashboard needs a repository first; its field is part of the board, so the lock covers it.
-  let repoDraft = $state(prefs.dashboardRepo);
-  function saveRepo(event: SubmitEvent): void {
-    event.preventDefault();
-    prefs.dashboardRepo = repoDraft;
-    void load();
+  // Buttons above a board, set by the dashboard that reads them (the vault's "Ask the agent").
+  let actions = $state<{ label: string; run: () => Promise<void> }[]>([]);
+  let acting = $state(false);
+  let actionNote = $state("");
+  async function runAction(action: {
+    run: () => Promise<void>;
+  }): Promise<void> {
+    acting = true;
+    actionNote = "";
+    try {
+      await action.run();
+    } catch (cause) {
+      actionNote = cause instanceof Error ? cause.message : String(cause);
+    } finally {
+      acting = false;
+    }
   }
-  const NEEDS_REPO = "Choose a repository first.";
+  const NEEDS_APPS = "No app is connected yet.";
+
+  type ProviderRow = {
+    id: string;
+    name: string;
+    found: boolean;
+    note: string;
+    today: number;
+    week: number;
+    month: number;
+    models: { model: string; tokens: number }[];
+    days: number[];
+  };
+  type VaultShape = {
+    stats: {
+      notes: number;
+      links: number;
+      orphans: number;
+      broken: number;
+      important: number;
+      projects: number;
+      project_names: string[];
+      daily: number;
+      memory: number;
+      tags: number;
+      top_tags: [string, number][];
+      folders: [string, number][];
+      changed_week: number;
+      recent: { path: string; title: string; at: string }[];
+    };
+    insights: {
+      summary: string;
+      numbers: { label: string; value: string; note: string }[];
+      highlights: string[];
+      generated_at: string;
+    } | null;
+  };
+  type RepoRow = {
+    repo: string;
+    description?: string;
+    private?: boolean;
+    fork?: boolean;
+    pushed?: string;
+    language?: string;
+    stars?: number;
+    foreign?: boolean;
+    agents: {
+      name: string;
+      commits: number;
+      last: string;
+      subjects: string[];
+    }[];
+  };
+  const when = (iso: string): string =>
+    iso
+      ? new Date(iso).toLocaleString([], {
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      : "";
 
   // What each dashboard reads. One that fails shows its reason and a Try again button.
   const READERS: Partial<Record<DashboardId, () => Promise<Tile[]>>> = {
-    overview: async () => {
-      const [agents, used, cards, asks, system, activity] = await Promise.all([
-        call<{ agents: unknown[] }>("agents"),
-        spend(),
-        tasks(),
-        call<{ asks: unknown[] }>("asks"),
-        call<SystemShape>("system").catch(() => null),
-        call<{ rows: ActivityRow[] }>("activity")
-          .then((found) => found.rows)
-          .catch(() => null),
-      ]);
-      const next: Panel[] = [];
-      if (system)
-        next.push({
-          kind: "rings",
-          title: "Machine",
-          note: "Share of the machine in use now.",
-          rings: [
-            { label: "CPU", percent: system.cpu, warn: system.cpu >= 90 },
-            { label: "RAM", percent: system.ram, warn: system.ram >= 90 },
-          ],
-        });
-      if (cards.length)
-        next.push({
-          kind: "breakdown",
-          title: "Tasks by status",
-          note: `${cards.length} in all.`,
-          rows: breakdown(
-            ["todo", "doing", "blocked", "done"].map(
-              (status) =>
-                [
-                  status.charAt(0).toUpperCase() + status.slice(1),
-                  cards.filter((task) => task.status === status).length,
-                  status === "blocked" &&
-                    cards.some((task) => task.status === status),
-                ] as [string, number, boolean],
-            ),
-          ),
-        });
-      if (activity) {
-        const days = activityByDay(activity);
-        next.push({
-          kind: "trend",
-          title: "Events per day",
-          note: "Last 14 days",
-          labels: days.labels,
-          values: days.values,
-        });
-      }
-      panels = next;
-      return overviewTiles({
-        // The main agent is always on the floor; the list holds only the agents added beside it.
-        agents: agents.agents.length + 1,
-        tokens: Object.values(used).reduce((sum, n) => sum + n, 0),
-        tasks: cards,
-        asks: asks.asks.length,
-        system,
-      });
-    },
-    agents: async () => {
-      const byAgent = await spend();
-      const rows = Object.entries(byAgent).sort((a, b) => b[1] - a[1]);
-      panels = [
+    apps: async () => {
+      if (!apps.length) throw new Error(NEEDS_APPS);
+      const read = await Promise.all(
+        apps.map(async (app) => {
+          try {
+            const found = await invoke<{ numbers: AppNumber[] }>(
+              "sidecar_call",
+              {
+                method: "app_board",
+                params: { id: app.id },
+              },
+            );
+            return { app, numbers: found.numbers, error: "" };
+          } catch (cause) {
+            return { app, numbers: [] as AppNumber[], error: String(cause) };
+          }
+        }),
+      );
+      panels = read.map(({ app, numbers, error: failed }) => ({
+        kind: "list",
+        title: app.name,
+        note: failed ? "Could not be read." : `${numbers.length} numbers`,
+        rows: failed
+          ? [{ title: failed, tone: "warn" as const }]
+          : numbers.map((number) => ({
+              title: number.label,
+              meta: number.error ? "" : number.value,
+              lines: number.error ? [number.error] : [],
+              tone: number.error ? ("warn" as const) : ("plain" as const),
+            })),
+      }));
+      return [
         {
-          kind: "breakdown",
-          title: "Tokens by agent",
-          note: "Today's share of all tokens.",
-          rows: breakdown(rows, short),
+          label: "Connected apps",
+          value: String(apps.length),
+          note: "Connect more in Settings, Dashboards.",
+        },
+        {
+          label: "Numbers read",
+          value: String(read.reduce((sum, r) => sum + r.numbers.length, 0)),
+        },
+        {
+          label: "Could not be read",
+          value: String(read.filter((r) => r.error).length),
+          tone: read.some((r) => r.error) ? "warn" : "plain",
         },
       ];
-      return spendTiles(byAgent);
     },
-    tasks: async () => {
-      const found = await tasks();
-      const columns = ["todo", "doing", "blocked", "done"].map(
-        (status) =>
-          [
-            status.charAt(0).toUpperCase() + status.slice(1),
-            found.filter((task) => task.status === status).length,
-          ] as [string, number],
+    providers: async () => {
+      const found = await call<{ providers: ProviderRow[]; days: number }>(
+        "provider_usage",
+      );
+      const seen = found.providers.filter((p) => p.found);
+      const month = seen.reduce((sum, p) => sum + p.month, 0);
+      const models = seen
+        .flatMap((p) =>
+          p.models.map(
+            (m) => [`${p.name} · ${m.model}`, m.tokens] as [string, number],
+          ),
+        )
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 12);
+      const days = Array.from({ length: found.days }, (_, i) =>
+        seen.reduce((sum, p) => sum + (p.days[i] ?? 0), 0),
       );
       panels = [
         {
           kind: "breakdown",
-          title: "Tasks by status",
-          note: `${found.length} in all.`,
-          rows: breakdown(columns),
+          title: "Tokens this month by provider",
+          note: `${short(month)} in all.`,
+          rows: breakdown(
+            seen
+              .filter((p) => p.month > 0)
+              .sort((a, b) => b.month - a.month)
+              .map((p) => [p.name, p.month] as [string, number]),
+            short,
+          ),
+        },
+        {
+          kind: "breakdown",
+          title: "Tokens this month by model",
+          note: "The 12 models used most.",
+          rows: breakdown(models, short),
+        },
+        {
+          kind: "trend",
+          title: "All providers, tokens per day",
+          note: `Last ${found.days} days`,
+          labels: dayLabels(found.days),
+          values: days,
+        },
+        {
+          kind: "list",
+          title: "How each is counted",
+          note: "From each tool's own logs on this computer.",
+          rows: found.providers.map((p) => ({
+            title: p.name,
+            badge: p.found ? "found" : "not on this computer",
+            meta: p.found ? `${short(p.month)} this month` : "",
+            lines: [
+              ...(p.found
+                ? [`Today ${short(p.today)} · last 7 days ${short(p.week)}`]
+                : []),
+              ...(p.note ? [p.note] : []),
+            ],
+            tone: p.found ? ("plain" as const) : ("warn" as const),
+          })),
         },
       ];
-      return taskTiles(found);
+      return seen.map((p) => ({
+        label: p.name,
+        value: p.found && !p.note.includes("no token") ? short(p.month) : "n/a",
+        note: p.note.includes("no token")
+          ? "Keeps no token counts here."
+          : `This month. Today ${short(p.today)}, 7 days ${short(p.week)}.`,
+        share: month ? fraction(p.month, month) : undefined,
+      }));
     },
-    notes: async () => {
-      const graph = await call<GraphShape>("graph");
-      const counts = new SvelteMap<string, number>();
-      for (const node of graph.nodes)
-        for (const tag of node.tags) counts.set(tag, (counts.get(tag) ?? 0) + 1);
-      const top = [...counts.entries()]
-        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-        .slice(0, 8);
-      panels = top.length
-        ? [
-            {
-              kind: "breakdown",
-              title: "Top tags",
-              note: "Notes that carry each tag.",
-              rows: breakdown(top),
-            },
-          ]
-        : [];
-      return noteTiles(graph);
+    vault: async () => {
+      const found = await call<VaultShape>("vault_board");
+      const s = found.stats;
+      const insights = found.insights;
+      actions = [
+        {
+          label: insights
+            ? "Ask the agent to update the summary"
+            : "Ask the agent for a summary",
+          run: async () => {
+            await call("vault_insights_request");
+            actionNote =
+              "Sent to Hippoherman. Its summary shows here once it writes it; press Refresh.";
+          },
+        },
+      ];
+      panels = [
+        {
+          kind: "text",
+          title: "The agent's summary",
+          note: insights?.generated_at
+            ? `Written ${when(insights.generated_at)}`
+            : "Not written yet",
+          text:
+            insights?.summary ||
+            "No summary yet. Press Ask the agent for a summary: the main agent reads the vault and writes what matters, which projects are active and what is unfinished.",
+          wide: true,
+        },
+        ...(insights?.numbers.length
+          ? [
+              {
+                kind: "list" as const,
+                title: "The agent's numbers",
+                note: "Counted by the agent from the notes.",
+                rows: insights.numbers.map((n) => ({
+                  title: n.label,
+                  meta: n.value,
+                  lines: n.note ? [n.note] : [],
+                })),
+              },
+            ]
+          : []),
+        ...(insights?.highlights.length
+          ? [
+              {
+                kind: "list" as const,
+                title: "Needs attention",
+                note: "From the agent's reading.",
+                rows: insights.highlights.map((h) => ({
+                  title: h,
+                  tone: "warn" as const,
+                })),
+              },
+            ]
+          : []),
+        {
+          kind: "list",
+          title: "Projects",
+          note: `${s.projects} found in project folders or tagged project.`,
+          rows: s.project_names.map((name) => ({ title: name })),
+          empty: "No project folder or project tag yet.",
+        },
+        {
+          kind: "list",
+          title: "Changed most recently",
+          note: `${s.changed_week} notes changed in 7 days.`,
+          rows: s.recent.map((r) => ({
+            title: r.title,
+            meta: when(r.at),
+            lines: [r.path],
+          })),
+        },
+        {
+          kind: "breakdown",
+          title: "Notes by folder",
+          note: "The 8 biggest folders.",
+          rows: breakdown(s.folders),
+        },
+        {
+          kind: "breakdown",
+          title: "Top tags",
+          note: `${s.tags} tags in all.`,
+          rows: breakdown(s.top_tags),
+        },
+      ];
+      return [
+        {
+          label: "Notes",
+          value: String(s.notes),
+          note: `${s.links} links between them.`,
+        },
+        {
+          label: "Projects",
+          value: String(s.projects),
+          note: "Folders and notes under Projects, or tagged project.",
+        },
+        {
+          label: "Important",
+          value: String(s.important),
+          note: "Tagged important, priority, urgent, starred or pinned.",
+        },
+        {
+          label: "Daily notes",
+          value: String(s.daily),
+          note: "Named by date.",
+        },
+        {
+          label: "Written by agents",
+          value: String(s.memory),
+          note: "Memory notes the agents made.",
+        },
+        { label: "Changed this week", value: String(s.changed_week) },
+        {
+          label: "Not linked",
+          value: String(s.orphans),
+          note: "Notes with no link in or out.",
+          tone: s.notes && s.orphans / s.notes > 0.5 ? "warn" : "plain",
+        },
+        {
+          label: "Broken links",
+          value: String(s.broken),
+          note: s.broken
+            ? "Fix them with the link doctor in Settings."
+            : "None.",
+          tone: s.broken ? "warn" : "plain",
+        },
+      ];
     },
     system: async () => {
       const system = await call<SystemShape>("system");
@@ -226,43 +422,93 @@
       return systemTiles(system);
     },
     github: async () => {
-      if (!prefs.dashboardRepo) throw new Error(NEEDS_REPO);
-      const found = await invoke<GithubShape | { error: string }>(
-        "sidecar_call",
-        { method: "github_board", params: { repo: prefs.dashboardRepo } },
-      );
+      const found = await invoke<
+        | { repos: RepoRow[]; others: RepoRow[]; days: number }
+        | { error: string }
+      >("sidecar_call", { method: "github_all" });
       if ("error" in found) throw new Error(found.error);
-      const runs = found.runs;
-      const passed = Math.max(0, runs - found.failed_runs - found.running_runs);
-      const open = Math.max(0, found.pulls - found.drafts);
+      const all = [...found.repos, ...found.others];
+      const worked = all.filter((repo) => repo.agents.length);
+      const commits = worked.reduce(
+        (sum, repo) => sum + repo.agents.reduce((n, a) => n + a.commits, 0),
+        0,
+      );
+      const row = (repo: RepoRow) => ({
+        title: repo.repo,
+        badge: repo.foreign
+          ? "not yours"
+          : [
+              repo.private ? "private" : "public",
+              repo.fork ? "fork" : "",
+              repo.language,
+            ]
+              .filter(Boolean)
+              .join(" · "),
+        meta: repo.pushed ? `pushed ${when(repo.pushed)}` : "",
+        lines: [
+          ...(repo.description ? [repo.description] : []),
+          ...repo.agents.map(
+            (a) =>
+              `${a.name}: ${a.commits} commit${a.commits === 1 ? "" : "s"} in ${found.days} days${a.last ? `, last ${a.last}` : ""}${a.subjects.length ? ` · ${a.subjects.slice(0, 3).join(" · ")}` : ""}`,
+          ),
+        ],
+        tone: repo.agents.length ? ("good" as const) : ("plain" as const),
+      });
       panels = [
         {
-          kind: "breakdown",
-          title: "Recent CI runs",
-          note: `${runs} read.`,
-          rows: breakdown(
-            [
-              ["Passed", passed],
-              ["Failed", found.failed_runs, found.failed_runs > 0],
-              ["Running", found.running_runs],
-            ] as [string, number, boolean?][],
-          ),
+          kind: "list",
+          title: "Where the agents worked",
+          note: `Commits in the last ${found.days} days, from each agent's folder.`,
+          rows: worked.map(row),
+          empty: "No agent folder is a clone of a GitHub repository yet.",
+          wide: true,
         },
         {
-          kind: "breakdown",
-          title: "Pull requests",
-          note: `${found.pulls} open.`,
-          rows: breakdown([
-            ["Ready", open],
-            ["Drafts", found.drafts],
-          ]),
+          kind: "list",
+          title: "All repositories",
+          note: `${found.repos.length}, newest push first.`,
+          rows: found.repos.map(row),
+          wide: true,
         },
       ];
-      return githubTiles(found);
+      return [
+        { label: "Repositories", value: String(found.repos.length) },
+        {
+          label: "Private",
+          value: String(found.repos.filter((r) => r.private).length),
+        },
+        {
+          label: "With agent work",
+          value: String(worked.length),
+          note: `In the last ${found.days} days.`,
+        },
+        {
+          label: "Agent commits",
+          value: String(commits),
+          note: `In the last ${found.days} days.`,
+        },
+      ];
     },
     activity: async () => {
       const rows = (await call<{ rows: ActivityRow[] }>("activity")).rows;
       const days = activityByDay(rows);
+      const count = (key: (row: ActivityRow) => string): [string, number][] => {
+        const counts = new SvelteMap<string, number>();
+        for (const row of rows) {
+          const k = key(row);
+          if (k) counts.set(k, (counts.get(k) ?? 0) + 1);
+        }
+        return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
+      };
+      const line = (row: ActivityRow) => ({
+        title: row.text || row.method || row.tool || row.kind,
+        badge: row.kind,
+        meta: when(row.ts),
+        lines: [
+          [row.agent, row.tool || row.method].filter(Boolean).join(" · "),
+        ].filter(Boolean),
+        tone: row.kind === "error" ? ("warn" as const) : ("plain" as const),
+      });
       panels = [
         {
           kind: "trend",
@@ -272,10 +518,43 @@
           values: days.values,
         },
         {
+          kind: "breakdown",
+          title: "By kind",
+          note: `${rows.length} events read.`,
+          rows: breakdown(
+            count((row) => row.kind).map(
+              ([k, n]) => [k, n, k === "error"] as [string, number, boolean],
+            ),
+          ),
+        },
+        {
+          kind: "breakdown",
+          title: "By tool or action",
+          note: "The 8 most frequent.",
+          rows: breakdown(count((row) => row.tool || row.method || "")),
+        },
+        {
           kind: "heat",
           title: "Activity, 13 weeks",
           note: "Each square is one day.",
           values: heatValues(rows),
+        },
+        {
+          kind: "list",
+          title: "Latest errors",
+          note: "Newest first.",
+          rows: rows
+            .filter((row) => row.kind === "error")
+            .slice(0, 10)
+            .map(line),
+          empty: "No errors.",
+        },
+        {
+          kind: "list",
+          title: "Latest events",
+          note: "Newest first.",
+          rows: rows.slice(0, 40).map(line),
+          wide: true,
         },
       ];
       return activityTiles(rows);
@@ -286,6 +565,8 @@
     const wanted = current;
     tiles = null;
     panels = [];
+    actions = [];
+    actionNote = "";
     error = null;
     try {
       // A dashboard with no reader here (the calendar, the phone) draws and loads itself.
@@ -310,7 +591,14 @@
             : [{ label: number.label, percent, warn: percent >= 90 }];
         });
         panels = rings.length
-          ? [{ kind: "rings", title: "Percentages", note: "From the connected app.", rings }]
+          ? [
+              {
+                kind: "rings",
+                title: "Percentages",
+                note: "From the connected app.",
+                rings,
+              },
+            ]
           : [];
       }
       if (wanted !== current) return; // the user moved on while it was read
@@ -418,23 +706,18 @@
       class:grow={current === "calendar"}
     >
       <h3>{title}</h3>
-      {#if current === "github"}
-        <form class="repo" onsubmit={saveRepo}>
-          <label for="dash-repo">Repository</label>
-          <input
-            id="dash-repo"
-            type="text"
-            placeholder="owner/name"
-            bind:value={repoDraft}
-          />
-          <Button type="submit" disabled={!repoDraft.trim()}>Show</Button>
-        </form>
-        {#if prefs.dashboardsLocked && !prefs.dashboardRepo}
-          <p class="note">
-            Dashboards are locked, so the repository cannot be changed here.
-            Unlock them in Settings, Dashboards.
-          </p>
-        {/if}
+      {#if actions.length}
+        <div class="actions">
+          {#each actions as action (action.label)}
+            <Button
+              variant="primary"
+              disabled={acting}
+              onclick={() => runAction(action)}>{action.label}</Button
+            >
+          {/each}
+          {#if actionNote}<span class="note" role="status">{actionNote}</span
+            >{/if}
+        </div>
       {/if}
       {#if current === "calendar"}
         <div class="fill">
@@ -444,35 +727,30 @@
         <div class="fill">
           {#key refreshed}<PhoneBoard />{/key}
         </div>
-      {:else if error === NEEDS_REPO}
+      {:else if current === "finance"}
+        <div class="fill">
+          {#key refreshed}<FinanceBoard />{/key}
+        </div>
+      {:else if error === NEEDS_APPS}
         <!-- The empty board says what to do in the middle of the space it will fill. -->
         <div class="empty" role="status">
           <p>
-            Write a repository as owner/name and press Show. It is read with the
-            gh tool you are logged in to.
+            No app is connected yet. Connect one in Settings, Dashboards, and
+            its numbers show here, every app on one board.
           </p>
+          <Button variant="primary" onclick={onsettings}>Open Settings</Button>
         </div>
       {:else if error}
         <ErrorRow message={error} onretry={() => void load()} />
       {:else if tiles === null}
         <Loading what={title} />
       {:else}
-        <!-- About as many columns as rows, so a few tiles still fill the board in a grid, not one tall row. -->
-        {#if panels.length}
-          <div class="panels">
-            {#each panels as panel (panel.title)}
-              <AnalyticPanel {panel} />
-            {/each}
-          </div>
-        {/if}
-        <ul
-          class="tiles"
-          style:--cols={columns(tiles.length)}
-        >
+        <ul class="tiles" style:--cols={columns(tiles.length)}>
           {#each tiles as tile, i (tile.label)}
             <li
               class:warn={tile.tone === "warn"}
-              style:grid-column={i === tiles.length - 1 && spanLast(tiles.length) > 1
+              style:grid-column={i === tiles.length - 1 &&
+              spanLast(tiles.length) > 1
                 ? `span ${spanLast(tiles.length)}`
                 : null}
             >
@@ -484,13 +762,22 @@
                     class="bar"
                     role="img"
                     aria-label={`${Math.round(tile.share * 100)}% of the whole`}
-                  ><span style:width={`${tile.share * 100}%`}></span></span>
+                    ><span style:width={`${tile.share * 100}%`}></span></span
+                  >
                 {/if}
               </div>
               {#if tile.note}<span class="note">{tile.note}</span>{/if}
             </li>
           {/each}
         </ul>
+        <!-- About as many columns as rows, so a few tiles still fill the board in a grid, not one tall row. -->
+        {#if panels.length}
+          <div class="panels">
+            {#each panels as panel (panel.title)}
+              <AnalyticPanel {panel} />
+            {/each}
+          </div>
+        {/if}
       {/if}
     </div>
   </div>
@@ -609,8 +896,6 @@
     outline-offset: 2px;
   }
 
-
-
   /* The board fills its column: the tiles, the calendar and the phone stretch to the bottom. */
   .board {
     display: flex;
@@ -652,27 +937,6 @@
     display: flex;
     flex-direction: column;
     min-height: 0;
-  }
-
-  .repo {
-    display: flex;
-    gap: var(--space-2);
-    align-items: center;
-    margin-top: var(--space-3);
-  }
-
-  .repo input {
-    min-height: var(--size-28);
-    padding: var(--space-1) var(--space-2);
-    color: var(--color-text);
-    font: inherit;
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-  }
-
-  .repo input {
-    width: min(320px, 100%);
   }
 
   /* Columns and rows of 1fr: however many tiles a dashboard has, they share the whole board. */
@@ -724,7 +988,11 @@
   }
 
   .tiles li:hover {
-    border-color: color-mix(in srgb, var(--color-accent) 45%, var(--color-border));
+    border-color: color-mix(
+      in srgb,
+      var(--color-accent) 45%,
+      var(--color-border)
+    );
     translate: 0 -1px;
   }
 
@@ -737,7 +1005,11 @@
         transparent 60%
       ),
       var(--color-bg-1);
-    border-color: color-mix(in srgb, var(--color-danger) 40%, var(--color-border));
+    border-color: color-mix(
+      in srgb,
+      var(--color-danger) 40%,
+      var(--color-border)
+    );
   }
 
   .tiles li.warn::before {
@@ -748,9 +1020,22 @@
   /* Charts and breakdowns sit above the tile grid, at the height their content needs. */
   .panels {
     display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
     gap: var(--space-3);
     margin-top: var(--space-3);
     min-width: 0;
+  }
+
+  .panels > :global(.panel.wide) {
+    grid-column: 1 / -1;
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    align-items: center;
+    margin-top: var(--space-2);
   }
 
   .panels > :global(.panel) {
@@ -809,7 +1094,11 @@
   }
 
   .tiles b {
-    font-size: clamp(var(--font-size-xl), 22cqmin, calc(var(--font-size-xl) * 5));
+    font-size: clamp(
+      var(--font-size-xl),
+      22cqmin,
+      calc(var(--font-size-xl) * 5)
+    );
     font-variant-numeric: tabular-nums;
     line-height: 1;
     letter-spacing: -0.02em;

@@ -856,6 +856,211 @@ export async function mockSidecar(
             return { ok: true };
           case "terminal_context":
             return { percent: 42 };
+          case "provider_usage": {
+            const days = (values: number[]) => [
+              ...Array.from({ length: 14 - values.length }, () => 0),
+              ...values,
+            ];
+            return {
+              today: "2026-11-17",
+              days: 14,
+              providers: [
+                {
+                  id: "claude",
+                  name: "Claude Code",
+                  found: true,
+                  note: "",
+                  today: 120000,
+                  week: 900000,
+                  month: 2400000,
+                  models: [
+                    { model: "claude-sonnet-5-5", tokens: 1800000 },
+                    { model: "claude-haiku-5-5", tokens: 600000 },
+                  ],
+                  days: days([300000, 480000, 120000]),
+                },
+                {
+                  id: "codex",
+                  name: "Codex",
+                  found: true,
+                  note: "",
+                  today: 0,
+                  week: 40000,
+                  month: 90000,
+                  models: [{ model: "gpt-6-luna", tokens: 90000 }],
+                  days: days([40000, 0, 0]),
+                },
+                {
+                  id: "antigravity",
+                  name: "Antigravity",
+                  found: true,
+                  note: "16 conversations on this computer. Antigravity keeps no token counts here, so its use cannot be shown.",
+                  today: 0,
+                  week: 0,
+                  month: 0,
+                  models: [],
+                  days: days([]),
+                },
+                {
+                  id: "opencode",
+                  name: "OpenCode",
+                  found: false,
+                  note: "",
+                  today: 0,
+                  week: 0,
+                  month: 0,
+                  models: [],
+                  days: days([]),
+                },
+              ],
+            };
+          }
+          case "finance":
+          case "finance_save": {
+            const w = window as unknown as {
+              __plans?: {
+                currency: string;
+                plans: {
+                  name: string;
+                  provider: string;
+                  monthly: number;
+                  per_million: number;
+                }[];
+              };
+            };
+            if (args.method === "finance_save")
+              w.__plans = args.params?.plans as typeof w.__plans;
+            const plans = (w.__plans ??= {
+              currency: "USD",
+              plans: [
+                {
+                  name: "Claude Max",
+                  provider: "claude",
+                  monthly: 200,
+                  per_million: 0,
+                },
+              ],
+            });
+            const tokens: Record<string, number> = {
+              claude: 2400000,
+              codex: 90000,
+            };
+            const rows = plans.plans.map((plan) => {
+              const used = plan.per_million ? (tokens[plan.provider] ?? 0) : 0;
+              const metered = (used / 1_000_000) * plan.per_million;
+              return {
+                ...plan,
+                provider_name:
+                  plan.provider === "codex" ? "Codex" : "Claude Code",
+                tokens: used,
+                metered,
+                total: plan.monthly + metered,
+              };
+            });
+            const fixed = rows.reduce((n, r) => n + r.monthly, 0);
+            const metered = rows.reduce((n, r) => n + r.metered, 0);
+            return {
+              plans,
+              report: {
+                currency: plans.currency,
+                rows,
+                fixed,
+                metered,
+                total: fixed + metered,
+                projected: fixed + (metered / 17) * 30,
+                day: 17,
+                days_in_month: 30,
+                daily: Array.from({ length: 14 }, () => 0),
+              },
+              providers: [
+                { id: "claude", name: "Claude Code" },
+                { id: "codex", name: "Codex" },
+              ],
+              currencies: ["USD", "EUR", "AED"],
+            };
+          }
+          case "vault_board":
+          case "vault_insights_request": {
+            const w = window as unknown as { __asked?: number };
+            if (args.method === "vault_insights_request")
+              w.__asked = (w.__asked ?? 0) + 1;
+            return {
+              sent: args.method === "vault_insights_request",
+              stats: {
+                notes: 42,
+                links: 30,
+                orphans: 5,
+                broken: 1,
+                important: 4,
+                projects: 3,
+                project_names: ["Alpha", "Beta", "Hippocampus"],
+                daily: 12,
+                memory: 6,
+                tags: 9,
+                top_tags: [
+                  ["project", 3],
+                  ["important", 4],
+                ],
+                folders: [
+                  ["Projects", 10],
+                  ["Daily", 12],
+                ],
+                changed_week: 7,
+                recent: [
+                  {
+                    path: "Projects/Alpha/plan.md",
+                    title: "Plan",
+                    at: "2026-11-17T09:00",
+                  },
+                ],
+              },
+              insights: w.__asked
+                ? {
+                    summary:
+                      "Three projects are active; Alpha has open to-dos.",
+                    numbers: [{ label: "Open to-dos", value: "8", note: "" }],
+                    highlights: ["Alpha/plan.md has 5 unchecked boxes"],
+                    generated_at: "2026-11-17T10:00:00",
+                  }
+                : null,
+            };
+          }
+          case "github_all":
+            return {
+              days: 30,
+              others: [],
+              repos: [
+                {
+                  repo: "me/hippocampus",
+                  description: "The app",
+                  private: true,
+                  fork: false,
+                  pushed: "2026-11-17T08:00:00Z",
+                  language: "Svelte",
+                  stars: 3,
+                  agents: [
+                    {
+                      agent: "frank",
+                      name: "Frank",
+                      folder: "/w/frank",
+                      commits: 4,
+                      last: "2026-11-16",
+                      subjects: ["Fix the tabs", "Add the calendar"],
+                    },
+                  ],
+                },
+                {
+                  repo: "me/notes",
+                  description: "",
+                  private: false,
+                  fork: false,
+                  pushed: "2026-10-01T08:00:00Z",
+                  language: "",
+                  stars: 0,
+                  agents: [],
+                },
+              ],
+            };
           case "calendar":
           case "calendar_add":
           case "calendar_remove":
