@@ -1,50 +1,36 @@
 <script lang="ts">
-  // Shown over the app on startup: no solid colour. The app behind is blurred, with the white logo and name on top.
-  // When the vault and the agent terminals have loaded (the `ready` prop), the logo holds for a moment,
-  // then the blur and the logo fade out together, revealing the dashboard.
+  // Shown over the app on startup: a skeleton of the window (the icon rail, the top bar, the agent
+  // cards and the board) in shimmering grey blocks, so the layout is there before its content.
+  // When the vault and the agent terminals have loaded (the `ready` prop), it fades out at once.
   // A 2-minute safety cap lifts it even if something hangs.
-  import logo from "../assets/brand/hippocampus-mark-mask.png";
-  import { prefs } from "../prefs.svelte.ts";
   import { boot } from "../owner/bootTasks.svelte.ts";
 
   let { ready }: { ready: boolean } = $props();
 
-  // Time the logo stays after loading finishes, then how long the blur and the logo take to fade.
-  // Settings > Appearance > Start-up logo picks the long or the short pair, or "off" for neither.
-  const TIMES = { long: [10000, 2500], short: [1000, 600] } as const;
-  // Read once at start: changing the setting applies from the next launch.
-  const intro = prefs.intro;
-  const [HOLD_MS, FADE_MS] = TIMES[intro === "off" ? "short" : intro];
-
+  const FADE_MS = 250;
   let phase = $state<"loading" | "fading" | "gone">("loading");
   let timedOut = $state(false);
 
   $effect(() => {
-    // Safety cap only: lift after 2 minutes even if a terminal hangs.
     const limit = setTimeout(() => (timedOut = true), 120000);
     return () => clearTimeout(limit);
   });
 
   $effect(() => {
     if (phase !== "loading" || !(ready || timedOut)) return;
-    // Reduced motion, or the logo turned off: skip the hold and the fade and lift the screen at once.
-    if (
-      intro === "off" ||
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    ) {
-      phase = "gone";
-      return;
-    }
-    const hold = setTimeout(() => (phase = "fading"), HOLD_MS);
-    return () => clearTimeout(hold);
+    phase = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      ? "gone"
+      : "fading";
   });
 
   $effect(() => {
     if (phase !== "fading") return;
-    // Once the blur and the logo have faded, the overlay is removed.
     const done = setTimeout(() => (phase = "gone"), FADE_MS);
     return () => clearTimeout(done);
   });
+
+  // The step still running, said in words for screen readers and shown small at the bottom.
+  const current = $derived(boot.steps.find((step) => !step.done)?.name ?? "");
 </script>
 
 {#if phase !== "gone"}
@@ -54,26 +40,56 @@
     style="--fade-ms: {FADE_MS}ms"
     role="status"
     aria-live="polite"
+    aria-label="Starting Hippocampus"
   >
-    <div class="lockup" class:fading={phase === "fading"}>
-      <div class="logo" style="--mark: url({logo})" aria-hidden="true"></div>
-      <span class="name">Hippocampus</span>
+    <div class="rail" aria-hidden="true">
+      {#each [0, 1, 2, 3] as i (i)}
+        <span class="skeleton dot"></span>
+      {/each}
     </div>
-    <div class="progress" class:fading={phase === "fading"}>
-      <progress
-        max={Math.max(boot.total, 1)}
-        value={boot.finished}
-        aria-label="Start-up progress"
-      ></progress>
-      <ul aria-label="Start-up steps">
-        {#each boot.steps as step, i (i)}
-          <li class:done={step.done}>
-            {step.done ? "✓" : "…"}
-            {step.name}
-          </li>
+    <div class="side" aria-hidden="true">
+      <span class="skeleton line" style:width="60%"></span>
+      <span class="skeleton field"></span>
+      <span class="skeleton field"></span>
+      {#each [70, 50, 62, 44, 56] as w (w)}
+        <span class="skeleton line" style:width="{w}%"></span>
+      {/each}
+    </div>
+    <div class="main" aria-hidden="true">
+      <div class="bar">
+        {#each [0, 1, 2, 3, 4] as i (i)}
+          <span class="skeleton pill"></span>
         {/each}
-      </ul>
+      </div>
+      <div class="graph">
+        {#each [[30, 20], [55, 45], [40, 70], [70, 30], [22, 60]] as [x, y] (`${x}-${y}`)}
+          <span class="skeleton node" style:left="{x}%" style:top="{y}%"></span>
+        {/each}
+      </div>
     </div>
+    <div class="panel" aria-hidden="true">
+      <span class="skeleton line" style:width="40%"></span>
+      <div class="tabs">
+        {#each [...Array(11).keys()] as i (i)}
+          <span class="skeleton tab"></span>
+        {/each}
+      </div>
+      <span class="skeleton term"></span>
+      <span class="skeleton field tall"></span>
+    </div>
+    <div class="status" aria-hidden="true">
+      {#each [0, 1] as i (i)}
+        <div class="card">
+          <span class="skeleton avatar"></span>
+          <div class="lines">
+            <span class="skeleton line" style:width="70%"></span>
+            <span class="skeleton line" style:width="50%"></span>
+            <span class="skeleton line" style:width="35%"></span>
+          </div>
+        </div>
+      {/each}
+    </div>
+    {#if current}<p class="step">{current}…</p>{/if}
   </div>
 {/if}
 
@@ -83,92 +99,165 @@
     inset: 0;
     z-index: 1000;
     display: grid;
-    place-items: center;
-    padding: max(16px, env(safe-area-inset-top, 0px))
-      max(16px, env(safe-area-inset-right, 0px))
-      max(16px, env(safe-area-inset-bottom, 0px))
-      max(16px, env(safe-area-inset-left, 0px));
-  }
-  /* The blurred view of the app behind, with a light dark tint so the white logo reads.
-     It fades with the same timing and easing as the logo, so the two always reach zero together. */
-  .loading::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: var(--color-scrim-soft);
-    -webkit-backdrop-filter: blur(48px);
-    backdrop-filter: blur(48px);
+    grid-template-columns: var(--layout-ribbon-width) var(
+        --layout-sidebar-width
+      ) minmax(0, 1fr) 500px;
+    grid-template-rows: minmax(0, 1fr) 136px;
+    grid-template-areas:
+      "rail side main panel"
+      "status status status status";
+    overflow: hidden;
+    background: var(--color-bg-0);
     opacity: 1;
     transition: opacity var(--fade-ms) ease;
   }
-  .loading.fading::before {
+
+  .loading.fading {
     opacity: 0;
   }
-  /* The mark with the name written on its right. */
-  .lockup {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    max-width: 100%;
-    transition: opacity var(--fade-ms) ease;
+
+  .skeleton {
+    flex: none;
   }
-  .lockup.fading {
-    opacity: 0;
-  }
-  .name {
-    /* The app's UI font, the same token the rest of the app uses. */
-    font-family: var(--font-ui);
-    font-size: 48px;
-    font-weight: 700;
-    letter-spacing: -0.01em;
-    color: var(--color-on-strong);
-    white-space: nowrap;
-  }
-  /* Real start-up steps and a bar: the vault, the agent list and each terminal, as they finish. */
-  .progress {
-    position: absolute;
-    bottom: var(--space-6);
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 1;
-    width: min(360px, 90%);
+
+  .rail,
+  .side,
+  .panel,
+  .status {
     display: flex;
     flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    background: var(--color-bg-1);
+  }
+
+  .rail {
+    grid-area: rail;
+    align-items: center;
+    padding-inline: 0;
+    border-right: 1px solid var(--color-border);
+  }
+
+  .dot {
+    width: var(--size-24);
+    height: var(--size-24);
+    border-radius: var(--radius-sm);
+  }
+
+  .side {
+    grid-area: side;
+    border-right: 1px solid var(--color-border);
+  }
+
+  .field {
+    height: var(--size-28);
+  }
+
+  .field.tall {
+    height: 64px;
+  }
+
+  .main {
+    grid-area: main;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .bar {
+    display: flex;
     gap: var(--space-2);
-    font-family: var(--font-ui);
-    font-size: var(--font-size-xs);
-    color: var(--color-on-strong);
-    transition: opacity var(--fade-ms) ease;
+    padding: var(--space-2);
   }
-  .progress.fading {
-    opacity: 0;
+
+  .pill {
+    width: 72px;
+    height: var(--size-28);
   }
-  .progress progress {
-    width: 100%;
-    height: var(--space-1);
-    accent-color: var(--color-on-strong);
+
+  .graph {
+    position: relative;
+    flex: 1 1 auto;
   }
-  .progress ul {
-    list-style: none;
+
+  .node {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+  }
+
+  .panel {
+    grid-area: panel;
+    min-height: 0;
+    border-left: 1px solid var(--color-border);
+  }
+
+  .tabs {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--space-1);
+  }
+
+  .tab {
+    height: var(--size-28);
+  }
+
+  .term {
+    flex: 1 1 auto;
+    height: auto;
+  }
+
+  .status {
+    grid-area: status;
+    flex-direction: row;
+    align-items: center;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .card {
+    display: flex;
+    gap: var(--space-3);
+    width: 320px;
+    padding: var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+  }
+
+  .lines {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .avatar {
+    width: 56px;
+    height: 56px;
+    border-radius: var(--radius-sm);
+  }
+
+  .step {
+    position: absolute;
+    right: var(--space-3);
+    bottom: var(--space-3);
     margin: 0;
-    padding: 0;
-    max-height: 6em;
-    overflow: hidden;
-    opacity: 0.8;
+    color: var(--color-text-muted);
+    font-size: var(--font-size-xs);
   }
-  .progress li.done {
-    opacity: 0.6;
-  }
-  /* The mark is a mask, so it takes white and sits with no box of its own. */
-  .logo {
-    width: var(--size-96);
-    height: var(--size-96);
-    flex: none;
-    max-width: 100%;
-    background: var(--color-on-strong);
-    -webkit-mask: var(--mark) center / contain no-repeat;
-    mask: var(--mark) center / contain no-repeat;
+
+  /* Narrow windows: the side columns go, as they do in the app. */
+  @media (max-width: 900px) {
+    .loading {
+      grid-template-columns: var(--layout-ribbon-width) minmax(0, 1fr);
+      grid-template-areas:
+        "rail main"
+        "status status";
+    }
+
+    .side,
+    .panel {
+      display: none;
+    }
   }
 </style>

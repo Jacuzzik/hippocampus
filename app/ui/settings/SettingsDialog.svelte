@@ -39,7 +39,6 @@
     type Cursor,
     type Density,
     type TextSize,
-    type Intro,
     type Motion,
     type Theme,
   } from "../prefs.svelte.ts";
@@ -489,20 +488,6 @@
               bind:checked={prefs.quiet}
               ariaLabel="Quiet mode"
               label={prefs.quiet ? "On" : "Off"}
-            />
-          </SettingRow>
-          <SettingRow title="Start-up logo"
-            >{#snippet help()}How long the logo stays once the app has loaded.
-              Applies from the next start.{/snippet}
-            <Dropdown
-              label="Start-up logo"
-              value={prefs.intro}
-              options={[
-                { value: "long", label: "Long (10 s)" },
-                { value: "short", label: "Short (1 s)" },
-                { value: "off", label: "Off" },
-              ]}
-              onchange={(next) => (prefs.intro = next as Intro)}
             />
           </SettingRow>
           <SettingRow title="Terminal text size"

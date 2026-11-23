@@ -116,23 +116,14 @@ test("an error is recorded on disk, listed under Privacy and data, and Clear rem
   await expect(log).toHaveCount(0);
 });
 
-test("the start-up logo covers the app by default and can be turned off", async ({
+test("Appearance no longer offers a start-up logo setting", async ({
   page,
 }) => {
-  await mockSidecar(page, { intro: true });
+  await mockSidecar(page);
   await page.goto("/");
-  const logo = page.locator(".loading");
-  await expect(logo).toBeVisible();
-  await page.evaluate(() =>
-    localStorage.setItem("hippocampus.prefs", JSON.stringify({ intro: "off" })),
-  );
-  await page.reload();
-  await expect(page.getByRole("main", { name: "Brain graph" })).toBeVisible();
-  await expect(logo).toHaveCount(0);
   const dialog = await openSettings(page);
   await dialog.getByRole("tab", { name: "Appearance" }).click();
-  await expect(dialog.getByRole("tabpanel")).toContainText("Start-up logo");
-  await expect(dialog.getByRole("tabpanel")).toContainText("Off");
+  await expect(dialog.getByRole("tabpanel")).not.toContainText("Start-up logo");
 });
 
 test("Advanced shows the backend log and a switch hides the Connectors page", async ({

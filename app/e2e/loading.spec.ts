@@ -31,21 +31,33 @@ test("when a list cannot be read, the placeholder gives way to the reason", asyn
   await expect(page.getByRole("status", { name: /^Loading / })).toHaveCount(0);
 });
 
-test("the start-up screen lists the real steps and a progress bar", async ({
+test("the start-up screen is a skeleton of the window, with no logo", async ({
   page,
 }) => {
-  await mockSidecar(page);
-  await page.addInitScript(() =>
-    localStorage.setItem(
-      "hippocampus.prefs",
-      JSON.stringify({ intro: "long" }),
-    ),
-  );
+  await mockSidecar(page, { intro: true });
+  // Hold the first graph load, so start-up stays unfinished and the screen stays up.
+  await page.addInitScript(() => {
+    const w = window as unknown as {
+      __TAURI_INTERNALS__?: {
+        invoke: (c: string, a?: { method?: string }) => Promise<unknown>;
+        held?: boolean;
+      };
+    };
+    const hold = () => {
+      const tauri = w.__TAURI_INTERNALS__;
+      if (!tauri || tauri.held) return;
+      const real = tauri.invoke;
+      tauri.invoke = (c, a) =>
+        a?.method === "graph" ? new Promise(() => {}) : real(c, a);
+      tauri.held = true;
+    };
+    hold();
+    setInterval(hold, 1);
+  });
   await page.goto("/");
-  const steps = page.getByRole("list", { name: "Start-up steps" });
-  await expect(steps).toContainText("Notes and graph");
-  await expect(steps).toContainText("Agent list");
-  await expect(
-    page.getByRole("progressbar", { name: "Start-up progress" }),
-  ).toBeVisible();
+  const screen = page.getByRole("status", { name: "Starting Hippocampus" });
+  await expect(screen).toBeVisible();
+  await expect(screen.locator(".skeleton").first()).toBeVisible();
+  await expect(screen).toContainText("Notes and graph");
+  await expect(screen.locator("img, .logo")).toHaveCount(0);
 });
