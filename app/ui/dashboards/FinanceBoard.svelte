@@ -10,7 +10,7 @@
   import ErrorRow from "../controls/ErrorRow.svelte";
   import Loading from "../controls/Loading.svelte";
   import AnalyticPanel from "./AnalyticPanel.svelte";
-  import { breakdown, dayLabels, short, type Panel } from "./model.ts";
+  import { breakdown, dayLabels, type Panel } from "./model.ts";
 
   type Plan = {
     name: string;
@@ -36,13 +36,7 @@
   };
   type Wallet = {
     name: string;
-    kind:
-      | "paypal"
-      | "stripe"
-      | "builtbybit"
-      | "bank"
-      | "crypto"
-      | "other";
+    kind: "paypal" | "stripe" | "builtbybit" | "bank" | "crypto" | "other";
     balance: number;
     currency: string;
     updated: string;
@@ -301,6 +295,15 @@
     ...(found?.providers ?? []).map((p) => ({ value: p.id, label: p.name })),
   ]);
 
+  // The numbers and charts first; each form on its own tab, so the board fits the window.
+  const TABS = [
+    { id: "overview", label: "Overview" },
+    { id: "plans", label: "Plans and prices" },
+    { id: "subs", label: "Subscriptions" },
+    { id: "wallets", label: "Wallets" },
+  ] as const;
+  let tab = $state<(typeof TABS)[number]["id"]>("overview");
+
   const panels = $derived.by((): Panel[] => {
     if (!found) return [];
     const report = found.report;
@@ -322,20 +325,6 @@
         labels: dayLabels(days),
         values: report.daily,
       },
-      {
-        kind: "list",
-        title: "Each plan",
-        note: "Plan price plus tokens times your price per million.",
-        rows: report.rows.map((row) => ({
-          title: row.name,
-          badge: row.provider_name || "no token count",
-          meta: money(row.total),
-          lines: [
-            `${money(row.monthly)} a month${row.per_million ? ` + ${short(row.tokens)} tokens at ${money(row.per_million)} per million = ${money(row.metered)}` : ""}`,
-          ],
-        })),
-        empty: "No plan yet. Add what you pay below.",
-      },
     ];
   });
 </script>
@@ -346,335 +335,361 @@
   <Loading what="your spend" />
 {:else}
   {@const report = found.report}
-  <ul class="tiles">
-    <li>
-      <span class="label">This month so far</span>
-      <b>{money(report.total)}</b>
-      <span class="note">Day {report.day} of {report.days_in_month}.</span>
-    </li>
-    <li>
-      <span class="label">Expected for the month</span>
-      <b>{money(report.projected)}</b>
-      <span class="note">Plans, plus pay-as-you-go at this month's pace.</span>
-    </li>
-    <li>
-      <span class="label">Plans</span>
-      <b>{money(report.fixed)}</b>
-      <span class="note">Fixed monthly prices.</span>
-    </li>
-    <li>
-      <span class="label">Subscriptions</span>
-      <b>{money(report.subs_monthly)}</b>
-      <span class="note"
-        >{report.subs.filter((s) => s.active).length} active, as a monthly amount.</span
-      >
-    </li>
-    <li>
-      <span class="label">Wallets</span>
-      <b
-        >{Object.entries(report.wallet_totals)
-          .map(([code, n]) => inCurrency(n, code))
-          .join(" + ") || money(0)}</b
-      >
-      <span class="note"
-        >{report.wallets.length} wallet{report.wallets.length === 1 ? "" : "s"},
-        as you last entered them.</span
-      >
-    </li>
-    <li>
-      <span class="label">Pay-as-you-go</span>
-      <b>{money(report.metered)}</b>
-      <span class="note">Real tokens times your price per million.</span>
-    </li>
-  </ul>
-
-  <div class="panels">
-    {#each panels as panel (panel.title)}
-      <AnalyticPanel {panel} />
-    {/each}
-  </div>
-
   {@const live = report.subs.filter((s) => s.active)}
   {@const gone = report.subs.filter((s) => !s.active)}
-  <section class="plans subs" aria-label="Subscriptions">
-    <div class="head">
-      <h4>Subscriptions</h4>
-      <div class="buttons">
-        <Button
-          size="sm"
-          onclick={() =>
-            openLink("https://apps.apple.com/account/subscriptions")}
-          >Open Apple subscriptions</Button
+  <div class="tabs" role="tablist" aria-label="Money">
+    {#each TABS as item (item.id)}
+      <button
+        type="button"
+        role="tab"
+        aria-selected={tab === item.id}
+        class:on={tab === item.id}
+        onclick={() => (tab = item.id)}>{item.label}</button
+      >
+    {/each}
+  </div>
+  {#if tab === "overview"}
+    <ul class="tiles">
+      <li>
+        <span class="label">This month so far</span>
+        <b>{money(report.total)}</b>
+        <span class="note">Day {report.day} of {report.days_in_month}.</span>
+      </li>
+      <li>
+        <span class="label">Expected for the month</span>
+        <b>{money(report.projected)}</b>
+        <span class="note">Plans, plus pay-as-you-go at this month's pace.</span
         >
-      </div>
+      </li>
+      <li>
+        <span class="label">Plans</span>
+        <b>{money(report.fixed)}</b>
+        <span class="note">Fixed monthly prices.</span>
+      </li>
+      <li>
+        <span class="label">Subscriptions</span>
+        <b>{money(report.subs_monthly)}</b>
+        <span class="note"
+          >{report.subs.filter((s) => s.active).length} active, as a monthly amount.</span
+        >
+      </li>
+      <li>
+        <span class="label">Wallets</span>
+        <b
+          >{Object.entries(report.wallet_totals)
+            .map(([code, n]) => inCurrency(n, code))
+            .join(" + ") || money(0)}</b
+        >
+        <span class="note"
+          >{report.wallets.length} wallet{report.wallets.length === 1
+            ? ""
+            : "s"}, as you last entered them.</span
+        >
+      </li>
+      <li>
+        <span class="label">Pay-as-you-go</span>
+        <b>{money(report.metered)}</b>
+        <span class="note">Real tokens times your price per million.</span>
+      </li>
+    </ul>
+
+    <div class="panels">
+      {#each panels as panel (panel.title)}
+        <AnalyticPanel {panel} fill />
+      {/each}
     </div>
-    <p class="hint">
-      Apple does not let other apps read your subscriptions, so add each one
-      here. Cancel and Resubscribe open Apple's own subscriptions page, where
-      you sign in and make the change; then mark it here.
-    </p>
-    {#if subError}<p class="error" role="alert">{subError}</p>{/if}
-    <ul class="sublist" aria-label="Active subscriptions">
-      {#each live as row, i (`${i}:${row.name}`)}
-        <li>
-          <span class="subname"
-            ><b>{row.name}</b>
-            <span class="note"
-              >{STORE[row.store]} · {money(row.price)}
-              {PER[row.period]}{row.renews
-                ? ` · renews ${row.renews}`
-                : ""}</span
-            ></span
-          >
-          <span class="buttons">
-            {#if row.manage || row.link}
-              <Button size="sm" onclick={() => openLink(row.link || row.manage)}
-                >Cancel on {STORE[row.store]}</Button
-              >
-            {/if}
-            <Button size="sm" onclick={() => setStatus(row, "cancelled")}
-              >Mark cancelled</Button
-            >
+  {:else if tab === "subs"}
+    <div class="pane">
+      <section class="plans subs" aria-label="Subscriptions">
+        <div class="head">
+          <h4>Subscriptions</h4>
+          <div class="buttons">
             <Button
               size="sm"
-              variant="ghost"
-              aria-label={`Remove ${row.name}`}
-              onclick={() => removeSub(row)}>Remove</Button
+              onclick={() =>
+                openLink("https://apps.apple.com/account/subscriptions")}
+              >Open Apple subscriptions</Button
             >
-          </span>
-        </li>
-      {:else}
-        <li class="note">No active subscription added yet.</li>
-      {/each}
-    </ul>
-    <form class="row" onsubmit={addSub} aria-label="Add a subscription">
-      <label class="wide"
-        >Name <input
-          type="text"
-          maxlength="60"
-          placeholder="iCloud+"
-          bind:value={adding.name}
-        /></label
-      >
-      <div class="pick">
-        <span>Store</span>
-        <Dropdown
-          label="Store"
-          options={[
-            { value: "apple", label: "Apple" },
-            { value: "google", label: "Google Play" },
-            { value: "other", label: "Other" },
-          ]}
-          bind:value={adding.store}
-        />
-      </div>
-      <label
-        >Price <input
-          type="number"
-          min="0"
-          step="0.01"
-          bind:value={adding.price}
-        /></label
-      >
-      <div class="pick">
-        <span>Every</span>
-        <Dropdown
-          label="Billing period"
-          options={[
-            { value: "month", label: "Month" },
-            { value: "year", label: "Year" },
-            { value: "week", label: "Week" },
-          ]}
-          bind:value={adding.period}
-        />
-      </div>
-      <label>Renews <input type="date" bind:value={adding.renews} /></label>
-      <label class="wide"
-        >Renew link (optional) <input
-          type="url"
-          placeholder="https://…"
-          bind:value={adding.link}
-        /></label
-      >
-      <Button type="submit" variant="primary" disabled={!adding.name.trim()}
-        >Add subscription</Button
-      >
-    </form>
-  </section>
-
-  <section class="plans wallets" aria-label="Wallets">
-    <div class="head"><h4>Wallets</h4></div>
-    <p class="hint">
-      The money you hold with PayPal, Stripe, a bank or a crypto wallet. These
-      services have no way for an app to read a wallet balance, so
-      enter it here and update it when it changes. Open goes to the service's
-      own wallet page.
-    </p>
-    {#if walletError}<p class="error" role="alert">{walletError}</p>{/if}
-    <ul class="sublist" aria-label="Your wallets">
-      {#each report.wallets as row, i (`${i}:${row.name}`)}
-        <li>
-          <span class="subname"
-            ><b>{row.name}</b>
-            <span class="note"
-              >{KIND[row.kind]} · {inCurrency(
-                row.balance,
-                row.currency,
-              )}{row.updated ? ` · as of ${row.updated}` : ""}</span
-            ></span
+          </div>
+        </div>
+        <p class="hint">
+          Apple does not let other apps read your subscriptions, so add each one
+          here. Cancel and Resubscribe open Apple's own subscriptions page,
+          where you sign in and make the change; then mark it here.
+        </p>
+        {#if subError}<p class="error" role="alert">{subError}</p>{/if}
+        <ul class="sublist" aria-label="Active subscriptions">
+          {#each live as row, i (`${i}:${row.name}`)}
+            <li>
+              <span class="subname"
+                ><b>{row.name}</b>
+                <span class="note"
+                  >{STORE[row.store]} · {money(row.price)}
+                  {PER[row.period]}{row.renews
+                    ? ` · renews ${row.renews}`
+                    : ""}</span
+                ></span
+              >
+              <span class="buttons">
+                {#if row.manage || row.link}
+                  <Button
+                    size="sm"
+                    onclick={() => openLink(row.link || row.manage)}
+                    >Cancel on {STORE[row.store]}</Button
+                  >
+                {/if}
+                <Button size="sm" onclick={() => setStatus(row, "cancelled")}
+                  >Mark cancelled</Button
+                >
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  aria-label={`Remove ${row.name}`}
+                  onclick={() => removeSub(row)}>Remove</Button
+                >
+              </span>
+            </li>
+          {:else}
+            <li class="note">No active subscription added yet.</li>
+          {/each}
+        </ul>
+        <form class="row" onsubmit={addSub} aria-label="Add a subscription">
+          <label class="wide"
+            >Name <input
+              type="text"
+              maxlength="60"
+              placeholder="iCloud+"
+              bind:value={adding.name}
+            /></label
           >
-          <span class="buttons">
-            <input
-              class="balance"
+          <div class="pick">
+            <span>Store</span>
+            <Dropdown
+              label="Store"
+              options={[
+                { value: "apple", label: "Apple" },
+                { value: "google", label: "Google Play" },
+                { value: "other", label: "Other" },
+              ]}
+              bind:value={adding.store}
+            />
+          </div>
+          <label
+            >Price <input
               type="number"
               min="0"
               step="0.01"
-              value={row.balance}
-              aria-label={`Balance of ${row.name}`}
-              onchange={(e) => setBalance(row, e.currentTarget.value)}
+              bind:value={adding.price}
+            /></label
+          >
+          <div class="pick">
+            <span>Every</span>
+            <Dropdown
+              label="Billing period"
+              options={[
+                { value: "month", label: "Month" },
+                { value: "year", label: "Year" },
+                { value: "week", label: "Week" },
+              ]}
+              bind:value={adding.period}
             />
-            {#if row.open}
-              <Button size="sm" onclick={() => openLink(row.open)}
-                >Open {KIND[row.kind]}</Button
+          </div>
+          <label>Renews <input type="date" bind:value={adding.renews} /></label>
+          <label class="wide"
+            >Renew link (optional) <input
+              type="url"
+              placeholder="https://…"
+              bind:value={adding.link}
+            /></label
+          >
+          <Button type="submit" variant="primary" disabled={!adding.name.trim()}
+            >Add subscription</Button
+          >
+        </form>
+      </section>
+      {@render inactiveList(gone)}
+    </div>
+  {:else if tab === "wallets"}
+    <div class="pane">
+      <section class="plans wallets" aria-label="Wallets">
+        <div class="head"><h4>Wallets</h4></div>
+        <p class="hint">
+          The money you hold with PayPal, Stripe, a bank or a crypto wallet.
+          These services have no way for an app to read a wallet balance, so
+          enter it here and update it when it changes. Open goes to the
+          service's own wallet page.
+        </p>
+        {#if walletError}<p class="error" role="alert">{walletError}</p>{/if}
+        <ul class="sublist" aria-label="Your wallets">
+          {#each report.wallets as row, i (`${i}:${row.name}`)}
+            <li>
+              <span class="subname"
+                ><b>{row.name}</b>
+                <span class="note"
+                  >{KIND[row.kind]} · {inCurrency(
+                    row.balance,
+                    row.currency,
+                  )}{row.updated ? ` · as of ${row.updated}` : ""}</span
+                ></span
               >
-            {/if}
+              <span class="buttons">
+                <input
+                  class="balance"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={row.balance}
+                  aria-label={`Balance of ${row.name}`}
+                  onchange={(e) => setBalance(row, e.currentTarget.value)}
+                />
+                {#if row.open}
+                  <Button size="sm" onclick={() => openLink(row.open)}
+                    >Open {KIND[row.kind]}</Button
+                  >
+                {/if}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  aria-label={`Remove ${row.name}`}
+                  onclick={() => removeWallet(row)}>Remove</Button
+                >
+              </span>
+            </li>
+          {:else}
+            <li class="note">No wallet added yet.</li>
+          {/each}
+        </ul>
+        <form class="row" onsubmit={addWallet} aria-label="Add a wallet">
+          <label class="wide"
+            >Wallet name <input
+              type="text"
+              maxlength="60"
+              placeholder="PayPal business"
+              bind:value={wallet.name}
+            /></label
+          >
+          <div class="pick">
+            <span>Service</span>
+            <Dropdown
+              label="Wallet service"
+              options={Object.entries(KIND).map(([value, label]) => ({
+                value,
+                label,
+              }))}
+              bind:value={wallet.kind}
+            />
+          </div>
+          <label
+            >Balance <input
+              type="number"
+              min="0"
+              step="0.01"
+              bind:value={wallet.balance}
+            /></label
+          >
+          <div class="pick">
+            <span>Currency</span>
+            <Dropdown
+              label="Wallet currency"
+              options={found.currencies.map((c) => ({ value: c, label: c }))}
+              bind:value={wallet.currency}
+            />
+          </div>
+          <label class="wide"
+            >Wallet link (optional) <input
+              type="url"
+              placeholder="https://…"
+              bind:value={wallet.link}
+            /></label
+          >
+          <Button type="submit" variant="primary" disabled={!wallet.name.trim()}
+            >Add wallet</Button
+          >
+        </form>
+      </section>
+    </div>
+  {:else}
+    <div class="pane">
+      <form class="plans" onsubmit={save} aria-label="Your plans and prices">
+        <div class="head">
+          <h4>Your plans and prices</h4>
+          <div class="currency">
+            <span>Currency</span>
+            <Dropdown
+              label="Currency"
+              options={found.currencies.map((c) => ({ value: c, label: c }))}
+              bind:value={currency}
+            />
+          </div>
+        </div>
+        <p class="hint">
+          Add each thing you pay for: a subscription's monthly price, and for a
+          pay-as-you-go key, its price per million tokens and the tool whose
+          tokens it pays for.
+        </p>
+        {#each draft as plan, i (i)}
+          <div class="row">
+            <label class="wide"
+              >Name <input
+                type="text"
+                maxlength="60"
+                placeholder="Claude Max"
+                bind:value={plan.name}
+              /></label
+            >
+            <div class="pick">
+              <span>Tokens from</span>
+              <Dropdown
+                label={`Tokens from, plan ${i + 1}`}
+                options={providerOptions}
+                bind:value={plan.provider}
+              />
+            </div>
+            <label
+              >Monthly price <input
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="0"
+                bind:value={plan.monthly}
+              /></label
+            >
+            <label
+              >Per million tokens <input
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="0"
+                bind:value={plan.per_million}
+              /></label
+            >
             <Button
               size="sm"
               variant="ghost"
-              aria-label={`Remove ${row.name}`}
-              onclick={() => removeWallet(row)}>Remove</Button
+              aria-label={`Remove plan ${plan.name || i + 1}`}
+              onclick={() => (draft = draft.filter((_, j) => j !== i))}
+              >Remove</Button
             >
-          </span>
-        </li>
-      {:else}
-        <li class="note">No wallet added yet.</li>
-      {/each}
-    </ul>
-    <form class="row" onsubmit={addWallet} aria-label="Add a wallet">
-      <label class="wide"
-        >Wallet name <input
-          type="text"
-          maxlength="60"
-          placeholder="PayPal business"
-          bind:value={wallet.name}
-        /></label
-      >
-      <div class="pick">
-        <span>Service</span>
-        <Dropdown
-          label="Wallet service"
-          options={Object.entries(KIND).map(([value, label]) => ({
-            value,
-            label,
-          }))}
-          bind:value={wallet.kind}
-        />
-      </div>
-      <label
-        >Balance <input
-          type="number"
-          min="0"
-          step="0.01"
-          bind:value={wallet.balance}
-        /></label
-      >
-      <div class="pick">
-        <span>Currency</span>
-        <Dropdown
-          label="Wallet currency"
-          options={found.currencies.map((c) => ({ value: c, label: c }))}
-          bind:value={wallet.currency}
-        />
-      </div>
-      <label class="wide"
-        >Wallet link (optional) <input
-          type="url"
-          placeholder="https://…"
-          bind:value={wallet.link}
-        /></label
-      >
-      <Button type="submit" variant="primary" disabled={!wallet.name.trim()}
-        >Add wallet</Button
-      >
-    </form>
-  </section>
-
-  <form class="plans" onsubmit={save} aria-label="Your plans and prices">
-    <div class="head">
-      <h4>Your plans and prices</h4>
-      <div class="currency">
-        <span>Currency</span>
-        <Dropdown
-          label="Currency"
-          options={found.currencies.map((c) => ({ value: c, label: c }))}
-          bind:value={currency}
-        />
-      </div>
-    </div>
-    <p class="hint">
-      Add each thing you pay for: a subscription's monthly price, and for a
-      pay-as-you-go key, its price per million tokens and the tool whose tokens
-      it pays for.
-    </p>
-    {#each draft as plan, i (i)}
-      <div class="row">
-        <label class="wide"
-          >Name <input
-            type="text"
-            maxlength="60"
-            placeholder="Claude Max"
-            bind:value={plan.name}
-          /></label
-        >
-        <div class="pick">
-          <span>Tokens from</span>
-          <Dropdown
-            label={`Tokens from, plan ${i + 1}`}
-            options={providerOptions}
-            bind:value={plan.provider}
-          />
+          </div>
+        {/each}
+        <div class="buttons">
+          <Button
+            onclick={() =>
+              (draft = [
+                ...draft,
+                { name: "", provider: "", monthly: 0, per_million: 0 },
+              ])}>Add a plan</Button
+          >
+          <Button type="submit" variant="primary">Save</Button>
+          {#if saved}<span class="note" role="status">{saved}</span>{/if}
         </div>
-        <label
-          >Monthly price <input
-            type="number"
-            min="0"
-            step="0.01"
-            placeholder="0"
-            bind:value={plan.monthly}
-          /></label
-        >
-        <label
-          >Per million tokens <input
-            type="number"
-            min="0"
-            step="0.01"
-            placeholder="0"
-            bind:value={plan.per_million}
-          /></label
-        >
-        <Button
-          size="sm"
-          variant="ghost"
-          aria-label={`Remove plan ${plan.name || i + 1}`}
-          onclick={() => (draft = draft.filter((_, j) => j !== i))}
-          >Remove</Button
-        >
-      </div>
-    {/each}
-    <div class="buttons">
-      <Button
-        onclick={() =>
-          (draft = [
-            ...draft,
-            { name: "", provider: "", monthly: 0, per_million: 0 },
-          ])}>Add a plan</Button
-      >
-      <Button type="submit" variant="primary">Save</Button>
-      {#if saved}<span class="note" role="status">{saved}</span>{/if}
+        {#if formError}<p class="error" role="alert">{formError}</p>{/if}
+      </form>
     </div>
-    {#if formError}<p class="error" role="alert">{formError}</p>{/if}
-  </form>
+  {/if}
+{/if}
 
+{#snippet inactiveList(gone: SubRow[])}
   <section class="plans inactive" aria-label="Inactive subscriptions">
     <h4>Inactive subscriptions</h4>
     <ul class="sublist">
@@ -715,12 +730,44 @@
       {/each}
     </ul>
   </section>
-{/if}
+{/snippet}
 
 <style>
+  .tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+    margin-top: var(--space-2);
+  }
+
+  .tabs button {
+    min-height: var(--size-28);
+    padding: var(--space-1) var(--space-3);
+    color: var(--color-text-muted);
+    font: inherit;
+    background: transparent;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+  }
+
+  .tabs button.on {
+    color: var(--color-accent);
+    background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+    border-color: color-mix(in srgb, var(--color-accent) 45%, transparent);
+  }
+
+  /* A form tab: the forms scroll inside the board, never the page. */
+  .pane {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
   .tiles {
+    flex: 0 0 auto;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 168px), 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr));
     gap: var(--space-3);
     margin: var(--space-3) 0 0;
     padding: 0;
@@ -730,7 +777,8 @@
   .tiles li {
     display: grid;
     gap: var(--space-1);
-    padding: var(--space-4);
+    align-content: start;
+    padding: var(--space-3) var(--space-4);
     background:
       radial-gradient(
         120% 100% at 50% 100%,
@@ -748,6 +796,16 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* Two lines at most, so the six numbers stay one short row. */
+  .tiles .note {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+    font-size: var(--font-size-xs);
+  }
+
   .label,
   .note,
   .hint {
@@ -755,9 +813,13 @@
     font-size: var(--font-size-sm);
   }
 
+  /* The two charts share the height left under the numbers. */
   .panels {
+    flex: 1 1 0;
+    min-height: 0;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: minmax(0, 1fr);
     gap: var(--space-3);
     margin-top: var(--space-3);
   }

@@ -191,6 +191,10 @@ test("GitHub lists every repository with what each agent did there; the vault as
   await expect(
     board.locator("li", { hasText: "This month so far" }),
   ).toContainText("$200");
+  // The numbers and charts are the Overview tab; each form has its own tab, so the board fits the window.
+  const tab = (name: string) =>
+    board.getByRole("tab", { name, exact: true }).click();
+  await tab("Plans and prices");
   const form = board.getByRole("form", { name: "Your plans and prices" });
   await form.getByRole("button", { name: "Add a plan" }).click();
   await form.getByLabel("Name").nth(1).fill("Codex API");
@@ -201,9 +205,11 @@ test("GitHub lists every repository with what each agent did there; the vault as
   await expect(
     board.getByRole("status").filter({ hasText: "Saved." }),
   ).toBeVisible();
+  await tab("Overview");
   await expect(
     board.locator("li", { hasText: "Real tokens times your price" }),
   ).toContainText("$0.90");
+  await tab("Subscriptions");
 
   // An Apple subscription is added, cancelled on Apple's page, marked cancelled, and resubscribed.
   const add = board.getByRole("form", { name: "Add a subscription" });
@@ -212,9 +218,11 @@ test("GitHub lists every repository with what each agent did there; the vault as
   await add.getByRole("button", { name: "Add subscription" }).click();
   const active = board.getByRole("list", { name: "Active subscriptions" });
   await expect(active).toContainText("iCloud+");
+  await tab("Overview");
   await expect(
     board.locator("li", { hasText: "Subscriptions" }).first(),
   ).toContainText("$2.99");
+  await tab("Subscriptions");
   await active.getByRole("button", { name: "Cancel on Apple" }).click();
   await active.getByRole("button", { name: "Mark cancelled" }).click();
   const inactive = board.getByRole("region", {
@@ -232,6 +240,7 @@ test("GitHub lists every repository with what each agent did there; the vault as
   ]);
 
   // A PayPal wallet is added, its balance changed, and its own page opened.
+  await tab("Wallets");
   const addWallet = board.getByRole("form", { name: "Add a wallet" });
   await addWallet.getByLabel("Wallet name").fill("PayPal business");
   await addWallet.getByLabel("Balance").fill("120.5");
@@ -243,9 +252,11 @@ test("GitHub lists every repository with what each agent did there; the vault as
   await wallets.getByLabel("Balance of PayPal business").press("Enter");
   await wallets.getByLabel("Balance of PayPal business").blur();
   await expect(wallets).toContainText("$80.00");
+  await tab("Overview");
   await expect(
     board.locator("li", { hasText: "as you last entered them" }),
   ).toContainText("$80.00");
+  await tab("Wallets");
   await wallets.getByRole("button", { name: "Open PayPal" }).click();
   const after = await page.evaluate(
     () => (window as unknown as { __opened: string[] }).__opened,
@@ -493,6 +504,23 @@ test("a dashboard takes the notes, graph and Control Room space; the bottom bar 
     expect(Math.round(box.y + box.height)).toBe(1080);
     expect(Math.round(box.x + box.width)).toBe(1920);
     expect(Math.round(box.x)).toBe(Math.round(railBox.x + railBox.width));
+  }
+  // Every board fits the window: the board itself never scrolls (a long list scrolls in its panel).
+  for (const name of [
+    "Providers and models",
+    "Money and spend",
+    "Vault",
+    "Activity",
+    "GitHub",
+  ]) {
+    await view.getByRole("button", { name, exact: true }).click();
+    await expect(
+      view.getByRole("tabpanel").locator(".panel").first(),
+    ).toBeVisible();
+    const sizes = await view
+      .getByRole("tabpanel")
+      .evaluate((el) => [el.scrollHeight, el.clientHeight]);
+    expect(sizes[0], name).toBeLessThanOrEqual(sizes[1] + 1);
   }
   // The tiles and charts fill the board: the last one ends near the board's bottom.
   await view.getByRole("button", { name: "System", exact: true }).click();

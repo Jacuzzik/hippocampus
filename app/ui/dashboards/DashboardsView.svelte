@@ -219,35 +219,23 @@
           ),
         )
         .sort((a, b) => b[1] - a[1])
-        .slice(0, 12);
+        .slice(0, 8);
       const days = Array.from({ length: found.days }, (_, i) =>
         seen.reduce((sum, p) => sum + (p.days[i] ?? 0), 0),
       );
       panels = [
         {
-          kind: "breakdown",
-          title: "Tokens this month by provider",
-          note: `${short(month)} in all.`,
-          rows: breakdown(
-            seen
-              .filter((p) => p.month > 0)
-              .sort((a, b) => b.month - a.month)
-              .map((p) => [p.name, p.month] as [string, number]),
-            short,
-          ),
+          kind: "trend",
+          title: "All providers, tokens per day",
+          note: `Last ${found.days} days · ${short(month)} this month`,
+          labels: dayLabels(found.days),
+          values: days,
         },
         {
           kind: "breakdown",
           title: "Tokens this month by model",
-          note: "The 12 models used most.",
+          note: "The 8 models used most.",
           rows: breakdown(models, short),
-        },
-        {
-          kind: "trend",
-          title: "All providers, tokens per day",
-          note: `Last ${found.days} days`,
-          labels: dayLabels(found.days),
-          values: days,
         },
         {
           kind: "list",
@@ -292,6 +280,12 @@
           },
         },
       ];
+      const extra = [
+        ...(insights?.numbers ?? []).map(
+          (n) => `${n.label}: ${n.value}${n.note ? ` (${n.note})` : ""}`,
+        ),
+        ...(insights?.highlights ?? []).map((h) => `Needs attention: ${h}`),
+      ];
       panels = [
         {
           kind: "text",
@@ -300,37 +294,12 @@
             ? `Written ${when(insights.generated_at)}`
             : "Not written yet",
           text:
-            insights?.summary ||
-            "No summary yet. Press Ask the agent for a summary: the main agent reads the vault and writes what matters, which projects are active and what is unfinished.",
-          wide: true,
+            (insights?.summary ||
+              "No summary yet. Press Ask the agent for a summary: the main agent reads the vault and writes what matters, which projects are active and what is unfinished.") +
+            (extra.length
+              ? `\n\n${extra.map((line) => `• ${line}`).join("\n")}`
+              : ""),
         },
-        ...(insights?.numbers.length
-          ? [
-              {
-                kind: "list" as const,
-                title: "The agent's numbers",
-                note: "Counted by the agent from the notes.",
-                rows: insights.numbers.map((n) => ({
-                  title: n.label,
-                  meta: n.value,
-                  lines: n.note ? [n.note] : [],
-                })),
-              },
-            ]
-          : []),
-        ...(insights?.highlights.length
-          ? [
-              {
-                kind: "list" as const,
-                title: "Needs attention",
-                note: "From the agent's reading.",
-                rows: insights.highlights.map((h) => ({
-                  title: h,
-                  tone: "warn" as const,
-                })),
-              },
-            ]
-          : []),
         {
           kind: "list",
           title: "Projects",
@@ -342,7 +311,7 @@
           kind: "list",
           title: "Changed most recently",
           note: `${s.changed_week} notes changed in 7 days.`,
-          rows: s.recent.map((r) => ({
+          rows: s.recent.slice(0, 8).map((r) => ({
             title: r.title,
             meta: when(r.at),
             lines: [r.path],
@@ -353,12 +322,6 @@
           title: "Notes by folder",
           note: "The 8 biggest folders.",
           rows: breakdown(s.folders),
-        },
-        {
-          kind: "breakdown",
-          title: "Top tags",
-          note: `${s.tags} tags in all.`,
-          rows: breakdown(s.top_tags),
         },
       ];
       return [
@@ -371,21 +334,6 @@
           label: "Projects",
           value: String(s.projects),
           note: "Folders and notes under Projects, or tagged project.",
-        },
-        {
-          label: "Important",
-          value: String(s.important),
-          note: "Tagged important, priority, urgent, starred or pinned.",
-        },
-        {
-          label: "Daily notes",
-          value: String(s.daily),
-          note: "Named by date.",
-        },
-        {
-          label: "Written by agents",
-          value: String(s.memory),
-          note: "Memory notes the agents made.",
         },
         { label: "Changed this week", value: String(s.changed_week) },
         {
@@ -528,12 +476,6 @@
           ),
         },
         {
-          kind: "breakdown",
-          title: "By tool or action",
-          note: "The 8 most frequent.",
-          rows: breakdown(count((row) => row.tool || row.method || "")),
-        },
-        {
           kind: "heat",
           title: "Activity, 13 weeks",
           note: "Each square is one day.",
@@ -541,21 +483,9 @@
         },
         {
           kind: "list",
-          title: "Latest errors",
-          note: "Newest first.",
-          rows: rows
-            .filter((row) => row.kind === "error")
-            .slice(0, 10)
-            .map(line),
-          empty: "No errors.",
-          wide: true,
-        },
-        {
-          kind: "list",
           title: "Latest events",
           note: "Newest first.",
-          rows: rows.slice(0, 40).map(line),
-          wide: true,
+          rows: rows.slice(0, 20).map(line),
         },
       ];
       return activityTiles(rows);
@@ -630,6 +560,8 @@
     const left = n % columns(n);
     return left === 0 ? 1 : columns(n) - left + 1;
   }
+  // These keep their own layout; every other board fits the window: one row of numbers, panels below.
+  const fit = $derived(!["calendar", "system", "phone"].includes(current));
   const title = $derived(
     items.find((item) => item.id === current)?.label ?? "",
   );
@@ -722,6 +654,7 @@
       inert={prefs.dashboardsLocked}
       class:locked={prefs.dashboardsLocked}
       class:grow={current === "calendar"}
+      class:fit
     >
       <h3>{title}</h3>
       {#if actions.length}
@@ -763,11 +696,15 @@
       {:else if tiles === null}
         <Loading what={title} />
       {:else}
-        <ul class="tiles" style:--cols={columns(tiles.length)}>
+        <ul
+          class="tiles"
+          style:--cols={fit ? Math.min(tiles.length, 6) : columns(tiles.length)}
+        >
           {#each tiles as tile, i (tile.label)}
             <li
               class:warn={tile.tone === "warn"}
-              style:grid-column={i === tiles.length - 1 &&
+              style:grid-column={!fit &&
+              i === tiles.length - 1 &&
               spanLast(tiles.length) > 1
                 ? `span ${spanLast(tiles.length)}`
                 : null}
@@ -790,9 +727,13 @@
         </ul>
         <!-- About as many columns as rows, so a few tiles still fill the board in a grid, not one tall row. -->
         {#if panels.length}
-          <div class="panels">
+          <div
+            class="panels"
+            class:odd={panels.length > 1 && panels.length % 2 === 1}
+            style:--pc={panels.length > 1 ? 2 : 1}
+          >
             {#each panels as panel (panel.title)}
-              <AnalyticPanel {panel} />
+              <AnalyticPanel {panel} fill={fit} />
             {/each}
           </div>
         {/if}
@@ -1062,6 +1003,53 @@
   }
 
   .panels > :global(.panel.wide) {
+    grid-column: 1 / -1;
+  }
+
+  /* A board that fits the window: the page never scrolls. The numbers are one short row, the panels
+     share the rest in two columns, and a long list scrolls inside its own panel. */
+  .board.fit {
+    flex: 1 1 auto;
+    overflow: hidden;
+  }
+
+  .board.fit > .tiles {
+    flex: 0 0 auto;
+    grid-auto-rows: clamp(84px, 11vh, 120px);
+  }
+
+  .board.fit .tiles li {
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .board.fit .tiles b {
+    font-size: clamp(
+      var(--font-size-lg),
+      34cqmin,
+      calc(var(--font-size-xl) * 2)
+    );
+  }
+
+  .board.fit .tiles .note {
+    font-size: var(--font-size-xs);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .board.fit > .panels {
+    flex: 1 1 0;
+    min-height: 0;
+    grid-template-columns: repeat(var(--pc, 2), minmax(0, 1fr));
+    grid-auto-rows: minmax(0, 1fr);
+  }
+
+  .board.fit > .panels > :global(.panel.wide) {
+    grid-column: auto;
+  }
+
+  /* Three panels: the first runs across the top, the other two share the row below. */
+  .board.fit > .panels.odd > :global(.panel:first-child) {
     grid-column: 1 / -1;
   }
 

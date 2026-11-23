@@ -92,7 +92,7 @@ test("spend tiles put the biggest spender first, with its share", () => {
   assert.equal(spendTiles({})[0].value, "0");
 });
 
-test("activity tiles count each kind and show the newest time", () => {
+test("activity tiles show the count, the errors, the most common kind and the newest time", () => {
   const tiles = activityTiles([
     { ts: "2026-10-27T09:12:04+00:00", kind: "approval" },
     { ts: "2026-10-27T10:00:00+00:00", kind: "tool" },
@@ -102,8 +102,8 @@ test("activity tiles count each kind and show the newest time", () => {
     tiles.map((tile) => [tile.label, tile.value]),
     [
       ["Events kept", "3"],
-      ["tool", "2"],
-      ["approval", "1"],
+      ["Errors", "0"],
+      ["Most common", "tool"],
       ["Newest", "2026-10-27 10:00"],
     ],
   );

@@ -1,13 +1,23 @@
 <script lang="ts">
+  import { short } from "./model.ts";
   // A line chart of one series over time, drawn to scale. Colours and text come from the design tokens.
+  // width and height: the box it is drawn in, in pixels, so the axis text stays 12px at any size.
   let {
     values,
     labels,
     label,
-  }: { values: number[]; labels: string[]; label: string } = $props();
+    width = 0,
+    height = 0,
+  }: {
+    values: number[];
+    labels: string[];
+    label: string;
+    width?: number;
+    height?: number;
+  } = $props();
 
-  const W = 900;
-  const H = 200;
+  const W = $derived(width > 0 ? width : 900);
+  const H = $derived(height > 0 ? Math.max(120, height) : 200);
   const PL = 40;
   const PR = 8;
   const PT = 8;
@@ -26,30 +36,45 @@
   const y = (v: number) => PT + (1 - v / top) * (H - PT - PB);
 
   const path = $derived(
-    values.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(" "),
+    values
+      .map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)} ${y(v).toFixed(1)}`)
+      .join(" "),
   );
   const ticks = [0, 1, 2, 3, 4].map((t) => (t * top) / 4);
   const xIndexes = $derived(
-    labels.length > 1 ? [0, Math.round((labels.length - 1) / 2), labels.length - 1] : [0],
+    labels.length > 1
+      ? [0, Math.round((labels.length - 1) / 2), labels.length - 1]
+      : [0],
   );
 </script>
 
 <svg viewBox="0 0 {W} {H}" role="img" aria-label={label} class="trend">
   {#each ticks as tick (tick)}
     <line x1={PL} x2={W - PR} y1={y(tick)} y2={y(tick)} class="grid" />
-    <text x={PL - 6} y={y(tick) + 4} text-anchor="end" class="axis">{Math.round(tick)}</text>
+    <text x={PL - 6} y={y(tick) + 4} text-anchor="end" class="axis"
+      >{short(Math.round(tick))}</text
+    >
   {/each}
   {#each xIndexes as i (i)}
     <text
       x={x(i)}
       y={H - 6}
-      text-anchor={i === 0 ? "start" : i === labels.length - 1 ? "end" : "middle"}
+      text-anchor={i === 0
+        ? "start"
+        : i === labels.length - 1
+          ? "end"
+          : "middle"}
       class="axis">{labels[i]}</text
     >
   {/each}
   <path d={path} class="line" />
   {#if values.length}
-    <circle cx={x(values.length - 1)} cy={y(values.at(-1) ?? 0)} r="4" class="dot" />
+    <circle
+      cx={x(values.length - 1)}
+      cy={y(values.at(-1) ?? 0)}
+      r="4"
+      class="dot"
+    />
   {/if}
 </svg>
 

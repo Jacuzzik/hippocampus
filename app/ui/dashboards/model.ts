@@ -139,21 +139,29 @@ export function spendTiles(byAgent: Record<string, number>): Tile[] {
 }
 
 export function activityTiles(rows: ActivityRow[]): Tile[] {
+  // Four numbers only: the split by kind is the "By kind" chart beside them.
   const kinds = new Map<string, number>();
   for (const row of rows) kinds.set(row.kind, (kinds.get(row.kind) ?? 0) + 1);
+  const top = [...kinds.entries()].sort(
+    (a, b) => b[1] - a[1] || a[0].localeCompare(b[0]),
+  )[0];
+  const errors = kinds.get("error") ?? 0;
   const newest = rows
     .map((row) => row.ts)
     .sort()
     .at(-1);
   return [
     { label: "Events kept", value: String(rows.length) },
-    ...[...kinds.entries()]
-      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-      .map(([kind, count]) => ({
-        label: kind,
-        value: String(count),
-        share: fraction(count, rows.length),
-      })),
+    {
+      label: "Errors",
+      value: String(errors),
+      tone: errors ? "warn" : "plain",
+    },
+    {
+      label: "Most common",
+      value: top ? top[0] : "None",
+      note: top ? `${top[1]} of ${rows.length}` : undefined,
+    },
     {
       label: "Newest",
       value: newest ? newest.slice(0, 16).replace("T", " ") : "None",

@@ -3,9 +3,13 @@
   import TrendChart from "./TrendChart.svelte";
   import type { Panel } from "./model.ts";
 
-  let { panel }: { panel: Panel } = $props();
+  // fill: the panel takes the height its board gives it, and a long list scrolls inside it.
+  let { panel, fill = false }: { panel: Panel; fill?: boolean } = $props();
 
   const RING = 40;
+  // The chart's box, so a chart that fills its panel is drawn at its real size.
+  let boxW = $state(0);
+  let boxH = $state(0);
   const heatMax = $derived(
     panel.kind === "heat" ? Math.max(1, ...panel.values) : 1,
   );
@@ -13,6 +17,7 @@
 
 <div
   class="panel"
+  class:fill
   class:wide={(panel.kind === "list" || panel.kind === "text") && panel.wide}
 >
   <div class="head">
@@ -21,11 +26,13 @@
   </div>
 
   {#if panel.kind === "trend"}
-    <div class="body">
+    <div class="body" bind:clientWidth={boxW} bind:clientHeight={boxH}>
       <TrendChart
         values={panel.values}
         labels={panel.labels}
         label={panel.title}
+        width={fill ? boxW : 0}
+        height={fill ? boxH : 0}
       />
     </div>
   {:else if panel.kind === "breakdown"}
@@ -119,6 +126,32 @@
     gap: var(--space-3);
     align-content: start;
     min-width: 0;
+  }
+  /* In a board that fits the window: the head, then the content in the height that is left. */
+  .panel.fill {
+    grid-template-rows: auto minmax(0, 1fr);
+    align-content: stretch;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .fill .body {
+    height: auto;
+    min-height: 0;
+  }
+  .fill .list,
+  .fill .rows,
+  .fill .text {
+    max-height: none;
+    min-height: 0;
+    overflow-y: auto;
+    align-content: start;
+  }
+  .fill .heat {
+    grid-template-rows: repeat(7, minmax(6px, 1fr));
+    min-height: 0;
+  }
+  .fill .rings {
+    align-content: center;
   }
   .text {
     margin: 0;
