@@ -18,6 +18,7 @@
     type SavedAgent,
   } from "./addedAgents.svelte";
   import { createTerminalQueue } from "../regions/terminalQueue.svelte";
+  import TraceReplay from "./TraceReplay.svelte";
 
   let { agent }: { agent: SavedAgent } = $props();
 
@@ -191,6 +192,7 @@
     created_at: string | null;
     state: string;
   };
+  let replaying = $state(false);
   type Trace = {
     at: string | null;
     tool: string;
@@ -214,7 +216,7 @@
         traces = (
           await invoke<{ traces: Trace[] }>("sidecar_call", {
             method: "terminal_traces",
-            params: { agent: agent.id },
+            params: { agent: agent.id, limit: 300 },
           })
         ).traces;
       }
@@ -435,6 +437,14 @@
         text="Every tool this agent runs shows here with its time and result, shell commands included. Only agents on Claude Code are read so far."
       />
     {:else}
+      <button
+        type="button"
+        class="replay-toggle"
+        aria-pressed={replaying}
+        onclick={() => (replaying = !replaying)}
+        >{replaying ? "Close replay" : "Replay session"}</button
+      >
+      {#if replaying}<TraceReplay {traces} name={agent.name} />{/if}
       <ul class="rows" aria-label="Tool calls by {agent.name}">
         {#each traces as trace, index (index)}
           <li>
@@ -732,6 +742,9 @@
     font-family: var(--font-mono);
     font-size: var(--font-size-tag);
     white-space: pre;
+  }
+  .replay-toggle {
+    align-self: start;
   }
   /* Messages and Traces: one row each, scrolling inside the same box the terminal uses. */
   .rows {

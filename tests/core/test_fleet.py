@@ -58,3 +58,17 @@ def test_the_fleet_call_lists_the_main_agent(tmp_path: Path) -> None:
     assert found["path"].endswith("fleet.json")
     assert found["agents"][0]["id"] == "hippoherman"
     assert found["agents"][0]["status"] == "stopped"
+
+
+def test_traces_take_a_limit_for_the_replay(tmp_path: Path, monkeypatch: object) -> None:
+    session = sidecar.Session(tmp_path, Settings())
+    asked: list[int] = []
+
+    def trace(agent: str, limit: int = 100) -> list[dict[str, object]]:
+        asked.append(limit)
+        return []
+
+    monkeypatch.setattr(sidecar.cli_sessions, "tool_trace", trace)  # type: ignore[attr-defined]
+    session.dispatch({"method": "terminal_traces", "agent": "a", "limit": 300})
+    session.dispatch({"method": "terminal_traces", "agent": "a", "limit": 9999})
+    assert asked == [300, 100]

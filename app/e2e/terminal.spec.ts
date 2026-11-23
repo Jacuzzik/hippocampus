@@ -74,6 +74,14 @@ test("an added agent runs in the same terminal, and block tools restarts it", as
   await expect(traces.getByRole("listitem").first()).toContainText("failed");
   await expect(traces).toContainText("rm notes.md");
   await expect(traces).toContainText("read_note");
+  // Replay steps through the calls oldest first.
+  await page.getByRole("button", { name: "Replay session" }).click();
+  const replay = page.getByRole("region", { name: "Replay of Ada's session" });
+  await expect(replay.getByLabel("Replay step")).toHaveText("1 of 2");
+  await expect(replay.getByLabel("What it ran")).toHaveText("MAIN.md");
+  await replay.getByRole("button", { name: "Step forward" }).click();
+  await expect(replay.getByLabel("What it ran")).toHaveText("rm notes.md");
+  await expect(replay).toContainText("1 min after the one before");
   await page.getByRole("tab", { name: "Messages" }).click();
   await expect(page.getByText("No messages yet")).toBeVisible();
 

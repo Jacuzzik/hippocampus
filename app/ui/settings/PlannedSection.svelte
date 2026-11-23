@@ -65,13 +65,6 @@
         "Needs one index in the backend; notes search exists, the rest does not.",
     },
     {
-      id: "N.11",
-      name: "Session replay",
-      what: "Scrub a past agent session like a recording, text only, and jump to its tool calls.",
-      reason:
-        "Needs sessions stored with timestamps and a size cap; History and Traces show the events today.",
-    },
-    {
       id: "N.17",
       name: "Quick capture hotkey",
       what: "A global hotkey drops a thought into an Inbox note, stamped with the time and the active agent.",

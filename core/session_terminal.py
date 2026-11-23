@@ -158,8 +158,12 @@ class TerminalPart:
         return {"path": path}
 
     def terminal_traces(self, request: dict[str, Any]) -> dict[str, Any]:
-        """What the agent ran, newest first: every tool call with its time and outcome, shell commands included."""
-        return {"traces": cli_sessions.tool_trace(request["agent"])}
+        """What the agent ran, newest first: every tool call with its time and outcome, shell commands included.
+        `limit` (1 to 500, default 100) is how many; the replay view asks for more."""
+        limit = request.get("limit", 100)
+        if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 500:
+            limit = 100
+        return {"traces": cli_sessions.tool_trace(request["agent"], limit)}
 
     def terminal_command(self, request: dict[str, Any]) -> dict[str, Any]:
         # "boot" changes each time the backend starts, so the window can tell a restart from a quiet moment
