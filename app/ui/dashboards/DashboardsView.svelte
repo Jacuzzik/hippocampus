@@ -415,6 +415,7 @@
       aria-label={title}
       inert={prefs.dashboardsLocked}
       class:locked={prefs.dashboardsLocked}
+      class:grow={current === "calendar"}
     >
       <h3>{title}</h3>
       {#if current === "github"}
@@ -619,6 +620,11 @@
     overflow-y: auto;
   }
 
+  /* The calendar's hours fill the height of the window and scroll inside it. */
+  .board.grow {
+    flex: 1 1 auto;
+  }
+
   .board > .tiles,
   .board > .empty,
   .fill {
@@ -632,6 +638,7 @@
     padding: var(--space-6);
     color: var(--color-text-muted);
     text-align: center;
+    background: var(--pop-bg);
     border: 1px dashed var(--color-border);
     border-radius: var(--radius-md);
   }

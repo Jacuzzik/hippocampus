@@ -163,6 +163,7 @@ METHODS: dict[str, Method] = {
     "calendar": _m("One month of your events and the days scheduled jobs will run."),
     "calendar_add": _m("Add an event to the calendar."),
     "calendar_remove": _m("Remove an event from the calendar."),
+    "calendar_mark": _m("Mark a calendar event done or failed, or schedule it again."),
     "helpers": _m("Short-lived helper jobs."),
     "start_helper": _m("Start a helper job."),
     "watchers": _m("Folder watchers."),

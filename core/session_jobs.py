@@ -84,17 +84,72 @@ class JobsPart:
         return self.storage / "events.json"
 
     def calendar(self, request: dict[str, Any]) -> dict[str, Any]:
-        today = datetime.now().astimezone().date()
-        month = request.get("month") or today.isoformat()[:7]
-        return calendar_board.month_view(
-            self.events_path, job_store.load(self.jobs_path), month, today
+        now = datetime.now().astimezone()
+        self._calendar_settle()
+        month = request.get("month") or now.date().isoformat()[:7]
+        view = calendar_board.month_view(
+            self.events_path, job_store.load(self.jobs_path), month, now.date()
         )
+        view["upcoming"] = calendar_board.upcoming(self.events_path, now)
+        view["agents"] = sorted(self._agent_ids())
+        return view
 
     def calendar_add(self, request: dict[str, Any]) -> dict[str, Any]:
         event = calendar_board.add(
-            self.events_path, request.get("date"), request.get("time"), request.get("title")
+            self.events_path,
+            request.get("date"),
+            request.get("time"),
+            request.get("title"),
+            request.get("note"),
+            request.get("agent"),
+            self._agent_ids(),
         )
         return self.calendar({"month": event["date"][:7]})
+
+    def calendar_mark(self, request: dict[str, Any]) -> dict[str, Any]:
+        calendar_board.set_status(self.events_path, request.get("id"), request.get("status"))
+        return self.calendar({"month": request.get("month")})
+
+    def _calendar_settle(self) -> list[str]:
+        lines = calendar_board.settle(self.events_path, inbox.all_messages(self.hive_path))
+        for line in lines:
+            self.note("handoff", text=line)
+        return lines
+
+    def run_calendar(self, now: datetime | None = None) -> list[str]:
+        """Send each calendar event whose time has come to its agent, and read the agents' answers."""
+        now = now or datetime.now().astimezone()
+
+        def send(event: dict[str, str]) -> None:
+            when = f"{event['date']} {event['time'] or calendar_board.DEFAULT_TIME}"
+            objective = (
+                f'The user put this on their calendar for {when}: "{event["title"]}".'
+                + (f"\n\nDetails: {event['note']}" if event["note"] else "")
+                + "\n\nIt is that time now. If it is a reminder, remind the user. If it asks for work"
+                " you can do, do it now."
+            )
+            output = (
+                'When you have finished, write one message to "user" with "work": "'
+                + event["id"]
+                + '". Use "act": "done" and say what you did when it is completed, or "act": "refuse"'
+                " and say why when it could not be done. The calendar shows a check or a cross from it."
+            )
+            inbox.send(
+                self.hive_path,
+                inbox.USER,
+                event["agent"],
+                f"Calendar: {event['title']}",
+                contract.build({"objective": objective, "output": output}),
+                act="request",
+                work=event["id"],
+            )
+
+        lines = self._calendar_settle() + calendar_board.send_due(self.events_path, now, send)
+        for line in lines:
+            self.note("handoff", text=line)
+        if lines:
+            self.changed("inbox")
+        return lines
 
     def calendar_remove(self, request: dict[str, Any]) -> dict[str, Any]:
         calendar_board.remove(self.events_path, request.get("id"))
@@ -156,7 +211,7 @@ class JobsPart:
 
     def run_jobs(self, now: datetime | None = None) -> list[str]:
         """Run each enabled job and mission that is due. Called on a timer by `serve`."""
-        sent = self.run_missions(now)
+        sent = self.run_calendar(now) + self.run_missions(now)
         if self.indexer is None:
             return sent
         runners = {"link_check": self._link_check}

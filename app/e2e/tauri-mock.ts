@@ -858,33 +858,80 @@ export async function mockSidecar(
             return { percent: 42 };
           case "calendar":
           case "calendar_add":
-          case "calendar_remove": {
-            const w = window as unknown as {
-              __events?: {
-                id: string;
-                date: string;
-                time: string;
-                title: string;
-              }[];
+          case "calendar_remove":
+          case "calendar_mark": {
+            type Ev = {
+              id: string;
+              date: string;
+              time: string;
+              title: string;
+              note: string;
+              agent: string;
+              status: string;
+              result: string;
             };
+            const w = window as unknown as { __events?: Ev[] };
+            const ev = (
+              id: string,
+              date: string,
+              time: string,
+              title: string,
+              status: string,
+              result = "",
+            ): Ev => ({
+              id,
+              date,
+              time,
+              title,
+              note: "",
+              agent: "hippoherman",
+              status,
+              result,
+            });
             const events = (w.__events ??= [
-              { id: "e1", date: "2026-11-20", time: "15:30", title: "Dentist" },
+              ev("e1", "2026-11-20", "15:30", "Dentist", "scheduled"),
+              ev(
+                "e2",
+                "2026-11-17",
+                "09:00",
+                "Send the weekly report",
+                "done",
+                "Sent it to the team.",
+              ),
+              ev(
+                "e3",
+                "2026-11-18",
+                "11:30",
+                "Renew the domain",
+                "failed",
+                "No card on file.",
+              ),
+              ev("e4", "2026-11-17", "14:00", "Review notes", "sent"),
             ]);
             if (args.method === "calendar_add") {
               if (String(args.params?.title) === "boom")
                 throw new Error("An event needs a title.");
-              events.push({
-                id: `e${events.length + 1}`,
-                date: String(args.params?.date),
-                time: String(args.params?.time ?? ""),
-                title: String(args.params?.title),
-              });
+              events.push(
+                ev(
+                  `e${events.length + 1}`,
+                  String(args.params?.date),
+                  String(args.params?.time ?? ""),
+                  String(args.params?.title),
+                  "scheduled",
+                ),
+              );
             }
             if (args.method === "calendar_remove")
               events.splice(
                 events.findIndex((event) => event.id === args.params?.id),
                 1,
               );
+            if (args.method === "calendar_mark") {
+              const found = events.find(
+                (event) => event.id === args.params?.id,
+              );
+              if (found) found.status = String(args.params?.status);
+            }
             const month =
               args.method === "calendar_add"
                 ? String(args.params?.date).slice(0, 7)
@@ -902,6 +949,18 @@ export async function mockSidecar(
                 month === "2026-11"
                   ? [{ date: "2026-11-19", name: "Weekly link check" }]
                   : [],
+              upcoming: events
+                .filter(
+                  (event) =>
+                    event.status === "sent" ||
+                    (event.status === "scheduled" &&
+                      event.date >= "2026-11-17"),
+                )
+                .sort((a, b) =>
+                  (a.date + a.time).localeCompare(b.date + b.time),
+                )
+                .slice(0, 4),
+              agents: ["hippoherman"],
             };
           }
           case "apps":

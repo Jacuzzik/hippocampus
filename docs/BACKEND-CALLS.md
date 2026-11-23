@@ -10,7 +10,7 @@ A name the file builds at run time is not listed.
 | `ui/App.svelte` | `graph` | yes |
 | `ui/assistant/session.svelte.ts` | `answer`, `budget_allow`, `chat`, `chat_history`, `chat_history_save`, `confirm`, `current_session`, `new_session`, `stop` | yes |
 | `ui/crashLog.svelte.ts` | `record_crash` | no |
-| `ui/dashboards/CalendarBoard.svelte` | `calendar`, `calendar_add`, `calendar_remove` | yes |
+| `ui/dashboards/CalendarBoard.svelte` | `calendar`, `calendar_add`, `calendar_mark`, `calendar_remove` | yes |
 | `ui/dashboards/DashboardsView.svelte` | `app_board`, `apps`, `github_board` | yes |
 | `ui/dashboards/PhoneBoard.svelte` | `phone_status` | yes |
 | `ui/graph/BrainGraph.svelte` | `note_save`, `note_text`, `read`, `save_export` | yes |

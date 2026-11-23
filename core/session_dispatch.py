@@ -128,6 +128,7 @@ class DispatchPart:
             "calendar": self.calendar,
             "calendar_add": self.calendar_add,
             "calendar_remove": self.calendar_remove,
+            "calendar_mark": self.calendar_mark,
             "start_helper": self.start_helper,
             "remove_skill": self.remove_skill,
             "install_skill": self.install_skill,

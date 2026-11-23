@@ -67,8 +67,12 @@ test("dashboards open from the top bar, list six dashboards and show numbers fro
   await expect(board.locator("li", { hasText: "Free disk" })).toContainText(
     "120.5 GB",
   );
-  await view.getByRole("button", { name: "Agents and spend", exact: true }).click();
-  await expect(board.locator("li:has(b)", { hasText: "kevin" })).toContainText("3.4k");
+  await view
+    .getByRole("button", { name: "Agents and spend", exact: true })
+    .click();
+  await expect(board.locator("li:has(b)", { hasText: "kevin" })).toContainText(
+    "3.4k",
+  );
   await expect(view.getByText(/^Read at /)).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(view).toBeHidden();
@@ -181,7 +185,7 @@ test("the GitHub dashboard asks for a repository, shows its numbers and says why
   await expect(board.getByLabel("Repository")).toHaveValue("nobody/nothing");
 });
 
-test("the calendar shows events and job days, adds and removes an event, and changes month", async ({
+test("the calendar shows a week with checks and crosses, adds, marks and removes an event, and shows a month", async ({
   page,
 }) => {
   await mockSidecar(page);
@@ -196,34 +200,67 @@ test("the calendar shows events and job days, adds and removes an event, and cha
   await page.goto("/");
   await page.keyboard.press("Control+d");
   const view = page.getByRole("region", { name: "Dashboards" });
-  await view.getByRole("button", { name: "Calendar and scheduling", exact: true }).click();
+  await view
+    .getByRole("button", { name: "Calendar and scheduling", exact: true })
+    .click();
   const board = view.getByRole("tabpanel");
+  // The week of the mock's today (Tuesday 17 November): a check, a cross and one the agent is on.
+  const tuesday = board.getByRole("group", { name: "2026-11-17", exact: true });
+  await expect(
+    tuesday.getByRole("button", {
+      name: "09:00 Send the weekly report, Completed",
+    }),
+  ).toBeVisible();
+  await expect(
+    board.getByRole("button", {
+      name: "11:30 Renew the domain, Not completed",
+    }),
+  ).toBeVisible();
+  await expect(
+    tuesday.getByRole("button", {
+      name: "14:00 Review notes, Agent is on it",
+    }),
+  ).toBeVisible();
+  await expect(
+    board.getByRole("group", { name: "All day 2026-11-19" }),
+  ).toContainText("Weekly link check");
+  const upcoming = board.getByRole("region", { name: "Upcoming" });
+  await expect(upcoming).toContainText("Review notes");
+  await expect(upcoming).toContainText("Dentist");
+
+  await expect(board.getByRole("button", { name: "Add event" })).toBeDisabled();
+  await board.getByLabel("Date").fill("2026-11-19");
+  await board.getByLabel("Time").fill("16:00");
+  await board.getByLabel("Event", { exact: true }).fill("Pay rent");
+  await board.getByRole("button", { name: "Add event" }).click();
+  const rent = board.getByRole("button", {
+    name: "16:00 Pay rent, Scheduled",
+  });
+  await expect(rent).toBeVisible();
+  await rent.click();
+  const details = page.getByRole("dialog", { name: "Pay rent" });
+  await details.getByRole("button", { name: "Mark completed" }).click();
+  await expect(details).toContainText("Completed");
+  await details.getByRole("button", { name: "Remove Pay rent" }).click();
+  await expect(details).toHaveCount(0);
+  await expect(board.getByText("Pay rent")).toHaveCount(0);
+
+  await board.getByLabel("Event", { exact: true }).fill("boom");
+  await board.getByRole("button", { name: "Add event" }).click();
+  await expect(board.getByRole("alert")).toContainText(
+    "An event needs a title.",
+  );
+
+  await board.getByRole("button", { name: "Month" }).click();
   await expect(board.getByText("November 2026")).toBeVisible();
   await expect(board.getByRole("gridcell")).toHaveCount(30);
   await expect(
     board.getByRole("gridcell", { name: "2026-11-20" }),
   ).toContainText("15:30 Dentist");
-  await expect(
-    board.getByRole("gridcell", { name: "2026-11-19" }),
-  ).toContainText("Weekly link check");
-  await expect(board.getByRole("button", { name: "Add event" })).toBeDisabled();
-  await board.getByLabel("Date").fill("2026-11-25");
-  await board.getByLabel("Event").fill("Pay rent");
-  await board.getByRole("button", { name: "Add event" }).click();
-  await expect(
-    board.getByRole("gridcell", { name: "2026-11-25" }),
-  ).toContainText("Pay rent");
-  await board.getByRole("button", { name: "Remove Pay rent" }).click();
-  await expect(board.getByText("Pay rent")).toHaveCount(0);
-  await board.getByLabel("Event").fill("boom");
-  await board.getByRole("button", { name: "Add event" }).click();
-  await expect(board.getByRole("alert")).toContainText(
-    "An event needs a title.",
-  );
   await board.getByRole("button", { name: "Next month" }).click();
   await expect(board.getByText("December 2026")).toBeVisible();
   await expect(board.getByRole("gridcell")).toHaveCount(31);
-  await board.getByRole("button", { name: "This month" }).click();
+  await board.getByRole("button", { name: "Today" }).click();
   await expect(board.getByText("November 2026")).toBeVisible();
 });
 
@@ -273,7 +310,9 @@ test("an app is connected in Settings with a key that is never shown again, gets
   await page.goto("/");
   await page.keyboard.press("Control+d");
   const view = page.getByRole("region", { name: "Dashboards" });
-  await expect(view.getByRole("button", { name: "Shopify", exact: true })).toHaveCount(0);
+  await expect(
+    view.getByRole("button", { name: "Shopify", exact: true }),
+  ).toHaveCount(0);
   await view.getByRole("button", { name: /locked/ }).click();
   const settings = page.getByRole("dialog", { name: "Settings" });
   await expect(settings.getByText("0 of 3 connected")).toBeVisible();
@@ -317,11 +356,12 @@ test("an app is connected in Settings with a key that is never shown again, gets
   await settings.getByRole("button", { name: "Disconnect Shopify" }).click();
   await expect(settings.getByText("0 of 3 connected")).toBeVisible();
   await settings.getByRole("button", { name: "Close settings" }).click();
-  await expect(view.getByRole("button", { name: "Shopify", exact: true })).toHaveCount(0);
-  await expect(view.getByRole("button", { name: "Overview", exact: true })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
+  await expect(
+    view.getByRole("button", { name: "Shopify", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    view.getByRole("button", { name: "Overview", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
 });
 
 async function box_(
@@ -361,7 +401,9 @@ test("a dashboard takes the notes, graph and Control Room space; the bottom bar 
     ).toBeHidden();
     // The top bar stays; the graph itself is not drawn.
     await expect(page.locator("header.topbar")).toBeVisible();
-    await expect(page.locator("main.graph > :not(header.topbar)").first()).toBeHidden();
+    await expect(
+      page.locator("main.graph > :not(header.topbar)").first(),
+    ).toBeHidden();
     const rail = page.getByRole("complementary", { name: "Agent cards" });
     await expect(rail.locator("[data-agent='hippoherman']")).toBeVisible();
     // The agent cards sit left of the dashboard; the dashboard reaches the right and bottom edges.

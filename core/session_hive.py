@@ -96,7 +96,8 @@ class HivePart:
             try:
                 self._hubs_present()
                 self._daily_compact()
-                if inbox.collect_outboxes(self.hive_path, self._agent_ids()):
+                # "user" is a valid receiver: an agent answers the user there (a calendar event's done or refuse).
+                if inbox.collect_outboxes(self.hive_path, self._agent_ids() | {inbox.USER}):
                     self.changed("inbox")
                 # Once a day, old delivered messages move into one compressed file per month.
                 if time.time() - self.last_archive > 86400:
@@ -117,7 +118,8 @@ class HivePart:
                         pass
                     self.inbox_pending.pop(agent, None)
                 for folder in self.hive_path.iterdir():
-                    if not folder.is_dir():
+                    # The user and the app have no terminal: their messages are read in the Inbox.
+                    if not folder.is_dir() or folder.name in (inbox.USER, inbox.APP):
                         continue
                     # A terminal that has just started is still drawing: messages typed before it is ready are lost, so they wait for it to settle.
                     if (

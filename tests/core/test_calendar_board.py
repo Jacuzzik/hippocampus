@@ -13,7 +13,7 @@ def test_an_event_is_added_listed_in_its_month_and_removed(tmp_path: Path) -> No
     path = tmp_path / "events.json"
     late = calendar_board.add(path, "2026-11-20", "15:30", "  Dentist ")
     early = calendar_board.add(path, "2026-11-20", "", "Pay rent")
-    calendar_board.add(path, "2026-12-01", "09:00", "Next month")
+    calendar_board.add(path, "2026-12-20", "09:00", "Next month")
     view = calendar_board.month_view(path, [], "2026-11", date(2026, 11, 17))
     assert [event["title"] for event in view["events"]] == ["Pay rent", "Dentist"]
     assert (view["days"], view["first_weekday"], view["today"]) == (30, 6, "2026-11-17")
@@ -65,5 +65,56 @@ def test_the_month_must_be_year_dash_month_and_a_broken_file_reads_as_empty(tmp_
     assert calendar_board.month_view(path, [], "2026-11", date(2026, 11, 17))["events"] == []
     job = Job("a", "Weekly link check", "link_check", 7, True, None)
     view = calendar_board.month_view(path, [job], "2026-12", date(2026, 11, 17))
-    assert view["job_runs"][0] == {"date": "2026-12-01", "name": "Weekly link check"}
-    assert len(view["job_runs"]) == 5
+    assert {"date": "2026-12-01", "name": "Weekly link check"} in view["job_runs"]
+    assert len(view["job_runs"]) == 7  # a week either side of the month is included
+
+
+def test_a_due_event_goes_to_its_agent_once_and_the_answer_marks_it(tmp_path: Path) -> None:
+    from datetime import UTC, datetime
+
+    path = tmp_path / "events.json"
+    sent: list[str] = []
+    standup = calendar_board.add(path, "2026-11-20", "10:00", "Standup", "Bring notes")
+    review = calendar_board.add(path, "2026-11-20", "", "Review")  # no time: 09:00
+    later = calendar_board.add(path, "2026-11-21", "10:00", "Later")
+    old = calendar_board.add(path, "2026-11-01", "10:00", "Old")
+    now = datetime(2026, 11, 20, 10, 0, tzinfo=UTC)
+    lines = calendar_board.send_due(path, now, lambda event: sent.append(event["id"]))
+    assert sorted(sent) == sorted([standup["id"], review["id"]])
+    assert "calendar Old: missed" in lines
+    assert calendar_board.send_due(path, now, lambda event: sent.append(event["id"])) == []
+    upcoming = calendar_board.upcoming(path, now)
+    assert [event["title"] for event in upcoming] == ["Review", "Standup", "Later"]
+    messages = [
+        {"from": "hippoherman", "act": "done", "work": standup["id"], "body": "Reminded."},
+        {"from": "someone", "act": "done", "work": review["id"], "body": "Not its agent."},
+        {"from": "hippoherman", "act": "refuse", "work": review["id"], "body": "No access."},
+    ]
+    assert calendar_board.settle(path, messages) == [
+        "calendar Standup: done",
+        "calendar Review: failed",
+    ]
+    by_id = {event["id"]: event for event in calendar_board.load(path)}
+    assert (by_id[standup["id"]]["status"], by_id[standup["id"]]["result"]) == ("done", "Reminded.")
+    assert by_id[review["id"]]["status"] == "failed"
+    assert by_id[later["id"]]["status"] == "scheduled"
+    assert by_id[old["id"]]["status"] == "missed"
+    again = calendar_board.set_status(path, review["id"], "scheduled")
+    assert (again["status"], again["result"]) == ("scheduled", "")
+    with pytest.raises(ValueError, match="scheduled, done or failed"):
+        calendar_board.set_status(path, review["id"], "sent")
+
+
+def test_an_event_for_an_unknown_agent_is_refused_and_a_send_error_fails_it(tmp_path: Path) -> None:
+    from datetime import UTC, datetime
+
+    path = tmp_path / "events.json"
+    with pytest.raises(ValueError, match='No agent has the id "bob"'):
+        calendar_board.add(path, "2026-11-20", "", "x", "", "bob", {"hippoherman"})
+
+    def broken(_event: dict[str, str]) -> None:
+        raise OSError("disk full")
+
+    calendar_board.add(path, "2026-11-20", "08:00", "Call")
+    calendar_board.send_due(path, datetime(2026, 11, 20, 9, 0, tzinfo=UTC), broken)
+    assert calendar_board.load(path)[0]["status"] == "failed"

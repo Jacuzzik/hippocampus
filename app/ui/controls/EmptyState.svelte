@@ -30,6 +30,8 @@
     padding: var(--space-3);
     color: var(--color-text);
     font-size: var(--font-size-sm);
+    /* A panel standing on its own gets the popup grid, so it does not read as an empty hole. */
+    background: var(--pop-bg);
     border: 1px dashed var(--color-border);
     border-radius: var(--radius-sm);
   }

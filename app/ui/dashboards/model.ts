@@ -59,7 +59,10 @@ export function taskTiles(tasks: TaskRow[]): Tile[] {
     ...COLUMNS.map((column) => ({
       label: column.charAt(0).toUpperCase() + column.slice(1),
       value: String(tasks.filter((task) => task.status === column).length),
-      share: fraction(tasks.filter((task) => task.status === column).length, tasks.length),
+      share: fraction(
+        tasks.filter((task) => task.status === column).length,
+        tasks.length,
+      ),
     })),
     {
       label: "Waiting on you",
@@ -165,7 +168,11 @@ export function overviewTiles(found: {
       note: "The main agent and the ones you added.",
     },
     { label: "Tokens today", value: short(found.tokens) },
-    { label: "Open tasks", value: String(open), share: fraction(open, found.tasks.length) },
+    {
+      label: "Open tasks",
+      value: String(open),
+      share: fraction(open, found.tasks.length),
+    },
     {
       label: "Questions waiting",
       value: String(found.asks),
@@ -231,11 +238,18 @@ export function githubTiles(found: GithubShape): Tile[] {
   ];
 }
 
+/** scheduled: waits for its time. sent: its agent has it. done or failed: the agent's answer. missed: the app was closed. */
+export type EventStatus = "scheduled" | "sent" | "done" | "failed" | "missed";
 export type CalendarEvent = {
   id: string;
   date: string;
   time: string;
   title: string;
+  note?: string;
+  agent?: string;
+  status?: EventStatus;
+  sent_at?: string;
+  result?: string;
 };
 export type CalendarShape = {
   month: string;
@@ -245,7 +259,70 @@ export type CalendarShape = {
   today: string;
   events: CalendarEvent[];
   job_runs: { date: string; name: string }[];
+  upcoming?: CalendarEvent[];
+  agents?: string[];
 };
+
+export const STATUS_TEXT: Record<EventStatus, string> = {
+  scheduled: "Scheduled",
+  sent: "Agent is on it",
+  done: "Completed",
+  failed: "Not completed",
+  missed: "Missed",
+};
+
+function utc(iso: string): Date {
+  const [year = 0, month = 1, day = 1] = iso.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+/** The date `by` days after (or before) a YYYY-MM-DD date. */
+export function addDays(iso: string, by: number): string {
+  const day = utc(iso);
+  day.setUTCDate(day.getUTCDate() + by);
+  return day.toISOString().slice(0, 10);
+}
+
+/** The seven dates of the week, Monday first, that holds the date. */
+export function weekDates(iso: string): string[] {
+  const monday = addDays(iso, -((utc(iso).getUTCDay() + 6) % 7));
+  return Array.from({ length: 7 }, (_, i) => addDays(monday, i));
+}
+
+/** Minutes after midnight for HH:MM; an event with no time goes out at 09:00. */
+export function minutesOf(time: string): number {
+  const [hours = 9, minutes = 0] = (time || "09:00").split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
+/**
+ * Side-by-side lanes for one day's timed events: events that start less than an hour apart
+ * share the hour, each in its own lane. Returns lane and lane count per event id.
+ */
+export function lanes(
+  events: CalendarEvent[],
+): Map<string, { lane: number; of: number }> {
+  const sorted = [...events].sort(
+    (a, b) => minutesOf(a.time) - minutesOf(b.time),
+  );
+  const out = new Map<string, { lane: number; of: number }>();
+  let group: CalendarEvent[] = [];
+  let end = -1;
+  const close = (): void => {
+    group.forEach((event, lane) =>
+      out.set(event.id, { lane, of: group.length }),
+    );
+    group = [];
+  };
+  for (const event of sorted) {
+    const start = minutesOf(event.time);
+    if (start >= end) close();
+    group.push(event);
+    end = Math.max(end, start + 60);
+  }
+  close();
+  return out;
+}
 export type DayCell = {
   day: number;
   date: string;
@@ -304,7 +381,11 @@ export function activityByDay(
 ): { labels: string[]; values: number[] } {
   const keys: string[] = [];
   for (let back = days - 1; back >= 0; back--) {
-    const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() - back);
+    const day = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() - back,
+    );
     keys.push(
       `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`,
     );
@@ -322,7 +403,13 @@ export function activityByDay(
 
 /** A chart or breakdown drawn above a dashboard's tiles. */
 export type Panel =
-  | { kind: "trend"; title: string; note: string; labels: string[]; values: number[] }
+  | {
+      kind: "trend";
+      title: string;
+      note: string;
+      labels: string[];
+      values: number[];
+    }
   | {
       kind: "breakdown";
       title: string;
@@ -341,7 +428,11 @@ export type Panel =
 export function dayKeys(days: number, now = new Date()): string[] {
   const keys: string[] = [];
   for (let back = days - 1; back >= 0; back--) {
-    const day = new Date(now.getFullYear(), now.getMonth(), now.getDate() - back);
+    const day = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() - back,
+    );
     keys.push(
       `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`,
     );

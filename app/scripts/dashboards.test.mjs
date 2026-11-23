@@ -7,6 +7,10 @@ import {
   githubTiles,
   monthCells,
   shiftMonth,
+  addDays,
+  weekDates,
+  minutesOf,
+  lanes,
   noteTiles,
   overviewTiles,
   short,
@@ -188,4 +192,26 @@ test("an app's numbers become tiles, and one that failed says why", () => {
       },
     ],
   );
+});
+
+test("week dates start on Monday and cross months; events less than an hour apart share the hour", () => {
+  assert.equal(addDays("2026-11-30", 1), "2026-12-01");
+  assert.equal(addDays("2026-03-01", -1), "2026-02-28");
+  assert.deepEqual(weekDates("2026-11-26"), [
+    "2026-11-23",
+    "2026-11-24",
+    "2026-11-25",
+    "2026-11-26",
+    "2026-11-27",
+    "2026-11-28",
+    "2026-11-29",
+  ]);
+  assert.equal(weekDates("2026-12-02")[0], "2026-11-30");
+  assert.equal(minutesOf("15:30"), 930);
+  assert.equal(minutesOf(""), 540);
+  const at = (id, time) => ({ id, date: "2026-11-23", time, title: id });
+  const got = lanes([at("a", "09:00"), at("b", "09:30"), at("c", "11:00")]);
+  assert.deepEqual(got.get("a"), { lane: 0, of: 2 });
+  assert.deepEqual(got.get("b"), { lane: 1, of: 2 });
+  assert.deepEqual(got.get("c"), { lane: 0, of: 1 });
 });
