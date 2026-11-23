@@ -98,6 +98,9 @@ class DispatchPart:
             ),
             "phone_view": lambda request: phone.view(request.get("serial"), request.get("approve")),
             "phone_stop": lambda request: phone.stop(request.get("serial")),
+            "phone_control": lambda request: phone.control(
+                request.get("serial"), request.get("action"), request.get("approve")
+            ),
             "user_account": lambda request: self.user_account.status(),
             "user_sign_in": lambda request: self.user_account.start(open_browser=True),
             "user_sign_in_cancel": lambda request: self.user_account.cancel(),

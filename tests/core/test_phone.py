@@ -108,3 +108,40 @@ def test_a_mirror_whose_window_was_closed_is_no_longer_listed() -> None:
     phone.mirror("R58M123ABC", True, _both, _adb(), lambda *a, **k: FakeProcess())
     phone._running["R58M123ABC"].ended = True
     assert phone.status(_both, _adb())["mirroring"] == []
+
+
+def test_control_turns_taps_swipes_keys_and_text_into_adb_input() -> None:
+    import subprocess as sp
+
+    calls: list[list[str]] = []
+
+    def run(args: list[str], **_kwargs: object) -> sp.CompletedProcess[str]:
+        calls.append(args)
+        out = "Physical size: 1080x2400\n" if args[-2:] == ["wm", "size"] else ""
+        return sp.CompletedProcess(args, 0, out, "")
+
+    have = lambda _name: "/usr/bin/adb"  # noqa: E731
+    phone.control("ABC", {"kind": "tap", "x": 0.5, "y": 0.25}, True, have, run)
+    assert calls[-1][-3:] == ["tap", "540", "600"]
+    phone.control(
+        "ABC",
+        {"kind": "swipe", "x": 0, "y": 0, "x2": 1, "y2": 1, "ms": 300, "landscape": True},
+        True,
+        have,
+        run,
+    )
+    assert calls[-1][-5:] == ["0", "0", "2399", "1079", "300"]
+    phone.control("ABC", {"kind": "key", "key": "home"}, True, have, run)
+    assert calls[-1][-2:] == ["keyevent", "3"]
+    phone.control("ABC", {"kind": "text", "text": "hi there"}, True, have, run)
+    assert calls[-1][-1] == "hi%sthere"
+    for bad, reason in [
+        ({"kind": "tap", "x": 2, "y": 0}, "from 0 to 1"),
+        ({"kind": "key", "key": "nuke"}, "must be one of"),
+        ({"kind": "text", "text": ""}, "1 to 500"),
+        ({"kind": "fly"}, "tap, swipe, key or text"),
+    ]:
+        with pytest.raises(ValueError, match=reason):
+            phone.control("ABC", bad, True, have, run)
+    with pytest.raises(ValueError, match="approval"):
+        phone.control("ABC", {"kind": "key", "key": "home"}, None, have, run)

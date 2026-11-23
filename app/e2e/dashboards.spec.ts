@@ -294,7 +294,16 @@ test("the Phone dashboard lists devices and starts and stops mirroring; a phone 
   await expect(
     board.getByRole("img", { name: "Screen of SM A525F" }),
   ).toBeVisible();
-  // scrcpy's own window, for taps and keys, can be opened as well.
+  // A click on the screen taps the phone; the buttons under it press keys; text is typed.
+  await board.getByRole("img", { name: "Screen of SM A525F" }).click();
+  await ready.getByRole("button", { name: "Home" }).click();
+  await ready.getByLabel("Type on SM A525F").fill("hello there");
+  await ready.getByLabel("Type on SM A525F").press("Enter");
+  const sent = await page.evaluate(
+    () => (window as unknown as { __controls: { kind: string }[] }).__controls,
+  );
+  expect(sent.map((action) => action.kind)).toEqual(["tap", "key", "text"]);
+  // scrcpy's own window can be opened as well.
   await ready.getByRole("button", { name: "Own window" }).click();
   await ready.getByRole("button", { name: "Stop mirroring" }).click();
   await expect(

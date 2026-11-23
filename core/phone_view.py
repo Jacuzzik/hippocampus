@@ -4,7 +4,7 @@ phone-side server is used directly:
   phone (scrcpy-server, raw H.264) -> adb forward -> this module -> ffmpeg (to JPEG frames)
   -> a local HTTP stream at 127.0.0.1 with a secret token -> an <img> in the Phone dashboard.
 
-View only: taps and keys stay with the separate scrcpy window. Light settings (720 pixels, 15 frames a
+Taps, swipes and keys on the picture go through adb input (core/phone.py control). Light settings (720 pixels, 15 frames a
 second, no sound) so a weak computer copes. Nothing runs until the user clicks, and everything stops
 with the dashboard's Stop button or when the app closes.
 """
@@ -193,6 +193,9 @@ class _Stream(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", f"multipart/x-mixed-replace; boundary={BOUNDARY}")
         self.send_header("Cache-Control", "no-store")
+        # The window reads the stream with fetch (its picture tag shows only the first frame of a
+        # multipart stream), so it must be allowed to read it. The secret token still guards it.
+        self.send_header("Access-Control-Allow-Origin", "*")
         self.end_headers()
         last = b""
         try:

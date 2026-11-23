@@ -7,7 +7,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from core import inbox
+from core import inbox, phone
 
 
 def file_for(hive: Path, agent: str) -> Path:
@@ -15,7 +15,9 @@ def file_for(hive: Path, agent: str) -> Path:
     return hive.parent / "briefings" / f"{agent}-inbox.md"
 
 
-def build(hive: Path, agent: str, agents: list[dict[str, Any]]) -> str:
+def build(
+    hive: Path, agent: str, agents: list[dict[str, Any]], phones: list[str] | None = None
+) -> str:
     """The text of the agent's start-up inbox. Only the agent's own waiting messages are listed; the others are not shown to it."""
     lines = [f"# Start-up inbox for {agent}", "", "## Waiting messages"]
     waiting = inbox.pending(hive, agent)
@@ -64,6 +66,7 @@ def build(hive: Path, agent: str, agents: list[dict[str, Any]]) -> str:
         "- Message hippoherman only when you genuinely need a decision.",
         "- Never message the user directly.",
     ]
+    lines += phones or []
     if agent == "hippoherman":
         lines += [
             "",
@@ -86,5 +89,5 @@ def write(hive: Path, agent: str, agents: list[dict[str, Any]]) -> Path:
     """Write the agent's start-up inbox file and return its path."""
     path = file_for(hive, agent)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(build(hive, agent, agents), encoding="utf-8")
+    path.write_text(build(hive, agent, agents, phone.agent_notes()), encoding="utf-8")
     return path

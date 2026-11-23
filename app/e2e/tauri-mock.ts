@@ -1051,6 +1051,13 @@ export async function mockSidecar(
                 },
               ],
             };
+          case "phone_control": {
+            if (args.params?.approve !== true)
+              throw new Error("controlling a phone needs the user's approval");
+            const w = window as unknown as { __controls?: unknown[] };
+            (w.__controls ??= []).push(args.params?.action);
+            return { ok: true };
+          }
           case "phone_status":
           case "phone_mirror":
           case "phone_view":

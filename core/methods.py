@@ -141,6 +141,7 @@ METHODS: dict[str, Method] = {
     "phone_mirror": _m("Mirror a phone's screen in a scrcpy window, after approval."),
     "phone_view": _m("Show a phone's screen inside the app (view only), after approval."),
     "phone_stop": _m("Stop mirroring a phone, in the app and in its own window."),
+    "phone_control": _m("Tap, swipe, press a key or type on a phone, after approval."),
     "tokens": _m("This month's token use per folder."),
     # Terminals
     "terminal_start": _m("Start an agent's program.", _AGENT),
