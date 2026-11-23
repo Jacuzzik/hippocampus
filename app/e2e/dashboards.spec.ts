@@ -231,26 +231,26 @@ test("GitHub lists every repository with what each agent did there; the vault as
     "https://apps.apple.com/account/subscriptions",
   ]);
 
-  // A Tebex wallet is added, its balance changed, and its own page opened.
+  // A PayPal wallet is added, its balance changed, and its own page opened.
   const addWallet = board.getByRole("form", { name: "Add a wallet" });
-  await addWallet.getByLabel("Wallet name").fill("Tebex store");
+  await addWallet.getByLabel("Wallet name").fill("PayPal business");
   await addWallet.getByLabel("Balance").fill("120.5");
   await addWallet.getByRole("button", { name: "Add wallet" }).click();
   const wallets = board.getByRole("list", { name: "Your wallets" });
-  await expect(wallets).toContainText("Tebex store");
+  await expect(wallets).toContainText("PayPal business");
   await expect(wallets).toContainText("$120.50");
-  await wallets.getByLabel("Balance of Tebex store").fill("80");
-  await wallets.getByLabel("Balance of Tebex store").press("Enter");
-  await wallets.getByLabel("Balance of Tebex store").blur();
+  await wallets.getByLabel("Balance of PayPal business").fill("80");
+  await wallets.getByLabel("Balance of PayPal business").press("Enter");
+  await wallets.getByLabel("Balance of PayPal business").blur();
   await expect(wallets).toContainText("$80.00");
   await expect(
     board.locator("li", { hasText: "as you last entered them" }),
   ).toContainText("$80.00");
-  await wallets.getByRole("button", { name: "Open Tebex" }).click();
+  await wallets.getByRole("button", { name: "Open PayPal" }).click();
   const after = await page.evaluate(
     () => (window as unknown as { __opened: string[] }).__opened,
   );
-  expect(after.at(-1)).toBe("https://creator.tebex.io/");
+  expect(after.at(-1)).toBe("https://www.paypal.com/myaccount/summary");
 });
 
 test("the calendar shows a week with checks and crosses, adds, marks and removes an event, and shows a month", async ({

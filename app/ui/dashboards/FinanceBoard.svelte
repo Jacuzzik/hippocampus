@@ -37,7 +37,6 @@
   type Wallet = {
     name: string;
     kind:
-      | "tebex"
       | "paypal"
       | "stripe"
       | "builtbybit"
@@ -191,7 +190,7 @@
   const today = (): string => new Date().toISOString().slice(0, 10);
   const blankWallet = (): Wallet => ({
     name: "",
-    kind: "tebex",
+    kind: "paypal",
     balance: 0,
     currency: found?.plans.currency ?? "USD",
     updated: today(),
@@ -255,7 +254,6 @@
   }
 
   const KIND: Record<Wallet["kind"], string> = {
-    tebex: "Tebex",
     paypal: "PayPal",
     stripe: "Stripe",
     builtbybit: "BuiltByBit",
@@ -507,8 +505,8 @@
   <section class="plans wallets" aria-label="Wallets">
     <div class="head"><h4>Wallets</h4></div>
     <p class="hint">
-      The money you hold with Tebex, PayPal, Stripe, a bank or a crypto wallet.
-      Tebex and the others have no way for an app to read a wallet balance, so
+      The money you hold with PayPal, Stripe, a bank or a crypto wallet. These
+      services have no way for an app to read a wallet balance, so
       enter it here and update it when it changes. Open goes to the service's
       own wallet page.
     </p>
@@ -557,7 +555,7 @@
         >Wallet name <input
           type="text"
           maxlength="60"
-          placeholder="Tebex store wallet"
+          placeholder="PayPal business"
           bind:value={wallet.name}
         /></label
       >

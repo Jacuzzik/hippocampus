@@ -100,23 +100,9 @@ APPS: tuple[App, ...] = (
             _m("Unread conversations", "/conversations", "count", "data"),
         ),
         (),
-        "A private API token from your account's API settings.",
-    ),
-    App(
-        "tebex",
-        "Tebex",
-        "Your store's name, currency and number of payments. Tebex has no API for the wallet"
-        " balance: add it under Wallets on Money and spend.",
-        "https://plugin.tebex.io",
-        "header:X-Tebex-Secret",
-        (
-            _m("Store", "/information", "value", "account.name"),
-            _m("Currency", "/information", "value", "account.currency.iso_4217"),
-            _m("Payments", "/payments?paged=1&page=1", "value", "total"),
-        ),
-        (),
-        "Your store's secret key: in the Tebex creator panel, open Integrations, then Game"
-        " servers, and copy the secret key of a server.",
+        "A private API token from your account's API settings. When you make it, tick the"
+        " permissions to read your resources, alerts and conversations; a token with none"
+        " ticked is refused (403).",
     ),
     App(
         "stripe",
@@ -409,7 +395,7 @@ def http_get(url: str, headers: dict[str, str]) -> tuple[int, bytes]:
         with opener.open(request, timeout=SECONDS) as answer:
             return answer.status, answer.read(MAX_BYTES + 1)
     except urllib.error.HTTPError as error:
-        return error.code, b""
+        return error.code, error.read(4000)  # kept so the service's own reason can be shown
 
 
 def http_post(url: str, form: dict[str, str]) -> tuple[int, bytes]:
@@ -425,7 +411,7 @@ def http_post(url: str, form: dict[str, str]) -> tuple[int, bytes]:
         with opener.open(request, timeout=SECONDS) as answer:
             return answer.status, answer.read(MAX_BYTES + 1)
     except urllib.error.HTTPError as error:
-        return error.code, b""
+        return error.code, error.read(4000)  # kept so the service's own reason can be shown
 
 
 # (shop, client id) -> (token, monotonic time it stops being used). Kept in memory only.
@@ -445,8 +431,9 @@ def shopify_token(shop: str, client: str, secret: str, post: Post = http_post) -
     if status != 200:
         raise ValueError(
             STATUS.get(status, f"Shopify answered {status} when asked for a token.")
-            + " Check the Client ID and secret, that the app is installed on this shop, and that"
-            " the shop is in the same Dev Dashboard organisation as the app."
+            + _reason(body, "Shopify")
+            + " Check the shop address, the Client ID and secret, that the app is installed on"
+            " this shop, and that the shop is in the same Dev Dashboard organisation as the app."
         )
     found = json.loads(body.decode("utf-8"))
     token = found.get("access_token") if isinstance(found, dict) else None
@@ -562,6 +549,29 @@ def _value(metric: Metric, found: object) -> str:
     return str(at)
 
 
+def _reason(body: bytes, name: str) -> str:
+    """The service's own short reason from an error answer, if it gave one in a known shape
+    (Shopify's error_description, BuiltByBit's error.message, or a plain message)."""
+    try:
+        found = json.loads(body[:4000].decode("utf-8"))
+    except (ValueError, UnicodeDecodeError):
+        return ""
+    if not isinstance(found, dict):
+        return ""
+    error = found.get("error")
+    said = (
+        found.get("error_description")
+        or (error.get("message") if isinstance(error, dict) else None)
+        or found.get("message")
+        or (error if isinstance(error, str) else None)
+        or found.get("errors")
+    )
+    if not isinstance(said, str) or not said.strip():
+        return ""
+    said = " ".join(said.split())[:200]
+    return f' {name} said: "{said}"'
+
+
 STATUS = {
     400: "The service did not accept the request (400). The key may be mistyped.",
     401: "The key was refused (401). Check it, or make a new one.",
@@ -576,6 +586,12 @@ def read(
 ) -> list[dict[str, str]]:
     """One row per number. A number that cannot be read says why; the others are still shown."""
     if app.id == "shopify" and fields.get("client"):
+        if token == fields["client"]:
+            reason = (
+                "The saved secret is the Client ID. Connect Shopify again and paste the app's"
+                " client secret (Dev Dashboard, the app's Settings, Secret)."
+            )
+            return [{"label": m.label, "value": "", "error": reason} for m in app.metrics]
         try:
             token = shopify_token(fields["shop"], fields["client"], token, post)
         except (OSError, ValueError) as error:
@@ -604,7 +620,9 @@ def read(
                 if status in (301, 302, 303, 307, 308):
                     row["error"] = "The service sent the request elsewhere, which is not followed."
                 elif status != 200:
-                    row["error"] = STATUS.get(status, f"The service answered {status}.")
+                    row["error"] = STATUS.get(status, f"The service answered {status}.") + _reason(
+                        body, app.name
+                    )
                 elif len(body) > MAX_BYTES:
                     row["error"] = "The answer was too large to read."
                 else:

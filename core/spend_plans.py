@@ -9,10 +9,9 @@ for an app to read a person's subscriptions, so the user enters each one; "Manag
 own subscriptions page, where cancelling and resubscribing happen. A cancelled subscription whose
 renewal date has passed counts as expired.
 
-Wallets are the balances the user holds with a payment service (Tebex, PayPal, Stripe, a bank or a
-crypto wallet). None of these offers a read-only balance Hippocampus can use with a shop key (Tebex
-has no wallet API at all), so the user enters each balance and its date; "Open" goes to the
-service's own wallet page.
+Wallets are the balances the user holds with a payment service (PayPal, Stripe, a bank or a crypto
+wallet). None of these offers a read-only balance Hippocampus can use with a shop key, so the user
+enters each balance and its date; "Open" goes to the service's own wallet page.
 """
 
 import calendar
@@ -39,7 +38,6 @@ PERIODS = ("month", "year", "week")
 STATUSES = ("active", "cancelled", "expired")
 WALLETS_MAX = 30
 WALLETS = {
-    "tebex": "https://creator.tebex.io/",
     "paypal": "https://www.paypal.com/myaccount/summary",
     "stripe": "https://dashboard.stripe.com/balance/overview",
     "builtbybit": "https://builtbybit.com/",

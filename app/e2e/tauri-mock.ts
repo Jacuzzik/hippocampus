@@ -988,7 +988,6 @@ export async function mockSidecar(
               resubscribe: sub.link || (stores[sub.store] ?? ""),
             }));
             const walletPages: Record<string, string> = {
-              tebex: "https://creator.tebex.io/",
               paypal: "https://www.paypal.com/myaccount/summary",
             };
             const wallets = (plans.wallets ?? []).map((wallet) => ({

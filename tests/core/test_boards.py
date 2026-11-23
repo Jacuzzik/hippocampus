@@ -189,7 +189,7 @@ def test_wallets_are_checked_totalled_per_currency_and_open_their_own_page() -> 
     plans = spend_plans.check(
         {
             "wallets": [
-                {"name": "Store", "kind": "tebex", "balance": 120.5, "currency": "GBP",
+                {"name": "Store", "kind": "stripe", "balance": 120.5, "currency": "GBP",
                  "updated": "2026-11-23"},
                 {"name": "PayPal", "kind": "paypal", "balance": 40, "currency": "USD"},
                 {"name": "Cold", "kind": "crypto", "balance": 10, "currency": "USD",
@@ -199,7 +199,7 @@ def test_wallets_are_checked_totalled_per_currency_and_open_their_own_page() -> 
     )  # fmt: skip
     rows = spend_plans.wallet_rows(plans["wallets"])
     assert [r["name"] for r in rows] == ["Store", "PayPal", "Cold"]
-    assert rows[0]["open"] == "https://creator.tebex.io/"
+    assert rows[0]["open"] == "https://dashboard.stripe.com/balance/overview"
     assert rows[2]["open"] == "https://example.com/wallet"
     assert spend_plans.wallet_totals(plans["wallets"]) == {"GBP": 120.5, "USD": 50.0}
     with pytest.raises(ValueError, match="choices"):

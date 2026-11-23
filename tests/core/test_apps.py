@@ -22,9 +22,9 @@ def _fetch(answers: dict[str, object], seen: list[tuple[str, dict[str, str]]] | 
     return fetch
 
 
-def test_the_catalogue_has_23_apps_each_with_https_and_at_least_one_number() -> None:
-    assert len(apps.APPS) == 23
-    assert len(apps.BY_ID) == 23
+def test_the_catalogue_has_22_apps_each_with_https_and_at_least_one_number() -> None:
+    assert len(apps.APPS) == 22
+    assert len(apps.BY_ID) == 22
     for app in apps.APPS:
         assert app.base.startswith("https://"), app.id
         assert app.metrics, app.id
@@ -235,20 +235,34 @@ def test_the_shopify_client_id_may_be_left_empty_for_an_older_custom_app() -> No
     assert fields == {"shop": "a.myshopify.com"}
 
 
-def test_tebex_reads_the_store_name_currency_and_payment_count_with_its_secret_header() -> None:
-    seen: list[tuple[str, dict[str, str]]] = []
-    fetch = _fetch(
-        {
-            "/information": {"account": {"name": "My Store", "currency": {"iso_4217": "GBP"}}},
-            "/payments": {"total": 146, "data": []},
-        },
-        seen,
-    )
-    rows = apps.read(apps.BY_ID["tebex"], "secret1", {}, fetch)
-    assert [(row["label"], row["value"]) for row in rows] == [
-        ("Store", "My Store"),
-        ("Currency", "GBP"),
-        ("Payments", "146"),
-    ]
-    assert seen[0][1]["X-Tebex-Secret"] == "secret1"
-    assert seen[-1][0] == "https://plugin.tebex.io/payments?paged=1&page=1"
+def test_an_error_answer_shows_the_services_own_reason() -> None:
+    body = json.dumps(
+        {"result": "error", "error": {"code": "PrivilegeRestrictedError", "message": "No access."}}
+    ).encode()
+
+    def fetch(_url: str, _headers: dict[str, str]) -> tuple[int, bytes]:
+        return 403, body
+
+    rows = apps.read(apps.BY_ID["builtbybit"], "tok", {}, fetch)
+    assert all('BuiltByBit said: "No access."' in row["error"] for row in rows)
+
+
+def test_a_shopify_token_refusal_shows_shopifys_reason() -> None:
+    def post(_url: str, _form: dict[str, str]) -> tuple[int, bytes]:
+        return (
+            400,
+            b'{"error":"invalid_request","error_description":"Missing or invalid client secret"}',
+        )
+
+    fields = {"shop": "b.myshopify.com", "client": "abc"}
+    rows = apps.read(apps.BY_ID["shopify"], "secret-x", fields, post=post)
+    assert all("Missing or invalid client secret" in row["error"] for row in rows)
+
+
+def test_the_client_id_saved_as_the_shopify_secret_is_named_without_asking_shopify() -> None:
+    def post(_url: str, _form: dict[str, str]) -> tuple[int, bytes]:
+        raise AssertionError("not asked")
+
+    fields = {"shop": "c.myshopify.com", "client": "same1"}
+    rows = apps.read(apps.BY_ID["shopify"], "same1", fields, post=post)
+    assert all("saved secret is the Client ID" in row["error"] for row in rows)

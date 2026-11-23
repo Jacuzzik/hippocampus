@@ -42,6 +42,11 @@ class AppsPart:
         if len(token) > KEY_MAX or any(ch in token for ch in "\r\n"):
             raise ValueError("That does not look like a key.")
         fields = apps.check_fields(app, request.get("fields"))
+        if fields.get("client") and token.strip() == fields["client"]:
+            raise ValueError(
+                "The key is the same as the Client ID. Paste the client secret instead: in the"
+                " Dev Dashboard, open the app's Settings and copy Secret."
+            )
         try:
             keys.set_key(_account(app.id), token.strip())
         except KeyringError as error:
