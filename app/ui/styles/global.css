@@ -5,6 +5,10 @@
     linear-gradient(color-mix(in srgb, var(--color-border) 55%, transparent) 1px, transparent 1px) center / 96px 96px,
     linear-gradient(90deg, color-mix(in srgb, var(--color-border) 55%, transparent) 1px, transparent 1px) center / 96px 96px,
     var(--color-bg-1);
+  /* The same grid at a smaller step, for dashboard tiles (the small headline panels). */
+  --tile-grid:
+    linear-gradient(color-mix(in srgb, var(--color-border) 55%, transparent) 1px, transparent 1px) center / 32px 32px,
+    linear-gradient(90deg, color-mix(in srgb, var(--color-border) 55%, transparent) 1px, transparent 1px) center / 32px 32px;
 }
 
 *,

@@ -261,7 +261,14 @@
     display: grid;
     gap: var(--space-1);
     padding: var(--space-4);
-    background: var(--color-bg-1);
+    background:
+      radial-gradient(
+        120% 100% at 50% 100%,
+        color-mix(in srgb, var(--color-accent) 16%, transparent),
+        transparent 70%
+      ),
+      var(--tile-grid),
+      var(--color-bg-1);
     border: 1px solid var(--color-border);
     border-top: 3px solid var(--color-accent);
     border-radius: var(--radius-md);

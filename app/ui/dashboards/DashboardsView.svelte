@@ -964,11 +964,12 @@
     overflow: hidden;
     container-type: size;
     background:
-      linear-gradient(
-        160deg,
-        color-mix(in srgb, var(--color-accent) 7%, transparent),
-        transparent 55%
+      radial-gradient(
+        120% 100% at 50% 100%,
+        color-mix(in srgb, var(--color-accent) 16%, transparent),
+        transparent 70%
       ),
+      var(--tile-grid),
       var(--color-bg-1);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
@@ -999,11 +1000,12 @@
   /* A number that needs the user: the bar, the tint and the number turn to the warning colour. */
   .tiles li.warn {
     background:
-      linear-gradient(
-        160deg,
-        color-mix(in srgb, var(--color-danger) 12%, transparent),
-        transparent 60%
+      radial-gradient(
+        120% 100% at 50% 100%,
+        color-mix(in srgb, var(--color-danger) 18%, transparent),
+        transparent 70%
       ),
+      var(--tile-grid),
       var(--color-bg-1);
     border-color: color-mix(
       in srgb,
