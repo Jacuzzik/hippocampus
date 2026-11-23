@@ -4,7 +4,6 @@
   import { invoke } from "@tauri-apps/api/core";
   import { onMount } from "svelte";
   import { NETWORK_TEXT, type NetworkMode } from "./model";
-  import StatusCard from "../controls/StatusCard.svelte";
   import Loading from "../controls/Loading.svelte";
   import { report } from "../notices.svelte.ts";
   import MissionsSection from "./MissionsSection.svelte";
@@ -113,12 +112,11 @@
       <dt>Scheduled jobs</dt>
       <dd>{jobs.length} set, {on} on</dd>
     </dl>
-    <StatusCard
-      name="Context compaction"
-      what="Shortens a long chat on its own, so the assistant keeps working without losing the thread."
-      status="Planned"
-      reason="The assistant does not shorten its context yet."
-    />
+    <p class="muted">
+      Context compaction is on: in a long chat the assistant gets your newest
+      turns in full and a short digest of the older ones, so it keeps the thread
+      without a model call.
+    </p>
     <MissionsSection />
     <h4>Webhooks</h4>
     {#if webhooks.length === 0}

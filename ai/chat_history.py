@@ -72,6 +72,47 @@ def model_turns(agent: str, path: Path | None = None) -> list[dict[str, Any]]:
     turns = [
         {"role": m["role"], "content": m["text"]}
         for m in sessions[-1]["messages"]
-        if m.get("role") in ("user", "assistant")
+        if m.get("role") in ("user", "assistant") and isinstance(m.get("text"), str)
     ]
-    return turns[-TURNS:]
+    return compact(turns)
+
+
+# Context compaction: a long chat is shortened on its own. The newest turns go to the model as they
+# are, within TURNS and CHARS; the older ones become one short digest (the first line of each request
+# and answer) at the top of the first kept request, so the thread is not lost. No model is called.
+CHARS = 60_000
+DIGEST_ITEMS = 30
+DIGEST_LINE = 160
+
+
+def _first_line(text: str) -> str:
+    line = next((part.strip() for part in text.splitlines() if part.strip()), "")
+    return line if len(line) <= DIGEST_LINE else line[: DIGEST_LINE - 1] + "…"
+
+
+def compact(turns: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    kept: list[dict[str, Any]] = []
+    size = 0
+    for turn in reversed(turns):
+        length = len(turn["content"])
+        if kept and (len(kept) >= TURNS or size + length > CHARS):
+            break
+        kept.append(turn)
+        size += length
+    kept.reverse()
+    # The model's messages start with a request: an answer left at the front moves to the digest.
+    while kept and kept[0]["role"] != "user":
+        kept.pop(0)
+    older = turns[: len(turns) - len(kept)]
+    if not older or not kept:
+        return kept
+    lines = [
+        f"- {'You asked' if t['role'] == 'user' else 'I answered'}: {_first_line(t['content'])}"
+        for t in older[-DIGEST_ITEMS:]
+    ]
+    skipped = len(older) - len(lines)
+    head = "Earlier in this chat (shortened by the app"
+    head += f"; {skipped} older turns left out):" if skipped else "):"
+    digest = "\n".join([head, *lines])
+    first = {**kept[0], "content": f"{digest}\n\nNow: {kept[0]['content']}"}
+    return [first, *kept[1:]]

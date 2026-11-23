@@ -123,7 +123,7 @@ test("the budget has a 5-hour cap next to day, week and month", async ({
   await expect(dialog.getByLabel("Whole app day cap")).toHaveValue("200000");
 });
 
-test("triggers show the network, the job count and that compaction is Planned", async ({
+test("triggers show the network, the job count and that compaction is on", async ({
   page,
 }) => {
   await mockSidecar(page);
@@ -132,11 +132,7 @@ test("triggers show the network, the job count and that compaction is Planned", 
   const dialog = page.getByRole("dialog", { name: "Settings" });
   await dialog.getByRole("tab", { name: "Work" }).click();
   await expect(dialog.getByText("1 set, 1 on")).toBeVisible();
-  await expect(
-    dialog
-      .locator("article", { hasText: "Context compaction" })
-      .getByText("Planned", { exact: true }),
-  ).toBeVisible();
+  await expect(dialog.getByText("Context compaction is on")).toBeVisible();
   await expect(dialog.getByText("None saved yet.")).toBeVisible();
 });
 
