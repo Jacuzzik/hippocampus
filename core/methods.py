@@ -35,6 +35,9 @@ METHODS: dict[str, Method] = {
     "note_colour": _m("Colour a note through its tags."),
     "note_history": _m("The kept earlier versions of a note, newest first (the last 20)."),
     "note_version": _m("The text of one kept version of a note."),
+    "agent_worktree": _m(
+        "Move an added agent into its own git worktree, or back to its folder.", _AGENT
+    ),
     "mcp_servers": _m("The MCP servers in an added agent's own .mcp.json, secrets masked.", _AGENT),
     "mcp_add": _m("Add or replace an MCP server in an added agent's .mcp.json.", _AGENT),
     "mcp_remove": _m("Remove an MCP server from an added agent's .mcp.json.", _AGENT),

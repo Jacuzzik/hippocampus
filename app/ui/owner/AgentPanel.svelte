@@ -14,6 +14,7 @@
   } from "../regions/LiveTerminal.svelte";
   import {
     addedAgents,
+    setAddedAgents,
     togglePin,
     type SavedAgent,
   } from "./addedAgents.svelte";
@@ -51,6 +52,41 @@
       method: "open_link",
       params: { url: remote.url },
     }).catch((cause) => (error = String(cause)));
+  }
+
+  // A git worktree per agent (7.06): on moves the agent into its own branch folder, off moves it back.
+  let treeBusy = $state(false);
+  let treeNote = $state<string | null>(null);
+  async function toggleWorktree(): Promise<void> {
+    treeBusy = true;
+    treeNote = null;
+    try {
+      const answer = await invoke<{ agent: SavedAgent }>("sidecar_call", {
+        method: "agent_worktree",
+        params: { agent: agent.id, on: !agent.worktree_of },
+      });
+      const next = answer.agent;
+      setAddedAgents(
+        addedAgents.list.map((a) =>
+          a.id === agent.id
+            ? {
+                ...a,
+                folder: next.folder,
+                worktree_of: next.worktree_of,
+                branch: next.branch,
+              }
+            : a,
+        ),
+      );
+      treeNote = next.worktree_of
+        ? `Now in its own worktree on ${next.branch}. Its program uses it from its next start.`
+        : "Back in its own folder. Its program uses it from its next start.";
+      showGit();
+    } catch (cause) {
+      treeNote = String(cause).replace(/^Error: /, "");
+    } finally {
+      treeBusy = false;
+    }
   }
 
   // One-click handoff (N.06): a note in the vault's Handoffs folder and an inbox message to the receiver.
@@ -441,6 +477,17 @@
     onstate={onTerminalState}
   />
   {#if view === "git"}
+    <div class="tree">
+      <button type="button" disabled={treeBusy} onclick={toggleWorktree}
+        >{agent.worktree_of ? "Leave own worktree" : "Use own worktree"}</button
+      >
+      <span class="muted"
+        >{agent.worktree_of
+          ? `Branch ${agent.branch ?? ""}, beside ${agent.worktree_of}`
+          : "Its own branch folder, so parallel agents do not collide."}</span
+      >
+      {#if treeNote}<p class="muted" role="status">{treeNote}</p>{/if}
+    </div>
     <pre class="git" aria-label="Git status">{gitText}</pre>
   {/if}
   {#if (view === "messages" || view === "traces") && !loaded}
@@ -788,6 +835,19 @@
     font-family: var(--font-mono);
     font-size: var(--font-size-tag);
     white-space: pre;
+  }
+  .tree {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    align-items: center;
+  }
+  .tree .muted {
+    color: var(--color-md-text-muted);
+  }
+  .tree p {
+    flex: 1 1 100%;
+    margin: 0;
   }
   .remote {
     color: var(--color-md-text-muted);

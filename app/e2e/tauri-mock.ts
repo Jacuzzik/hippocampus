@@ -683,6 +683,27 @@ export async function mockSidecar(
               state: "connected",
               url: "https://claude.ai/code/session_mock",
             };
+          case "agent_worktree": {
+            const list = savedAgents as {
+              id: string;
+              folder?: string;
+              worktree_of?: string;
+              branch?: string;
+            }[];
+            const one = list.find((a) => a.id === args.params?.agent);
+            if (!one)
+              throw new Error("Only an added agent can have a worktree.");
+            if (args.params?.on) {
+              one.worktree_of = one.folder;
+              one.folder = `${one.folder}-worktrees/${one.id}`;
+              one.branch = `agent/${one.id}`;
+            } else {
+              one.folder = one.worktree_of;
+              delete one.worktree_of;
+              delete one.branch;
+            }
+            return { agent: { ...one }, restart: true };
+          }
           case "mcp_servers":
             return { servers: mcpRows };
           case "mcp_add":

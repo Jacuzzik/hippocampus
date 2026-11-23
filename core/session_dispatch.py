@@ -75,6 +75,7 @@ class DispatchPart:
             "playbook_run": self.playbook_run,
             "search_all": self.search_all,
             "mcp_servers": self.mcp_servers,
+            "agent_worktree": self.agent_worktree,
             "mcp_add": self.mcp_add,
             "mcp_remove": self.mcp_remove,
             "chat": self.chat,

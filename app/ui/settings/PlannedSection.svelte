@@ -5,13 +5,6 @@
   // and what is missing, so nothing here is a dead button. The id is the plan item it answers.
   const PLANNED = [
     {
-      id: "7.06",
-      name: "A git worktree per agent",
-      what: "Agents working in parallel get their own branch folder, so they do not collide.",
-      reason:
-        "Needs a worktree created on start and removed on archive; not built.",
-    },
-    {
       id: "7.09",
       name: "Search memory by meaning",
       what: "Finds notes by what they mean, not only by their words.",

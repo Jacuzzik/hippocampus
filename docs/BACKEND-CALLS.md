@@ -26,7 +26,7 @@ A name the file builds at run time is not listed.
 | `ui/overlays/SetupChecklist.svelte` | `doctor` | yes |
 | `ui/overlays/ToolsDialog.svelte` | `set_tools`, `tools` | yes |
 | `ui/owner/AgentBar.svelte` | `account`, `crashes`, `terminal_command`, `terminal_context`, `terminal_input`, `terminal_rebrief` | yes |
-| `ui/owner/AgentPanel.svelte` | `agent_pins`, `git_status`, `handoff`, `inbox`, `open_folder`, `open_link`, `remote_status`, `terminal_input`, `terminal_stop`, `terminal_traces` | yes |
+| `ui/owner/AgentPanel.svelte` | `agent_pins`, `agent_worktree`, `git_status`, `handoff`, `inbox`, `open_folder`, `open_link`, `remote_status`, `terminal_input`, `terminal_stop`, `terminal_traces` | yes |
 | `ui/owner/McpServers.svelte` | (built at run time) | yes |
 | `ui/owner/addedAgents.svelte.ts` | `agent_session`, `agents`, `save_agents` | yes |
 | `ui/regions/ActivityPanel.svelte` | `activity` | yes |

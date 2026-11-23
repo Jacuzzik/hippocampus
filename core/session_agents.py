@@ -19,6 +19,7 @@ from core import (
     safe_write,
     search_all,
     share,
+    worktrees,
 )
 from core import handoff as handoff_note
 from core.session_shared import (
@@ -188,6 +189,32 @@ class AgentsPart:
         if not saved.get("folder") or not folder.is_dir():
             raise ValueError("This agent has no working folder.")
         return folder
+
+    def agent_worktree(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Move an added agent into its own git worktree (on) or back to its folder (off). Its
+        program uses the new folder from its next start."""
+        agent, on = request.get("agent"), request.get("on")
+        if not isinstance(on, bool):
+            raise ValueError('"on" must be true or false.')
+        agents = added_agents.load(self.agents_path)
+        saved = next((a for a in agents if a.get("id") == agent), None)
+        if saved is None:
+            raise ValueError("Only an added agent can have a worktree.")
+        if on:
+            if saved.get("worktree_of"):
+                raise ValueError("This agent already works in its own worktree.")
+            folder = self._agent_folder(agent)
+            moved, branch = worktrees.create(folder, str(agent))
+            saved.update(folder=str(moved), worktree_of=str(folder), branch=branch)
+        else:
+            if not saved.get("worktree_of"):
+                raise ValueError("This agent does not have a worktree.")
+            worktrees.remove(Path(str(saved["folder"])))
+            saved["folder"] = saved.pop("worktree_of")
+            saved.pop("branch", None)
+        added_agents.save(self.agents_path, agents)
+        self.note("setting", text=f"{'gave' if on else 'took back'} {agent} its own worktree")
+        return {"agent": saved, "restart": True}
 
     def mcp_servers(self, request: dict[str, Any]) -> dict[str, Any]:
         return {"servers": mcp_config.servers(self._agent_folder(request.get("agent")))}

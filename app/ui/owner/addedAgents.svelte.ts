@@ -11,6 +11,9 @@ export type SavedAgent = AgentDraft & {
   id: string;
   note?: string;
   pinned?: string[];
+  /** Set while the agent works in its own git worktree (7.06): its own folder before, and its branch. */
+  worktree_of?: string;
+  branch?: string;
 };
 
 const KEY = "hippocampus.addedAgents";

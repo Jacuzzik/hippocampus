@@ -88,6 +88,17 @@ test("an added agent runs in the same terminal, and block tools restarts it", as
   await page.getByRole("tab", { name: "Messages" }).click();
   await expect(page.getByText("No messages yet")).toBeVisible();
 
+  // Its own worktree: on, then off again.
+  await page.getByRole("tab", { name: "Git" }).click();
+  await page.getByRole("button", { name: "Use own worktree" }).click();
+  await expect(
+    page.getByRole("status").filter({ hasText: "worktree" }),
+  ).toContainText("Now in its own worktree on agent/");
+  await page.getByRole("button", { name: "Leave own worktree" }).click();
+  await expect(
+    page.getByRole("status").filter({ hasText: "folder" }),
+  ).toContainText("Back in its own folder");
+
   // MCP: a server added to this agent's own folder, then removed.
   await page.getByRole("tab", { name: "MCP" }).click();
   const mcp = page.getByRole("region", { name: "MCP servers of Ada" });
