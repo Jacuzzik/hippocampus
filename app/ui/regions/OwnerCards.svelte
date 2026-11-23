@@ -16,6 +16,7 @@
   };
   let cards = $state<Card[]>([]);
   let error = $state<string | null>(null);
+  let loaded = $state(false);
 
   async function load(): Promise<void> {
     try {
@@ -25,6 +26,8 @@
       error = null;
     } catch (cause) {
       error = String(cause);
+    } finally {
+      loaded = true;
     }
   }
   onMount(() => onChanged("cards", load, 60000));
@@ -47,7 +50,9 @@
 </script>
 
 <PanelHeader title="YOUR CARDS" aside={String(cards.length)} />
-{#if cards.length === 0}
+{#if !loaded}
+  <p class="muted">Checking…</p>
+{:else if cards.length === 0}
   <p class="muted">
     None yet. Select text while editing a note and press Make card.
   </p>

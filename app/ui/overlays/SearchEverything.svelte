@@ -43,6 +43,7 @@
   let active = $state(0);
   let error = $state<string | null>(null);
   let searched = $state(false);
+  let busy = $state(false);
   let input: HTMLInputElement | null = $state(null);
   let timer = 0;
   let asked = 0;
@@ -100,6 +101,7 @@
     }
     timer = window.setTimeout(async () => {
       const mine = ++asked;
+      busy = true;
       try {
         const found = await invoke<Found>("sidecar_call", {
           method: "search_all",
@@ -111,7 +113,10 @@
       } catch (cause) {
         if (mine === asked) error = String(cause);
       } finally {
-        if (mine === asked) searched = true;
+        if (mine === asked) {
+          searched = true;
+          busy = false;
+        }
       }
     }, 250);
   });
@@ -175,7 +180,10 @@
         </button>
       </li>
     {:else}
-      {#if searched}<li class="muted" role="presentation">No matches.</li>{/if}
+      {#if busy}<li class="muted" role="presentation">Searching…</li>
+      {:else if searched}<li class="muted" role="presentation">
+          No matches.
+        </li>{/if}
     {/each}
   </ul>
   {#if error}<p class="muted" role="alert">{error}</p>{/if}
