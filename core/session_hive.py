@@ -11,6 +11,7 @@ from core import (
     added_agents,
     breaker,
     crash_log,
+    file_requests,
     fleet,
     inbox,
     startup_inbox,
@@ -48,7 +49,11 @@ class HivePart:
         rows = self.fleet_rows()
         for row in rows:
             row["breaker"] = self.breakers.get(row["id"], {}).get("level", "healthy")
-        return {"path": str(self.hive_path / fleet.NAME), "agents": rows}
+        return {
+            "path": str(self.hive_path / fleet.NAME),
+            "requests": str(self.hive_path / file_requests.FOLDER),
+            "agents": rows,
+        }
 
     def _check_breakers(self, rows: list[dict[str, Any]]) -> None:
         """Assess each running agent and steer a tripped one, once per reason per cooldown."""
@@ -97,6 +102,30 @@ class HivePart:
         if 0 <= self.seen_asks < asks:
             self.alert("A question is waiting", "Open Ask me to answer it.")
         self.seen_unread, self.seen_asks = unread, asks
+
+    def _take_requests(self) -> None:
+        """Turn request files dropped in the hive's requests folder into inbox messages (7.35)."""
+
+        def send(request: dict[str, str]) -> None:
+            inbox.send(
+                self.hive_path,
+                inbox.USER,
+                request["to"],
+                request["subject"],
+                request["body"],
+                act="request",
+                work=request["work"],
+                priority=request["priority"],
+            )
+
+        sent, failed = file_requests.process(self.hive_path, self._agent_ids(), send)
+        if sent:
+            self.note("handoff", text=f"took {sent} request file(s) from the requests folder")
+            self.changed("inbox")
+        if failed:
+            self.note(
+                "error", text=f"{failed} request file(s) could not be read; see requests/.failed"
+            )
 
     def _write_fleet(self) -> None:
         now = time.time()
@@ -192,6 +221,7 @@ class HivePart:
                 self._daily_compact()
                 self._write_fleet()
                 self._alert_new()
+                self._take_requests()
                 # "user" is a valid receiver: an agent answers the user there (a calendar event's done or refuse).
                 if inbox.collect_outboxes(self.hive_path, self._agent_ids() | {inbox.USER}):
                     self.changed("inbox")
@@ -215,7 +245,11 @@ class HivePart:
                     self.inbox_pending.pop(agent, None)
                 for folder in self.hive_path.iterdir():
                     # The user and the app have no terminal: their messages are read in the Inbox.
-                    if not folder.is_dir() or folder.name in (inbox.USER, inbox.APP):
+                    if not folder.is_dir() or folder.name in (
+                        inbox.USER,
+                        inbox.APP,
+                        file_requests.FOLDER,
+                    ):
                         continue
                     # A terminal that has just started is still drawing: messages typed before it is ready are lost, so they wait for it to settle.
                     if (

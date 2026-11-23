@@ -121,13 +121,6 @@
         "Needs sample notes and a tour overlay designed first; not built.",
     },
     {
-      id: "7.35",
-      name: "File-based requests",
-      what: "Spawn, clear and connect requests as small files the app acts on.",
-      reason:
-        "Optional and needs a watched folder; every agent action today goes through the inbox.",
-    },
-    {
       id: "7.07",
       name: "Several vaults in separate windows",
       what: "Open another vault with its own folder, agents and memory in a second window.",
