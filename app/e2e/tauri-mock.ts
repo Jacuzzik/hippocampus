@@ -628,8 +628,9 @@ export async function mockSidecar(
             };
           case "note_save": {
             const at = String(args.params?.path);
-            (noteHistory[at] ??= []).unshift({
-              id: String(1_800_000_000_000 + noteHistory[at].length),
+            const kept = (noteHistory[at] ??= []);
+            kept.unshift({
+              id: String(1_800_000_000_000 + kept.length),
               text: texts[at] ?? "",
             });
             texts[at] = String(args.params?.text);
@@ -656,8 +657,9 @@ export async function mockSidecar(
             );
             if (!kept) throw new Error("That version is no longer kept.");
             if (args.method === "note_restore") {
-              noteHistory[at].unshift({
-                id: String(1_800_000_000_000 + noteHistory[at].length),
+              const list = (noteHistory[at] ??= []);
+              list.unshift({
+                id: String(1_800_000_000_000 + list.length),
                 text: texts[at] ?? "",
               });
               texts[at] = kept.text;
