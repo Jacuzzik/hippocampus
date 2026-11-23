@@ -114,6 +114,11 @@ impl Sidecar {
                 .map_err(CallError::Failed)?
                 .insert(id, tx);
             let mut request = params;
+            // "id" carries the request number, so a caller's own "id" (an app, an event, a card)
+            // travels as "param_id" and the backend puts it back before the handler runs.
+            if let Some(own) = request.remove("id") {
+                request.insert("param_id".into(), own);
+            }
             request.insert("id".into(), json!(id));
             request.insert("method".into(), json!(method));
             let written =

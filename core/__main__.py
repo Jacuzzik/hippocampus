@@ -621,6 +621,9 @@ def handle(session: Session, line: str) -> dict[str, Any]:
     if not isinstance(request, dict):
         return {"id": None, "error": "request must be a JSON object"}
     request_id = request.get("id")
+    if "param_id" in request:  # the caller's own "id", moved aside by the window (sidecar.rs)
+        own = request.pop("param_id")
+        request = {**request, "id": own}
     try:
         return {"id": request_id, "result": session.dispatch(request)}
     except Exception as exc:
