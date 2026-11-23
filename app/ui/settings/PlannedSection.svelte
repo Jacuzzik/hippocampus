@@ -134,13 +134,6 @@
         "Needs sample notes and a tour overlay designed first; not built.",
     },
     {
-      id: "M.20",
-      name: "Desktop alerts",
-      what: "An alert for an Ask me question, a blocked card or a finished agent, with quiet hours.",
-      reason:
-        "Needs the system notification service and a permission prompt; off until asked.",
-    },
-    {
       id: "7.32",
       name: "Remote control status",
       what: "A status light and a copyable link when an agent can be driven from another device.",

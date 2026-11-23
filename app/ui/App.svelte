@@ -2,6 +2,7 @@
   import { invoke } from "@tauri-apps/api/core";
   import { getCurrentWindow } from "@tauri-apps/api/window";
   import { onMount } from "svelte";
+  import { watchAlerts } from "./alerts.ts";
   import GraphRegion from "./regions/GraphRegion.svelte";
   import NoteSidebar from "./regions/NoteSidebar.svelte";
   import Ribbon from "./regions/Ribbon.svelte";
@@ -270,6 +271,7 @@
   }
 
   // The graph menu and sidebar fire this after a change, so it redraws at once rather than at the next poll.
+  onMount(() => watchAlerts());
   onMount(() => {
     // 7.29: on the very first start, Setup and account opens by itself to show the setup checks. Once only.
     try {
@@ -574,9 +576,9 @@
      hidden, so terminals keep running; the bottom bar is not drawn and there is no right sidebar. */
   .shell.dash,
   .shell.dash.terminal-only {
-    grid-template-columns: var(--layout-ribbon-width) var(
-        --agent-rail-col
-      ) minmax(0, 1fr);
+    grid-template-columns:
+      var(--layout-ribbon-width) var(--agent-rail-col)
+      minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr);
     grid-template-areas:
       "rail top top"

@@ -17,6 +17,8 @@ export type TextSize = "normal" | "large" | "larger";
 export type Density = "comfortable" | "compact";
 type Prefs = {
   quiet: boolean;
+  /** Desktop alerts (M.20): off until the user turns them on. */
+  alerts: boolean;
   terminalFontSize: number;
   terminalScrollback: number;
   terminalCursor: Cursor;
@@ -43,6 +45,7 @@ export const SCROLLBACK_MIN = 500;
 export const SCROLLBACK_MAX = 20000;
 const DEFAULTS: Prefs = {
   quiet: false,
+  alerts: false,
   terminalFontSize: 12,
   terminalScrollback: 5000,
   terminalCursor: "block",
@@ -92,6 +95,7 @@ function read(): Prefs {
       intro:
         saved.intro === "short" || saved.intro === "off" ? saved.intro : "long",
       quiet: saved.quiet === true,
+      alerts: saved.alerts === true,
       terminalCopyOnSelect: saved.terminalCopyOnSelect === true,
       terminalBell: saved.terminalBell === "flash" ? "flash" : "off",
       textSize:
@@ -160,6 +164,13 @@ export function applyTheme(): void {
 systemLight?.addEventListener("change", applyTheme);
 
 export const prefs = {
+  get alerts(): boolean {
+    return state.alerts;
+  },
+  set alerts(value: boolean) {
+    state.alerts = value;
+    save();
+  },
   get quiet(): boolean {
     return state.quiet;
   },

@@ -498,6 +498,16 @@
               label={prefs.quiet ? "On" : "Off"}
             />
           </SettingRow>
+          <SettingRow title="Desktop alerts"
+            >{#snippet help()}A system notification when an agent crashes or its
+              circuit breaker trips, a question waits for you, or a message
+              arrives for you. Only while the window is not in front.{/snippet}
+            <Toggle
+              bind:checked={prefs.alerts}
+              ariaLabel="Desktop alerts"
+              label={prefs.alerts ? "On" : "Off"}
+            />
+          </SettingRow>
           <SettingRow title="Terminal text size"
             >{#snippet help()}Used by every agent terminal. {FONT_MIN} to {FONT_MAX}
               px.{/snippet}

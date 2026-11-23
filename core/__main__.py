@@ -159,8 +159,9 @@ class Session(
         self.terminals = Terminals(
             lambda event: self.emit(event),
             storage / "terminals",
-            lambda agent, code: crash_log.record(
-                storage, f"agent {agent}", f"The CLI stopped with code {code}."
+            lambda agent, code: (
+                crash_log.record(storage, f"agent {agent}", f"The CLI stopped with code {code}."),
+                self.alert(f"{agent} stopped", f"Its program ended with code {code}."),
             ),
         )
         # Daily compaction: the day it last ran, and agents that were sent the save prompt (name -> time sent).
@@ -179,6 +180,9 @@ class Session(
         self.loop_alerts: dict[tuple[str, str], float] = {}
         self.last_archive = 0.0
         self.last_fleet = 0.0
+        # What the last check saw, so a desktop alert goes out only for something new.
+        self.seen_unread = -1
+        self.seen_asks = -1
         # The circuit breaker: the last assessment of each agent, and when each reason last steered it.
         self.breakers: dict[str, dict[str, Any]] = {}
         self.breaker_sent: dict[tuple[str, str], float] = {}
@@ -403,6 +407,10 @@ class Session(
     def _helper_event(self, event: dict[str, Any]) -> None:
         self.note("handoff", text=event["text"])
         self.changed("helpers")
+
+    def alert(self, title: str, body: str) -> None:
+        """Ask the window for a desktop alert. It shows one only when the user turned alerts on."""
+        self.emit({"event": "alert", "title": title[:120], "body": body[:400]})
 
     def changed(self, what: str) -> None:
         """Tell the window that one kind of data changed, so it reads again now and does not wait for a timer."""

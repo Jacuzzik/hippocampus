@@ -77,6 +77,7 @@ class HivePart:
                 except RuntimeError:
                     continue
                 self.note("budget", text=f"circuit breaker steered {agent}: {reason['text']}")
+                self.alert(f"Circuit breaker: {row.get('name', agent)}", reason["text"])
         if {a: f["level"] for a, f in seen.items()} != {
             a: f["level"] for a, f in self.breakers.items()
         }:
@@ -85,6 +86,17 @@ class HivePart:
 
     def breakers_state(self) -> dict[str, Any]:
         return {"breakers": list(self.breakers.values())}
+
+    def _alert_new(self) -> None:
+        """A desktop alert for a new message for the user or a new question waiting. The first
+        check only counts, so starting the app does not alert for what was already there."""
+        unread = len(inbox.pending(self.hive_path, inbox.USER))
+        asks = len(self.asks.waiting()) + len(self.gate.waiting())
+        if 0 <= self.seen_unread < unread:
+            self.alert("A message for you", f"{unread} unread in the Inbox.")
+        if 0 <= self.seen_asks < asks:
+            self.alert("A question is waiting", "Open Ask me to answer it.")
+        self.seen_unread, self.seen_asks = unread, asks
 
     def _write_fleet(self) -> None:
         now = time.time()
@@ -179,6 +191,7 @@ class HivePart:
                 self._hubs_present()
                 self._daily_compact()
                 self._write_fleet()
+                self._alert_new()
                 # "user" is a valid receiver: an agent answers the user there (a calendar event's done or refuse).
                 if inbox.collect_outboxes(self.hive_path, self._agent_ids() | {inbox.USER}):
                     self.changed("inbox")

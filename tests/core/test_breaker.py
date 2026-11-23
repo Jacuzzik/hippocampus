@@ -69,3 +69,23 @@ def test_a_tripped_running_agent_is_steered_once_per_cooldown(
     session.breaker_sent.clear()
     session._check_breakers([stopped])
     assert len(typed) == 1
+
+
+def test_desktop_alerts_go_out_for_something_new_only(tmp_path: Path) -> None:
+    events: list[dict[str, Any]] = []
+    session = sidecar.Session(tmp_path, Settings(), emit=events.append)
+    session._alert_new()  # the first check only counts
+    session.dispatch(
+        {"method": "task_send", "to": "hippoherman", "from": "user", "subject": "s", "body": "b"}
+    )
+    from core import inbox
+
+    inbox.send(session.hive_path, "hippoherman", inbox.USER, "Done", "It is done.")
+    session.asks.open("c1", "Which folder?")
+    events.clear()
+    session._alert_new()
+    titles = [e["title"] for e in events if e.get("event") == "alert"]
+    assert titles == ["A message for you", "A question is waiting"]
+    events.clear()
+    session._alert_new()
+    assert [e for e in events if e.get("event") == "alert"] == []
