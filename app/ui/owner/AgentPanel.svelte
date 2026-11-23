@@ -12,10 +12,45 @@
   import LiveTerminal, {
     type TerminalState,
   } from "../regions/LiveTerminal.svelte";
-  import { togglePin, type SavedAgent } from "./addedAgents.svelte";
+  import {
+    addedAgents,
+    togglePin,
+    type SavedAgent,
+  } from "./addedAgents.svelte";
   import { createTerminalQueue } from "../regions/terminalQueue.svelte";
 
   let { agent }: { agent: SavedAgent } = $props();
+
+  // One-click handoff (N.06): a note in the vault's Handoffs folder and an inbox message to the receiver.
+  let handingOff = $state(false);
+  let handTo = $state("hippoherman");
+  let handNote = $state("");
+  let handDone = $state<string | null>(null);
+  let handError = $state<string | null>(null);
+  const handTargets = $derived([
+    { id: "hippoherman", name: "Hippoherman" },
+    ...addedAgents.list
+      .filter((a) => a.id !== agent.id)
+      .map((a) => ({ id: a.id, name: a.name })),
+  ]);
+  async function handOff(event: SubmitEvent): Promise<void> {
+    event.preventDefault();
+    handError = null;
+    try {
+      const answer = await invoke<{ note: string | null }>("sidecar_call", {
+        method: "handoff",
+        params: { from: agent.id, to: handTo, note: handNote },
+      });
+      const name = handTargets.find((t) => t.id === handTo)?.name ?? handTo;
+      handDone = answer.note
+        ? `Handed to ${name}. The note is ${answer.note}.`
+        : `Handed to ${name}. No vault is open, so only the message was sent.`;
+      handNote = "";
+      handingOff = false;
+    } catch (cause) {
+      handError = String(cause);
+    }
+  }
 
   // The app does not report a status or usage for an added agent yet, so these show a dash, not made-up numbers.
   const NO_DATA = "—";
@@ -264,7 +299,44 @@
       onclick={() => (confirmBlock = !confirmBlock)}
       >{restarting ? "restarting…" : "block tools"}</button
     >
+    <button
+      type="button"
+      aria-pressed={handingOff}
+      onclick={() => {
+        handingOff = !handingOff;
+        handDone = null;
+      }}>hand off</button
+    >
   </div>
+  {#if handingOff}
+    <form
+      class="confirm"
+      aria-label="Hand off this agent's work"
+      onsubmit={handOff}
+    >
+      <p>
+        Writes a handoff note with {agent.name}'s open tasks, last tool calls
+        and pinned notes, and sends it to the agent you pick.
+      </p>
+      <label
+        >To <select aria-label="Hand off to" bind:value={handTo}>
+          {#each handTargets as target (target.id)}
+            <option value={target.id}>{target.name}</option>
+          {/each}
+        </select></label
+      >
+      <textarea
+        aria-label="What to pick up"
+        rows="3"
+        maxlength="2000"
+        placeholder="What to pick up"
+        bind:value={handNote}></textarea>
+      <button type="button" onclick={() => (handingOff = false)}>Cancel</button>
+      <button type="submit" class="send">Hand off</button>
+      {#if handError}<p role="alert">{handError}</p>{/if}
+    </form>
+  {/if}
+  {#if handDone}<p class="hand-done" role="status">{handDone}</p>{/if}
   {#if confirmBlock}
     <div class="confirm" role="group" aria-label="Confirm block tools">
       <p>
@@ -708,6 +780,14 @@
     padding: var(--space-2);
     border: 1px solid var(--color-md-border);
     border-radius: var(--radius-sm);
+  }
+  .confirm textarea {
+    flex: 1 1 100%;
+    font: inherit;
+  }
+  .hand-done {
+    margin: 0;
+    color: var(--color-md-text-muted);
   }
   .confirm p {
     flex: 1 1 100%;

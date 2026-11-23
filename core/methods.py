@@ -35,6 +35,11 @@ METHODS: dict[str, Method] = {
     "note_colour": _m("Colour a note through its tags."),
     "note_history": _m("The kept earlier versions of a note, newest first (the last 20)."),
     "note_version": _m("The text of one kept version of a note."),
+    "handoff": _m(
+        "Hand one agent's work to another: a note in Handoffs and an inbox message to the receiver.",
+        ("from", 'a "from" agent id'),
+        ("to", 'a "to" agent id'),
+    ),
     "note_restore": _m("Put a kept version of a note back; the text it replaces is kept first."),
     # Account and keys
     "account": _m("Whether a Claude key is saved."),

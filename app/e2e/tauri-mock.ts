@@ -636,6 +636,11 @@ export async function mockSidecar(
             texts[at] = String(args.params?.text);
             return { saved: `edited ${at}` };
           }
+          case "handoff":
+            return {
+              note: `Handoffs/2026-11-23 1400 ${String(args.params?.from)} to Hippoherman.md`,
+              message: "m1",
+            };
           case "breakers":
             return {
               breakers:

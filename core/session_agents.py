@@ -13,14 +13,18 @@ from core import (
     account_sync,
     added_agents,
     inbox,
+    pins,
     safe_write,
     share,
 )
+from core import handoff as handoff_note
 from core.session_shared import (
+    DELIVERY_BODY_MAX,
     _whole,
 )
 from core.settings import load_settings, save_engine
 from core.terminal import engine_problem
+from tools.vault_tools import vault_tools
 
 
 class AgentsPart:
@@ -121,6 +125,55 @@ class AgentsPart:
         ]
         self.changed("inbox")
         return {"id": ids[0] if ids else None, "ids": ids}
+
+    def handoff(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Hand one agent's work to another: a note in the vault's Handoffs folder (when a vault is
+        open) and an inbox message to the receiving agent with the same text and a link to the note."""
+        giver, taker = request.get("from"), request.get("to")
+        known = self._agent_ids()
+        if giver not in known or taker not in known:
+            raise ValueError('"handoff" needs a "from" and a "to" agent that exist.')
+        if giver == taker:
+            raise ValueError("An agent cannot hand off to itself.")
+        names = {"hippoherman": "Hippoherman"} | {
+            str(a["id"]): str(a.get("name") or a["id"])
+            for a in added_agents.load(self.agents_path)
+            if a.get("id")
+        }
+        saved = next((a for a in added_agents.load(self.agents_path) if a.get("id") == giver), {})
+        now = datetime.now()
+        text = handoff_note.compose(
+            now,
+            names[giver],
+            names[taker],
+            str(request.get("note") or ""),
+            [
+                t
+                for t in self.tasks()["tasks"]
+                if t.get("assignee") == giver and t.get("status") != "done"
+            ],
+            cli_sessions.tool_trace(giver, handoff_note.CALLS),
+            pins.paths(saved),
+        )
+        path = None
+        if self.indexer is not None:
+            path = handoff_note.path_for(now, names[giver], names[taker])
+            vault_tools(self.indexer, self.lock)["create_note"].run({"path": path, "content": text})
+            self.changed("notes")
+        # The link goes first, so a long note cut to the message limit still points at the whole note.
+        body = text if path is None else f"The note: [[{path.removesuffix('.md')}]]\n\n{text}"
+        message = inbox.send(
+            self.hive_path,
+            inbox.USER,
+            taker,
+            f"Handoff from {names[giver]}",
+            body[:DELIVERY_BODY_MAX],
+            act="request",
+            work="handoff",
+        )
+        self.changed("inbox")
+        self.note("handoff", text=f"handed {names[giver]}'s work to {names[taker]}")
+        return {"note": path, "message": message}
 
     def share_note(self, request: dict[str, Any]) -> dict[str, Any]:
         """A password link to one note (14.04). Needs a signed-in account; the link opens on the website."""

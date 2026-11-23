@@ -113,12 +113,6 @@
         "Needs the briefing split into blocks; the briefing wording is held until the owner answers.",
     },
     {
-      id: "N.06",
-      name: "One-click handoff",
-      what: "Asks an agent to write a handoff note, then starts the next session with it loaded.",
-      reason: "Needs a handoff note format shared with the inbox; not built.",
-    },
-    {
       id: "N.10",
       name: "Note to card, card to note",
       what: "Select text in a note to make a card with a link back, and give every card a note page.",

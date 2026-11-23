@@ -76,6 +76,15 @@ test("an added agent runs in the same terminal, and block tools restarts it", as
   await expect(traces).toContainText("read_note");
   await page.getByRole("tab", { name: "Messages" }).click();
   await expect(page.getByText("No messages yet")).toBeVisible();
+
+  // Hand off: a note and a message to the agent picked.
+  await page.getByRole("button", { name: "hand off" }).click();
+  const form = page.getByRole("form", { name: "Hand off this agent's work" });
+  await form.getByLabel("What to pick up").fill("Finish the inbox tidy.");
+  await form.getByRole("button", { name: "Hand off" }).click();
+  await expect(
+    page.getByRole("status").filter({ hasText: "Handed to" }),
+  ).toContainText("Handed to Hippoherman. The note is Handoffs/");
 });
 
 test("TALK on the main agent's card puts the cursor in its message box", async ({
