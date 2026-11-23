@@ -178,6 +178,7 @@ class Session(
         self.loop_guard = inbox.LoopGuard()
         self.loop_alerts: dict[tuple[str, str], float] = {}
         self.last_archive = 0.0
+        self.last_fleet = 0.0
         # Every agent gets its start-up inbox file when the app starts, whether or not its terminal is open.
         self._write_all_inboxes()
         threading.Thread(target=self._deliver_loop, daemon=True).start()

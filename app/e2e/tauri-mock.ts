@@ -636,6 +636,11 @@ export async function mockSidecar(
             texts[at] = String(args.params?.text);
             return { saved: `edited ${at}` };
           }
+          case "fleet":
+            return {
+              path: "/home/me/.hippocampus/office/fleet.json",
+              agents: [{ id: "hippoherman", status: "idle" }],
+            };
           // Note history, as core/session_notes.py answers it.
           case "note_history":
             return {

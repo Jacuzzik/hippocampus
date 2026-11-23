@@ -175,12 +175,6 @@
         "Needs the agent's own remote link read back from its terminal; today the app only types the command.",
     },
     {
-      id: "7.34",
-      name: "Live fleet file",
-      what: "One file with tokens, cost, status and inbox backlog per agent that other programs can read.",
-      reason: "Needs a writer in the backend and a stable format; not built.",
-    },
-    {
       id: "7.35",
       name: "File-based requests",
       what: "Spawn, clear and connect requests as small files the app acts on.",

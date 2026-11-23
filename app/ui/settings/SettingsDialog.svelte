@@ -112,6 +112,8 @@
   // svelte-ignore state_referenced_locally
   let page = $state<SettingsPage>(start);
   let sidecar = $state("Checking…");
+  // The live fleet file (7.34): where it is and how many agents it lists.
+  let fleet = $state<{ path: string; agents: unknown[] } | null>(null);
   let saved = $state<Saved | null>(null);
   let version = $state("");
 
@@ -248,6 +250,12 @@
     try {
       saved = await invoke<Saved>("sidecar_call", { method: "settings" });
       sidecar = "Running";
+      invoke<{ path: string; agents: unknown[] }>("sidecar_call", {
+        method: "fleet",
+      }).then(
+        (found) => (fleet = found),
+        () => (fleet = null),
+      );
     } catch (cause) {
       sidecar = `Not running: ${String(cause)}`;
     }
@@ -791,6 +799,16 @@
           <SettingRow title="Backend (Python)"
             >{#snippet help()}Answers every request from this window.{/snippet}
             <code>{sidecar}</code>
+          </SettingRow>
+          <SettingRow title="Fleet file"
+            >{#snippet help()}Every agent's status, model, context use and inbox
+              backlog, rewritten when one changes. Agents and other tools can
+              read it.{/snippet}
+            <code
+              >{fleet
+                ? `${fleet.path} (${fleet.agents.length} ${fleet.agents.length === 1 ? "agent" : "agents"})`
+                : "Not read yet"}</code
+            >
           </SettingRow>
         </section>
         <section class="control-section">

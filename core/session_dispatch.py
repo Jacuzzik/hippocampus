@@ -45,6 +45,7 @@ class DispatchPart:
                     "missions": self.missions,
                     "helpers": self.helpers_state,
                     "watchers": self.watchers_state,
+                    "fleet": self.fleet_state,
                     "system": self.system_state,
                     "skills": self.skills_state,
                     "keys": self.keys,

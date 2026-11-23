@@ -6,8 +6,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from ai import cli_sessions
 from core import (
     added_agents,
+    fleet,
     inbox,
     startup_inbox,
 )
@@ -19,8 +21,40 @@ from core.session_shared import (
     INBOX_SETTLE_S,
 )
 
+FLEET_SECONDS = 15
+
 
 class HivePart:
+    def fleet_rows(self) -> list[dict[str, Any]]:
+        """One row per agent for the fleet file: status, model, context use and inbox backlog."""
+        added = [
+            (str(a["id"]), str(a.get("name") or a["id"]))
+            for a in added_agents.load(self.agents_path)
+            if a.get("id")
+        ]
+        terminals = self.terminals
+        return fleet.build(
+            [("hippoherman", "Hippoherman"), *added],
+            terminals.info,
+            cli_sessions.context_percent,
+            lambda agent: len(inbox.pending(self.hive_path, agent)),
+            terminals.started_at,
+            terminals.last_output,
+        )
+
+    def fleet_state(self) -> dict[str, Any]:
+        return {"path": str(self.hive_path / fleet.NAME), "agents": self.fleet_rows()}
+
+    def _write_fleet(self) -> None:
+        now = time.time()
+        if now - self.last_fleet < FLEET_SECONDS:
+            return
+        self.last_fleet = now
+        try:
+            fleet.write(self.hive_path, self.fleet_rows(), now)
+        except OSError:
+            logging.exception("Could not write the fleet file")
+
     def _hubs_present(self) -> None:
         # Re-creates any missing hub note straight away, so a deleted hub comes back without a restart.
         vault = self.settings.vault
@@ -96,6 +130,7 @@ class HivePart:
             try:
                 self._hubs_present()
                 self._daily_compact()
+                self._write_fleet()
                 # "user" is a valid receiver: an agent answers the user there (a calendar event's done or refuse).
                 if inbox.collect_outboxes(self.hive_path, self._agent_ids() | {inbox.USER}):
                     self.changed("inbox")
