@@ -135,12 +135,6 @@
     },
     {
       id: "D.07",
-      name: "Dispatch assistant",
-      what: "Send a task to the assistant from the Work page, not only to a helper.",
-      reason: "Dispatch reaches helpers only; the assistant is not wired in.",
-    },
-    {
-      id: "D.07",
       name: "MCP servers",
       what: "Outside tools the assistant can call through the Model Context Protocol (MCP).",
       reason: "Adding, removing and turning one on per agent is not built.",

@@ -223,16 +223,28 @@ test("a dispatch is sent only after the confirm card", async ({ page }) => {
   // One order everywhere (4.14): Cancel first, the action last.
   await expect(card.getByRole("button")).toHaveText(["Cancel", "Send"]);
   await card.getByRole("button", { name: "Cancel" }).click();
-  await expect(dialog.getByText("Sent to helper.")).toHaveCount(0);
+  await expect(dialog.getByText("Sent to Helper.")).toHaveCount(0);
   await dialog.getByRole("button", { name: "Review and send" }).click();
   await dialog
     .getByRole("alertdialog", { name: "Confirm dispatch" })
     .getByRole("button", { name: "Send" })
     .click();
-  await expect(dialog.getByText("Sent to helper.")).toBeVisible();
+  await expect(dialog.getByText("Sent to Helper.")).toBeVisible();
+
+  // The assistant gets the task in its inbox, in the same four parts.
+  await dialog.getByLabel("Dispatch to").selectOption("hippoherman");
+  await dialog.getByLabel("Task").fill("Plan the release");
+  await dialog.getByRole("button", { name: "Review and send" }).click();
+  await dialog
+    .getByRole("alertdialog", { name: "Confirm dispatch" })
+    .getByRole("button", { name: "Send" })
+    .click();
+  await expect(
+    dialog.getByText("Sent to Hippoherman (the assistant)."),
+  ).toBeVisible();
 });
 
-test("Teams, MCP, Plugins, Notion, calendars and the Dispatch assistant show only under Planned", async ({
+test("Teams, MCP, Plugins, Notion and calendars show only under Planned", async ({
   page,
 }) => {
   await mockSidecar(page);
@@ -248,7 +260,6 @@ test("Teams, MCP, Plugins, Notion, calendars and the Dispatch assistant show onl
   await dialog.getByRole("tab", { name: "Planned", exact: true }).click();
   for (const name of [
     "Teams",
-    "Dispatch assistant",
     "MCP servers",
     "Plugins",
     "Notion",

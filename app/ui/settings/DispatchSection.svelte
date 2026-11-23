@@ -2,9 +2,18 @@
   import Button from "../controls/Button.svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { dispatchError } from "./model";
+  import { addedAgents } from "../owner/addedAgents.svelte.ts";
 
   // Sends a task to an agent. Nothing is sent until you confirm the exact task shown.
-  const AGENTS = [{ id: "helper", label: "Helper", ready: true }];
+  // A helper is a short job started here; Hippoherman and the added agents get the task in their
+  // inbox, in the same four parts, and work on it in their own terminal.
+  const AGENTS = $derived([
+    { id: "helper", label: "Helper", ready: true },
+    { id: "hippoherman", label: "Hippoherman (the assistant)", ready: true },
+    ...addedAgents.list.map((a) => ({ id: a.id, label: a.name, ready: true })),
+  ]);
+  const labelOf = (id: string): string =>
+    AGENTS.find((a) => a.id === id)?.label ?? id;
 
   let agent = $state("helper");
   let task = $state("");
@@ -50,11 +59,29 @@
     pending = null;
     sending = true;
     try {
-      await invoke("sidecar_call", {
-        method: "start_helper",
-        params: { parts },
-      });
-      sent = `Sent to ${who}.`;
+      if (who === "helper") {
+        await invoke("sidecar_call", {
+          method: "start_helper",
+          params: { parts },
+        });
+      } else {
+        await invoke("sidecar_call", {
+          method: "task_send",
+          params: {
+            to: who,
+            from: "user",
+            act: "request",
+            subject: (text.split("\n")[0] ?? text).slice(0, 120),
+            body: [
+              `Objective: ${parts.objective}`,
+              `Output: ${parts.output || "a short reply"}`,
+              `Tools: ${parts.tools || "whatever your rules allow"}`,
+              `Boundaries: ${parts.boundaries || "only this task"}`,
+            ].join("\n"),
+          },
+        });
+      }
+      sent = `Sent to ${labelOf(who)}.`;
       task = output = tools = boundaries = "";
     } catch (cause) {
       error = String(cause);
@@ -73,7 +100,11 @@
   </p>
   <label>
     Agent
-    <select bind:value={agent} disabled={pending !== null}>
+    <select
+      aria-label="Dispatch to"
+      bind:value={agent}
+      disabled={pending !== null}
+    >
       {#each AGENTS as option (option.id)}
         <option value={option.id} disabled={!option.ready}
           >{option.label}</option
@@ -111,7 +142,7 @@
   >
   {#if pending}
     <div class="confirm" role="alertdialog" aria-label="Confirm dispatch">
-      <p>Send this task to {pending.agent}?</p>
+      <p>Send this task to {labelOf(pending.agent)}?</p>
       <p class="task">{pending.task}</p>
       <dl class="parts">
         <dt>Output</dt>

@@ -49,7 +49,7 @@ A name the file builds at run time is not listed.
 | `ui/settings/BudgetSection.svelte` | `budget`, `budget_allow`, `set_budget` | yes |
 | `ui/settings/CapabilitiesSection.svelte` | `install_skill`, `remove_skill`, `skills` | yes |
 | `ui/settings/ConnectorsSection.svelte` | `connectors` | yes |
-| `ui/settings/DispatchSection.svelte` | `start_helper` | yes |
+| `ui/settings/DispatchSection.svelte` | `start_helper`, `task_send` | yes |
 | `ui/settings/HelpersSection.svelte` | `helpers`, `start_helper` | yes |
 | `ui/settings/JobsSection.svelte` | `jobs`, `run_job`, `set_job` | yes |
 | `ui/settings/KeysSection.svelte` | `clear_key`, `keys`, `local_status`, `save_key` | yes |
