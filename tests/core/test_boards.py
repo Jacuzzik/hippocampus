@@ -47,6 +47,45 @@ def test_provider_usage_reads_each_tool_s_own_log_by_model_and_day(tmp_path: Pat
     assert found["antigravity"]["month"] == 0 and "1 conversations" in found["antigravity"]["note"]
 
 
+def test_every_supported_provider_is_listed_and_opencode_is_split_by_provider(
+    tmp_path: Path,
+) -> None:
+    import sqlite3
+
+    home = tmp_path / "home"
+    db = home / ".local" / "share" / "opencode" / "opencode.db"
+    db.parent.mkdir(parents=True)
+    with sqlite3.connect(db) as conn:
+        conn.execute("create table message (time_created integer, data text)")
+        stamp = 1_795_400_000_000  # 2026-11-22
+        for provider, model, tokens in [
+            ("openai", "gpt-x", 30),
+            ("ollama", "qwen", 5),
+            ("opencode", "big-pickle", 9),
+        ]:
+            data = {"providerID": provider, "modelID": model, "tokens": {"total": tokens}}
+            conn.execute("insert into message values (?, ?)", (stamp, json.dumps(data)))
+    found = {
+        p["id"]: p
+        for p in provider_usage.report(
+            tmp_path,
+            home,
+            date(2026, 11, 23),
+            has_key=lambda provider: provider == "groq",
+            which=lambda _name: None,
+        )["providers"]
+    }
+    assert list(found) == [
+        "claude", "codex", "gemini-cli", "antigravity", "opencode", "ollama",
+        "openai", "xai", "moonshot", "gemini", "qwen", "deepseek", "mistral", "groq",
+        "openrouter", "app",
+    ]  # fmt: skip
+    assert (found["openai"]["month"], found["openai"]["setup"]) == (30, "used")
+    assert (found["ollama"]["month"], found["opencode"]["month"]) == (5, 9)
+    assert found["groq"]["setup"] == "key saved" and found["groq"]["found"]
+    assert found["xai"]["setup"] == "not set up" and not found["xai"]["found"]
+
+
 def test_money_is_the_user_s_plans_plus_their_price_times_real_tokens(tmp_path: Path) -> None:
     path = tmp_path / "plans.json"
     plans = spend_plans.save(

@@ -99,6 +99,7 @@
     id: string;
     name: string;
     found: boolean;
+    setup?: string;
     note: string;
     today: number;
     week: number;
@@ -239,23 +240,26 @@
         },
         {
           kind: "list",
-          title: "How each is counted",
-          note: "From each tool's own logs on this computer.",
+          title: "Every tool the app supports",
+          note: `${seen.length} of ${found.providers.length} set up here`,
+          grid: true,
           rows: found.providers.map((p) => ({
             title: p.name,
-            badge: p.found ? "found" : "not on this computer",
-            meta: p.found ? `${short(p.month)} this month` : "",
-            lines: [
-              ...(p.found
-                ? [`Today ${short(p.today)} · last 7 days ${short(p.week)}`]
-                : []),
-              ...(p.note ? [p.note] : []),
-            ],
-            tone: p.found ? ("plain" as const) : ("warn" as const),
+            badge: p.setup ?? (p.found ? "installed" : "not set up"),
+            meta: p.month ? short(p.month) : "",
+            tone: p.month
+              ? ("good" as const)
+              : p.found
+                ? ("plain" as const)
+                : ("warn" as const),
           })),
         },
       ];
-      return seen.map((p) => ({
+      // The five used most get a number on top; every tool is in the list below.
+      const top = [...seen]
+        .sort((a, b) => b.month - a.month || a.name.localeCompare(b.name))
+        .slice(0, 5);
+      return top.map((p) => ({
         label: p.name,
         value: p.found && !p.note.includes("no token") ? short(p.month) : "n/a",
         note: p.note.includes("no token")
@@ -729,7 +733,9 @@
         {#if panels.length}
           <div
             class="panels"
-            class:odd={panels.length > 1 && panels.length % 2 === 1}
+            class:odd={panels.length > 1 &&
+              panels.length % 2 === 1 &&
+              !panels.some((p) => p.kind === "list" && p.grid)}
             style:--pc={panels.length > 1 ? 2 : 1}
           >
             {#each panels as panel (panel.title)}
@@ -1013,28 +1019,27 @@
     overflow: hidden;
   }
 
+  /* The row is as tall as its text, so no label or note is ever cut. */
   .board.fit > .tiles {
     flex: 0 0 auto;
-    grid-auto-rows: clamp(84px, 11vh, 120px);
+    grid-auto-rows: minmax(84px, auto);
   }
 
   .board.fit .tiles li {
     padding: var(--space-3) var(--space-4);
+    container-type: inline-size;
   }
 
   .board.fit .tiles b {
     font-size: clamp(
       var(--font-size-lg),
-      34cqmin,
-      calc(var(--font-size-xl) * 2)
+      12cqi,
+      calc(var(--font-size-xl) * 1.6)
     );
   }
 
   .board.fit .tiles .note {
     font-size: var(--font-size-xs);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
 
   .board.fit > .panels {
@@ -1046,6 +1051,15 @@
 
   .board.fit > .panels > :global(.panel.wide) {
     grid-column: auto;
+  }
+
+  .board.fit > .panels > :global(.panel.grid) {
+    grid-column: 1 / -1;
+  }
+
+  /* The charts share what is left above a grid list, which takes the height its cards need. */
+  .board.fit > .panels:has(> :global(.panel.grid)) {
+    grid-auto-rows: minmax(0, 1fr) auto;
   }
 
   /* Three panels: the first runs across the top, the other two share the row below. */

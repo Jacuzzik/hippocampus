@@ -1061,17 +1061,32 @@ export async function mockSidecar(
                   models: [],
                   days: days([]),
                 },
-                {
-                  id: "opencode",
-                  name: "OpenCode",
-                  found: false,
+                ...(
+                  [
+                    ["opencode", "OpenCode", false, "not set up"],
+                    ["ollama", "Ollama", true, "installed"],
+                    ["openai", "OpenAI", true, "key saved"],
+                    ["xai", "xAI Grok", false, "not set up"],
+                    ["moonshot", "Moonshot Kimi", false, "not set up"],
+                    ["gemini", "Google Gemini (API)", false, "not set up"],
+                    ["qwen", "Alibaba Qwen", false, "not set up"],
+                    ["deepseek", "DeepSeek", false, "not set up"],
+                    ["mistral", "Mistral", false, "not set up"],
+                    ["groq", "Groq", false, "not set up"],
+                    ["openrouter", "OpenRouter", false, "not set up"],
+                  ] as const
+                ).map(([id, name, found, setup]) => ({
+                  id,
+                  name,
+                  found,
+                  setup,
                   note: "",
                   today: 0,
                   week: 0,
                   month: 0,
                   models: [],
                   days: days([]),
-                },
+                })),
               ],
             };
           }

@@ -6,7 +6,8 @@ changes (its size or time changes).
 
   Claude Code  ~/.claude/projects/*/*.jsonl          each reply's usage, with its model
   Codex        ~/.codex/sessions/Y/M/D/rollout-*.jsonl each turn's token_count, model from turn_context
-  OpenCode     ~/.local/share/opencode/opencode.db   each assistant message's tokens and model
+  OpenCode     ~/.local/share/opencode/opencode.db   each assistant message's tokens, model and provider;
+               the API providers (OpenAI, xAI, ...) and Ollama run through it, so each gets its own row
   Gemini CLI   ~/.gemini/tmp/*/chats/*.json          each reply's tokens and model
   Antigravity  ~/.gemini/antigravity-cli/conversations  conversations only: it keeps no token counts here
   This app     data/storage/usage.jsonl              the in-app assistant and helpers, per agent
@@ -23,6 +24,18 @@ from pathlib import Path
 from typing import Any
 
 DAYS = 14
+# The API providers the app can run (core/terminal.py OPENCODE_FOR): app id, OpenCode's id, name.
+API_PROVIDERS = (
+    ("openai", "openai", "OpenAI"),
+    ("xai", "xai", "xAI Grok"),
+    ("moonshot", "moonshot", "Moonshot Kimi"),
+    ("gemini", "google", "Google Gemini (API)"),
+    ("qwen", "alibaba", "Alibaba Qwen"),
+    ("deepseek", "deepseek", "DeepSeek"),
+    ("mistral", "mistral", "Mistral"),
+    ("groq", "groq", "Groq"),
+    ("openrouter", "openrouter", "OpenRouter"),
+)
 # day (YYYY-MM-DD) -> model -> tokens
 Usage = dict[str, dict[str, int]]
 _cache: dict[Path, tuple[float, int, Usage]] = {}
@@ -154,23 +167,31 @@ def _merge(parts: list[Usage]) -> Usage:
     return total
 
 
-def _opencode(db: Path, since: date) -> Usage:
-    usage: Usage = {}
+def _opencode(db: Path, since: date) -> dict[str, Usage]:
+    """OpenCode's messages, split by its provider id ("openai", "ollama", "opencode", ...)."""
+    found: dict[str, Usage] = {}
     if not db.is_file():
-        return usage
+        return found
     floor = int(datetime.combine(since, datetime.min.time()).timestamp() * 1000)
     try:
         with sqlite3.connect(f"file:{db}?mode=ro", uri=True) as conn:
             rows = conn.execute(
-                "select time_created, json_extract(data, '$.modelID'), "
-                "json_extract(data, '$.tokens.total') from message where time_created >= ?",
+                "select time_created, json_extract(data, '$.providerID'), "
+                "json_extract(data, '$.modelID'), json_extract(data, '$.tokens.total') "
+                "from message where time_created >= ?",
                 (floor,),
             ).fetchall()
     except sqlite3.Error:
-        return usage
-    for created, model, tokens in rows:
-        _add(usage, _day(created), str(model or ""), int(tokens or 0))
-    return usage
+        return found
+    for created, provider, model, tokens in rows:
+        if model:
+            _add(
+                found.setdefault(str(provider or ""), {}),
+                _day(created),
+                str(model),
+                int(tokens or 0),
+            )
+    return found
 
 
 def _ledger(path: Path, since: date) -> Usage:
@@ -190,8 +211,16 @@ def _ledger(path: Path, since: date) -> Usage:
 
 
 def _summary(
-    provider: str, name: str, found: bool, usage: Usage, today: date, note: str = ""
+    provider: str,
+    name: str,
+    found: bool,
+    usage: Usage,
+    today: date,
+    note: str = "",
+    setup: str = "",
 ) -> dict[str, Any]:
+    """One provider's row. setup says how it is reached here: "installed", "key saved", "running"
+    or "not set up"; found is True when it is set up or has used tokens."""
     month = today.replace(day=1).isoformat()
     week = (today - timedelta(days=6)).isoformat()
     models: dict[str, int] = defaultdict(int)
@@ -211,6 +240,7 @@ def _summary(
         "id": provider,
         "name": name,
         "found": found,
+        "setup": setup or ("installed" if found else "not set up"),
         "note": note,
         **totals,
         "models": sorted(
@@ -220,8 +250,24 @@ def _summary(
     }
 
 
-def report(storage: Path, home: Path | None = None, today: date | None = None) -> dict[str, Any]:
-    """Every provider found on this computer, with tokens today, in 7 days and this month, by model."""
+def _has_key(provider: str) -> bool:
+    try:
+        from ai import keys
+
+        return keys.get_key(provider) is not None
+    except Exception:  # noqa: BLE001 (no keychain here: the key simply counts as not saved)
+        return False
+
+
+def report(
+    storage: Path,
+    home: Path | None = None,
+    today: date | None = None,
+    has_key: Callable[[str], bool] = _has_key,
+    which: Callable[[str], str | None] = shutil.which,
+) -> dict[str, Any]:
+    """Every provider the app supports, set up here or not, with tokens today, in 7 days and this
+    month, by model."""
     home = home or Path.home()
     today = today or datetime.now().astimezone().date()
     since = min(today.replace(day=1), today - timedelta(days=DAYS))
@@ -235,7 +281,7 @@ def report(storage: Path, home: Path | None = None, today: date | None = None) -
         _summary(
             "claude",
             "Claude Code",
-            claude_dir.is_dir() or bool(shutil.which("claude")),
+            claude_dir.is_dir() or bool(which("claude")) or has_key("claude"),
             claude,
             today,
         )
@@ -246,18 +292,7 @@ def report(storage: Path, home: Path | None = None, today: date | None = None) -
         [_cached(p, _codex_file) for p in _recent(codex_dir.glob("*/*/*/rollout-*.jsonl"), since)]
     )
     providers.append(
-        _summary("codex", "Codex", codex_dir.is_dir() or bool(shutil.which("codex")), codex, today)
-    )
-
-    opencode_db = home / ".local" / "share" / "opencode" / "opencode.db"
-    providers.append(
-        _summary(
-            "opencode",
-            "OpenCode",
-            opencode_db.is_file() or bool(shutil.which("opencode")),
-            _opencode(opencode_db, since),
-            today,
-        )
+        _summary("codex", "Codex", codex_dir.is_dir() or bool(which("codex")), codex, today)
     )
 
     gemini_dir = home / ".gemini" / "tmp"
@@ -266,9 +301,9 @@ def report(storage: Path, home: Path | None = None, today: date | None = None) -
     )
     providers.append(
         _summary(
-            "gemini",
+            "gemini-cli",
             "Gemini CLI",
-            gemini_dir.is_dir() or bool(shutil.which("gemini")),
+            gemini_dir.is_dir() or bool(which("gemini")),
             gemini,
             today,
         )
@@ -280,7 +315,7 @@ def report(storage: Path, home: Path | None = None, today: date | None = None) -
         _summary(
             "antigravity",
             "Antigravity",
-            antigravity.is_dir() or bool(shutil.which("antigravity")),
+            antigravity.is_dir() or bool(which("agy") or which("antigravity")),
             {},
             today,
             note=f"{chats} conversations on this computer. Antigravity keeps no token counts here, so its use cannot be shown."
@@ -288,6 +323,52 @@ def report(storage: Path, home: Path | None = None, today: date | None = None) -
             else "",
         )
     )
+
+    opencode_db = home / ".local" / "share" / "opencode" / "opencode.db"
+    by_provider = _opencode(opencode_db, since)
+    api_ids = {code for _, code, _ in API_PROVIDERS}
+    own = _merge([usage for code, usage in by_provider.items() if code not in api_ids | {"ollama"}])
+    providers.append(
+        _summary(
+            "opencode",
+            "OpenCode",
+            opencode_db.is_file() or bool(which("opencode")),
+            own,
+            today,
+        )
+    )
+
+    ollama = by_provider.get("ollama", {})
+    ollama_here = bool(which("ollama"))
+    providers.append(
+        _summary(
+            "ollama",
+            "Ollama",
+            ollama_here or bool(ollama),
+            ollama,
+            today,
+            note="Counted when it runs through OpenCode; the in-app assistant's use is under This app."
+            if ollama_here
+            else "",
+        )
+    )
+
+    for app_id, code, name in API_PROVIDERS:
+        usage = by_provider.get(code, {})
+        saved = has_key(app_id)
+        providers.append(
+            _summary(
+                app_id,
+                name,
+                saved or bool(usage),
+                usage,
+                today,
+                note=""
+                if saved or usage
+                else "No key saved. Add one in Settings, Models and keys.",
+                setup="key saved" if saved else ("used" if usage else "not set up"),
+            )
+        )
 
     providers.append(
         _summary(
@@ -297,6 +378,7 @@ def report(storage: Path, home: Path | None = None, today: date | None = None) -
             _ledger(storage / "usage.jsonl", since),
             today,
             note="Counted per agent; the app does not log which model answered.",
+            setup="built in",
         )
     )
     return {"today": today.isoformat(), "days": DAYS, "providers": providers}

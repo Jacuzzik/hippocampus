@@ -446,6 +446,8 @@ export type Panel =
       note: string;
       rows: ListRow[];
       wide?: boolean;
+      // Drawn across the whole board as a grid of short cards.
+      grid?: boolean;
       /** What the list says when it has no rows. */
       empty?: string;
     };

@@ -19,6 +19,7 @@
   class="panel"
   class:fill
   class:wide={(panel.kind === "list" || panel.kind === "text") && panel.wide}
+  class:grid={panel.kind === "list" && panel.grid}
 >
   <div class="head">
     <span class="label">{panel.title}</span>
@@ -145,6 +146,11 @@
     min-height: 0;
     overflow-y: auto;
     align-content: start;
+  }
+  /* A long list across the whole board: short cards in as many columns as fit, so all show at once. */
+  .panel.grid .list {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 190px), 1fr));
+    align-items: start;
   }
   .fill .heat {
     grid-template-rows: repeat(7, minmax(6px, 1fr));
