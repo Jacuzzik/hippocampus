@@ -7,7 +7,6 @@
   import { SvelteMap } from "svelte/reactivity";
   import ErrorRow from "../controls/ErrorRow.svelte";
   import Loading from "../controls/Loading.svelte";
-  import AppIcon from "./AppIcon.svelte";
   import DashIcon from "./DashIcon.svelte";
   import CalendarBoard from "./CalendarBoard.svelte";
   import PhoneBoard from "./PhoneBoard.svelte";
@@ -690,21 +689,30 @@
           <span class="divider" role="separator" aria-label="Connected apps"
           ></span>
         {/if}
-        <button
-          type="button"
-          class="icon-btn"
-          class:on={current === item.id}
-          aria-label={item.label}
-          aria-pressed={current === item.id}
-          data-tip={item.label}
-          onclick={() => (current = item.id)}
-        >
-          {#if item.id.startsWith("app:")}
-            <AppIcon id={item.id.slice(4)} />
-          {:else}
+        {#if item.id.startsWith("app:")}
+          <!-- A connected app shows its name, not an icon. -->
+          <button
+            type="button"
+            class="icon-btn app-btn"
+            class:on={current === item.id}
+            aria-pressed={current === item.id}
+            onclick={() => (current = item.id)}
+          >
+            {item.label}
+          </button>
+        {:else}
+          <button
+            type="button"
+            class="icon-btn"
+            class:on={current === item.id}
+            aria-label={item.label}
+            aria-pressed={current === item.id}
+            data-tip={item.label}
+            onclick={() => (current = item.id)}
+          >
             <DashIcon name={item.id} />
-          {/if}
-        </button>
+          </button>
+        {/if}
       {/each}
     </nav>
     <div
@@ -897,6 +905,14 @@
     transition:
       color var(--duration-fast) var(--ease-standard),
       background var(--duration-fast) var(--ease-standard);
+  }
+
+  /* A connected app: its name as text, as tall as the icons. */
+  .icon-btn.app-btn {
+    width: auto;
+    padding: 0 var(--space-3);
+    font-size: var(--font-size-sm);
+    white-space: nowrap;
   }
 
   .icon-btn:hover {
