@@ -34,8 +34,29 @@
     manage: string;
     resubscribe: string;
   };
+  type Wallet = {
+    name: string;
+    kind:
+      | "tebex"
+      | "paypal"
+      | "stripe"
+      | "builtbybit"
+      | "bank"
+      | "crypto"
+      | "other";
+    balance: number;
+    currency: string;
+    updated: string;
+    link: string;
+  };
+  type WalletRow = Wallet & { open: string };
   type Finance = {
-    plans: { currency: string; plans: Plan[]; subs: Sub[] };
+    plans: {
+      currency: string;
+      plans: Plan[];
+      subs: Sub[];
+      wallets: Wallet[];
+    };
     report: {
       currency: string;
       rows: (Plan & {
@@ -53,6 +74,8 @@
       daily: number[];
       subs: SubRow[];
       subs_monthly: number;
+      wallets: WalletRow[];
+      wallet_totals: Record<string, number>;
     };
     providers: { id: string; name: string }[];
     currencies: string[];
@@ -99,6 +122,7 @@
           plans: {
             currency,
             subs: found?.plans.subs ?? [],
+            wallets: found?.plans.wallets ?? [],
             plans: draft.map((plan) => ({
               ...plan,
               monthly: Number(plan.monthly) || 0,
@@ -162,6 +186,90 @@
       if (!subError) adding = blank();
     });
   }
+
+  // Wallets are saved at once too, the same way.
+  const today = (): string => new Date().toISOString().slice(0, 10);
+  const blankWallet = (): Wallet => ({
+    name: "",
+    kind: "tebex",
+    balance: 0,
+    currency: found?.plans.currency ?? "USD",
+    updated: today(),
+    link: "",
+  });
+  let wallet = $state<Wallet>(blankWallet());
+  let walletError = $state<string | null>(null);
+  const plainWallet = (row: WalletRow): Wallet => ({
+    name: row.name,
+    kind: row.kind,
+    balance: row.balance,
+    currency: row.currency,
+    updated: row.updated,
+    link: row.link,
+  });
+
+  async function saveWallets(wallets: Wallet[]): Promise<boolean> {
+    walletError = null;
+    if (!found) return false;
+    try {
+      found = await invoke<Finance>("sidecar_call", {
+        method: "finance_save",
+        params: { plans: { ...found.plans, wallets } },
+      });
+      return true;
+    } catch (cause) {
+      walletError = String(cause);
+      return false;
+    }
+  }
+
+  function addWallet(event: SubmitEvent): void {
+    event.preventDefault();
+    if (!found || !wallet.name.trim()) return;
+    void saveWallets([
+      ...found.report.wallets.map(plainWallet),
+      { ...wallet, balance: Number(wallet.balance) || 0 },
+    ]).then((ok) => {
+      if (ok) wallet = blankWallet();
+    });
+  }
+
+  function setBalance(row: WalletRow, value: string): void {
+    if (!found) return;
+    const balance = Number(value);
+    if (!Number.isFinite(balance) || balance < 0) return;
+    void saveWallets(
+      found.report.wallets.map((w) =>
+        w === row
+          ? { ...plainWallet(w), balance, updated: today() }
+          : plainWallet(w),
+      ),
+    );
+  }
+
+  function removeWallet(row: WalletRow): void {
+    if (!found) return;
+    void saveWallets(
+      found.report.wallets.filter((w) => w !== row).map(plainWallet),
+    );
+  }
+
+  const KIND: Record<Wallet["kind"], string> = {
+    tebex: "Tebex",
+    paypal: "PayPal",
+    stripe: "Stripe",
+    builtbybit: "BuiltByBit",
+    bank: "Bank",
+    crypto: "Crypto wallet",
+    other: "Other",
+  };
+
+  const inCurrency = (n: number, code: string): string =>
+    new Intl.NumberFormat([], {
+      style: "currency",
+      currency: code,
+      maximumFractionDigits: 2,
+    }).format(n);
 
   async function openLink(url: string): Promise<void> {
     subError = null;
@@ -261,6 +369,18 @@
       <b>{money(report.subs_monthly)}</b>
       <span class="note"
         >{report.subs.filter((s) => s.active).length} active, as a monthly amount.</span
+      >
+    </li>
+    <li>
+      <span class="label">Wallets</span>
+      <b
+        >{Object.entries(report.wallet_totals)
+          .map(([code, n]) => inCurrency(n, code))
+          .join(" + ") || money(0)}</b
+      >
+      <span class="note"
+        >{report.wallets.length} wallet{report.wallets.length === 1 ? "" : "s"},
+        as you last entered them.</span
       >
     </li>
     <li>
@@ -380,6 +500,103 @@
       >
       <Button type="submit" variant="primary" disabled={!adding.name.trim()}
         >Add subscription</Button
+      >
+    </form>
+  </section>
+
+  <section class="plans wallets" aria-label="Wallets">
+    <div class="head"><h4>Wallets</h4></div>
+    <p class="hint">
+      The money you hold with Tebex, PayPal, Stripe, a bank or a crypto wallet.
+      Tebex and the others have no way for an app to read a wallet balance, so
+      enter it here and update it when it changes. Open goes to the service's
+      own wallet page.
+    </p>
+    {#if walletError}<p class="error" role="alert">{walletError}</p>{/if}
+    <ul class="sublist" aria-label="Your wallets">
+      {#each report.wallets as row, i (`${i}:${row.name}`)}
+        <li>
+          <span class="subname"
+            ><b>{row.name}</b>
+            <span class="note"
+              >{KIND[row.kind]} · {inCurrency(
+                row.balance,
+                row.currency,
+              )}{row.updated ? ` · as of ${row.updated}` : ""}</span
+            ></span
+          >
+          <span class="buttons">
+            <input
+              class="balance"
+              type="number"
+              min="0"
+              step="0.01"
+              value={row.balance}
+              aria-label={`Balance of ${row.name}`}
+              onchange={(e) => setBalance(row, e.currentTarget.value)}
+            />
+            {#if row.open}
+              <Button size="sm" onclick={() => openLink(row.open)}
+                >Open {KIND[row.kind]}</Button
+              >
+            {/if}
+            <Button
+              size="sm"
+              variant="ghost"
+              aria-label={`Remove ${row.name}`}
+              onclick={() => removeWallet(row)}>Remove</Button
+            >
+          </span>
+        </li>
+      {:else}
+        <li class="note">No wallet added yet.</li>
+      {/each}
+    </ul>
+    <form class="row" onsubmit={addWallet} aria-label="Add a wallet">
+      <label class="wide"
+        >Wallet name <input
+          type="text"
+          maxlength="60"
+          placeholder="Tebex store wallet"
+          bind:value={wallet.name}
+        /></label
+      >
+      <div class="pick">
+        <span>Service</span>
+        <Dropdown
+          label="Wallet service"
+          options={Object.entries(KIND).map(([value, label]) => ({
+            value,
+            label,
+          }))}
+          bind:value={wallet.kind}
+        />
+      </div>
+      <label
+        >Balance <input
+          type="number"
+          min="0"
+          step="0.01"
+          bind:value={wallet.balance}
+        /></label
+      >
+      <div class="pick">
+        <span>Currency</span>
+        <Dropdown
+          label="Wallet currency"
+          options={found.currencies.map((c) => ({ value: c, label: c }))}
+          bind:value={wallet.currency}
+        />
+      </div>
+      <label class="wide"
+        >Wallet link (optional) <input
+          type="url"
+          placeholder="https://…"
+          bind:value={wallet.link}
+        /></label
+      >
+      <Button type="submit" variant="primary" disabled={!wallet.name.trim()}
+        >Add wallet</Button
       >
     </form>
   </section>
@@ -647,6 +864,10 @@
     display: grid;
     gap: var(--space-0);
     min-width: 0;
+  }
+
+  .balance {
+    width: 7.5rem;
   }
 
   .inactive .sublist li:not(.note) {

@@ -8,6 +8,11 @@ Subscriptions (Apple, Google Play or anything else) are kept beside the plans. A
 for an app to read a person's subscriptions, so the user enters each one; "Manage" opens Apple's
 own subscriptions page, where cancelling and resubscribing happen. A cancelled subscription whose
 renewal date has passed counts as expired.
+
+Wallets are the balances the user holds with a payment service (Tebex, PayPal, Stripe, a bank or a
+crypto wallet). None of these offers a read-only balance Hippocampus can use with a shop key (Tebex
+has no wallet API at all), so the user enters each balance and its date; "Open" goes to the
+service's own wallet page.
 """
 
 import calendar
@@ -32,6 +37,16 @@ STORES = {
 }
 PERIODS = ("month", "year", "week")
 STATUSES = ("active", "cancelled", "expired")
+WALLETS_MAX = 30
+WALLETS = {
+    "tebex": "https://creator.tebex.io/",
+    "paypal": "https://www.paypal.com/myaccount/summary",
+    "stripe": "https://dashboard.stripe.com/balance/overview",
+    "builtbybit": "https://builtbybit.com/",
+    "bank": "",
+    "crypto": "",
+    "other": "",
+}
 DAY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _lock = threading.Lock()
 
@@ -75,6 +90,51 @@ def _subs(rows: object) -> list[dict[str, Any]]:
             }
         )
     return out
+
+
+def _wallets(rows: object) -> list[dict[str, Any]]:
+    if not isinstance(rows, list) or len(rows) > WALLETS_MAX:
+        raise ValueError(f"Up to {WALLETS_MAX} wallets can be kept.")
+    out = []
+    for row in rows:
+        if not isinstance(row, dict):
+            raise ValueError("Each wallet must be an object.")
+        name = str(row.get("name") or "").strip()
+        if not name or len(name) > NAME_MAX:
+            raise ValueError(f"Each wallet needs a name of up to {NAME_MAX} characters.")
+        kind = str(row.get("kind") or "other")
+        currency = str(row.get("currency") or "USD")
+        updated = str(row.get("updated") or "")
+        if kind not in WALLETS or currency not in CURRENCIES:
+            raise ValueError("A wallet's service or currency is not one of the choices.")
+        if updated and not DAY.match(updated):
+            raise ValueError("A balance date must look like 2026-12-31.")
+        out.append(
+            {
+                "name": name,
+                "kind": kind,
+                "balance": _money(row.get("balance"), "balance"),
+                "currency": currency,
+                "updated": updated,
+                "link": _link(row.get("link")),
+            }
+        )
+    return out
+
+
+def wallet_rows(wallets: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Each wallet with the page that opens it, largest balance first."""
+    rows = [{**w, "open": w["link"] or WALLETS[w["kind"]]} for w in wallets]
+    rows.sort(key=lambda row: (-row["balance"], row["name"].lower()))
+    return rows
+
+
+def wallet_totals(wallets: list[dict[str, Any]]) -> dict[str, float]:
+    """The balances added up per currency; different currencies are never mixed."""
+    totals: dict[str, float] = {}
+    for w in wallets:
+        totals[w["currency"]] = round(totals.get(w["currency"], 0.0) + w["balance"], 2)
+    return totals
 
 
 def monthly(sub: dict[str, Any]) -> float:
@@ -137,14 +197,19 @@ def check(raw: object) -> dict[str, Any]:
                 "per_million": _money(row.get("per_million"), "per_million"),
             }
         )
-    return {"currency": currency, "plans": plans, "subs": _subs(raw.get("subs") or [])}
+    return {
+        "currency": currency,
+        "plans": plans,
+        "subs": _subs(raw.get("subs") or []),
+        "wallets": _wallets(raw.get("wallets") or []),
+    }
 
 
 def load(path: Path) -> dict[str, Any]:
     try:
         return check(json.loads(path.read_text(encoding="utf-8")))
     except (OSError, ValueError):
-        return {"currency": "USD", "plans": [], "subs": []}
+        return {"currency": "USD", "plans": [], "subs": [], "wallets": []}
 
 
 def save(path: Path, raw: object) -> dict[str, Any]:
@@ -184,6 +249,8 @@ def report(plans: dict[str, Any], usage: dict[str, Any], today: date) -> dict[st
         "currency": plans["currency"],
         "rows": rows,
         "subs": subs,
+        "wallets": wallet_rows(plans.get("wallets", [])),
+        "wallet_totals": wallet_totals(plans.get("wallets", [])),
         "subs_monthly": round(sum(s["monthly"] for s in subs if s["active"]), 2),
         "fixed": round(fixed, 2),
         "metered": round(metered, 2),

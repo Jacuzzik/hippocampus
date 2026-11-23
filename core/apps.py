@@ -103,6 +103,22 @@ APPS: tuple[App, ...] = (
         "A private API token from your account's API settings.",
     ),
     App(
+        "tebex",
+        "Tebex",
+        "Your store's name, currency and number of payments. Tebex has no API for the wallet"
+        " balance: add it under Wallets on Money and spend.",
+        "https://plugin.tebex.io",
+        "header:X-Tebex-Secret",
+        (
+            _m("Store", "/information", "value", "account.name"),
+            _m("Currency", "/information", "value", "account.currency.iso_4217"),
+            _m("Payments", "/payments?paged=1&page=1", "value", "total"),
+        ),
+        (),
+        "Your store's secret key: in the Tebex creator panel, open Integrations, then Game"
+        " servers, and copy the secret key of a server.",
+    ),
+    App(
         "stripe",
         "Stripe",
         "Balance, charges and customers.",

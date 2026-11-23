@@ -22,9 +22,9 @@ def _fetch(answers: dict[str, object], seen: list[tuple[str, dict[str, str]]] | 
     return fetch
 
 
-def test_the_catalogue_has_22_apps_each_with_https_and_at_least_one_number() -> None:
-    assert len(apps.APPS) == 22
-    assert len(apps.BY_ID) == 22
+def test_the_catalogue_has_23_apps_each_with_https_and_at_least_one_number() -> None:
+    assert len(apps.APPS) == 23
+    assert len(apps.BY_ID) == 23
     for app in apps.APPS:
         assert app.base.startswith("https://"), app.id
         assert app.metrics, app.id
@@ -233,3 +233,22 @@ def test_a_refused_shopify_token_request_says_why_on_every_number() -> None:
 def test_the_shopify_client_id_may_be_left_empty_for_an_older_custom_app() -> None:
     fields = apps.check_fields(apps.BY_ID["shopify"], {"shop": "a.myshopify.com"})
     assert fields == {"shop": "a.myshopify.com"}
+
+
+def test_tebex_reads_the_store_name_currency_and_payment_count_with_its_secret_header() -> None:
+    seen: list[tuple[str, dict[str, str]]] = []
+    fetch = _fetch(
+        {
+            "/information": {"account": {"name": "My Store", "currency": {"iso_4217": "GBP"}}},
+            "/payments": {"total": 146, "data": []},
+        },
+        seen,
+    )
+    rows = apps.read(apps.BY_ID["tebex"], "secret1", {}, fetch)
+    assert [(row["label"], row["value"]) for row in rows] == [
+        ("Store", "My Store"),
+        ("Currency", "GBP"),
+        ("Payments", "146"),
+    ]
+    assert seen[0][1]["X-Tebex-Secret"] == "secret1"
+    assert seen[-1][0] == "https://plugin.tebex.io/payments?paged=1&page=1"

@@ -179,3 +179,30 @@ def test_a_subscription_link_must_be_https() -> None:
 
     with pytest.raises(ValueError, match="https"):
         spend_plans.check({"subs": [{"name": "x", "link": "javascript:alert(1)"}]})
+
+
+def test_wallets_are_checked_totalled_per_currency_and_open_their_own_page() -> None:
+    import pytest
+
+    from core import spend_plans
+
+    plans = spend_plans.check(
+        {
+            "wallets": [
+                {"name": "Store", "kind": "tebex", "balance": 120.5, "currency": "GBP",
+                 "updated": "2026-11-23"},
+                {"name": "PayPal", "kind": "paypal", "balance": 40, "currency": "USD"},
+                {"name": "Cold", "kind": "crypto", "balance": 10, "currency": "USD",
+                 "link": "https://example.com/wallet"},
+            ]
+        }
+    )  # fmt: skip
+    rows = spend_plans.wallet_rows(plans["wallets"])
+    assert [r["name"] for r in rows] == ["Store", "PayPal", "Cold"]
+    assert rows[0]["open"] == "https://creator.tebex.io/"
+    assert rows[2]["open"] == "https://example.com/wallet"
+    assert spend_plans.wallet_totals(plans["wallets"]) == {"GBP": 120.5, "USD": 50.0}
+    with pytest.raises(ValueError, match="choices"):
+        spend_plans.check({"wallets": [{"name": "x", "kind": "bitcoin-exchange"}]})
+    with pytest.raises(ValueError, match="https"):
+        spend_plans.check({"wallets": [{"name": "x", "link": "http://example.com"}]})

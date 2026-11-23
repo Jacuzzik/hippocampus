@@ -935,6 +935,14 @@ export async function mockSidecar(
                   status: string;
                   link: string;
                 }[];
+                wallets?: {
+                  name: string;
+                  kind: string;
+                  balance: number;
+                  currency: string;
+                  updated: string;
+                  link: string;
+                }[];
               };
             };
             if (args.method === "finance_save")
@@ -979,18 +987,36 @@ export async function mockSidecar(
               manage: stores[sub.store] ?? "",
               resubscribe: sub.link || (stores[sub.store] ?? ""),
             }));
+            const walletPages: Record<string, string> = {
+              tebex: "https://creator.tebex.io/",
+              paypal: "https://www.paypal.com/myaccount/summary",
+            };
+            const wallets = (plans.wallets ?? []).map((wallet) => ({
+              ...wallet,
+              open: wallet.link || (walletPages[wallet.kind] ?? ""),
+            }));
+            const walletTotals: Record<string, number> = {};
+            for (const wallet of wallets)
+              walletTotals[wallet.currency] =
+                (walletTotals[wallet.currency] ?? 0) + wallet.balance;
             const subsMonthly = subs
               .filter((sub) => sub.active)
               .reduce((n, sub) => n + sub.monthly, 0);
             const fixed = rows.reduce((n, r) => n + r.monthly, 0) + subsMonthly;
             const metered = rows.reduce((n, r) => n + r.metered, 0);
             return {
-              plans: { ...plans, subs: plans.subs ?? [] },
+              plans: {
+                ...plans,
+                subs: plans.subs ?? [],
+                wallets: plans.wallets ?? [],
+              },
               report: {
                 currency: plans.currency,
                 rows,
                 subs,
                 subs_monthly: subsMonthly,
+                wallets,
+                wallet_totals: walletTotals,
                 fixed,
                 metered,
                 total: fixed + metered,
