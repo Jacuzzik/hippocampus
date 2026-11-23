@@ -61,6 +61,8 @@ def test_the_sandboxed_command_closes_the_app_and_opens_only_the_agents_own_outb
     text = " ".join(argv)
     assert f"--ro-bind {ROOT} {ROOT}" in text and f"--ro-bind {hive} {hive}" in text
     assert f"--bind {hive / 'ada' / 'outbox'} {hive / 'ada' / 'outbox'}" in text
+    # The commits folder is open too, so a sandboxed agent can ask the app for a commit.
+    assert f"--bind {hive / 'commits'} {hive / 'commits'}" in text
     assert "--unshare-pid" in argv and "--die-with-parent" in argv
     # The app folder is closed after the home folder is opened, so the later rule wins.
     assert argv.index(str(ROOT)) > argv.index(str(Path.home()))

@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Any
 
 from ai import cli_sessions
-from core import autonomy, sandbox
+from core import autonomy, commit_queue, sandbox
 from core.settings import HIVE_DIR, ROOT
 from tools.vault_mcp import VAULT_TOOLS, mcp_config
 
@@ -727,12 +727,15 @@ def _inside(path: Path, parent: Path) -> bool:
 
 
 def _sandboxed(argv: list[str], agent: str, folder: str | None, vault: str | None) -> list[str]:
-    """The agent's command inside the sandbox: the app and the hive read-only, its own outbox and the note index writable."""
+    """The agent's command inside the sandbox: the app and the hive read-only; its own outbox, the hive's
+    commits folder (so it can ask the app for a commit) and the note index writable."""
     outbox = HIVE_DIR / agent / "outbox"
     outbox.mkdir(parents=True, exist_ok=True)
+    commits = HIVE_DIR / commit_queue.FOLDER
+    commits.mkdir(parents=True, exist_ok=True)
     index = ROOT / "data" / "storage" / "index"
     vault_dir = Path(vault).resolve() if vault else None
-    writable = [outbox, index, *([vault_dir] if vault_dir else [])]
+    writable = [outbox, commits, index, *([vault_dir] if vault_dir else [])]
     work = Path(folder).resolve() if folder else None
     # The agent's own folder is writable, unless that would open the app or the hive: a folder inside the
     # app (other than the vault) or inside the hive stays read-only.

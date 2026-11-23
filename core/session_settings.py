@@ -11,6 +11,7 @@ from core import (
     __version__,
     added_agents,
     app_log,
+    commit_queue,
     crash_log,
     doctor,
     safe_write,
@@ -180,10 +181,18 @@ class SettingsPart:
             "on": on,
             "sandbox_available": usable,
             "main": sandbox.policy_lines(
-                shell=True, sandboxed=on and usable, blocked=False, app_root=ROOT
+                shell=True,
+                sandboxed=on and usable,
+                blocked=False,
+                app_root=ROOT,
+                commits=self.hive_path / commit_queue.FOLDER,
             ),
             "agents": sandbox.policy_lines(
-                shell=on and usable, sandboxed=on and usable, blocked=False, app_root=ROOT
+                shell=on and usable,
+                sandboxed=on and usable,
+                blocked=False,
+                app_root=ROOT,
+                commits=self.hive_path / commit_queue.FOLDER,
             ),
             "note": (
                 "Applies to agents on Claude Code. Other programs (Codex, Gemini, OpenCode) keep their own rules until each is tested in the sandbox."

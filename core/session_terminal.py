@@ -9,6 +9,7 @@ from core import (
     added_agents,
     autonomy,
     briefing,
+    commit_queue,
     note_actions,
     pins,
     sandbox,
@@ -74,6 +75,7 @@ class TerminalPart:
                 sandboxed=sandboxed,
                 blocked=block_tools,
                 app_root=ROOT,
+                commits=self.hive_path / commit_queue.FOLDER,
             )
             text, mark = briefing.finish(text, inbox_path, limits)
             problems = briefing.lint(text)

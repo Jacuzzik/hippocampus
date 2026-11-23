@@ -120,3 +120,20 @@ def test_the_policy_text_matches_the_switches() -> None:
     assert no_shell[0] == "Shell: not available to this agent." and not any(
         "sandbox" in line for line in no_shell
     )
+
+
+def test_the_commit_folder_is_named_only_when_given_and_fills_no_blank() -> None:
+    from core import briefing
+
+    root = Path("/opt/app")
+    lines = sandbox.policy_lines(
+        shell=True, sandboxed=True, blocked=False, app_root=root, commits=Path("/h/hive/commits")
+    )
+    told = [line for line in lines if "/h/hive/commits" in line]
+    assert len(told) == 1 and "never pushes" in told[0]
+    assert any("own outbox and the commits folder" in line for line in lines)
+    plain = sandbox.policy_lines(shell=True, sandboxed=True, blocked=False, app_root=root)
+    assert not any("commit" in line for line in plain)
+    # The JSON shape in the line must not look like an unfilled {blank} to the briefing check.
+    text, _ = briefing.finish("1. Role\nx", Path("/h/inbox.md"), lines)
+    assert briefing.lint(text) == []

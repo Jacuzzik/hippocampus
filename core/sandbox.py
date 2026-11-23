@@ -100,7 +100,9 @@ def wrap(
     return [*args, "--", *argv]
 
 
-def policy_lines(*, shell: bool, sandboxed: bool, blocked: bool, app_root: Path) -> list[str]:
+def policy_lines(
+    *, shell: bool, sandboxed: bool, blocked: bool, app_root: Path, commits: Path | None = None
+) -> list[str]:
     """What an agent may do, in plain words. The same lines go into the agent's briefing and the
     Settings page, so neither can say something the real rules do not."""
     if blocked:
@@ -125,6 +127,14 @@ def policy_lines(*, shell: bool, sandboxed: bool, blocked: bool, app_root: Path)
             "Your program runs in a sandbox: the app folder, the installed app, its data and the system are "
             "read-only, whatever command is used. Never try to change, move or delete any part of Hippocampus.",
             "You see only your own processes. Private folders such as SSH keys are empty.",
-            "Other agents' inboxes and outboxes are read-only. You write only to your own outbox.",
+            "Other agents' inboxes and outboxes are read-only. You write only to your own outbox"
+            + (" and the commits folder." if commits else "."),
         ]
+    if commits is not None:
+        lines.append(
+            f"To have files committed, write one JSON file into {commits}: "
+            '{"from": "<your address>", "repo": "<the vault or your folder>", "paths": ["<file>", ...], '
+            '"message": "<what it does>"}. The app commits only those paths, one request at a time, and '
+            "never pushes. Do not run git commit yourself in a folder other agents share."
+        )
     return lines
