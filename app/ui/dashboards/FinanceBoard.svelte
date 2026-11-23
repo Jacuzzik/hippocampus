@@ -107,32 +107,41 @@
     void readMail();
   });
 
-  // Receipts from the user's Gmail: Apple, Google Play, PayPal, Shopify and other stores email one
-  // for each purchase, renewal, cancellation and sale, so they are found without signing in to each.
+  // Subscriptions and purchases found by the app: receipts in the user's Gmail, plus files the
+  // user downloads (Google Takeout's Play part, Apple's data copy, a bank statement as CSV).
   type Found = {
     date: string;
     store: string;
+    store_name?: string;
     item: string;
     amount: number | null;
     currency: string;
+    source?: string;
   };
   type FoundSub = {
     name: string;
     store: string;
+    store_name?: string;
     price: number | null;
     currency: string;
     period: "month" | "year" | "week";
     status: "active" | "cancelled" | "inactive";
     last: string;
     renews: string;
+    charges: number;
+    how: "notice" | "repeated charges";
+    sources: string[];
+    evidence: { date: string; subject: string }[];
   };
   type Mail = {
     connected: boolean;
     account: string;
     network: string;
+    scanned_at: string;
+    read: number;
+    messages: number;
+    files: { name: string; added: string; events: number }[];
     found: {
-      scanned_at: string;
-      messages: number;
       subscriptions: FoundSub[];
       purchases: Found[];
       sales: Found[];
@@ -149,11 +158,15 @@
     steam: "Steam",
     amazon: "Amazon",
   };
+  const storeName = (row: { store: string; store_name?: string }): string =>
+    row.store_name || STORES[row.store] || row.store;
   let mail = $state<Mail | null>(null);
   let mailBusy = $state(false);
   let mailError = $state("");
   let mailNote = $state("");
   let mailForm = $state({ email: "", password: "" });
+  let showSources = $state(false);
+  let picker = $state<HTMLInputElement | null>(null);
 
   async function mailCall(method: string, params?: object): Promise<void> {
     mailBusy = true;
@@ -171,14 +184,38 @@
   async function connectMail(event: SubmitEvent): Promise<void> {
     event.preventDefault();
     await mailCall("mail_connect", { ...mailForm });
-    if (!mailError) mailForm = { email: "", password: "" };
+    if (!mailError) {
+      mailForm = { email: "", password: "" };
+      showSources = false;
+    }
+  }
+  // A downloaded file goes to the backend as base64; it reads the purchases and keeps only those.
+  async function addFile(event: Event): Promise<void> {
+    const input = event.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = "";
+    if (!file) return;
+    if (file.size > 30_000_000) {
+      mailError =
+        "The file is larger than 30 MB. Pick only the Google Play part, or one statement.";
+      return;
+    }
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    let binary = "";
+    for (let i = 0; i < bytes.length; i += 0x8000)
+      binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    await mailCall("purchases_import", { name: file.name, data: btoa(binary) });
+    if (!mailError) {
+      mailNote = `Read ${file.name}.`;
+      showSources = false;
+    }
   }
 
   const priced = (amount: number | null, code: string): string =>
     amount === null ? "" : code ? inCurrency(amount, code) : money(amount);
   const foundRow = (row: Found) => ({
     title: row.item,
-    badge: STORES[row.store] ?? row.store,
+    badge: storeName(row),
     meta: [priced(row.amount, row.currency), row.date]
       .filter(Boolean)
       .join(" · "),
@@ -193,17 +230,28 @@
         note: `${f.subscriptions.filter((s) => s.status === "active").length} active of ${f.subscriptions.length}`,
         rows: f.subscriptions.map((s) => ({
           title: s.name,
-          badge: `${STORES[s.store] ?? s.store} · ${s.status}`,
+          badge: `${storeName(s)} · ${s.status}`,
           meta:
             s.price === null
               ? ""
               : `${priced(s.price, s.currency)} ${PER[s.period]}`,
           lines: [
-            s.renews
-              ? `${s.status === "active" ? "Renews" : "Ends"} ${s.renews}`
-              : s.last
-                ? `Last charged ${s.last}`
-                : "",
+            [
+              s.renews
+                ? `${s.status === "active" ? "Renews" : "Ends"} ${s.renews}`
+                : s.last
+                  ? `Last charged ${s.last}`
+                  : "",
+              s.how === "repeated charges"
+                ? `charged ${s.charges} times`
+                : s.charges
+                  ? `${s.charges} receipt${s.charges === 1 ? "" : "s"}`
+                  : "",
+              s.sources.includes("file") ? "from a file" : "",
+            ]
+              .filter(Boolean)
+              .join(" · "),
+            s.evidence[0]?.subject ? `“${s.evidence[0].subject}”` : "",
           ].filter(Boolean),
           tone:
             s.status === "active"
@@ -212,7 +260,7 @@
                 ? ("warn" as const)
                 : ("plain" as const),
         })),
-        empty: "No subscription receipt found.",
+        empty: "No subscription found yet.",
       },
       {
         kind: "list",
@@ -465,7 +513,7 @@
   // The numbers and charts first; each form on its own tab, so the board fits the window.
   const TABS = [
     { id: "overview", label: "Overview" },
-    { id: "mail", label: "From your email" },
+    { id: "mail", label: "Find subscriptions" },
     { id: "plans", label: "Plans and prices" },
     { id: "subs", label: "Subscriptions" },
     { id: "wallets", label: "Wallets" },
@@ -567,32 +615,63 @@
       {/each}
     </div>
   {:else if tab === "mail"}
-    {#if mail?.connected && mail.found}
+    <input
+      bind:this={picker}
+      type="file"
+      accept=".zip,.json,.csv"
+      hidden
+      aria-label="Add a file"
+      onchange={addFile}
+    />
+    {#if mail?.found}
       <div class="mailbar">
-        <span class="note"
-          >Reading receipts in <b>{mail.account}</b> · {mail.found.messages} found
-          · scanned {mail.found.scanned_at.slice(0, 16).replace("T", " ")}</span
-        >
-        <Button
-          size="sm"
-          disabled={mailBusy}
-          onclick={() => mailCall("mail_scan")}
-          >{mailBusy ? "Scanning…" : "Scan again"}</Button
+        {#if mail.connected}
+          <span class="note"
+            >Gmail <b>{mail.account}</b> · {mail.messages} receipts in {mail.read}
+            emails · scanned {mail.scanned_at
+              .slice(0, 16)
+              .replace("T", " ")}</span
+          >
+          <Button
+            size="sm"
+            disabled={mailBusy}
+            onclick={() => mailCall("mail_scan")}
+            >{mailBusy ? "Scanning…" : "Scan again"}</Button
+          >
+        {/if}
+        {#each mail.files as file (file.name)}
+          <span class="chip"
+            >{file.name} · {file.events}
+            <button
+              type="button"
+              aria-label={`Remove ${file.name}`}
+              disabled={mailBusy}
+              onclick={() => mailCall("purchases_remove", { name: file.name })}
+              >×</button
+            ></span
+          >
+        {/each}
+        <Button size="sm" onclick={() => (showSources = !showSources)}
+          >{showSources ? "Show what was found" : "Add a source"}</Button
         >
         <Button
           size="sm"
           disabled={mailBusy || !mail.found.subscriptions.length}
           onclick={keepFound}>Add found subscriptions to my list</Button
         >
-        <Button
-          size="sm"
-          variant="ghost"
-          disabled={mailBusy}
-          onclick={() => mailCall("mail_disconnect")}>Disconnect</Button
-        >
+        {#if mail.connected}
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={mailBusy}
+            onclick={() => mailCall("mail_disconnect")}>Disconnect Gmail</Button
+          >
+        {/if}
         {#if mailNote}<span class="note" role="status">{mailNote}</span>{/if}
         {#if mailError}<span class="error" role="alert">{mailError}</span>{/if}
       </div>
+    {/if}
+    {#if mail?.found && !showSources}
       <div class="panels mailpanels">
         {#each mailPanels as panel (panel.title)}
           <AnalyticPanel {panel} fill />
@@ -600,70 +679,161 @@
       </div>
     {:else}
       <div class="pane">
-        <form
-          class="plans connect"
-          onsubmit={connectMail}
-          aria-label="Connect Gmail"
-        >
-          <h4>Find subscriptions, purchases and sales in your email</h4>
-          <p class="hint">
-            Apple and Google Play do not let other apps sign in and read what
-            you bought. They email a receipt for every purchase, renewal and
-            cancellation instead, and PayPal, Shopify, BuiltByBit and Stripe
-            email one for every sale. Connect the Gmail those go to, and this
-            board finds them: active and cancelled subscriptions, latest
-            purchases, sales and refunds. It only reads receipts from those
-            stores, never sends or changes anything, and runs on this computer.
-          </p>
-          <ol class="hint steps">
-            <li>
-              Turn on 2-Step Verification in your Google account, then make an
-              app password.
+        <p class="hint lead">
+          Find every subscription, purchase and sale from the places that know
+          about them. Use one or all of these; what they find is put together
+          below. Everything is read on this computer and nothing is changed.
+        </p>
+        <div class="sources">
+          <form
+            class="plans connect source"
+            onsubmit={connectMail}
+            aria-label="Connect Gmail"
+          >
+            <h4>Gmail receipts</h4>
+            {#if mail?.connected}
+              <p class="hint">
+                Connected: <b>{mail.account}</b>. Receipts and account notices
+                are read; adverts, newsletters and Promotions are left out.
+              </p>
+              <Button
+                size="sm"
+                variant="primary"
+                disabled={mailBusy}
+                onclick={async () => {
+                  await mailCall("mail_scan");
+                  if (!mailError) showSources = false;
+                }}>{mailBusy ? "Scanning…" : "Scan now"}</Button
+              >
+            {:else}
+              <p class="hint">
+                Apple, Google Play, Netflix, Spotify and almost every shop email
+                a receipt for each charge, renewal and cancellation. Only real
+                receipts count: adverts and Promotions are left out.
+              </p>
+              <ol class="hint steps">
+                <li>
+                  Turn on 2-Step Verification, then make an app password.
+                  <Button
+                    size="sm"
+                    onclick={() =>
+                      openLink("https://myaccount.google.com/apppasswords")}
+                    >Open App passwords</Button
+                  >
+                </li>
+                <li>Paste your Gmail address and that app password.</li>
+              </ol>
+              <label
+                >Gmail address <input
+                  type="email"
+                  autocomplete="off"
+                  placeholder="you@gmail.com"
+                  bind:value={mailForm.email}
+                /></label
+              >
+              <label
+                >App password <input
+                  type="password"
+                  autocomplete="off"
+                  placeholder="16 letters"
+                  bind:value={mailForm.password}
+                /></label
+              >
+              <Button
+                type="submit"
+                variant="primary"
+                disabled={mailBusy ||
+                  !mailForm.email.trim() ||
+                  !mailForm.password.trim()}
+                >{mailBusy
+                  ? "Connecting and scanning…"
+                  : "Connect and scan"}</Button
+              >
+              {#if mail?.network && !["converse", "open"].includes(mail.network)}
+                <p class="error">
+                  The network is {mail.network}, so email cannot be read. Change
+                  it in Settings, Agents.
+                </p>
+              {/if}
+            {/if}
+          </form>
+          <section class="plans connect source" aria-label="Apple">
+            <h4>Apple (App Store, iCloud, Apple Music)</h4>
+            <p class="hint">
+              Apple lets no other app read your account. Ask Apple for a copy of
+              your data: on privacy.apple.com choose "Request a copy of your
+              data" and tick "Apple Media Services information". Apple emails a
+              link within a few days; add the .zip here.
+            </p>
+            <div class="row">
+              <Button
+                size="sm"
+                onclick={() => openLink("https://privacy.apple.com/")}
+                >Ask Apple for my data</Button
+              >
               <Button
                 size="sm"
                 onclick={() =>
-                  openLink("https://myaccount.google.com/apppasswords")}
-                >Open App passwords</Button
+                  openLink("https://apps.apple.com/account/subscriptions")}
+                >See Apple subscriptions</Button
               >
-            </li>
-            <li>Paste your Gmail address and that app password here.</li>
-          </ol>
-          <div class="row">
-            <label class="wide"
-              >Gmail address <input
-                type="email"
-                autocomplete="off"
-                placeholder="you@gmail.com"
-                bind:value={mailForm.email}
-              /></label
-            >
-            <label class="wide"
-              >App password <input
-                type="password"
-                autocomplete="off"
-                placeholder="16 letters"
-                bind:value={mailForm.password}
-              /></label
-            >
+            </div>
             <Button
-              type="submit"
-              variant="primary"
-              disabled={mailBusy ||
-                !mailForm.email.trim() ||
-                !mailForm.password.trim()}
-              >{mailBusy
-                ? "Connecting and scanning…"
-                : "Connect and scan"}</Button
+              size="sm"
+              disabled={mailBusy}
+              onclick={() => picker?.click()}>Add Apple's file</Button
             >
-          </div>
-          {#if mail?.network && !["converse", "open"].includes(mail.network)}
-            <p class="error">
-              The network is {mail.network}, so email cannot be read. Change it
-              in Settings, Agents.
+          </section>
+          <section class="plans connect source" aria-label="Google Play">
+            <h4>Google Play</h4>
+            <p class="hint">
+              Google Takeout gives you your Play subscriptions, orders and
+              purchases. Only "Google Play Store" is ticked by the link below;
+              it is ready in minutes. Add the .zip here.
             </p>
-          {/if}
-          {#if mailError}<p class="error" role="alert">{mailError}</p>{/if}
-        </form>
+            <div class="row">
+              <Button
+                size="sm"
+                onclick={() =>
+                  openLink(
+                    "https://takeout.google.com/settings/takeout/custom/play",
+                  )}>Open Google Takeout</Button
+              >
+              <Button
+                size="sm"
+                onclick={() =>
+                  openLink(
+                    "https://play.google.com/store/account/subscriptions",
+                  )}>See Play subscriptions</Button
+              >
+            </div>
+            <Button
+              size="sm"
+              disabled={mailBusy}
+              onclick={() => picker?.click()}>Add Google's file</Button
+            >
+          </section>
+          <section class="plans connect source" aria-label="Bank statement">
+            <h4>Bank or card statement</h4>
+            <p class="hint">
+              Catches what never emails a receipt. Download a few months of your
+              statement as CSV from your bank's website or app. Anything charged
+              every week, month or year for about the same amount is found as a
+              subscription.
+            </p>
+            <Button
+              size="sm"
+              disabled={mailBusy}
+              onclick={() => picker?.click()}>Add a statement</Button
+            >
+          </section>
+        </div>
+        {#if mailNote && !mail?.found}<p class="note" role="status">
+            {mailNote}
+          </p>{/if}
+        {#if mailError && !mail?.found}<p class="error" role="alert">
+            {mailError}
+          </p>{/if}
       </div>
     {/if}
   {:else if tab === "subs"}
@@ -1031,6 +1201,48 @@
     gap: var(--space-2);
     align-items: center;
     margin-top: var(--space-3);
+  }
+
+  .chip {
+    display: inline-flex;
+    gap: var(--space-1);
+    align-items: center;
+    padding: 2px var(--space-2);
+    font-size: 0.75rem;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+  }
+
+  .chip button {
+    padding: 0 2px;
+    color: inherit;
+    cursor: pointer;
+    background: none;
+    border: 0;
+  }
+
+  /* The four places subscriptions are found, side by side when there is room. */
+  .sources {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: var(--space-3);
+    margin-top: var(--space-3);
+  }
+
+  .source {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    align-content: start;
+  }
+
+  .source label {
+    display: grid;
+    gap: 2px;
+  }
+
+  .lead {
+    margin: var(--space-3) 0 0;
   }
 
   .steps {

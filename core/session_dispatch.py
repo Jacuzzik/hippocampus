@@ -183,6 +183,8 @@ class DispatchPart:
             "mail_connect": self.mail_connect,
             "mail_disconnect": lambda request: self.mail_disconnect(),
             "mail_scan": lambda request: self.mail_scan(),
+            "purchases_import": self.purchases_import,
+            "purchases_remove": self.purchases_remove,
         }
 
     def stop(self) -> dict[str, Any]:

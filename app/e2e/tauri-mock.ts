@@ -1093,8 +1093,50 @@ export async function mockSidecar(
           case "mail_status":
           case "mail_connect":
           case "mail_scan":
-          case "mail_disconnect": {
-            const w = window as unknown as { __mail?: string };
+          case "mail_disconnect":
+          case "purchases_import":
+          case "purchases_remove": {
+            const w = window as unknown as {
+              __mail?: string;
+              __files?: string[];
+            };
+            const files = (w.__files ??= []);
+            if (args.method === "purchases_import") {
+              const p = args.params as { name: string; data: string };
+              if (!p.name.endsWith(".csv"))
+                throw "Nothing that looks like a purchase or a subscription was found in this file.";
+              files.push(p.name);
+            }
+            if (args.method === "purchases_remove") {
+              const p = args.params as { name: string };
+              files.splice(files.indexOf(p.name), 1);
+            }
+            const bank = files.length
+              ? [
+                  {
+                    name: "SPOTIFY",
+                    store: "bank",
+                    store_name: "statement",
+                    price: 21.99,
+                    currency: "",
+                    period: "month",
+                    status: "active",
+                    last: "2026-11-14",
+                    renews: "",
+                    charges: 4,
+                    how: "repeated charges",
+                    sources: ["file"],
+                    evidence: [
+                      { date: "2026-11-14", subject: "SPOTIFY (purchase)" },
+                    ],
+                  },
+                ]
+              : [];
+            const fileRows = files.map((name) => ({
+              name,
+              added: "2026-11-23T18:00:00+00:00",
+              events: 5,
+            }));
             if (args.method === "mail_connect") {
               const p = args.params as { email: string; password: string };
               if (!p.password.startsWith("abcd"))
@@ -1106,17 +1148,31 @@ export async function mockSidecar(
               return {
                 connected: false,
                 account: "",
-                found: null,
+                scanned_at: "",
+                read: 0,
+                messages: 0,
+                files: fileRows,
+                found: files.length
+                  ? {
+                      subscriptions: bank,
+                      purchases: [],
+                      sales: [],
+                      refunds: [],
+                    }
+                  : null,
                 network: "converse",
               };
             return {
               connected: true,
               account: w.__mail,
               network: "converse",
+              scanned_at: "2026-11-23T18:00:00+00:00",
+              read: 9,
+              messages: 5,
+              files: fileRows,
               found: {
-                scanned_at: "2026-11-23T18:00:00+00:00",
-                messages: 5,
                 subscriptions: [
+                  ...bank,
                   {
                     name: "PhotoApp Pro",
                     store: "apple",
@@ -1126,6 +1182,10 @@ export async function mockSidecar(
                     status: "active",
                     last: "2026-11-20",
                     renews: "2026-12-20",
+                    charges: 1,
+                    how: "notice",
+                    sources: ["email"],
+                    evidence: [],
                   },
                   {
                     name: "Calm Notes",
@@ -1136,6 +1196,10 @@ export async function mockSidecar(
                     status: "inactive",
                     last: "2026-03-02",
                     renews: "",
+                    charges: 1,
+                    how: "notice",
+                    sources: ["email"],
+                    evidence: [],
                   },
                 ],
                 purchases: [

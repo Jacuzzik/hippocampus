@@ -271,12 +271,12 @@ test("GitHub lists every repository with what each agent did there; the vault as
   expect(after.at(-1)).toBe("https://www.paypal.com/myaccount/summary");
 
   // Gmail is connected with an app password; the receipts found show, and the subscriptions join the list.
-  await tab("From your email");
+  await tab("Find subscriptions");
   const connect = board.getByRole("form", { name: "Connect Gmail" });
   await connect.getByLabel("Gmail address").fill("me@gmail.com");
   await connect.getByLabel("App password").fill("wrong-password");
   await connect.getByRole("button", { name: "Connect and scan" }).click();
-  await expect(connect.getByRole("alert")).toContainText("app password");
+  await expect(board.getByRole("alert")).toContainText("app password");
   await connect.getByLabel("App password").fill("abcd efgh ijkl mnop");
   await connect.getByRole("button", { name: "Connect and scan" }).click();
   const subsFound = board.locator(".panel", { hasText: "Subscriptions found" });
@@ -298,6 +298,30 @@ test("GitHub lists every repository with what each agent did there; the vault as
   await expect(
     board.getByRole("list", { name: "Active subscriptions" }),
   ).toContainText("PhotoApp Pro");
+
+  // A bank statement added as a file: its monthly charge is found as a subscription; a file that
+  // holds no purchases is refused with a plain reason, and an added file can be removed.
+  await tab("Find subscriptions");
+  await board.getByRole("button", { name: "Add a source" }).click();
+  await expect(
+    board.getByRole("region", { name: "Google Play" }),
+  ).toBeVisible();
+  const picker = board.locator('input[type="file"]');
+  await picker.setInputFiles({
+    name: "notes.txt.json",
+    mimeType: "application/json",
+    buffer: Buffer.from("{}"),
+  });
+  await expect(board.getByRole("alert")).toContainText("Nothing that looks");
+  await picker.setInputFiles({
+    name: "statement.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from("Date,Description,Amount\n2026-11-14,SPOTIFY,-21.99\n"),
+  });
+  await expect(subsFound).toContainText("SPOTIFY");
+  await expect(subsFound).toContainText("charged 4 times");
+  await board.getByRole("button", { name: "Remove statement.csv" }).click();
+  await expect(subsFound).not.toContainText("SPOTIFY");
 });
 
 test("the calendar shows a week with checks and crosses, adds, marks and removes an event, and shows a month", async ({

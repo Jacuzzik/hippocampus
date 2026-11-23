@@ -137,6 +137,13 @@ METHODS: dict[str, Method] = {
     ),
     "mail_disconnect": _m("Forget the Gmail address and its app password."),
     "mail_scan": _m("Read the receipts again: subscriptions, purchases, sales and refunds."),
+    "purchases_import": _m(
+        "Read purchases and subscriptions from a downloaded file (Google Takeout, Apple data"
+        " copy, bank statement).",
+        ("name", "the file name"),
+        ("data", "the file, base64"),
+    ),
+    "purchases_remove": _m("Forget an added file's purchases.", ("name", "the file name")),
     "doctor": _m("Health checks with what to do about each gap."),
     "link_doctor": _m("Broken links and notes with no links."),
     "logs": _m("The newest lines of the backend log."),
