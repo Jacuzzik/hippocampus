@@ -19,12 +19,6 @@
         "Needs a local embedding model (Ollama or a small model); none is installed.",
     },
     {
-      id: "7.11",
-      name: "One committer for shared files",
-      what: "Only the app commits shared files, so agents never fight over the git index.",
-      reason: "Needs a commit queue in the backend; not built.",
-    },
-    {
       id: "7.18",
       name: "Built-in code editor",
       what: "A file tree, tabs, save, and git views (changes, history, branch compare).",

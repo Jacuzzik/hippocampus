@@ -116,6 +116,7 @@
   let fleet = $state<{
     path: string;
     requests?: string;
+    commits?: string;
     agents: unknown[];
   } | null>(null);
   let saved = $state<Saved | null>(null);
@@ -254,10 +255,12 @@
     try {
       saved = await invoke<Saved>("sidecar_call", { method: "settings" });
       sidecar = "Running";
-      invoke<{ path: string; requests?: string; agents: unknown[] }>(
-        "sidecar_call",
-        { method: "fleet" },
-      ).then(
+      invoke<{
+        path: string;
+        requests?: string;
+        commits?: string;
+        agents: unknown[];
+      }>("sidecar_call", { method: "fleet" }).then(
         (found) => (fleet = found),
         () => (fleet = null),
       );
@@ -830,6 +833,13 @@
               "subject" and "body", and it becomes a message to that agent. A
               file that cannot be read moves to .failed with the reason.{/snippet}
             <code>{fleet?.requests ?? "Not read yet"}</code>
+          </SettingRow>
+          <SettingRow title="Commit folder"
+            >{#snippet help()}An agent asks for a commit with a JSON file here:
+              "from", "repo", "paths" and "message". The app commits only those
+              paths, one request at a time, so agents never fight over git.
+              Nothing is pushed.{/snippet}
+            <code>{fleet?.commits ?? "Not read yet"}</code>
           </SettingRow>
         </section>
         <section class="control-section">

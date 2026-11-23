@@ -138,6 +138,7 @@ test("Advanced shows the backend log and a switch hides the Connectors page", as
     "/home/me/.hippocampus/office/fleet.json (1 agent)",
   );
   await expect(dialog).toContainText("/home/me/.hippocampus/office/requests");
+  await expect(dialog).toContainText("/home/me/.hippocampus/office/commits");
   await expect(dialog.getByRole("tab", { name: "Connectors" })).toBeVisible();
   await dialog.getByRole("checkbox", { name: "Connectors page" }).uncheck();
   await expect(dialog.getByRole("tab", { name: "Connectors" })).toHaveCount(0);
@@ -356,7 +357,7 @@ test("Planned features are cards that say what is missing, never dead buttons", 
   const dialog = await openSettings(page);
   await dialog.getByRole("tab", { name: "Planned", exact: true }).click();
   const cards = dialog.getByRole("tabpanel").locator("article");
-  await expect(cards).toHaveCount(21);
+  await expect(cards).toHaveCount(20);
   for (const card of await cards.all()) {
     await expect(card).toContainText("Planned");
     await expect(card.locator("p.reason")).not.toBeEmpty();

@@ -734,6 +734,7 @@ export async function mockSidecar(
             return {
               path: "/home/me/.hippocampus/office/fleet.json",
               requests: "/home/me/.hippocampus/office/requests",
+              commits: "/home/me/.hippocampus/office/commits",
               agents: [{ id: "hippoherman", status: "idle" }],
             };
           // Note history, as core/session_notes.py answers it.

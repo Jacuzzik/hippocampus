@@ -10,6 +10,7 @@ from ai import cli_sessions
 from core import (
     added_agents,
     breaker,
+    commit_queue,
     crash_log,
     file_requests,
     fleet,
@@ -52,6 +53,7 @@ class HivePart:
         return {
             "path": str(self.hive_path / fleet.NAME),
             "requests": str(self.hive_path / file_requests.FOLDER),
+            "commits": str(self.hive_path / commit_queue.FOLDER),
             "agents": rows,
         }
 
@@ -126,6 +128,17 @@ class HivePart:
             self.note(
                 "error", text=f"{failed} request file(s) could not be read; see requests/.failed"
             )
+
+    def _take_commits(self) -> None:
+        """Commit what agents asked for, one request at a time (7.11)."""
+        allowed = [
+            Path(str(a["folder"])) for a in added_agents.load(self.agents_path) if a.get("folder")
+        ]
+        if self.settings.vault:
+            allowed.append(Path(self.settings.vault))
+        lines = commit_queue.process(self.hive_path, allowed, self._agent_ids())
+        for line in lines:
+            self.note("handoff" if line.startswith("committed") else "error", text=line)
 
     def _write_fleet(self) -> None:
         now = time.time()
@@ -222,6 +235,7 @@ class HivePart:
                 self._write_fleet()
                 self._alert_new()
                 self._take_requests()
+                self._take_commits()
                 # "user" is a valid receiver: an agent answers the user there (a calendar event's done or refuse).
                 if inbox.collect_outboxes(self.hive_path, self._agent_ids() | {inbox.USER}):
                     self.changed("inbox")
