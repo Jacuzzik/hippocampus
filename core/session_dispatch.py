@@ -179,6 +179,10 @@ class DispatchPart:
             "app_connect": self.app_connect,
             "app_disconnect": self.app_disconnect,
             "app_board": self.app_board,
+            "mail_status": lambda request: self.mail_status(),
+            "mail_connect": self.mail_connect,
+            "mail_disconnect": lambda request: self.mail_disconnect(),
+            "mail_scan": lambda request: self.mail_scan(),
         }
 
     def stop(self) -> dict[str, Any]:

@@ -269,6 +269,35 @@ test("GitHub lists every repository with what each agent did there; the vault as
     () => (window as unknown as { __opened: string[] }).__opened,
   );
   expect(after.at(-1)).toBe("https://www.paypal.com/myaccount/summary");
+
+  // Gmail is connected with an app password; the receipts found show, and the subscriptions join the list.
+  await tab("From your email");
+  const connect = board.getByRole("form", { name: "Connect Gmail" });
+  await connect.getByLabel("Gmail address").fill("me@gmail.com");
+  await connect.getByLabel("App password").fill("wrong-password");
+  await connect.getByRole("button", { name: "Connect and scan" }).click();
+  await expect(connect.getByRole("alert")).toContainText("app password");
+  await connect.getByLabel("App password").fill("abcd efgh ijkl mnop");
+  await connect.getByRole("button", { name: "Connect and scan" }).click();
+  const subsFound = board.locator(".panel", { hasText: "Subscriptions found" });
+  await expect(subsFound).toContainText("PhotoApp Pro");
+  await expect(subsFound).toContainText("1 active of 2");
+  await expect(
+    board.locator(".panel", { hasText: "Latest purchases" }),
+  ).toContainText("City Builder");
+  await expect(
+    board.locator(".panel", { hasText: "Latest sales" }),
+  ).toContainText("$25.00");
+  await board
+    .getByRole("button", { name: "Add found subscriptions to my list" })
+    .click();
+  await expect(
+    board.getByRole("status").filter({ hasText: "Added 2" }),
+  ).toBeVisible();
+  await tab("Subscriptions");
+  await expect(
+    board.getByRole("list", { name: "Active subscriptions" }),
+  ).toContainText("PhotoApp Pro");
 });
 
 test("the calendar shows a week with checks and crosses, adds, marks and removes an event, and shows a month", async ({

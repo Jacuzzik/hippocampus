@@ -102,7 +102,174 @@
       error = String(cause);
     }
   }
-  onMount(() => void read());
+  onMount(() => {
+    void read();
+    void readMail();
+  });
+
+  // Receipts from the user's Gmail: Apple, Google Play, PayPal, Shopify and other stores email one
+  // for each purchase, renewal, cancellation and sale, so they are found without signing in to each.
+  type Found = {
+    date: string;
+    store: string;
+    item: string;
+    amount: number | null;
+    currency: string;
+  };
+  type FoundSub = {
+    name: string;
+    store: string;
+    price: number | null;
+    currency: string;
+    period: "month" | "year" | "week";
+    status: "active" | "cancelled" | "inactive";
+    last: string;
+    renews: string;
+  };
+  type Mail = {
+    connected: boolean;
+    account: string;
+    network: string;
+    found: {
+      scanned_at: string;
+      messages: number;
+      subscriptions: FoundSub[];
+      purchases: Found[];
+      sales: Found[];
+      refunds: Found[];
+    } | null;
+  };
+  const STORES: Record<string, string> = {
+    apple: "Apple",
+    google: "Google Play",
+    paypal: "PayPal",
+    stripe: "Stripe",
+    shopify: "Shopify",
+    builtbybit: "BuiltByBit",
+    steam: "Steam",
+    amazon: "Amazon",
+  };
+  let mail = $state<Mail | null>(null);
+  let mailBusy = $state(false);
+  let mailError = $state("");
+  let mailNote = $state("");
+  let mailForm = $state({ email: "", password: "" });
+
+  async function mailCall(method: string, params?: object): Promise<void> {
+    mailBusy = true;
+    mailError = "";
+    mailNote = "";
+    try {
+      mail = await invoke<Mail>("sidecar_call", { method, params });
+    } catch (cause) {
+      mailError = String(cause);
+    } finally {
+      mailBusy = false;
+    }
+  }
+  const readMail = () => mailCall("mail_status");
+  async function connectMail(event: SubmitEvent): Promise<void> {
+    event.preventDefault();
+    await mailCall("mail_connect", { ...mailForm });
+    if (!mailError) mailForm = { email: "", password: "" };
+  }
+
+  const priced = (amount: number | null, code: string): string =>
+    amount === null ? "" : code ? inCurrency(amount, code) : money(amount);
+  const foundRow = (row: Found) => ({
+    title: row.item,
+    badge: STORES[row.store] ?? row.store,
+    meta: [priced(row.amount, row.currency), row.date]
+      .filter(Boolean)
+      .join(" · "),
+  });
+  const mailPanels = $derived.by((): Panel[] => {
+    const f = mail?.found;
+    if (!f) return [];
+    return [
+      {
+        kind: "list",
+        title: "Subscriptions found",
+        note: `${f.subscriptions.filter((s) => s.status === "active").length} active of ${f.subscriptions.length}`,
+        rows: f.subscriptions.map((s) => ({
+          title: s.name,
+          badge: `${STORES[s.store] ?? s.store} · ${s.status}`,
+          meta:
+            s.price === null
+              ? ""
+              : `${priced(s.price, s.currency)} ${PER[s.period]}`,
+          lines: [
+            s.renews
+              ? `${s.status === "active" ? "Renews" : "Ends"} ${s.renews}`
+              : s.last
+                ? `Last charged ${s.last}`
+                : "",
+          ].filter(Boolean),
+          tone:
+            s.status === "active"
+              ? ("good" as const)
+              : s.status === "cancelled"
+                ? ("warn" as const)
+                : ("plain" as const),
+        })),
+        empty: "No subscription receipt found.",
+      },
+      {
+        kind: "list",
+        title: "Latest purchases",
+        note: `${f.purchases.length} found`,
+        rows: f.purchases.map(foundRow),
+        empty: "No purchase receipt found.",
+      },
+      {
+        kind: "list",
+        title: "Latest sales",
+        note: "Money you received: PayPal, Shopify, BuiltByBit, Stripe.",
+        rows: f.sales.map((row) => ({
+          ...foundRow(row),
+          tone: "good" as const,
+        })),
+        empty: "No sale found.",
+      },
+      {
+        kind: "list",
+        title: "Refunds",
+        note: `${f.refunds.length} found`,
+        rows: f.refunds.map(foundRow),
+        empty: "No refund found.",
+      },
+    ];
+  });
+
+  // The found subscriptions go into the user's own list (the ones not there yet), where the
+  // Overview counts them and Cancel and Resubscribe work.
+  function keepFound(): void {
+    const f = mail?.found;
+    if (!found || !f) return;
+    const have = new Set(found.report.subs.map((s) => s.name.toLowerCase()));
+    const fresh = f.subscriptions
+      .filter((s) => !have.has(s.name.toLowerCase()))
+      .map((s): Sub => ({
+        name: s.name.slice(0, 60),
+        store: s.store === "apple" || s.store === "google" ? s.store : "other",
+        price: s.price ?? 0,
+        period: s.period,
+        renews: s.renews,
+        status:
+          s.status === "active"
+            ? "active"
+            : s.status === "cancelled"
+              ? "cancelled"
+              : "expired",
+        link: "",
+      }));
+    void saveSubs([...found.report.subs.map(plain), ...fresh]).then(() => {
+      if (!subError)
+        mailNote = fresh.length
+          ? `Added ${fresh.length} to your subscriptions.`
+          : "They are all in your subscriptions already.";
+    });
+  }
 
   async function save(event: SubmitEvent): Promise<void> {
     event.preventDefault();
@@ -298,6 +465,7 @@
   // The numbers and charts first; each form on its own tab, so the board fits the window.
   const TABS = [
     { id: "overview", label: "Overview" },
+    { id: "mail", label: "From your email" },
     { id: "plans", label: "Plans and prices" },
     { id: "subs", label: "Subscriptions" },
     { id: "wallets", label: "Wallets" },
@@ -398,6 +566,106 @@
         <AnalyticPanel {panel} fill />
       {/each}
     </div>
+  {:else if tab === "mail"}
+    {#if mail?.connected && mail.found}
+      <div class="mailbar">
+        <span class="note"
+          >Reading receipts in <b>{mail.account}</b> · {mail.found.messages} found
+          · scanned {mail.found.scanned_at.slice(0, 16).replace("T", " ")}</span
+        >
+        <Button
+          size="sm"
+          disabled={mailBusy}
+          onclick={() => mailCall("mail_scan")}
+          >{mailBusy ? "Scanning…" : "Scan again"}</Button
+        >
+        <Button
+          size="sm"
+          disabled={mailBusy || !mail.found.subscriptions.length}
+          onclick={keepFound}>Add found subscriptions to my list</Button
+        >
+        <Button
+          size="sm"
+          variant="ghost"
+          disabled={mailBusy}
+          onclick={() => mailCall("mail_disconnect")}>Disconnect</Button
+        >
+        {#if mailNote}<span class="note" role="status">{mailNote}</span>{/if}
+        {#if mailError}<span class="error" role="alert">{mailError}</span>{/if}
+      </div>
+      <div class="panels mailpanels">
+        {#each mailPanels as panel (panel.title)}
+          <AnalyticPanel {panel} fill />
+        {/each}
+      </div>
+    {:else}
+      <div class="pane">
+        <form
+          class="plans connect"
+          onsubmit={connectMail}
+          aria-label="Connect Gmail"
+        >
+          <h4>Find subscriptions, purchases and sales in your email</h4>
+          <p class="hint">
+            Apple and Google Play do not let other apps sign in and read what
+            you bought. They email a receipt for every purchase, renewal and
+            cancellation instead, and PayPal, Shopify, BuiltByBit and Stripe
+            email one for every sale. Connect the Gmail those go to, and this
+            board finds them: active and cancelled subscriptions, latest
+            purchases, sales and refunds. It only reads receipts from those
+            stores, never sends or changes anything, and runs on this computer.
+          </p>
+          <ol class="hint steps">
+            <li>
+              Turn on 2-Step Verification in your Google account, then make an
+              app password.
+              <Button
+                size="sm"
+                onclick={() =>
+                  openLink("https://myaccount.google.com/apppasswords")}
+                >Open App passwords</Button
+              >
+            </li>
+            <li>Paste your Gmail address and that app password here.</li>
+          </ol>
+          <div class="row">
+            <label class="wide"
+              >Gmail address <input
+                type="email"
+                autocomplete="off"
+                placeholder="you@gmail.com"
+                bind:value={mailForm.email}
+              /></label
+            >
+            <label class="wide"
+              >App password <input
+                type="password"
+                autocomplete="off"
+                placeholder="16 letters"
+                bind:value={mailForm.password}
+              /></label
+            >
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={mailBusy ||
+                !mailForm.email.trim() ||
+                !mailForm.password.trim()}
+              >{mailBusy
+                ? "Connecting and scanning…"
+                : "Connect and scan"}</Button
+            >
+          </div>
+          {#if mail?.network && !["converse", "open"].includes(mail.network)}
+            <p class="error">
+              The network is {mail.network}, so email cannot be read. Change it
+              in Settings, Agents.
+            </p>
+          {/if}
+          {#if mailError}<p class="error" role="alert">{mailError}</p>{/if}
+        </form>
+      </div>
+    {/if}
   {:else if tab === "subs"}
     <div class="pane">
       <section class="plans subs" aria-label="Subscriptions">
@@ -755,6 +1023,26 @@
     color: var(--color-accent);
     background: color-mix(in srgb, var(--color-accent) 14%, transparent);
     border-color: color-mix(in srgb, var(--color-accent) 45%, transparent);
+  }
+
+  .mailbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    align-items: center;
+    margin-top: var(--space-3);
+  }
+
+  .steps {
+    display: grid;
+    gap: var(--space-2);
+    margin: 0;
+    padding-left: var(--space-5);
+  }
+
+  /* Four lists in two rows: subscriptions and purchases, then sales and refunds. */
+  .mailpanels {
+    grid-template-rows: repeat(2, minmax(0, 1fr));
   }
 
   /* A form tab: the forms scroll inside the board, never the page. */

@@ -1090,6 +1090,76 @@ export async function mockSidecar(
               ],
             };
           }
+          case "mail_status":
+          case "mail_connect":
+          case "mail_scan":
+          case "mail_disconnect": {
+            const w = window as unknown as { __mail?: string };
+            if (args.method === "mail_connect") {
+              const p = args.params as { email: string; password: string };
+              if (!p.password.startsWith("abcd"))
+                throw "Gmail refused the sign-in. Use an app password.";
+              w.__mail = p.email;
+            }
+            if (args.method === "mail_disconnect") w.__mail = undefined;
+            if (!w.__mail)
+              return {
+                connected: false,
+                account: "",
+                found: null,
+                network: "converse",
+              };
+            return {
+              connected: true,
+              account: w.__mail,
+              network: "converse",
+              found: {
+                scanned_at: "2026-11-23T18:00:00+00:00",
+                messages: 5,
+                subscriptions: [
+                  {
+                    name: "PhotoApp Pro",
+                    store: "apple",
+                    price: 4.99,
+                    currency: "USD",
+                    period: "month",
+                    status: "active",
+                    last: "2026-11-20",
+                    renews: "2026-12-20",
+                  },
+                  {
+                    name: "Calm Notes",
+                    store: "google",
+                    price: 19.99,
+                    currency: "AED",
+                    period: "month",
+                    status: "inactive",
+                    last: "2026-03-02",
+                    renews: "",
+                  },
+                ],
+                purchases: [
+                  {
+                    date: "2026-11-03",
+                    store: "google",
+                    item: "City Builder",
+                    amount: 2.99,
+                    currency: "USD",
+                  },
+                ],
+                sales: [
+                  {
+                    date: "2026-11-21",
+                    store: "paypal",
+                    item: "You received a payment",
+                    amount: 25,
+                    currency: "USD",
+                  },
+                ],
+                refunds: [],
+              },
+            };
+          }
           case "finance":
           case "finance_save": {
             const w = window as unknown as {
