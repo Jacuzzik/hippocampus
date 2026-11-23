@@ -194,7 +194,9 @@ test("focus mode dims the notes and the graph around the selected agent, and Esc
       .evaluate((node) => getComputedStyle(node).opacity);
   const focus = async (): Promise<void> => {
     await page.keyboard.press("Control+p");
-    await page.getByRole("combobox").fill("Focus on the selected agent");
+    await page
+      .getByRole("combobox", { name: "Command palette" })
+      .fill("Focus on the selected agent");
     await page.keyboard.press("Enter");
   };
   // With no agent selected, the command does nothing.

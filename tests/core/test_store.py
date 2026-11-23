@@ -158,6 +158,7 @@ def test_graph_lists_notes_with_tags_and_unique_resolved_edges(store: Store) -> 
     put(store, "a.md", "# Alpha\n[[b]] [[b]] [[a]] [[missing]] #one")
     put(store, "b.md", "[[a]] #two #one")
     graph = store.graph()
+    assert all(isinstance(n.pop("changed"), int) for n in graph["nodes"])
     assert graph["nodes"] == [
         {"id": "a.md", "title": "Alpha", "tags": ["one"], "memory": False},
         {"id": "b.md", "title": "b", "tags": ["one", "two"], "memory": False},

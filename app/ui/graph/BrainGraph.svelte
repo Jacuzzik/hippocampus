@@ -44,6 +44,9 @@
     type Camera,
     type GraphData,
     type Sim,
+    LENSES,
+    lensWeight,
+    type Lens,
   } from "./model";
 
   const LABEL_GAP = 4;
@@ -101,6 +104,29 @@
   let lines: Float32Array = new Float32Array(0);
   // Hides notes with no links. Off by default, so every note shows.
   let hideOrphans = $state(false);
+  // Graph lenses (N.02): the lens picked is kept for the next start.
+  const LENS_KEY = "hippocampus.graphLens";
+  function readLens(): Lens {
+    try {
+      const saved = localStorage.getItem(LENS_KEY);
+      return LENSES.some((l) => l.id === saved) ? (saved as Lens) : "notes";
+    } catch {
+      return "notes";
+    }
+  }
+  let lens = $state<Lens>(readLens());
+  // Each note's strength in the lens, 0 to 1, for the ASCII and constellation drawings.
+  function lensWeights(): Float32Array {
+    const now = Date.now() / 1000;
+    return Float32Array.from(data.nodes, (n) => lensWeight(n, lens, now));
+  }
+  $effect(() => {
+    try {
+      localStorage.setItem(LENS_KEY, lens);
+    } catch {
+      /* private window: the lens is not kept */
+    }
+  });
   let hideNames = $state(false);
   // Reduced motion: the nodes stay still.
   const calm =
@@ -339,6 +365,12 @@
       lit = new Uint8Array(data.nodes.length);
       lit[focus] = 1;
       for (const j of near) lit[j] = 1;
+    } else if (lens !== "notes") {
+      // A graph lens lights the notes inside it.
+      const weights = lensWeights();
+      lit = new Uint8Array(data.nodes.length);
+      for (let i = 0; i < lit.length; i++)
+        lit[i] = (weights[i] ?? 0) >= 0.5 ? 1 : 0;
     }
     drawConstellation(ctx, cam, geo, w, h, lit);
   }
@@ -371,6 +403,7 @@
       h,
       calm ? 0 : performance.now() / 1000,
       focus,
+      lens === "notes" ? undefined : lensWeights(),
     );
   }
 
@@ -698,6 +731,8 @@
     near = neighbourhood(focus);
     focusIdx = focus;
     focusEdges();
+    const lensOn = lens !== "notes";
+    const now = Date.now() / 1000;
     for (let i = n; i < core; i++) {
       colors.set(colours.node, i * 4);
       radii[i] = 0;
@@ -709,7 +744,14 @@
       // Oldest look (first graph commit): every note is the accent, no status colours.
       const base = hub ?? colours.node;
       const lit = focus < 0 || near.has(i) ? 1 : 0.2;
-      const alpha = visible[i] ? base[3] * lit : base[3] * 0.15;
+      const seen = lensOn
+        ? lensWeight(
+            data.nodes[i] ?? { id: "", title: "", tags: [] },
+            lens,
+            now,
+          )
+        : 1;
+      const alpha = visible[i] ? base[3] * lit * seen : base[3] * 0.15 * seen;
       colors.set([base[0], base[1], base[2], alpha], i * 4);
       // Same size for every note (2026-11-07): no extra size for group hubs.
       radii[i] = nodeRadius(degree[i] ?? 0, false);
@@ -949,6 +991,7 @@
     void visible;
     void selected;
     void hideNames;
+    void lens;
     pushStyle();
     schedule();
   });
@@ -1013,6 +1056,11 @@
 
   <div class="tools">
     <button type="button" class="fit" onclick={fitAll}>Fit graph</button>
+    <select class="fit" aria-label="Graph lens" bind:value={lens}>
+      {#each LENSES as one (one.id)}
+        <option value={one.id}>{one.label}</option>
+      {/each}
+    </select>
     <Toggle bind:checked={hideOrphans} label="Hide orphans" />
     <Toggle bind:checked={hideNames} label="Hide names" />
     <button

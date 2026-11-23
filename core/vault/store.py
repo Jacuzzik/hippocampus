@@ -327,13 +327,22 @@ class Store:
         return [str(p) for (p,) in rows]
 
     def graph(self) -> dict[str, list]:
-        """Notes (path, title, tags, memory) and resolved links between them, for the brain graph.
+        """Notes (path, title, tags, memory, changed) and resolved links between them, for the brain graph.
 
         Edges are unique (source, target) pairs; self-links and dangling links are left out.
         """
+        # "changed" (seconds) is when the note's file last changed, for the Activity lens.
         nodes = {
-            str(p): {"id": str(p), "title": str(t), "tags": [], "memory": by == "assistant"}
-            for p, t, by in self._all("SELECT path, title, created_by FROM notes ORDER BY path")
+            str(p): {
+                "id": str(p),
+                "title": str(t),
+                "tags": [],
+                "memory": by == "assistant",
+                "changed": int(m // 1_000_000_000),
+            }
+            for p, t, by, m in self._all(
+                "SELECT path, title, created_by, mtime_ns FROM notes ORDER BY path"
+            )
         }
         for p, tag in self._all(
             "SELECT DISTINCT n.path, g.tag_key FROM tags g JOIN notes n ON n.id = g.note_id"

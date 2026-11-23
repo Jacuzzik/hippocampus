@@ -16,6 +16,7 @@ export interface AsciiColours {
 /**
  * Paints the whole picture. `pos` is the note positions (core last), `edges` the flat index pairs, `t` the time in
  * seconds. `focus` is the hovered (else selected) note, or -1: it and its links stay full strength, the rest dim.
+ * `weight`, when given, is each note's strength in the graph lens, 0 to 1.
  */
 export function drawAscii(
   ctx: CanvasRenderingContext2D,
@@ -28,6 +29,7 @@ export function drawAscii(
   height: number,
   t: number,
   focus: number,
+  weight?: ArrayLike<number>,
 ): void {
   const z = cam.zoom;
   ctx.globalAlpha = 1;
@@ -75,7 +77,9 @@ export function drawAscii(
   // Notes last, so they win over the links that run into them.
   ctx.fillStyle = colours.node;
   for (let i = 0; i < deg.length; i++) {
-    ctx.globalAlpha = focus < 0 || i === focus ? 1 : DIM;
+    // A graph lens (N.02) dims the notes outside it, as the other drawings do.
+    ctx.globalAlpha =
+      (focus < 0 || i === focus ? 1 : DIM) * (weight ? (weight[i] ?? 1) : 1);
     const [c, r] = cell(i);
     for (const [dx, dy, ch] of ballCells(deg[i] ?? 0))
       ctx.fillText(ch, sx(c + dx), sy(r + dy));

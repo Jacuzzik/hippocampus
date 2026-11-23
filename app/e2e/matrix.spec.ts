@@ -69,7 +69,9 @@ for (const size of SIZES) {
       found.push(...(await problems(page, `tab ${name}`)));
     }
     await page.keyboard.press("Control+p");
-    await page.getByRole("combobox").fill("Settings: General");
+    await page
+      .getByRole("combobox", { name: "Command palette" })
+      .fill("Settings: General");
     await page.keyboard.press("Enter");
     const dialog = page.getByRole("dialog", { name: "Settings" });
     await expect(dialog).toBeVisible();

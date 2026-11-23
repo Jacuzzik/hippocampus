@@ -6,6 +6,46 @@ export interface GraphNode {
   tags: string[];
   /** True for notes the assistant created (frontmatter created_by: assistant). */
   memory?: boolean;
+  /** When the note's file last changed, in seconds. */
+  changed?: number;
+}
+
+/** Graph lenses (N.02): the same graph seen as Notes, Agents, Memory, Tasks or Activity. */
+export type Lens = "notes" | "agents" | "memory" | "tasks" | "activity";
+export const LENSES: { id: Lens; label: string }[] = [
+  { id: "notes", label: "Notes" },
+  { id: "agents", label: "Agents" },
+  { id: "memory", label: "Memory" },
+  { id: "tasks", label: "Tasks" },
+  { id: "activity", label: "Activity heat" },
+];
+const LENS_FOLDERS: Record<Exclude<Lens, "notes" | "activity">, string[]> = {
+  agents: ["Agent Lists/", "Handoffs/"],
+  memory: ["Summaries/", "Daily briefs/", "Handoffs/"],
+  tasks: ["Cards/", "Playbooks/", "Projects/"],
+};
+const LENS_TAGS: Record<Exclude<Lens, "notes" | "activity">, string[]> = {
+  agents: ["agent", "agents"],
+  memory: ["memory", "summary"],
+  tasks: ["task", "tasks", "todo", "project", "playbook"],
+};
+/** A note older than this (in seconds) is cold in the Activity lens. */
+export const HEAT_SPAN = 14 * 86400;
+
+/** How much of a note the lens shows, 0 to 1: 1 is full, a small number is dimmed. */
+export function lensWeight(node: GraphNode, lens: Lens, now: number): number {
+  if (lens === "notes") return 1;
+  if (lens === "activity") {
+    if (node.changed === undefined) return 0.2;
+    const age = Math.max(0, now - node.changed);
+    return Math.max(0.15, 1 - age / HEAT_SPAN);
+  }
+  const inFolder = LENS_FOLDERS[lens].some((f) => node.id.startsWith(f));
+  const tagged = node.tags.some((t) => LENS_TAGS[lens].includes(t));
+  const own =
+    (lens === "memory" && node.memory === true) ||
+    (lens === "agents" && /-PriorityNotes$/.test(node.title));
+  return inFolder || tagged || own ? 1 : 0.12;
 }
 
 export interface GraphData {

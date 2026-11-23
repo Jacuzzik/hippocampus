@@ -2,6 +2,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  HEAT_SPAN,
+  lensWeight,
   allTags,
   ARC_SEGMENTS,
   arcHubs,
@@ -431,4 +433,35 @@ test("an eased zoom reaches the same factor in a few frames and then stops", asy
   assert.ok(frames > 3 && frames < 30, `took ${frames} frames`);
   assert.ok(Math.abs(applied - 2) < 1e-9);
   assert.deepEqual(easeZoom(1), [1, 1]);
+});
+
+test("a lens keeps its own notes bright and dims the rest", () => {
+  const note = (id, tags = [], extra = {}) => ({
+    id,
+    title: id,
+    tags,
+    ...extra,
+  });
+  assert.equal(lensWeight(note("a.md"), "notes", 0), 1);
+  assert.equal(lensWeight(note("Playbooks/release.md"), "tasks", 0), 1);
+  assert.equal(lensWeight(note("x.md", ["todo"]), "tasks", 0), 1);
+  assert.ok(lensWeight(note("x.md"), "tasks", 0) < 0.5);
+  assert.equal(lensWeight(note("m.md", [], { memory: true }), "memory", 0), 1);
+  assert.equal(lensWeight(note("Hippo-PriorityNotes"), "agents", 0), 1);
+});
+
+test("the activity lens is hottest for a note changed just now", () => {
+  const now = 1_000_000;
+  const hot = lensWeight(
+    { id: "a", title: "a", tags: [], changed: now },
+    "activity",
+    now,
+  );
+  const cold = lensWeight(
+    { id: "b", title: "b", tags: [], changed: now - 2 * HEAT_SPAN },
+    "activity",
+    now,
+  );
+  assert.equal(hot, 1);
+  assert.equal(cold, 0.15);
 });

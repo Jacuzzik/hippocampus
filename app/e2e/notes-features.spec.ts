@@ -32,7 +32,7 @@ test("Ctrl+P lists app actions and Enter runs the one picked", async ({
   await expect(assistant).toBeVisible();
   await page.keyboard.press("Control+p");
   const palette = page.getByRole("dialog", { name: "Command palette" });
-  await expect(palette.getByRole("option")).toHaveCount(9 + 20 + 1 + 17); // 20 settings pages; 17: dashboards, add agent, 11 tabs, 3 themes, quiet mode
+  await expect(palette.getByRole("option")).toHaveCount(10 + 20 + 1 + 17); // 10 includes Search everything; 20 settings pages; 17: dashboards, add agent, 11 tabs, 3 themes, quiet mode
   await page.keyboard.type("toggle assistant");
   await expect(palette.getByRole("option")).toHaveCount(1);
   await page.keyboard.press("Enter");

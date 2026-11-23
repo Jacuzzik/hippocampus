@@ -59,13 +59,6 @@
         "Checking means a call to a release server, and the app calls out only to your model provider. Until you allow it, get new versions from the Download page.",
     },
     {
-      id: "N.02",
-      name: "Graph lenses",
-      what: "Switches the same graph between Notes, Agents, Memory, Tasks and Activity heat, and saves a lens.",
-      reason:
-        "Needs a filter and colour rule per lens in all three graph drawings; not built.",
-    },
-    {
       id: "N.04",
       name: "Agent trail notes",
       what: "At the end of a session each agent writes a short note into the vault: what it read, changed and decided.",
