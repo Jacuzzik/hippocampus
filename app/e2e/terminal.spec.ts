@@ -88,6 +88,19 @@ test("an added agent runs in the same terminal, and block tools restarts it", as
   await page.getByRole("tab", { name: "Messages" }).click();
   await expect(page.getByText("No messages yet")).toBeVisible();
 
+  // MCP: a server added to this agent's own folder, then removed.
+  await page.getByRole("tab", { name: "MCP" }).click();
+  const mcp = page.getByRole("region", { name: "MCP servers of Ada" });
+  await mcp.getByLabel("Server name").fill("fs");
+  await mcp.getByLabel("Command or https address").fill("npx -y server-fs");
+  await mcp.getByRole("button", { name: "Add" }).click();
+  await expect(mcp.getByRole("list", { name: "Servers" })).toContainText(
+    "npx -y server-fs",
+  );
+  await expect(mcp.getByRole("status")).toContainText("next start");
+  await mcp.getByRole("button", { name: "Remove fs" }).click();
+  await expect(mcp).toContainText("No MCP servers");
+
   // Hand off: a note and a message to the agent picked.
   await page.getByRole("button", { name: "hand off" }).click();
   const form = page.getByRole("form", { name: "Hand off this agent's work" });

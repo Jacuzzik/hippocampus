@@ -178,6 +178,12 @@ export async function mockSidecar(
 
       // The note text the drawer reads through the "read" method.
       const noteHistory: Record<string, { id: string; text: string }[]> = {};
+      let mcpRows: {
+        name: string;
+        kind: string;
+        command: string;
+        env: string;
+      }[] = [];
       const ownerCards: {
         id: string;
         title: string;
@@ -677,6 +683,19 @@ export async function mockSidecar(
               state: "connected",
               url: "https://claude.ai/code/session_mock",
             };
+          case "mcp_servers":
+            return { servers: mcpRows };
+          case "mcp_add":
+            mcpRows.push({
+              name: String(args.params?.name),
+              kind: "stdio",
+              command: String(args.params?.line),
+              env: "",
+            });
+            return { servers: mcpRows, restart: true };
+          case "mcp_remove":
+            mcpRows = mcpRows.filter((r) => r.name !== args.params?.name);
+            return { servers: mcpRows, restart: true };
           case "cards":
             return { cards: ownerCards };
           case "card_from_note": {

@@ -14,6 +14,7 @@ from core import (
     added_agents,
     calendar_board,
     inbox,
+    mcp_config,
     pins,
     safe_write,
     search_all,
@@ -176,6 +177,37 @@ class AgentsPart:
         self.changed("inbox")
         self.note("handoff", text=f"handed {names[giver]}'s work to {names[taker]}")
         return {"note": path, "message": message}
+
+    def _agent_folder(self, agent: object) -> Path:
+        """An added agent's own working folder. The main agent works in the vault, which gets no
+        config files from the app, so it has none here."""
+        saved = next((a for a in added_agents.load(self.agents_path) if a.get("id") == agent), None)
+        if saved is None:
+            raise ValueError("Only an added agent has MCP servers of its own.")
+        folder = Path(str(saved.get("folder") or ""))
+        if not saved.get("folder") or not folder.is_dir():
+            raise ValueError("This agent has no working folder.")
+        return folder
+
+    def mcp_servers(self, request: dict[str, Any]) -> dict[str, Any]:
+        return {"servers": mcp_config.servers(self._agent_folder(request.get("agent")))}
+
+    def mcp_add(self, request: dict[str, Any]) -> dict[str, Any]:
+        folder = self._agent_folder(request.get("agent"))
+        found = mcp_config.add(folder, request.get("name"), request.get("line"))
+        self.note(
+            "setting", text=f"added the MCP server {request.get('name')} to {request.get('agent')}"
+        )
+        return {"servers": found, "restart": True}
+
+    def mcp_remove(self, request: dict[str, Any]) -> dict[str, Any]:
+        folder = self._agent_folder(request.get("agent"))
+        found = mcp_config.remove(folder, request.get("name"))
+        self.note(
+            "setting",
+            text=f"removed the MCP server {request.get('name')} from {request.get('agent')}",
+        )
+        return {"servers": found, "restart": True}
 
     def search_all(self, request: dict[str, Any]) -> dict[str, Any]:
         """One search over notes, messages, tasks, calendar events and agents (N.01)."""

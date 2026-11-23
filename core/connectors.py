@@ -190,7 +190,7 @@ def _servers(file: Path, scope: str, nested: str | None = None) -> list[str]:
 def mcp(home: Path, folders: list[Path]) -> Row:
     """Lists the MCP servers in `~/.claude.json` and each folder's `.mcp.json`. Read only."""
     name = "MCP servers"
-    what = "Extra tools for agents, read from each command-line tool's own config. The app only lists them."
+    what = "Extra tools for agents, read from each command-line tool's own config. Add or remove an added agent's own servers on its MCP tab."
     lines = _servers(home / ".claude.json", "user", nested="projects")
     for folder in dict.fromkeys(folders):
         lines += _servers(folder / ".mcp.json", f"project {folder.name}")

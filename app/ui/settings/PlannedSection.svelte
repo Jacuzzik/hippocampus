@@ -128,12 +128,6 @@
     },
     {
       id: "D.07",
-      name: "MCP servers",
-      what: "Outside tools the assistant can call through the Model Context Protocol (MCP).",
-      reason: "Adding, removing and turning one on per agent is not built.",
-    },
-    {
-      id: "D.07",
       name: "Plugins",
       what: "Packs that add several tools and skills in one install.",
       reason: "No plugin format is defined yet.",

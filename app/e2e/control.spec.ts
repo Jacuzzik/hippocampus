@@ -244,7 +244,7 @@ test("a dispatch is sent only after the confirm card", async ({ page }) => {
   ).toBeVisible();
 });
 
-test("Teams, MCP, Plugins, Notion and calendars show only under Planned", async ({
+test("Teams, Plugins, Notion and calendars show only under Planned", async ({
   page,
 }) => {
   await mockSidecar(page);
@@ -258,13 +258,7 @@ test("Teams, MCP, Plugins, Notion and calendars show only under Planned", async 
     );
   }
   await dialog.getByRole("tab", { name: "Planned", exact: true }).click();
-  for (const name of [
-    "Teams",
-    "MCP servers",
-    "Plugins",
-    "Notion",
-    "Calendars",
-  ]) {
+  for (const name of ["Teams", "Plugins", "Notion", "Calendars"]) {
     await expect(
       dialog
         .locator("article")

@@ -35,6 +35,9 @@ METHODS: dict[str, Method] = {
     "note_colour": _m("Colour a note through its tags."),
     "note_history": _m("The kept earlier versions of a note, newest first (the last 20)."),
     "note_version": _m("The text of one kept version of a note."),
+    "mcp_servers": _m("The MCP servers in an added agent's own .mcp.json, secrets masked.", _AGENT),
+    "mcp_add": _m("Add or replace an MCP server in an added agent's .mcp.json.", _AGENT),
+    "mcp_remove": _m("Remove an MCP server from an added agent's .mcp.json.", _AGENT),
     "search_all": _m("Search notes, messages, tasks, calendar events and agents at once."),
     "playbooks": _m("Every playbook note in the vault's Playbooks folder, with its steps."),
     "playbook_run": _m(

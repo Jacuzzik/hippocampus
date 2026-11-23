@@ -19,6 +19,7 @@
   } from "./addedAgents.svelte";
   import { createTerminalQueue } from "../regions/terminalQueue.svelte";
   import TraceReplay from "./TraceReplay.svelte";
+  import McpServers from "./McpServers.svelte";
 
   let { agent }: { agent: SavedAgent } = $props();
 
@@ -191,6 +192,12 @@
     { id: "messages", label: "Messages" },
     { id: "traces", label: "Traces" },
     { id: "pinned", label: "Pinned" },
+    {
+      id: "mcp",
+      label: "MCP",
+      disabled: !agent.folder,
+      reason: "This agent has no working folder",
+    },
   ]);
 
   // Notes pinned to this agent, with the token cost they add to every start (core/pins.py).
@@ -496,6 +503,8 @@
       </ul>
     {/if}
   {/if}
+
+  {#if view === "mcp"}<McpServers agent={agent.id} name={agent.name} />{/if}
 
   {#if view === "pinned"}
     {#if (agent.pinned ?? []).length === 0}
