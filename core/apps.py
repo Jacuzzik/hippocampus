@@ -12,13 +12,14 @@ once a real account has been connected to it.
 import base64
 import json
 import re
+import time
 import urllib.error
 import urllib.request
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-from urllib.parse import quote
+from urllib.parse import quote, urlencode
 
 from core import safe_write
 
@@ -27,6 +28,7 @@ MAX_BYTES = 2_000_000
 HOST = re.compile(r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$")
 SLUG = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$")
 Fetch = Callable[[str, dict[str, str]], tuple[int, bytes]]
+Post = Callable[[str, dict[str, str]], tuple[int, bytes]]  # url, form fields -> status, body
 
 
 @dataclass(frozen=True)
@@ -35,6 +37,7 @@ class Field:
     label: str
     example: str
     kind: str = "slug"  # "host": a domain name; "slug": a name or id
+    optional: bool = False  # may be left empty
 
 
 @dataclass(frozen=True)
@@ -77,8 +80,13 @@ APPS: tuple[App, ...] = (
             _m("Products", "/products/count.json", "value", "count"),
             _m("Customers", "/customers/count.json", "value", "count"),
         ),
-        (SHOP,),
-        "An Admin API access token of a custom app, with read access.",
+        (
+            SHOP,
+            Field("client", "Client ID (Dev Dashboard app only)", "a1b2c3d4e5f6", optional=True),
+        ),
+        "For an app made in Shopify's Dev Dashboard: fill in its Client ID and paste its client"
+        " secret as the key; Hippocampus asks Shopify for a 24-hour token when it reads. For an"
+        " older custom app: leave Client ID empty and paste its Admin API access token (shpat_).",
     ),
     App(
         "builtbybit",
@@ -388,6 +396,51 @@ def http_get(url: str, headers: dict[str, str]) -> tuple[int, bytes]:
         return error.code, b""
 
 
+def http_post(url: str, form: dict[str, str]) -> tuple[int, bytes]:
+    opener = urllib.request.build_opener(_NoRedirect)
+    body = urlencode(form).encode()
+    request = urllib.request.Request(  # noqa: S310 (https only, checked by the caller)
+        url,
+        data=body,
+        headers={"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"},
+        method="POST",
+    )
+    try:
+        with opener.open(request, timeout=SECONDS) as answer:
+            return answer.status, answer.read(MAX_BYTES + 1)
+    except urllib.error.HTTPError as error:
+        return error.code, b""
+
+
+# (shop, client id) -> (token, monotonic time it stops being used). Kept in memory only.
+_shopify_tokens: dict[tuple[str, str], tuple[str, float]] = {}
+
+
+def shopify_token(shop: str, client: str, secret: str, post: Post = http_post) -> str:
+    """A Dev Dashboard app's client ID and secret exchanged for a 24-hour Admin API token
+    (Shopify's client credentials grant). Reused until 5 minutes before it runs out."""
+    held = _shopify_tokens.get((shop, client))
+    if held and held[1] > time.monotonic():
+        return held[0]
+    url = f"https://{shop}/admin/oauth/access_token"
+    status, body = post(
+        url, {"grant_type": "client_credentials", "client_id": client, "client_secret": secret}
+    )
+    if status != 200:
+        raise ValueError(
+            STATUS.get(status, f"Shopify answered {status} when asked for a token.")
+            + " Check the Client ID and secret, that the app is installed on this shop, and that"
+            " the shop is in the same Dev Dashboard organisation as the app."
+        )
+    found = json.loads(body.decode("utf-8"))
+    token = found.get("access_token") if isinstance(found, dict) else None
+    if not isinstance(token, str) or not token:
+        raise ValueError("Shopify sent no token.")
+    life = int(found.get("expires_in") or 86399)
+    _shopify_tokens[(shop, client)] = (token, time.monotonic() + max(60, life - 300))
+    return token
+
+
 def app_for(app_id: object) -> App:
     if not isinstance(app_id, str) or app_id not in BY_ID:
         raise ValueError("That app is not in the catalogue.")
@@ -403,6 +456,8 @@ def check_fields(app: App, fields: object) -> dict[str, str]:
         value = value.strip() if isinstance(value, str) else ""
         if field.kind == "host":
             value = value.lower().removeprefix("https://").strip("/")
+        if field.optional and not value:
+            continue  # left out, so an older setting with no such field reads the same
         pattern = HOST if field.kind == "host" else SLUG
         if not pattern.match(value) or len(value) > 200:
             raise ValueError(f"{field.label} must look like {field.example}.")
@@ -501,9 +556,19 @@ STATUS = {
 
 
 def read(
-    app: App, token: str, fields: dict[str, str], fetch: Fetch = http_get
+    app: App, token: str, fields: dict[str, str], fetch: Fetch = http_get, post: Post = http_post
 ) -> list[dict[str, str]]:
     """One row per number. A number that cannot be read says why; the others are still shown."""
+    if app.id == "shopify" and fields.get("client"):
+        try:
+            token = shopify_token(fields["shop"], fields["client"], token, post)
+        except (OSError, ValueError) as error:
+            reason = (
+                str(error)
+                if isinstance(error, ValueError)
+                else f"Shopify did not answer ({type(error).__name__})."
+            )
+            return [{"label": m.label, "value": "", "error": reason} for m in app.metrics]
     answers: dict[str, tuple[int, bytes] | str] = {}
     rows = []
     for metric in app.metrics:

@@ -186,3 +186,50 @@ def test_the_catalogue_rows_never_carry_a_key() -> None:
     assert (stripe["connected"], stripe["hint"]) == (True, "9xyz")
     assert next(row for row in rows if row["id"] == "shopify")["saved"] == {"shop": "a.b"}
     assert all("key" not in row and "token" not in row for row in rows)
+
+
+def test_a_dev_dashboard_shopify_app_trades_client_id_and_secret_for_a_token_once() -> None:
+    apps._shopify_tokens.clear()
+    posts: list[tuple[str, dict[str, str]]] = []
+    seen: list[dict[str, str]] = []
+
+    def post(url: str, form: dict[str, str]) -> tuple[int, bytes]:
+        posts.append((url, form))
+        return 200, b'{"access_token": "shpat_new", "expires_in": 86399}'
+
+    def fetch(url: str, headers: dict[str, str]) -> tuple[int, bytes]:
+        seen.append(headers)
+        return 200, b'{"count": 3}'
+
+    fields = apps.check_fields(
+        apps.BY_ID["shopify"], {"shop": "my-shop.myshopify.com", "client": "abc123"}
+    )
+    for _ in range(2):
+        rows = apps.read(apps.BY_ID["shopify"], "secret", fields, fetch, post)
+    assert [row["value"] for row in rows] == ["3", "3", "3"]
+    assert posts == [
+        (
+            "https://my-shop.myshopify.com/admin/oauth/access_token",
+            {"grant_type": "client_credentials", "client_id": "abc123", "client_secret": "secret"},
+        )
+    ]
+    assert all(h["X-Shopify-Access-Token"] == "shpat_new" for h in seen)
+
+
+def test_a_refused_shopify_token_request_says_why_on_every_number() -> None:
+    apps._shopify_tokens.clear()
+
+    def post(_url: str, _form: dict[str, str]) -> tuple[int, bytes]:
+        return 400, b""
+
+    def fetch(_url: str, _headers: dict[str, str]) -> tuple[int, bytes]:
+        raise AssertionError("no read without a token")
+
+    fields = {"shop": "my-shop.myshopify.com", "client": "abc123"}
+    rows = apps.read(apps.BY_ID["shopify"], "secret", fields, fetch, post)
+    assert all("Client ID" in row["error"] for row in rows)
+
+
+def test_the_shopify_client_id_may_be_left_empty_for_an_older_custom_app() -> None:
+    fields = apps.check_fields(apps.BY_ID["shopify"], {"shop": "a.myshopify.com"})
+    assert fields == {"shop": "a.myshopify.com"}
