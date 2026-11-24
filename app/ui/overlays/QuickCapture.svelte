@@ -9,6 +9,7 @@
     $props();
   let text = $state("");
   let error = $state("");
+  let busy = $state(false);
   let input: HTMLTextAreaElement | undefined = $state();
   $effect(() => input?.focus());
   const agent = $derived(
@@ -16,6 +17,8 @@
   );
 
   async function keep(): Promise<void> {
+    if (busy) return;
+    busy = true;
     error = "";
     try {
       await invoke("sidecar_call", {
@@ -25,6 +28,8 @@
       onclose();
     } catch (cause) {
       error = String(cause);
+    } finally {
+      busy = false;
     }
   }
 </script>
@@ -50,11 +55,12 @@
       }}></textarea>
     <p class="hint">
       Goes to the Inbox note{agent ? `, marked ${agent}` : ""}. Enter keeps it.
-      {#if global !== true}Ctrl+Shift+Space works while this window is in
-        front: this desktop does not let an app take a key everywhere.{/if}
+      {#if global !== true}Ctrl+Shift+Space works while this window is in front:
+        this desktop does not let an app take a key everywhere.{/if}
     </p>
     {#if error}<p class="error" role="alert">{error}</p>{/if}
-    <Button type="submit" variant="primary" disabled={!text.trim()}>Keep</Button
+    <Button type="submit" variant="primary" disabled={busy || !text.trim()}
+      >Keep</Button
     >
   </form>
 </Dialog>

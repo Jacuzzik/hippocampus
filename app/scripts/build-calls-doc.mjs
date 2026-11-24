@@ -28,9 +28,15 @@ function files(dir) {
 export function listCalls() {
   return files(UI).flatMap((path) => {
     const text = readFileSync(path, "utf8");
-    if (!text.includes("sidecar_call")) return [];
+    if (!text.includes("sidecar_call") && !/from "\.\/call"/.test(text))
+      return [];
     const methods = [
-      ...new Set([...text.matchAll(/method:\s*"([a-z_]+)"/g)].map((m) => m[1])),
+      ...new Set(
+        [
+          ...text.matchAll(/method:\s*"([a-z_]+)"/g),
+          ...text.matchAll(/\bcall(?:<[^>]*>)?\(\s*"([a-z_]+)"/g),
+        ].map((m) => m[1]),
+      ),
     ].sort();
     return [
       {

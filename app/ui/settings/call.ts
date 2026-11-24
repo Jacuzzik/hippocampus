@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 
 // One backend call, for the sections that were Planned. Errors come back as the backend's own sentence.
+// Each section that uses it keeps its own busy flag, so a control is disabled while its call runs.
 export function call<T>(
   method: string,
   params: Record<string, unknown> = {},
