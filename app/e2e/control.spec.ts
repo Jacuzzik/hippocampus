@@ -244,7 +244,7 @@ test("a dispatch is sent only after the confirm card", async ({ page }) => {
   ).toBeVisible();
 });
 
-test("Teams shows only under Planned; Plugins, Notion and calendars are built", async ({
+test("Teams, Plugins, Notion and calendars are built and gone from Planned", async ({
   page,
 }) => {
   await mockSidecar(page);
@@ -258,13 +258,13 @@ test("Teams shows only under Planned; Plugins, Notion and calendars are built", 
     );
   }
   await dialog.getByRole("tab", { name: "Planned", exact: true }).click();
-  for (const name of ["Plugins", "Notion", "Calendars"])
+  for (const name of ["Plugins", "Notion", "Calendars", "Teams"])
     await expect(
       dialog
         .locator("article")
         .filter({ has: page.getByText(name, { exact: true }) }),
     ).toHaveCount(0);
-  for (const name of ["Teams"]) {
+  for (const name of ["Split terminals"]) {
     await expect(
       dialog
         .locator("article")

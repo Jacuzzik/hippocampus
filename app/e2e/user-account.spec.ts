@@ -10,7 +10,9 @@ test("the Account section is hidden until the build has the sign-in service", as
   await page.goto("/");
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "Settings" });
-  await expect(dialog.getByText("Vault folder")).toBeVisible();
+  await expect(
+    dialog.getByText("Vault folder", { exact: true }).first(),
+  ).toBeVisible();
   await expect(dialog.getByRole("heading", { name: "Account" })).toHaveCount(0);
 });
 
