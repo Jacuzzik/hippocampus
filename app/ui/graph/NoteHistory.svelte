@@ -90,8 +90,8 @@
     <p class="muted">Loading…</p>
   {:else if versions && versions.length === 0}
     <p class="muted">
-      No earlier versions yet. One is kept each time you start editing this note,
-      the last 20.
+      No earlier versions yet. One is kept each time you start editing this
+      note, the last 20.
     </p>
   {:else if versions}
     <ul aria-label="Versions">
@@ -99,7 +99,9 @@
         <li>
           <div class="what">
             <span>{when(version.time)}</span>
-            <span class="muted">{version.chars} characters · {version.first}</span>
+            <span class="muted"
+              >{version.chars} characters · {version.first}</span
+            >
           </div>
           <div class="row">
             <button

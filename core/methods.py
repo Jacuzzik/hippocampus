@@ -187,6 +187,7 @@ METHODS: dict[str, Method] = {
         "Write the labelled sample vault and open it; the user's own vault is untouched."
     ),
     "demo_leave": _m("Go back to the vault that was open before the sample vault."),
+    "usage_stats": _m("Counts read from the local activity log. Nothing is sent anywhere."),
     "doctor": _m("Health checks with what to do about each gap."),
     "link_doctor": _m("Broken links and notes with no links."),
     "logs": _m("The newest lines of the backend log."),

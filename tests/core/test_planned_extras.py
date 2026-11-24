@@ -184,3 +184,19 @@ def test_the_demo_vault_is_labelled_linked_and_never_overwrites_edits(tmp_path: 
     (folder / "Start here.md").write_text("mine", encoding="utf-8")
     demo_vault.build(tmp_path)
     assert (folder / "Start here.md").read_text(encoding="utf-8") == "mine"
+
+
+def test_usage_statistics_count_the_local_log_only(tmp_path: Path) -> None:
+    from core import activity, usage_stats
+
+    assert usage_stats.summarize(tmp_path)["total"] == 0
+    activity.record(tmp_path, "tool", tool="read_note", tier="read", status="done", agent="kelly")
+    activity.record(tmp_path, "tool", tool="write_note", tier="write", status="failed")
+    activity.record(tmp_path, "approval", tool="write_note", tier="write", approved=True)
+    activity.record(tmp_path, "approval", tool="delete_note", tier="act", approved=False)
+    found = usage_stats.summarize(tmp_path)
+    assert found["total"] == 4 and found["failed_tools"] == 1
+    assert found["approvals"] == {"asked": 2, "approved": 1, "declined": 1}
+    assert found["agents"] == [{"name": "kelly", "count": 1}]
+    assert len(found["days"]) == 14 and found["days"][-1]["count"] == 4
+    assert "Nothing is collected" in found["statement"]

@@ -115,9 +115,11 @@
     overflow-y: auto;
     padding: var(--space-4);
     background: var(--pop-bg);
-    border: 1px solid color-mix(in srgb, var(--color-accent) 45%, var(--color-border));
+    border: 1px solid
+      color-mix(in srgb, var(--color-accent) 45%, var(--color-border));
     border-radius: var(--radius-md);
-    box-shadow: 0 16px 48px color-mix(in srgb, var(--color-bg-0) 60%, transparent);
+    box-shadow: 0 16px 48px
+      color-mix(in srgb, var(--color-bg-0) 60%, transparent);
     color: var(--color-text);
   }
 

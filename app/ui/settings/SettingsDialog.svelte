@@ -2,6 +2,7 @@
   import PlannedSection from "./PlannedSection.svelte";
   import UpdatesSection from "./UpdatesSection.svelte";
   import DemoSection from "./DemoSection.svelte";
+  import UsageSection from "./UsageSection.svelte";
   import CalendarLinkSection from "./CalendarLinkSection.svelte";
   import NotionSection from "./NotionSection.svelte";
   import MeaningSection from "./MeaningSection.svelte";
@@ -688,6 +689,7 @@
         <ArchivedAgentsSection />
         <ShareSection />
       {:else if page === "Activity"}
+        <UsageSection />
         <ActivitySection />
       {:else if page === "Budgets"}
         <BudgetSection />

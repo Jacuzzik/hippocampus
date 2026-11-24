@@ -148,3 +148,22 @@ test("Settings opens the demo vault and goes back to the user's vault (N.26)", a
   await dialog.getByRole("button", { name: "Take the tour" }).click();
   await expect(page.getByRole("dialog", { name: "Tour" })).toBeVisible();
 });
+
+test("usage statistics come from the local log and say nothing is sent (7.31)", async ({
+  page,
+}) => {
+  const dialog = await settingsPage(page, "Activity");
+  await expect(
+    dialog.getByText("Nothing is collected, nothing is sent"),
+  ).toBeVisible();
+  await expect(dialog.getByText("7 events since 2026-11-20")).toBeVisible();
+  await expect(
+    dialog.getByText("Approvals asked: 2 (1 approved, 1 declined)"),
+  ).toBeVisible();
+  await expect(
+    dialog.getByRole("list", { name: "Most used tools" }),
+  ).toContainText("read_note: 4");
+  await expect(
+    dialog.getByRole("list", { name: "Events per day" }).getByRole("listitem"),
+  ).toHaveCount(14);
+});

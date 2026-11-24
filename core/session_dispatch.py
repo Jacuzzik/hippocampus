@@ -200,6 +200,7 @@ class DispatchPart:
                     "plugin_list": self.plugin_list,
                     "trail_notes": self.trail_notes,
                     "demo_state": self.demo_state,
+                    "usage_stats": self.usage_stats,
                     "demo_open": self.demo_open,
                     "demo_leave": self.demo_leave,
                 }.items()

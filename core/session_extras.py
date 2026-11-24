@@ -20,6 +20,7 @@ from core import (
     safe_write,
     semantic,
     updates,
+    usage_stats,
 )
 from core.plugins import Plugins
 from core.session_shared import KEYCHAIN_MISSING
@@ -331,3 +332,7 @@ class ExtrasPart:
         self._extras_save(demo_return=None)
         self.changed("notes")
         return self.demo_state()
+
+    # Usage statistics, local only (7.31)
+    def usage_stats(self) -> dict[str, Any]:
+        return usage_stats.summarize(self.storage)

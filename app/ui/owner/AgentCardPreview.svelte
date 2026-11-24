@@ -24,7 +24,8 @@
     <span class="head"><b>{name}</b></span>
     <span class="row">
       <span class="val provider-line">
-        {#if logo}<span class="provider-logo" style:--logo={`url("${logo}")`}></span>{/if}
+        {#if logo}<span class="provider-logo" style:--logo={`url("${logo}")`}
+          ></span>{/if}
         <span>{provider}</span>
       </span>
     </span>
@@ -35,7 +36,9 @@
       <span class="val cmd">{cmd || "No command yet"}</span>
     </span>
     <span class="row wide">
-      <span class="ctx-bar"><span class="ctx-fill" style="width: 0%"></span></span>
+      <span class="ctx-bar"
+        ><span class="ctx-fill" style="width: 0%"></span></span
+      >
       <span class="pct">—</span>
     </span>
   </span>

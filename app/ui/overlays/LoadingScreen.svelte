@@ -99,9 +99,9 @@
     inset: 0;
     z-index: 1000;
     display: grid;
-    grid-template-columns: var(--layout-ribbon-width) var(
-        --layout-sidebar-width
-      ) minmax(0, 1fr) 500px;
+    grid-template-columns:
+      var(--layout-ribbon-width) var(--layout-sidebar-width)
+      minmax(0, 1fr) 500px;
     grid-template-rows: minmax(0, 1fr) 136px;
     grid-template-areas:
       "rail side main panel"

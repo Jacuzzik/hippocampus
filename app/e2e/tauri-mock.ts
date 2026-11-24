@@ -1148,6 +1148,26 @@ export async function mockSidecar(
           }
           case "trail_notes":
             return { rows: [], on: extras.trailOn };
+          case "usage_stats":
+            return {
+              statement:
+                "These numbers are counted on this computer from your own activity log. Nothing is collected, nothing is sent anywhere, and there is no account or identifier behind them.",
+              total: 7,
+              since: "2026-11-20",
+              kinds: [
+                { name: "tool", count: 5 },
+                { name: "approval", count: 2 },
+              ],
+              tools: [{ name: "read_note", count: 4 }],
+              agents: [{ name: "kelly", count: 3 }],
+              approvals: { asked: 2, approved: 1, declined: 1 },
+              failed_tools: 1,
+              days: Array.from({ length: 14 }, (_, i) => ({
+                day: `2026-11-${String(i + 11).padStart(2, "0")}`,
+                count: i % 3,
+              })),
+              file: "/data/storage/activity.jsonl",
+            };
           case "demo_state":
             return { in_demo: extras.demo, notes: 14, label: "Demo vault" };
           case "demo_open":

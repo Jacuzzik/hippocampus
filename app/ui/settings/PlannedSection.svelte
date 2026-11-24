@@ -31,13 +31,6 @@
         "Needs every screen's text moved into one catalogue first (H.02), then a right-to-left layout (H.03).",
     },
     {
-      id: "7.31",
-      name: "Usage statistics",
-      what: "Anonymous usage events with a clear opt-out and a page that says what is sent.",
-      reason:
-        "Nothing is collected or sent. If it is ever added, it will be off by default and documented.",
-    },
-    {
       id: "N.12",
       name: "Approvals with the exact command and diff",
       what: "A risky request shows the command or file change, with approve once, approve for this folder, or deny.",
