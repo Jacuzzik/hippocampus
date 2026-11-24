@@ -19,7 +19,28 @@ def clis(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     [
         ("claude", "edits", ["--permission-mode", "acceptEdits"]),
         ("codex", "ask", ["--ask-for-approval", "on-request"]),
-        ("codex", "full", ["--sandbox", "workspace-write", "--ask-for-approval", "never"]),
+        (
+            "claude",
+            "full",
+            [
+                "--permission-mode",
+                "bypassPermissions",
+                "--settings",
+                '{"skipDangerousModePermissionPrompt": true}',
+            ],
+        ),  # fmt: skip
+        (
+            "codex",
+            "full",
+            [
+                "--sandbox",
+                "workspace-write",
+                "--ask-for-approval",
+                "never",
+                "-c",
+                "sandbox_workspace_write.network_access=true",
+            ],
+        ),  # fmt: skip
         ("gemini-cli", "edits", ["--approval-mode", "auto_edit"]),
         ("gemini-cli", "full", ["--approval-mode", "yolo"]),
         ("antigravity", "edits", ["--mode", "accept-edits"]),
@@ -38,7 +59,9 @@ def test_the_app_folder_always_asks_and_full_needs_a_fence() -> None:
     # Without the sandbox only Codex has its own workspace fence; the rest run as "edits".
     assert autonomy.effective("gemini-cli", "full", sandboxed=False, folder_in_app=False) == "edits"
     assert autonomy.effective("codex", "full", sandboxed=False, folder_in_app=False) == "full"
+    # The default is "full", as in Munder Difflin; without a fence it drops to "edits".
     assert autonomy.effective("claude", "nonsense", sandboxed=False, folder_in_app=False) == "edits"
+    assert autonomy.effective("claude", None, sandboxed=True, folder_in_app=False) == "full"
     assert "limited" in autonomy.describe("gemini-cli", "full", "edits")
     assert autonomy.describe("ollama", "full", "full") == "Autonomy: set by the program itself"
 
@@ -50,7 +73,8 @@ def test_the_flags_reach_the_command_line(clis: None) -> None:
     assert "never" not in blocked and blocked[-2:] == ["--sandbox", "read-only"]
     claude = terminal._command("ada", "claude", shell=True, level="full")
     allowed = claude[claude.index("--allowedTools") + 1 : claude.index("--disallowedTools")]
-    assert "Bash" in allowed and claude[claude.index("--permission-mode") + 1] == "acceptEdits"
+    assert "Bash" in allowed
+    assert claude[claude.index("--permission-mode") + 1] == "bypassPermissions"
     # The deny rules still come after, so the app folder stays closed at "full".
     assert f"Bash(* {ROOT}*)" in claude
 
@@ -116,7 +140,10 @@ def test_every_flag_and_value_is_in_the_installed_clis_own_help(
         [binary, "--help"], capture_output=True, text=True, timeout=30, check=False
     ).stdout
     for level in autonomy.LEVELS:
-        for word in autonomy.flags(provider, level):
+        words = autonomy.flags(provider, level)
+        # A config value given with -c is not in the help; the -c flag itself is.
+        words = [w for i, w in enumerate(words) if i == 0 or words[i - 1] != "-c"]
+        for word in words:
             # A flag is named in the help as it is; a value such as auto_edit may be written with or without "_".
             assert word.replace("_", "") in help_text.replace("_", ""), (provider, word)
 
@@ -127,3 +154,17 @@ def test_opencode_gets_no_permission_flag_and_says_its_own_rules_apply(clis: Non
     assert "--auto" not in argv and not any("approv" in part for part in argv)
     assert autonomy.flags("gemini", "full") == []
     assert autonomy.describe("gemini", "full", "full") == "Autonomy: set by the program itself"
+
+
+def test_every_agent_gets_the_default_tool_servers(clis: None, tmp_path: Path) -> None:
+    """Like Munder Difflin: thinking, time, fetch and docs servers, and files and git rooted at the
+    agent's own folder. A blocked agent gets none."""
+    import json
+
+    (tmp_path / ".git").mkdir()
+    argv = terminal._command("ada", "claude", shell=True, level="full", folder=str(tmp_path))
+    servers = json.loads(argv[argv.index("--mcp-config") + 1])["mcpServers"]
+    assert {"sequential-thinking", "time", "fetch", "context7", "filesystem", "git"} <= set(servers)
+    assert servers["filesystem"]["args"][-1] == str(tmp_path)
+    blocked = terminal._command("ada", "claude", block_tools=True, folder=str(tmp_path))
+    assert "--mcp-config" not in blocked

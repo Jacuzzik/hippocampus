@@ -379,12 +379,11 @@ test("a custom command agent saves its command and autonomy (7.02, 7.20)", async
   await expect(add.getByRole("alert")).toHaveText("Type the command to run.");
   await add.getByRole("textbox", { name: "Command" }).fill("aider --yes");
   await expect(add.locator("code")).toHaveText("aider --yes");
-  // "Edit freely" is the default; pick the loosest level.
+  // "Act without asking" is the default, as in Munder Difflin.
   const levels = add.getByRole("radiogroup", { name: "Autonomy" });
   await expect(
-    levels.getByRole("radio", { name: "Edit freely" }),
+    levels.getByRole("radio", { name: "Act without asking" }),
   ).toHaveAttribute("aria-checked", "true");
-  await levels.getByRole("radio", { name: "Act without asking" }).click();
   await add.getByRole("button", { name: "Next" }).click();
   await add.getByRole("textbox", { name: "Goal", exact: true }).fill("Code");
   await add.getByRole("button", { name: "Spawn" }).click();

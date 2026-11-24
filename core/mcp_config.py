@@ -91,3 +91,33 @@ def remove(folder: Path, name: object) -> list[dict[str, str]]:
     data["mcpServers"] = {k: v for k, v in current.items() if k != name}
     safe_write.write_text(folder / FILE, json.dumps(data, indent=2) + "\n")
     return servers(folder)
+
+
+# The tool servers every agent gets, as Munder Difflin gives its agents: thinking steps, the time, web
+# pages, current library docs, files and git. Pinned to the versions Munder Difflin runs. The file and
+# git servers are rooted at the agent's own folder; git only when that folder is a repository.
+DEFAULT_SERVERS: dict[str, dict[str, Any]] = {
+    "sequential-thinking": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-sequential-thinking@1.0.0"],
+    },
+    "time": {"command": "uvx", "args": ["mcp-server-time@2026.10.10"]},
+    "fetch": {"command": "uvx", "args": ["mcp-server-fetch@2026.10.10"]},
+    "context7": {"command": "npx", "args": ["-y", "@upstash/context7-mcp@4.4.1"]},
+}
+
+
+def default_servers(folder: str | None) -> dict[str, dict[str, Any]]:
+    """The default tool servers for an agent working in `folder`."""
+    found = {name: {**spec, "args": list(spec["args"])} for name, spec in DEFAULT_SERVERS.items()}
+    if folder and Path(folder).is_dir():
+        found["filesystem"] = {
+            "command": "npx",
+            "args": ["-y", "@modelcontextprotocol/server-filesystem@1.0.0", folder],
+        }
+        if (Path(folder) / ".git").exists():
+            found["git"] = {
+                "command": "uvx",
+                "args": ["mcp-server-git@2026.10.10", "--repository", folder],
+            }
+    return found

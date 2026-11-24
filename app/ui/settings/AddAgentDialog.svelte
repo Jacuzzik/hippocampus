@@ -36,7 +36,7 @@
       command: "",
       description: "",
       goal: "",
-      autonomy: "edits",
+      autonomy: "full",
     };
   }
 

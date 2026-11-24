@@ -246,7 +246,7 @@ export const AUTONOMY_LEVELS = [
   {
     id: "full",
     label: "Act without asking",
-    hint: "Edits and commands go through. Needs the sandbox, so the app stays safe.",
+    hint: "Edits, commands, the web and tool servers go through, as in Munder Difflin. Needs the sandbox, so the app stays safe.",
   },
 ] as const;
 export type Autonomy = (typeof AUTONOMY_LEVELS)[number]["id"];

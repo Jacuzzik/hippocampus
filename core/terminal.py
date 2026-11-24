@@ -21,6 +21,7 @@ from typing import Any
 
 from ai import cli_sessions
 from core import autonomy, commit_queue, sandbox
+from core.mcp_config import default_servers
 from core.settings import HIVE_DIR, ROOT
 from tools.vault_mcp import VAULT_TOOLS, mcp_config
 
@@ -185,6 +186,7 @@ class Terminals:
                 shell=sandboxed and not custom,
                 command=command,
                 level=level,
+                folder=folder,
             )
             if level is None:
                 self.autonomy_text.pop(agent, None)
@@ -788,6 +790,7 @@ def _command(
     shell: bool = False,
     command: str = "",
     level: str | None = None,
+    folder: str | None = None,
 ) -> list[str]:
     if provider == "custom":
         return _custom_argv(command)
@@ -864,6 +867,10 @@ def _command(
     # "Act without asking": the shell and the web run without a prompt; the deny rules below still win.
     if level == "full" and shell:
         allowed += list(autonomy.CLAUDE_FULL_TOOLS)
+    # The tool servers: the vault's, and the default set every agent gets (as in Munder Difflin).
+    servers = json.loads(mcp_config(vault))["mcpServers"] if use_vault and vault else {}
+    if not block_tools:
+        servers.update(default_servers(folder))
     return [
         binary,
         flag,
@@ -871,7 +878,7 @@ def _command(
         *(["--model", model] if model else []),
         *perms,
         *vault_dir,
-        *(["--mcp-config", mcp_config(vault)] if use_vault and vault else []),
+        *(["--mcp-config", json.dumps({"mcpServers": servers})] if servers else []),
         *(["--allowedTools", *allowed] if allowed else []),
         # The hive is where the agent writes its outbox, so it is a folder the agent may write to.
         "--add-dir",

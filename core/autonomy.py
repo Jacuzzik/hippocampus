@@ -11,25 +11,37 @@ Without one, "full" runs as "edits". The level actually used is shown on the age
 """
 
 LEVELS = ("ask", "edits", "full")
-DEFAULT = "edits"
+# Like Munder Difflin: an agent acts without asking, inside its fence. Where no fence can run, "full"
+# drops to "edits" (see effective()).
+DEFAULT = "full"
 LABELS = {
     "ask": "Ask first",
     "edits": "Edit freely, ask before commands",
     "full": "Act without asking",
 }
 
-# Checked against each CLI's --help on 2026-11-17. Claude Code's "full" allows the shell and the web
-# instead of using bypassPermissions, whose first-run warning would stop an agent's terminal.
+# Checked against each CLI's --help on 2026-11-17. Claude Code's "full" is bypassPermissions, as Munder
+# Difflin runs its agents; "full" is only used inside the sandbox, which keeps the app read-only. The
+# settings value skips the mode's first-run warning, which would stop an agent's terminal.
+_SKIP_WARNING = '{"skipDangerousModePermissionPrompt": true}'
 _FLAGS: dict[str, dict[str, list[str]]] = {
     "claude": {
         "ask": [],
         "edits": ["--permission-mode", "acceptEdits"],
-        "full": ["--permission-mode", "acceptEdits"],
+        "full": ["--permission-mode", "bypassPermissions", "--settings", _SKIP_WARNING],
     },
     "codex": {
         "ask": ["--ask-for-approval", "on-request"],
         "edits": ["--sandbox", "workspace-write", "--ask-for-approval", "on-request"],
-        "full": ["--sandbox", "workspace-write", "--ask-for-approval", "never"],
+        # Codex's workspace sandbox has no network unless asked; Munder Difflin agents have the web.
+        "full": [
+            "--sandbox",
+            "workspace-write",
+            "--ask-for-approval",
+            "never",
+            "-c",
+            "sandbox_workspace_write.network_access=true",
+        ],
     },
     "gemini-cli": {
         "ask": [],
