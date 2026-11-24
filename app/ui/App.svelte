@@ -26,6 +26,7 @@
   import SearchEverything from "./overlays/SearchEverything.svelte";
   import QuickCapture from "./overlays/QuickCapture.svelte";
   import Tour from "./overlays/Tour.svelte";
+  import Dictation from "./overlays/Dictation.svelte";
   import { report } from "./notices.svelte.ts";
   import { invoke as tauriInvoke } from "@tauri-apps/api/core";
   import { listen } from "@tauri-apps/api/event";
@@ -442,6 +443,8 @@
       />{/await}</PanelBoundary
   >
 {/if}
+
+<Dictation />
 
 {#if tourOpen && !setupOpen}
   <Tour onclose={closeTour} ondemo={() => void tourDemo()} />

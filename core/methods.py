@@ -245,6 +245,10 @@ METHODS: dict[str, Method] = {
         "Upload the agents, task titles and Team-folder notes to a team.", ("team", "a team id")
     ),
     "team_get": _m("Download a team's agents and notes.", ("team", "a team id")),
+    "dictation_state": _m("Whether dictation is ready, what is missing, and what to install."),
+    "dictation_set": _m("Choose to type or copy the text, and the whisper.cpp model file."),
+    "dictation_start": _m("Start listening to the microphone."),
+    "dictation_stop": _m("Stop listening, turn the speech into text locally, and type or copy it."),
     "doctor": _m("Health checks with what to do about each gap."),
     "link_doctor": _m("Broken links and notes with no links."),
     "logs": _m("The newest lines of the backend log."),

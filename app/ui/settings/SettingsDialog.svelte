@@ -2,6 +2,7 @@
   import PlannedSection from "./PlannedSection.svelte";
   import UpdatesSection from "./UpdatesSection.svelte";
   import DemoSection from "./DemoSection.svelte";
+  import DictationSection from "./DictationSection.svelte";
   import UsageSection from "./UsageSection.svelte";
   import CalendarLinkSection from "./CalendarLinkSection.svelte";
   import NotionSection from "./NotionSection.svelte";
@@ -452,6 +453,7 @@
         <AccountSection />
         <UpdatesSection />
         <DemoSection />
+        <DictationSection />
       {:else if page === "Appearance"}
         <section class="control-section">
           <h3>Appearance</h3>

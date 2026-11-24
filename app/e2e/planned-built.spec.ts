@@ -317,3 +317,35 @@ test("a team is made, saved to and read from, with the code shown to its owner (
     "Ship it",
   );
 });
+
+test("dictation says what to install, then listens and shows the text (7.27)", async ({
+  page,
+}) => {
+  const dialog = await settingsPage(page, "General");
+  const dictation = dialog.getByRole("region", {
+    name: "Dictation",
+    exact: true,
+  });
+  await expect(dictation.getByText("Not set up yet.")).toBeVisible();
+  await expect(
+    dictation.getByRole("list", { name: "What to install" }),
+  ).toContainText("yay -S whisper.cpp");
+  await expect(
+    dictation.getByRole("button", { name: "Test: start listening" }),
+  ).toBeDisabled();
+});
+
+test("Ctrl+Shift+D starts and stops dictation from the window (7.27)", async ({
+  page,
+}) => {
+  await mockSidecar(page);
+  await page.goto("/");
+  await page.keyboard.press("Control+Shift+D");
+  await expect(
+    page.getByText("Listening. Press Ctrl+Shift+D to finish."),
+  ).toBeVisible();
+  await page.keyboard.press("Control+Shift+D");
+  await expect(
+    page.getByText("typed with wtype: hello from the microphone"),
+  ).toBeVisible();
+});

@@ -200,6 +200,9 @@ class DispatchPart:
                     "plugin_list": self.plugin_list,
                     "trail_notes": self.trail_notes,
                     "demo_state": self.demo_state,
+                    "dictation_state": self.dictation_state,
+                    "dictation_start": self.dictation_start,
+                    "dictation_stop": self.dictation_stop,
                     "slack_state": self.slack_state,
                     "slack_disconnect": self.slack_disconnect,
                     "slack_conversations": self.slack_conversations,
@@ -221,6 +224,7 @@ class DispatchPart:
             "briefing_build": self.briefing_build,
             "briefing_blocks_set": self.briefing_blocks_set,
             "capture": self.capture,
+            "dictation_set": self.dictation_set,
             "teams_state": self.teams_state,
             "team_create": self.team_create,
             "team_join": self.team_join,
@@ -243,6 +247,7 @@ class DispatchPart:
     def stop(self) -> dict[str, Any]:
         self.kill.trigger()
         approvals.deny_all(self.approvals_path)
+        self.dictation_cancel()
         return {"stopped": True}
 
     def dispatch(self, request: dict[str, Any]) -> dict[str, Any]:

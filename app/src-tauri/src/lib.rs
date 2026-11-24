@@ -37,8 +37,14 @@ pub fn run() {
             {
                 use tauri_plugin_global_shortcut::{Code, Modifiers, Shortcut, ShortcutState};
                 let key = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::Space);
+                // Dictation (7.27): Ctrl+Shift+D starts and stops listening, and does not raise the window, so the
+                // text is typed into the app that has the focus.
+                let dictate = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyD);
                 let plugin = tauri_plugin_global_shortcut::Builder::new()
                     .with_handler(move |app, shortcut, event| {
+                        if shortcut == &dictate && event.state() == ShortcutState::Pressed {
+                            let _ = app.emit("dictation-toggle", ());
+                        }
                         if shortcut == &key && event.state() == ShortcutState::Pressed {
                             if let Some(window) = app.get_webview_window("main") {
                                 let _ = window.show();
@@ -52,6 +58,7 @@ pub fn run() {
                 if app.handle().plugin(plugin).is_ok() {
                     use tauri_plugin_global_shortcut::GlobalShortcutExt;
                     let taken = app.global_shortcut().register(key).is_ok();
+                    let _ = app.global_shortcut().register(dictate);
                     app.manage(GlobalCapture(taken));
                 } else {
                     app.manage(GlobalCapture(false));

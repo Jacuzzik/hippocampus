@@ -427,6 +427,12 @@ export async function mockSidecar(
         trailOn: true,
         captured: [] as string[],
         demo: false,
+        dictation: {
+          ready: false,
+          mode: "type",
+          configured_model: "",
+          listening: false,
+        },
         teams: [] as string[],
         slack: {
           connected: false,
@@ -1295,6 +1301,44 @@ export async function mockSidecar(
               agents_added: ["Ada"],
               notes_written: 1,
               notes_unchanged: 0,
+            };
+          case "dictation_state":
+          case "dictation_set": {
+            if (args.method === "dictation_set") {
+              extras.dictation.mode = String(args.params?.mode);
+              extras.dictation.configured_model = String(
+                args.params?.model ?? "",
+              );
+            }
+            return {
+              ready: extras.dictation.ready,
+              recorder: extras.dictation.ready ? "pw-record" : null,
+              engine: extras.dictation.ready ? "whisper.cpp" : null,
+              typer: "wtype",
+              copier: "wl-copy",
+              model: "",
+              missing: extras.dictation.ready
+                ? []
+                : [
+                    {
+                      what: "A speech-to-text program",
+                      how: "Install whisper.cpp (on Arch: yay -S whisper.cpp) and a model.",
+                    },
+                  ],
+              recording: false,
+              hotkey: "Ctrl+Shift+D",
+              mode: extras.dictation.mode,
+              configured_model: extras.dictation.configured_model,
+            };
+          }
+          case "dictation_start":
+            extras.dictation.listening = true;
+            return { recording: true };
+          case "dictation_stop":
+            extras.dictation.listening = false;
+            return {
+              text: "hello from the microphone",
+              did: "typed with wtype",
             };
           case "usage_stats":
             return {

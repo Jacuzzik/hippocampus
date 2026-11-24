@@ -14,6 +14,11 @@ export const SHORTCUTS: Shortcut[] = [
     does: "Quick capture a thought into the Inbox note",
     where: "Anywhere, even outside the app where the desktop allows",
   },
+  {
+    keys: "Ctrl+Shift+D",
+    does: "Start and stop dictation: speak, and the text is typed where you are",
+    where: "Anywhere, even outside the app where the desktop allows",
+  },
   { keys: "F11", does: "Full screen layout on or off", where: "Anywhere" },
   { keys: "Esc", does: "Close the open dialog", where: "Dialogs" },
   { keys: "Tab", does: "Move to the next control", where: "Dialogs" },

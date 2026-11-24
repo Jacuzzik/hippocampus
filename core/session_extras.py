@@ -18,6 +18,7 @@ from core import (
     briefing,
     code_editor,
     demo_vault,
+    dictation,
     ical_feed,
     inbox,
     notion,
@@ -524,3 +525,46 @@ class ExtrasPart:
             self.slack_error = ""
         except ValueError as error:
             self.slack_error = str(error)
+
+    # Dictation by hotkey (7.27)
+    def _dictation(self) -> dictation.Dictation:
+        if "_dictation_obj" not in self.__dict__:
+            self.__dict__["_dictation_obj"] = dictation.Dictation()
+        return self.__dict__["_dictation_obj"]  # type: ignore[no-any-return]
+
+    def dictation_state(self) -> dict[str, Any]:
+        saved = self._extras()
+        found = dictation.state(str(saved.get("dictation_model") or ""))
+        return {
+            **found,
+            "recording": self._dictation().recording,
+            "mode": saved.get("dictation_mode") or "type",
+            "hotkey": "Ctrl+Shift+D",
+            "configured_model": str(saved.get("dictation_model") or ""),
+        }
+
+    def dictation_set(self, request: dict[str, Any]) -> dict[str, Any]:
+        mode, model = request.get("mode", "type"), str(request.get("model") or "").strip()
+        if mode not in ("type", "copy"):
+            raise ValueError('"mode" must be type or copy')
+        if model and not Path(model).expanduser().is_file():
+            raise ValueError("That model file does not exist.")
+        self._extras_save(dictation_mode=mode, dictation_model=model)
+        return self.dictation_state()
+
+    def dictation_start(self) -> dict[str, Any]:
+        self._dictation().start(self.dictation_state())
+        return {"recording": True}
+
+    def dictation_stop(self) -> dict[str, Any]:
+        found = self.dictation_state()
+        text = self._dictation().stop(found, self.__dict__.get("_dictation_transcribe"))
+        if not text:
+            return {"text": "", "did": "Nothing was heard."}
+        did = dictation.deliver(text, str(found["mode"]), found)
+        # Only that dictation happened is logged, never what was said.
+        self.note("setting", text=f"dictation: {len(text.split())} words, {did}")
+        return {"text": text, "did": did}
+
+    def dictation_cancel(self) -> None:
+        self._dictation().cancel()

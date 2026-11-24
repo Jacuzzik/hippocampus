@@ -5,12 +5,6 @@
   // and what is missing, so nothing here is a dead button. The id is the plan item it answers.
   const PLANNED = [
     {
-      id: "7.27",
-      name: "Dictation by hotkey",
-      what: "Speak into any app with a speech model that ships with Hippocampus.",
-      reason: "Needs a bundled speech-to-text model and a global hotkey.",
-    },
-    {
       id: "7.30",
       name: "Languages",
       what: "English, Simplified Chinese and Arabic (right to left) interfaces.",

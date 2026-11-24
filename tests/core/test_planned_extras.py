@@ -569,3 +569,74 @@ def test_teams_need_a_sign_in_and_explain_a_service_that_is_not_set_up(tmp_path:
         teams.write_note(tmp_path, "../x.md", "x")
     with pytest.raises(ValueError, match="not a team id"):
         teams.Teams(missing).leave("../../x")
+
+
+def test_dictation_says_what_to_install_and_never_keeps_the_recording(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from core import dictation
+
+    monkeypatch.setattr(dictation, "find_model", lambda configured="": None)
+    monkeypatch.setattr(dictation, "cached_faster_whisper", lambda: None)
+    monkeypatch.setattr(dictation.importlib.util, "find_spec", lambda name: None)
+    bare = dictation.state(which=lambda name: None)
+    assert not bare["ready"] and [m["what"] for m in bare["missing"]] == [
+        "A microphone recorder",
+        "A speech-to-text program",
+    ]
+    assert "pw-record" in bare["missing"][0]["how"] and "whisper.cpp" in bare["missing"][1]["how"]
+    with pytest.raises(ValueError, match="not set up"):
+        dictation.Dictation().start(bare)
+
+    model = tmp_path / "ggml-base.en.bin"
+    model.write_bytes(b"x")
+    monkeypatch.setattr(dictation, "find_model", lambda configured="": model)
+    ready = dictation.state(which=lambda name: f"/bin/{name}" if name != "wtype" else None)
+    assert ready["ready"] and ready["engine"] == "whisper.cpp" and ready["recorder"] == "pw-record"
+    assert ready["typer"] == "ydotool"
+
+    class Recorder:
+        def __init__(self, argv: list[str], **_kwargs: object) -> None:
+            Path(argv[-1]).write_bytes(b"RIFF" + b"\0" * 4000)
+            self.signalled = False
+
+        def poll(self) -> int | None:
+            return 0 if self.signalled else None
+
+        def send_signal(self, _sig: int) -> None:
+            self.signalled = True
+
+        def wait(self, timeout: float = 0) -> int:
+            return 0
+
+    monkeypatch.setattr(dictation.subprocess, "Popen", Recorder)
+    listener = dictation.Dictation()
+    listener.start(ready)
+    assert listener.recording
+    wav = listener.wav
+    assert wav is not None and wav.is_file()
+    assert listener.stop(ready, lambda path: "  hello there ") == "hello there"
+    assert not wav.exists()  # the recording is deleted as soon as it is read
+    with pytest.raises(ValueError, match="not listening"):
+        listener.stop(ready)
+
+
+def test_dictation_types_or_copies_the_text(monkeypatch: pytest.MonkeyPatch) -> None:
+    from core import dictation
+
+    ran: list[list[str]] = []
+
+    class Done:
+        returncode = 0
+
+    monkeypatch.setattr(
+        dictation.subprocess, "run", lambda argv, **_kw: (ran.append(argv), Done())[1]
+    )
+    found = {"typer": "wtype", "copier": "wl-copy"}
+    assert dictation.deliver("hi", "type", found) == "typed with wtype" and ran[0] == [
+        "wtype",
+        "--",
+        "hi",
+    ]
+    assert dictation.deliver("hi", "copy", found) == "copied to the clipboard"
+    assert "shown here only" in dictation.deliver("hi", "type", {"typer": None, "copier": None})
