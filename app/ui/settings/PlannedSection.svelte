@@ -45,20 +45,6 @@
         "Needs a global shortcut, which the operating system must allow first.",
     },
     {
-      id: "N.04",
-      name: "Agent trail notes",
-      what: "At the end of a session each agent writes a short note into the vault: what it read, changed and decided.",
-      reason:
-        "Needs a line in the briefing and a check that the note exists; the briefing text is held until the owner answers.",
-    },
-    {
-      id: "N.05",
-      name: "Briefing builder with preview",
-      what: "Pick the blocks of a briefing and see the exact text and its size before it is sent.",
-      reason:
-        "Needs the briefing split into blocks; the briefing wording is held until the owner answers.",
-    },
-    {
       id: "N.12",
       name: "Approvals with the exact command and diff",
       what: "A risky request shows the command or file change, with approve once, approve for this folder, or deny.",

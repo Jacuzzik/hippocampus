@@ -5,6 +5,7 @@
   import NotionSection from "./NotionSection.svelte";
   import MeaningSection from "./MeaningSection.svelte";
   import PluginsSection from "./PluginsSection.svelte";
+  import BriefingSection from "./BriefingSection.svelte";
   import TokensSection from "./TokensSection.svelte";
   import SettingRow from "../controls/SettingRow.svelte";
   import Toggle from "../controls/Toggle.svelte";
@@ -669,6 +670,7 @@
           {/if}
         </section>
         <NetworkSection />
+        <BriefingSection />
       {:else if page === "Work"}
         <DispatchSection />
         <JobsSection />

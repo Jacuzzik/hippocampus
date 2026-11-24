@@ -173,6 +173,11 @@ METHODS: dict[str, Method] = {
     ),
     "plugin_enable": _m("Switch a plugin on or off for every agent.", ("name", "a plugin name")),
     "plugin_remove": _m("Remove an installed plugin.", ("name", "a plugin name")),
+    "briefing_build": _m(
+        "The exact briefing an agent starts with, block by block, and its size.", _AGENT
+    ),
+    "briefing_blocks_set": _m("Turn an optional briefing block on or off for every agent."),
+    "trail_notes": _m("Each agent's newest trail note, so a missing one shows."),
     "doctor": _m("Health checks with what to do about each gap."),
     "link_doctor": _m("Broken links and notes with no links."),
     "logs": _m("The newest lines of the backend log."),

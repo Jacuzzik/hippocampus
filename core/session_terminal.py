@@ -45,39 +45,12 @@ class TerminalPart:
             saved = next(
                 (a for a in added_agents.load(self.agents_path) if a.get("id") == agent), {}
             )
-            # The wording lives in core/briefing.py; the parts that differ per agent are filled in there.
-            if agent == "hippoherman":
-                outbox = self.hive_path / agent / "outbox"
-                outbox.mkdir(parents=True, exist_ok=True)  # the lead routes work through it
-                text = briefing.main_briefing(self.settings.vault, outbox)
-            else:
-                text = briefing.agent_briefing(
-                    agent, saved, folder, self.settings.vault, self.hive_path / agent / "outbox"
-                )
-            reader = self._pin_reader()
-            pinned_text = pins.section(pins.gather(pins.paths(saved), reader))
-            if pinned_text:
-                text = briefing.add_section(text, "Pinned notes", pinned_text)
-            handoff_text = pins.handoff(agent, reader) if agent != "hippoherman" else ""
-            if handoff_text:
-                text = briefing.add_section(text, "Handoff from your last session", handoff_text)
             vault = str(self.settings.vault) if self.settings.vault else None
             block_tools = bool(request.get("block_tools", False))
-            # The start-up inbox is written each time a terminal starts, so a new agent gets it as soon as its terminal opens.
-            agents = added_agents.load(self.agents_path)
-            inbox_path = startup_inbox.write(self.hive_path, agent, agents)
             shell = self.settings.agent_shell
-            # The real rules for this start, computed from the switches, so the briefing cannot disagree with them.
-            # A custom command always runs in the sandbox (core/terminal.py refuses it where there is none).
-            sandboxed = provider == "custom" or (shell and sandbox_for(provider))
-            limits = sandbox.policy_lines(
-                shell=agent == "hippoherman" or sandboxed,
-                sandboxed=sandboxed,
-                blocked=block_tools,
-                app_root=ROOT,
-                commits=self.hive_path / commit_queue.FOLDER,
+            text, mark, inbox_path, _blocks = self.compose_briefing(
+                agent, provider, folder, saved, block_tools
             )
-            text, mark = briefing.finish(text, inbox_path, limits)
             problems = briefing.lint(text)
             if problems:
                 # Stops before the agent starts: an agent with a broken briefing would run without its rules.
@@ -180,3 +153,103 @@ class TerminalPart:
             "boot": self.boot,
             "briefing": self.briefing_stamps.get(who),
         }
+
+    def compose_briefing(
+        self,
+        agent: str,
+        provider: str,
+        folder: str | None,
+        saved: dict[str, Any],
+        block_tools: bool,
+        write_inbox: bool = True,
+    ) -> tuple[str, dict[str, Any], Any, list[dict[str, Any]]]:
+        """The briefing an agent starts with, as sent, and its blocks with their sizes (N.05). The optional
+        blocks (pinned notes, the last handoff, trail notes) are left out when turned off."""
+        off = set(self._extras().get("briefing_off") or [])
+        blocks: list[dict[str, Any]] = []
+        if agent == "hippoherman":
+            outbox = self.hive_path / agent / "outbox"
+            outbox.mkdir(parents=True, exist_ok=True)  # the lead routes work through it
+            text = briefing.main_briefing(self.settings.vault, outbox)
+        else:
+            text = briefing.agent_briefing(
+                agent, saved, folder, self.settings.vault, self.hive_path / agent / "outbox"
+            )
+        blocks.append(
+            {
+                "id": "base",
+                "title": "Rules and role",
+                "size": len(text),
+                "optional": False,
+                "on": True,
+            }
+        )
+        reader = self._pin_reader()
+        pinned_text = pins.section(pins.gather(pins.paths(saved), reader))
+        if pinned_text:
+            on = "pinned" not in off
+            blocks.append(
+                {
+                    "id": "pinned",
+                    "title": "Pinned notes",
+                    "size": len(pinned_text),
+                    "optional": True,
+                    "on": on,
+                }
+            )
+            if on:
+                text = briefing.add_section(text, "Pinned notes", pinned_text)
+        handoff_text = pins.handoff(agent, reader) if agent != "hippoherman" else ""
+        if handoff_text:
+            on = "handoff" not in off
+            blocks.append(
+                {
+                    "id": "handoff",
+                    "title": "Handoff from your last session",
+                    "size": len(handoff_text),
+                    "optional": True,
+                    "on": on,
+                }
+            )
+            if on:
+                text = briefing.add_section(text, "Handoff from your last session", handoff_text)
+        if self.settings.vault and agent != "hippoherman":
+            trail = briefing.trail_section(agent)
+            on = "trail" not in off
+            blocks.append(
+                {
+                    "id": "trail",
+                    "title": "Trail note",
+                    "size": len(trail),
+                    "optional": True,
+                    "on": on,
+                }
+            )
+            if on:
+                text = briefing.add_section(text, "Trail note", trail)
+        if write_inbox:
+            inbox_path = startup_inbox.write(
+                self.hive_path, agent, added_agents.load(self.agents_path)
+            )
+        else:
+            inbox_path = startup_inbox.file_for(self.hive_path, agent)
+        sandboxed = provider == "custom" or (self.settings.agent_shell and sandbox_for(provider))
+        limits = sandbox.policy_lines(
+            shell=agent == "hippoherman" or sandboxed,
+            sandboxed=sandboxed,
+            blocked=block_tools,
+            app_root=ROOT,
+            commits=self.hive_path / commit_queue.FOLDER,
+        )
+        before = len(text)
+        text, mark = briefing.finish(text, inbox_path, limits)
+        blocks.append(
+            {
+                "id": "limits",
+                "title": "Start-up inbox, tools and limits",
+                "size": len(text) - before,
+                "optional": False,
+                "on": True,
+            }
+        )
+        return text, mark, inbox_path, blocks

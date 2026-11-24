@@ -146,3 +146,20 @@ def test_a_plugin_installs_switches_and_reaches_the_agent(
     assert "--plugin-dir" not in terminal._command(
         "ada", "claude", block_tools=True, plugin_dirs=["/p"]
     )
+
+
+def test_trail_notes_are_asked_for_and_a_missing_one_shows(tmp_path: Path) -> None:
+    from datetime import date as day
+
+    from core import briefing
+
+    text = briefing.trail_section("Ada#1")
+    assert "Trails/Ada-1/YYYY-MM-DD.md" in text and "Decided" in text
+    folder = tmp_path / "Trails" / "Ada-1"
+    folder.mkdir(parents=True)
+    (folder / f"{day.today().isoformat()}.md").write_text("x", encoding="utf-8")
+    ada, bo = briefing.trails(tmp_path, ["Ada#1", "Bo"])
+    assert ada["recent"] and ada["path"] == f"Trails/Ada-1/{day.today().isoformat()}.md"
+    assert not bo["recent"] and bo["newest"] == ""
+    joined = briefing.add_section(briefing.AGENT.split("\n\n2.")[0], "Trail note", text)
+    assert joined.count("2. Trail note") == 1

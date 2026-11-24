@@ -198,6 +198,7 @@ class DispatchPart:
                     "semantic_state": self.semantic_state,
                     "semantic_build": self.semantic_build,
                     "plugin_list": self.plugin_list,
+                    "trail_notes": self.trail_notes,
                 }.items()
             },
             "update_set": self.update_set,
@@ -209,6 +210,8 @@ class DispatchPart:
             "plugin_install": self.plugin_install,
             "plugin_enable": self.plugin_enable,
             "plugin_remove": self.plugin_remove,
+            "briefing_build": self.briefing_build,
+            "briefing_blocks_set": self.briefing_blocks_set,
         }
 
     def stop(self) -> dict[str, Any]:

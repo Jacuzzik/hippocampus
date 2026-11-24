@@ -421,6 +421,7 @@ export async function mockSidecar(
         calendar: false,
         notion: false,
         meaning: 0,
+        trailOn: true,
         plugins: [] as Record<string, unknown>[],
       };
       async function sidecarCall(args: {
@@ -1098,6 +1099,48 @@ export async function mockSidecar(
               ],
             };
           }
+          case "briefing_build":
+          case "briefing_blocks_set": {
+            if (args.method === "briefing_blocks_set")
+              extras.trailOn = Boolean(args.params?.on);
+            const blocks = [
+              {
+                id: "base",
+                title: "Rules and role",
+                size: 4200,
+                optional: false,
+                on: true,
+              },
+              {
+                id: "trail",
+                title: "Trail note",
+                size: 380,
+                optional: true,
+                on: extras.trailOn,
+              },
+              {
+                id: "limits",
+                title: "Start-up inbox, tools and limits",
+                size: 900,
+                optional: false,
+                on: true,
+              },
+            ];
+            const size = blocks
+              .filter((b) => b.on)
+              .reduce((n, b) => n + b.size, 0);
+            return {
+              text: "1. Role\nYou are an agent.",
+              size,
+              limit: 16000,
+              blocks,
+              problems: [],
+              version: 10,
+              hash: "abcd1234",
+            };
+          }
+          case "trail_notes":
+            return { rows: [], on: extras.trailOn };
           case "update_state":
             return {
               on: extras.updates,

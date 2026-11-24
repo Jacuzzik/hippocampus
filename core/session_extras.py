@@ -11,7 +11,7 @@ from typing import Any
 from keyring.errors import KeyringError
 
 from ai import keys, network
-from core import ical_feed, notion, safe_write, semantic, updates
+from core import added_agents, briefing, ical_feed, notion, safe_write, semantic, updates
 from core.plugins import Plugins
 from core.session_shared import KEYCHAIN_MISSING
 from tools.vault_tools import vault_tools
@@ -225,3 +225,48 @@ class ExtrasPart:
 
     def plugin_remove(self, request: dict[str, Any]) -> dict[str, Any]:
         return {"plugins": self.plugins.remove(str(request.get("name") or ""))}
+
+    # Briefing builder (N.05) and trail notes (N.04)
+    def briefing_build(self, request: dict[str, Any]) -> dict[str, Any]:
+        agent = str(request.get("agent") or "")
+        saved = next((a for a in added_agents.load(self.agents_path) if a.get("id") == agent), None)
+        if saved is None and agent != "hippoherman":
+            raise ValueError("No agent has that id.")
+        saved = saved or {}
+        provider = str(saved.get("provider") or "claude")
+        folder = str(saved.get("folder") or "") or (
+            str(self.settings.vault) if self.settings.vault else None
+        )
+        text, mark, _inbox, blocks = self.compose_briefing(
+            agent, provider, folder, saved, bool(saved.get("block_tools")), write_inbox=False
+        )
+        return {
+            "agent": agent,
+            "text": text,
+            "size": len(text),
+            "limit": briefing.SIZE_MAX,
+            "blocks": blocks,
+            "problems": briefing.lint(text),
+            "version": mark["version"],
+            "hash": mark["hash"],
+        }
+
+    def briefing_blocks_set(self, request: dict[str, Any]) -> dict[str, Any]:
+        block = request.get("block")
+        on = request.get("on")
+        if block not in ("pinned", "handoff", "trail") or not isinstance(on, bool):
+            raise ValueError(
+                '"briefing_blocks_set" needs a "block" (pinned, handoff or trail) and "on"'
+            )
+        off = set(self._extras().get("briefing_off") or [])
+        (off.discard if on else off.add)(block)
+        self._extras_save(briefing_off=sorted(off))
+        self.note("setting", text=f"briefing block {block} turned {'on' if on else 'off'}")
+        return self.briefing_build(request)
+
+    def trail_notes(self) -> dict[str, Any]:
+        if not self.settings.vault:
+            return {"rows": [], "on": False}
+        agents = [str(a.get("id")) for a in added_agents.load(self.agents_path) if a.get("id")]
+        on = "trail" not in set(self._extras().get("briefing_off") or [])
+        return {"rows": briefing.trails(self.settings.vault, agents), "on": on}

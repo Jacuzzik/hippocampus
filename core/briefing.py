@@ -218,3 +218,45 @@ def lint(text: str) -> list[str]:
     if re.search(r"\{[a-z_]+\}", text):
         problems.append("The briefing has a blank that was never filled in.")
     return problems
+
+
+# N.04: agent trail notes. Each agent ends a session with a short note in the vault; the app checks it exists.
+TRAIL_FOLDER = "Trails"
+
+
+def trail_path(agent: str, day: str) -> str:
+    safe = re.sub(r"[^A-Za-z0-9_-]+", "-", agent).strip("-") or "agent"
+    return f"{TRAIL_FOLDER}/{safe}/{day}.md"
+
+
+def trail_section(agent: str) -> str:
+    example = trail_path(agent, "YYYY-MM-DD")
+    return (
+        f"Before you end a session, or when asked to hand off, write a short trail note at {example} in the vault "
+        "(today's date; add to it if it exists). Use three headings: Read (the notes and files you read), "
+        "Changed (what you changed and where) and Decided (what you decided and why). Keep it under 30 lines, "
+        "and put the line 'Linked to [[Agent Lists]].' at the top so it joins the graph."
+    )
+
+
+def trails(vault: Path | str, agents: list[str], days: int = 7) -> list[dict[str, Any]]:
+    """Each agent's newest trail note in the last `days` days, or none, so a missing note is visible."""
+    from datetime import date, timedelta
+
+    root = Path(vault)
+    rows = []
+    for agent in agents:
+        folder = root / Path(trail_path(agent, "x")).parent
+        notes = sorted(folder.glob("*.md")) if folder.is_dir() else []
+        newest = notes[-1].stem if notes else ""
+        recent = bool(newest) and newest >= (date.today() - timedelta(days=days)).isoformat()
+        rows.append(
+            {
+                "agent": agent,
+                "newest": newest,
+                "path": f"{folder.relative_to(root).as_posix()}/{newest}.md" if newest else "",
+                "recent": recent,
+                "count": len(notes),
+            }
+        )
+    return rows

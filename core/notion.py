@@ -184,5 +184,7 @@ def page_markdown(token: str, item_id: str, call: Call = http_call) -> tuple[str
 
 
 def note_path(title: str) -> str:
-    safe = re.sub(r"\s+", " ", re.sub(r'[\\/:*?"<>|#^\[\]]+', " ", title)).strip()[:80] or "Untitled"
+    safe = (
+        re.sub(r"\s+", " ", re.sub(r'[\\/:*?"<>|#^\[\]]+', " ", title)).strip()[:80] or "Untitled"
+    )
     return f"{FOLDER}/{safe}.md"

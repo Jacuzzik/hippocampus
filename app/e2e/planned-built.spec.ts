@@ -81,3 +81,14 @@ test("a plugin is added from a zip and can be switched off (D.07)", async ({
   await list.getByRole("checkbox", { name: "Use writer" }).uncheck();
   await expect(list.getByText("Off")).toBeVisible();
 });
+
+test("the briefing builder shows each block and its size, and can leave one out (N.04, N.05)", async ({
+  page,
+}) => {
+  const dialog = await settingsPage(page, "Agents");
+  const blocks = dialog.getByRole("list", { name: "Briefing blocks" });
+  await expect(blocks).toContainText("Trail note");
+  await expect(dialog.getByText(/5,480 of 16,000 characters/)).toBeVisible();
+  await blocks.getByRole("checkbox", { name: "Send Trail note" }).uncheck();
+  await expect(dialog.getByText(/5,100 of 16,000 characters/)).toBeVisible();
+});
