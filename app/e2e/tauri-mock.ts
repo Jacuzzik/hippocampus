@@ -427,6 +427,12 @@ export async function mockSidecar(
         trailOn: true,
         captured: [] as string[],
         demo: false,
+        slack: {
+          connected: false,
+          on: false,
+          agent: "hippoherman",
+          chosen: [] as string[],
+        },
         answers: [] as string[],
         agentRules: [] as { label: string }[],
         agentWaiting: [] as Record<string, string>[],
@@ -948,7 +954,7 @@ export async function mockSidecar(
             const [row] = extras.agentWaiting.splice(at, 1);
             extras.answers.push(`${row?.id}:${String(args.params?.decision)}`);
             if (args.params?.decision === "folder" && row)
-              extras.agentRules.push({ label: row.rule });
+              extras.agentRules.push({ label: row.rule ?? "" });
             return {};
           }
           case "approvals_rule_remove":
@@ -1222,6 +1228,36 @@ export async function mockSidecar(
               ahead: 2,
               behind: 1,
               files: [{ state: "A", path: "src/new.ts" }],
+            };
+          case "slack_state":
+          case "slack_connect":
+          case "slack_disconnect":
+          case "slack_set": {
+            if (args.method === "slack_connect") extras.slack.connected = true;
+            if (args.method === "slack_disconnect") {
+              extras.slack.connected = false;
+              extras.slack.on = false;
+            }
+            if (args.method === "slack_set") {
+              extras.slack.on = Boolean(args.params?.on);
+              extras.slack.chosen = (args.params?.channels as string[]) ?? [];
+              extras.slack.agent = String(args.params?.agent);
+            }
+            return {
+              ...extras.slack,
+              workspace: "Acme",
+              bot: "hippo",
+              error: "",
+              forwarded: 3,
+              answered: 2,
+            };
+          }
+          case "slack_conversations":
+            return {
+              rows: [
+                { id: "C1234567", name: "#ops", kind: "channel" },
+                { id: "D1234567", name: "Direct message (UANN)", kind: "dm" },
+              ],
             };
           case "usage_stats":
             return {

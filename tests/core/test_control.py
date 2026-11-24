@@ -204,12 +204,11 @@ def test_waiting_tool_approvals_are_listed_and_a_decision_clears_them(tmp_path: 
 def test_waiting_questions_are_listed_and_answering_clears_them(tmp_path: Path) -> None:
     session = sidecar.Session(tmp_path, Settings(), emit=lambda e: None)
     session.asks.open("q1", "Which folder?")
-    assert session.dispatch({"method": "asks"}) == {
-        "asks": [{"call": "q1", "question": "Which folder?"}],
-        "approvals": [],
-    }
+    found = session.dispatch({"method": "asks"})
+    assert found["asks"] == [{"call": "q1", "question": "Which folder?"}]
+    assert found["approvals"] == [] and found["agent_waiting"] == [] and found["agent_rules"] == []
     session.dispatch({"method": "answer", "call": "q1", "text": "notes"})
-    assert session.dispatch({"method": "asks"}) == {"asks": [], "approvals": []}
+    assert session.dispatch({"method": "asks"})["asks"] == []
     with pytest.raises(ValueError):
         session.dispatch({"method": "answer", "call": "q1", "text": "again"})
 

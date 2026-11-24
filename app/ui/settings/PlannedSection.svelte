@@ -5,12 +5,6 @@
   // and what is missing, so nothing here is a dead button. The id is the plan item it answers.
   const PLANNED = [
     {
-      id: "7.25",
-      name: "Slack bot",
-      what: "One bot that answers in chosen channels and direct messages and replies in threads.",
-      reason: "Needs a token store and a message bridge. See Connectors.",
-    },
-    {
       id: "7.27",
       name: "Dictation by hotkey",
       what: "Speak into any app with a speech model that ships with Hippocampus.",

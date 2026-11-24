@@ -3,6 +3,7 @@ meaning (7.09) and plugins (D.07)."""
 
 import io
 import json
+import time
 import zipfile
 from datetime import date
 from pathlib import Path
@@ -338,3 +339,99 @@ def test_only_agents_that_ask_first_get_the_approval_hook(
         terminal._command("ada", "claude", level="ask"),
     ):
         assert "core.approval_hook" not in " ".join(argv)
+
+
+class FakeSlack:
+    """Slack's Web API as the bot sees it: a few conversations, new messages, and the replies it posted."""
+
+    def __init__(self) -> None:
+        self.history: list[dict[str, Any]] = []
+        self.posted: list[dict[str, str]] = []
+
+    def __call__(self, token: str, method: str, params: dict[str, str]) -> dict[str, Any]:
+        assert token.startswith("xoxb-")
+        if method == "auth.test":
+            return {"ok": True, "team": "Acme", "user": "hippo", "user_id": "UBOT"}
+        if method == "users.conversations":
+            return {
+                "channels": [
+                    {"id": "C1234567", "name": "ops", "is_channel": True},
+                    {"id": "D1234567", "is_im": True, "user": "UANN"},
+                ]
+            }
+        if method == "conversations.history":
+            assert params["channel"] == "C1234567"
+            return {
+                "messages": [m for m in self.history if float(m["ts"]) > float(params["oldest"])]
+            }
+        assert method == "chat.postMessage"
+        self.posted.append(params)
+        return {"ok": True}
+
+
+def test_the_slack_bridge_forwards_chosen_messages_and_posts_the_agent_answer_in_the_thread(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import core.__main__ as sidecar
+    import core.session_extras as extras
+    from core import inbox
+    from core.settings import Settings
+
+    store: dict[str, str] = {}
+    monkeypatch.setattr(extras.keys, "get_key", store.get)
+    monkeypatch.setattr(extras.keys, "set_key", lambda name, value: store.__setitem__(name, value))
+    monkeypatch.setattr(extras.keys, "clear_key", lambda name: store.pop(name, None))
+    monkeypatch.setattr(extras.network, "mode", lambda: "open")
+    session = sidecar.Session(tmp_path, Settings())
+    fake = FakeSlack()
+    session._slack_call = fake  # type: ignore[attr-defined]
+
+    with pytest.raises(ValueError, match="xoxb-"):
+        session.dispatch({"method": "slack_connect", "token": "nope"})
+    token = "xoxb-" + "1" * 30
+    state = session.dispatch({"method": "slack_connect", "token": token})
+    assert state["connected"] and state["workspace"] == "Acme" and not state["on"]
+    assert "slack-bot" in store and token not in json.dumps(state)
+    rows = session.dispatch({"method": "slack_conversations"})["rows"]
+    assert [r["kind"] for r in rows] == ["channel", "dm"]
+
+    with pytest.raises(ValueError, match="agent that exists"):
+        session.dispatch(
+            {"method": "slack_set", "channels": ["C1234567"], "agent": "ghost", "on": True}
+        )
+    session.dispatch(
+        {"method": "slack_set", "channels": ["C1234567"], "agent": "hippoherman", "on": True}
+    )
+    fake.history = [
+        {"ts": "1.0", "user": "UANN", "text": "old, before the bridge"},
+        {"ts": f"{time.time() + 5:.6f}", "user": "UANN", "text": "please summarise the week"},
+        {"ts": f"{time.time() + 6:.6f}", "user": "UBOT", "text": "my own message"},
+        {"ts": f"{time.time() + 7:.6f}", "user": "UANN", "bot_id": "B1", "text": "another bot"},
+    ]
+    session.slack_tick()
+    [(path, message)] = inbox.pending(session.hive_path, "hippoherman")
+    assert "please summarise the week" in message["body"] and message["from"] == "user"
+    assert message["work"].startswith("slack:C1234567:")
+    session.slack_tick()  # nothing is forwarded twice
+    assert len(inbox.pending(session.hive_path, "hippoherman")) == 1
+
+    # The agent answers the user with the same work id; the answer is posted in the thread.
+    inbox.send(
+        session.hive_path, "hippoherman", "user", "Re", "Here is the summary.", work=message["work"]
+    )
+    session.slack_last = 0.0
+    session.slack_tick()
+    assert fake.posted[0]["text"] == "Here is the summary."
+    assert fake.posted[0]["thread_ts"] == message["work"].split(":")[2]
+    assert not inbox.pending(session.hive_path, "user")
+
+    # An answer for a conversation that was not chosen is refused, never posted.
+    inbox.send(
+        session.hive_path, "hippoherman", "user", "Re", "x", work="slack:C9999999:1700000000.1"
+    )
+    session.slack_last = 0.0
+    session.slack_tick()
+    assert len(fake.posted) == 1 and not inbox.pending(session.hive_path, "user")
+    state = session.dispatch({"method": "slack_state"})
+    assert (state["forwarded"], state["answered"]) == (1, 1)
+    assert not session.dispatch({"method": "slack_disconnect"})["connected"]

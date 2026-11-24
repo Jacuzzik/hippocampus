@@ -227,6 +227,16 @@ METHODS: dict[str, Method] = {
         ("decision", "once, folder or deny"),
     ),
     "approvals_rule_remove": _m("Forget one folder rule.", ("index", "the rule's position")),
+    "slack_state": _m(
+        "Whether the Slack bot is connected, which conversations it answers in, and its counts."
+    ),
+    "slack_connect": _m("Connect the Slack bot with its token.", ("token", "the bot token")),
+    "slack_disconnect": _m("Forget the Slack bot token and stop the bridge."),
+    "slack_conversations": _m("The channels and direct messages the bot is in."),
+    "slack_set": _m(
+        "Choose the conversations, the agent that answers, and switch the bridge on or off.",
+        ("agent", "an agent id"),
+    ),
     "doctor": _m("Health checks with what to do about each gap."),
     "link_doctor": _m("Broken links and notes with no links."),
     "logs": _m("The newest lines of the backend log."),

@@ -279,3 +279,19 @@ test("an agent that asks first shows the exact command or diff, and is approved 
   await rules.getByRole("button", { name: "Forget" }).click();
   await expect(rules).toHaveCount(0);
 });
+
+test("the Slack bot is connected with a pasted token and answers in chosen conversations (7.25)", async ({
+  page,
+}) => {
+  const dialog = await settingsPage(page, "Connectors");
+  const slack = dialog.getByRole("region", { name: "Slack bot", exact: true });
+  await slack.getByLabel("Slack bot token").fill("xoxb-" + "1".repeat(30));
+  await slack.getByRole("button", { name: "Connect" }).click();
+  await expect(slack.getByText("Connected to Acme as hippo")).toBeVisible();
+  await expect(slack.getByLabel("Slack bot token")).toHaveCount(0);
+  await slack.getByLabel("#ops").check();
+  await slack.getByLabel("Slack bridge").check();
+  await expect(slack.getByText("On", { exact: true })).toBeVisible();
+  await slack.getByRole("button", { name: "Disconnect" }).click();
+  await expect(slack.getByLabel("Slack bot token")).toBeVisible();
+});

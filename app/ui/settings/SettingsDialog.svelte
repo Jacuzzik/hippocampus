@@ -5,6 +5,7 @@
   import UsageSection from "./UsageSection.svelte";
   import CalendarLinkSection from "./CalendarLinkSection.svelte";
   import NotionSection from "./NotionSection.svelte";
+  import SlackSection from "./SlackSection.svelte";
   import MeaningSection from "./MeaningSection.svelte";
   import PluginsSection from "./PluginsSection.svelte";
   import BriefingSection from "./BriefingSection.svelte";
@@ -699,6 +700,7 @@
         <ConnectorsSection />
         <CalendarLinkSection />
         <NotionSection />
+        <SlackSection />
       {:else if page === "Dashboards"}
         <section class="control-section">
           <h3>Dashboards</h3>

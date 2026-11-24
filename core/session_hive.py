@@ -235,6 +235,7 @@ class HivePart:
                 self._write_fleet()
                 self._alert_new()
                 self._take_requests()
+                self.slack_tick()
                 self._take_commits()
                 # "user" is a valid receiver: an agent answers the user there (a calendar event's done or refuse).
                 if inbox.collect_outboxes(self.hive_path, self._agent_ids() | {inbox.USER}):
