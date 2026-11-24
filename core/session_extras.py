@@ -18,6 +18,7 @@ from tools.vault_tools import vault_tools
 
 CALENDAR = "calendar-ical"
 NOTION = "notion"
+CAPTURE_NOTE = "Inbox.md"
 
 
 def _outbound(what: str) -> None:
@@ -270,3 +271,24 @@ class ExtrasPart:
         agents = [str(a.get("id")) for a in added_agents.load(self.agents_path) if a.get("id")]
         on = "trail" not in set(self._extras().get("briefing_off") or [])
         return {"rows": briefing.trails(self.settings.vault, agents), "on": on}
+
+    # Quick capture (N.17)
+    def capture(self, request: dict[str, Any]) -> dict[str, Any]:
+        text = " ".join(str(request.get("text") or "").split())[:2000]
+        if not text:
+            raise ValueError("Type the thought to keep.")
+        if not self.settings.vault:
+            raise ValueError("Open a vault first.")
+        agent = " ".join(str(request.get("agent") or "").split())[:60]
+        stamp = datetime.now().astimezone().strftime("%Y-%m-%d %H:%M")
+        line = f"- {stamp}{f' ({agent})' if agent else ''}: {text}\n"
+        path = Path(self.settings.vault) / CAPTURE_NOTE
+        with self.lock:
+            old = (
+                path.read_text(encoding="utf-8")
+                if path.is_file()
+                else ("# Inbox\n\nQuick thoughts, newest last. Linked to [[Summaries]].\n\n")
+            )
+            safe_write.write_text(path, old + ("" if old.endswith("\n") else "\n") + line)
+        self.changed("notes")
+        return {"path": CAPTURE_NOTE, "line": line.strip()}

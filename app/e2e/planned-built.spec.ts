@@ -92,3 +92,24 @@ test("the briefing builder shows each block and its size, and can leave one out 
   await blocks.getByRole("checkbox", { name: "Send Trail note" }).uncheck();
   await expect(dialog.getByText(/5,100 of 16,000 characters/)).toBeVisible();
 });
+
+test("Ctrl+Shift+Space keeps a quick thought in the Inbox note (N.17)", async ({
+  page,
+}) => {
+  await mockSidecar(page);
+  await page.goto("/");
+  await expect(page.getByRole("button", { name: "Settings", exact: true })).toBeVisible();
+  await page.keyboard.press("Control+Shift+Space");
+  const box = page.getByRole("dialog", { name: "Quick capture" });
+  await expect(box).toContainText("works while this window is in front");
+  await box
+    .getByRole("textbox", { name: "Thought" })
+    .fill("Call the printer shop");
+  await page.keyboard.press("Enter");
+  await expect(box).toBeHidden();
+  expect(
+    await page.evaluate(
+      () => (window as unknown as { __captured: string[] }).__captured,
+    ),
+  ).toEqual(["Call the printer shop"]);
+});

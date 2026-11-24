@@ -9,6 +9,11 @@ export const SHORTCUTS: Shortcut[] = [
   { keys: "Ctrl+O", does: "Jump to a note by name", where: "Anywhere" },
   { keys: "Ctrl+F", does: "Search the notes", where: "Anywhere" },
   { keys: "Ctrl+,", does: "Open Settings", where: "Anywhere" },
+  {
+    keys: "Ctrl+Shift+Space",
+    does: "Quick capture a thought into the Inbox note",
+    where: "Anywhere, even outside the app where the desktop allows",
+  },
   { keys: "F11", does: "Full screen layout on or off", where: "Anywhere" },
   { keys: "Esc", does: "Close the open dialog", where: "Dialogs" },
   { keys: "Tab", does: "Move to the next control", where: "Dialogs" },

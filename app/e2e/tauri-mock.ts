@@ -422,8 +422,11 @@ export async function mockSidecar(
         notion: false,
         meaning: 0,
         trailOn: true,
+        captured: [] as string[],
         plugins: [] as Record<string, unknown>[],
       };
+      (window as unknown as { __captured: string[] }).__captured =
+        extras.captured;
       async function sidecarCall(args: {
         method: string;
         params?: Record<string, unknown>;
@@ -1141,6 +1144,9 @@ export async function mockSidecar(
           }
           case "trail_notes":
             return { rows: [], on: extras.trailOn };
+          case "capture":
+            extras.captured.push(String(args.params?.text ?? ""));
+            return { path: "Inbox.md", line: String(args.params?.text ?? "") };
           case "update_state":
             return {
               on: extras.updates,
@@ -2173,6 +2179,7 @@ export async function mockSidecar(
               return args.handler;
             }
             if (cmd === "plugin:event|unlisten") return undefined;
+            if (cmd === "capture_global") return false;
             if (cmd === "sidecar_call")
               return sidecarCall(
                 args as { method: string; params?: Record<string, unknown> },

@@ -24,6 +24,9 @@
   const DashboardsView = () => import("./dashboards/DashboardsView.svelte");
   import CommandBox, { type Item } from "./overlays/CommandBox.svelte";
   import SearchEverything from "./overlays/SearchEverything.svelte";
+  import QuickCapture from "./overlays/QuickCapture.svelte";
+  import { invoke as tauriInvoke } from "@tauri-apps/api/core";
+  import { listen } from "@tauri-apps/api/event";
   import type { GraphData } from "./graph/model.ts";
   import { selectAgent, selection } from "./owner/addedAgents.svelte.ts";
   import { SETTINGS_PAGES, type SettingsPage } from "./settings/model.ts";
@@ -80,7 +83,9 @@
     window.addEventListener("pointerup", up);
   }
   // Which overlay box is open: the quick switcher (Ctrl+O) or the command palette (Ctrl+P).
-  let box = $state<"switcher" | "palette" | "search" | null>(null);
+  let box = $state<"switcher" | "palette" | "search" | "capture" | null>(null);
+  // Whether Ctrl+Shift+Space works everywhere (null until the shell answers).
+  let captureGlobal = $state<boolean | null>(null);
   let searchEl = $state<HTMLInputElement | null>(null);
   // Bumping this remounts the graph, which refits it to the canvas.
   let viewKey = $state(0);
@@ -124,6 +129,16 @@
     if (e.key === "F11" && !e.altKey && !e.ctrlKey && !e.metaKey) {
       e.preventDefault();
       void toggleFullscreen();
+      return;
+    }
+    if (
+      (e.ctrlKey || e.metaKey) &&
+      e.shiftKey &&
+      !e.altKey &&
+      e.code === "Space"
+    ) {
+      e.preventDefault();
+      box = "capture";
       return;
     }
     if (
@@ -288,6 +303,17 @@
 
   // The graph menu and sidebar fire this after a change, so it redraws at once rather than at the next poll.
   onMount(() => watchAlerts());
+  // N.17: the shell brings the window up and sends this when Ctrl+Shift+Space is pressed anywhere.
+  onMount(() => {
+    let stop: (() => void) | undefined;
+    listen("quick-capture", () => (box = "capture"))
+      .then((un) => (stop = un))
+      .catch(() => {});
+    tauriInvoke<boolean>("capture_global")
+      .then((taken) => (captureGlobal = taken))
+      .catch(() => (captureGlobal = false));
+    return () => stop?.();
+  });
   // A card's note page (and other panels) ask for a note to open in the graph.
   onMount(() => {
     const open = (e: Event): void => {
@@ -355,6 +381,8 @@
     onagent={(id) => selectAgent(id)}
     ondashboards={() => (dashOpen = true)}
   />
+{:else if box === "capture"}
+  <QuickCapture onclose={() => (box = null)} global={captureGlobal} />
 {:else if box === "switcher"}
   <CommandBox
     items={noteItems}

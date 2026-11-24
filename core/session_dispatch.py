@@ -212,6 +212,7 @@ class DispatchPart:
             "plugin_remove": self.plugin_remove,
             "briefing_build": self.briefing_build,
             "briefing_blocks_set": self.briefing_blocks_set,
+            "capture": self.capture,
         }
 
     def stop(self) -> dict[str, Any]:

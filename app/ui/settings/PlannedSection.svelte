@@ -38,13 +38,6 @@
         "Nothing is collected or sent. If it is ever added, it will be off by default and documented.",
     },
     {
-      id: "N.17",
-      name: "Quick capture hotkey",
-      what: "A global hotkey drops a thought into an Inbox note, stamped with the time and the active agent.",
-      reason:
-        "Needs a global shortcut, which the operating system must allow first.",
-    },
-    {
       id: "N.12",
       name: "Approvals with the exact command and diff",
       what: "A risky request shows the command or file change, with approve once, approve for this folder, or deny.",

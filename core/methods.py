@@ -178,6 +178,10 @@ METHODS: dict[str, Method] = {
     ),
     "briefing_blocks_set": _m("Turn an optional briefing block on or off for every agent."),
     "trail_notes": _m("Each agent's newest trail note, so a missing one shows."),
+    "capture": _m(
+        "Keep a quick thought in the vault's Inbox note, stamped with the time and agent.",
+        ("text", "the thought"),
+    ),
     "doctor": _m("Health checks with what to do about each gap."),
     "link_doctor": _m("Broken links and notes with no links."),
     "logs": _m("The newest lines of the backend log."),
