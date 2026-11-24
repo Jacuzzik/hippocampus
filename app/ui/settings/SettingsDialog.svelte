@@ -1,5 +1,10 @@
 <script lang="ts">
   import PlannedSection from "./PlannedSection.svelte";
+  import UpdatesSection from "./UpdatesSection.svelte";
+  import CalendarLinkSection from "./CalendarLinkSection.svelte";
+  import NotionSection from "./NotionSection.svelte";
+  import MeaningSection from "./MeaningSection.svelte";
+  import PluginsSection from "./PluginsSection.svelte";
   import TokensSection from "./TokensSection.svelte";
   import SettingRow from "../controls/SettingRow.svelte";
   import Toggle from "../controls/Toggle.svelte";
@@ -440,6 +445,7 @@
           </SettingRow>
         </section>
         <AccountSection />
+        <UpdatesSection />
       {:else if page === "Appearance"}
         <section class="control-section">
           <h3>Appearance</h3>
@@ -673,6 +679,7 @@
         <HelpersSection />
         <CapabilitiesSection />
         <SkillsSection />
+        <PluginsSection />
       {:else if page === "Team and sharing"}
         <ArchivedAgentsSection />
         <ShareSection />
@@ -684,6 +691,8 @@
         <KeysSection />
       {:else if page === "Connectors"}
         <ConnectorsSection />
+        <CalendarLinkSection />
+        <NotionSection />
       {:else if page === "Dashboards"}
         <section class="control-section">
           <h3>Dashboards</h3>
@@ -725,6 +734,7 @@
             </p>{/if}
         </section>
         <MemorySection />
+        <MeaningSection />
       {:else if page === "Privacy and data"}
         <section class="control-section">
           <h3>Privacy and data</h3>

@@ -144,6 +144,35 @@ METHODS: dict[str, Method] = {
         ("data", "the file, base64"),
     ),
     "purchases_remove": _m("Forget an added file's purchases.", ("name", "the file name")),
+    "update_state": _m("Whether the update check is on, and what it last found."),
+    "update_set": _m("Turn the update check on or off."),
+    "update_check": _m("Ask GitHub for the newest release and its notes."),
+    "calendar_link_state": _m(
+        "Whether a calendar's private iCal address is connected, and its events."
+    ),
+    "calendar_link_set": _m(
+        "Connect a calendar by its private iCal address.", ("url", "the calendar's iCal address")
+    ),
+    "calendar_link_clear": _m("Forget the calendar's address."),
+    "calendar_read": _m("Read the connected calendar again."),
+    "notion_state": _m("Whether Notion is connected."),
+    "notion_connect": _m(
+        "Connect Notion with an integration secret.", ("token", "the integration secret")
+    ),
+    "notion_disconnect": _m("Forget the Notion secret."),
+    "notion_search": _m("Find Notion pages and databases shared with the integration."),
+    "notion_import": _m(
+        "Read one Notion page or database into a vault note.", ("id", "a Notion page id")
+    ),
+    "semantic_state": _m("How many notes the meaning index holds."),
+    "semantic_build": _m("Build or refresh the meaning index with the local embedding model."),
+    "semantic_search": _m("Find notes by meaning.", ("query", "what to look for")),
+    "plugin_list": _m("The installed plugins."),
+    "plugin_install": _m(
+        "Install a plugin from a .zip.", ("name", "the file name"), ("data", "the file, base64")
+    ),
+    "plugin_enable": _m("Switch a plugin on or off for every agent.", ("name", "a plugin name")),
+    "plugin_remove": _m("Remove an installed plugin.", ("name", "a plugin name")),
     "doctor": _m("Health checks with what to do about each gap."),
     "link_doctor": _m("Broken links and notes with no links."),
     "logs": _m("The newest lines of the backend log."),

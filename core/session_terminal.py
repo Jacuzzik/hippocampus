@@ -100,6 +100,7 @@ class TerminalPart:
                 # The custom command and the autonomy level come from the saved agent, never from the window.
                 command=str(saved.get("command") or "") if provider == "custom" else "",
                 autonomy_level=saved.get("autonomy", autonomy.DEFAULT) if saved else None,
+                plugin_dirs=self.plugins.enabled_dirs() if provider == "claude" else [],
             )
             # The start-up inbox is sent into the terminal chat by the delivery loop, once the terminal has settled.
             # Only a CLI that has just started gets it: reopening the window reattaches to a running CLI, and

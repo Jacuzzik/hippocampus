@@ -185,6 +185,30 @@ class DispatchPart:
             "mail_scan": lambda request: self.mail_scan(),
             "purchases_import": self.purchases_import,
             "purchases_remove": self.purchases_remove,
+            **{
+                name: plain(call)
+                for name, call in {
+                    "update_state": self.update_state,
+                    "update_check": self.update_check,
+                    "calendar_link_state": self.calendar_link_state,
+                    "calendar_link_clear": self.calendar_link_clear,
+                    "calendar_read": self.calendar_read,
+                    "notion_state": self.notion_state,
+                    "notion_disconnect": self.notion_disconnect,
+                    "semantic_state": self.semantic_state,
+                    "semantic_build": self.semantic_build,
+                    "plugin_list": self.plugin_list,
+                }.items()
+            },
+            "update_set": self.update_set,
+            "calendar_link_set": self.calendar_link_set,
+            "notion_connect": self.notion_connect,
+            "notion_search": self.notion_search,
+            "notion_import": self.notion_import,
+            "semantic_search": self.semantic_search,
+            "plugin_install": self.plugin_install,
+            "plugin_enable": self.plugin_enable,
+            "plugin_remove": self.plugin_remove,
         }
 
     def stop(self) -> dict[str, Any]:

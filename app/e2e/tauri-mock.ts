@@ -415,6 +415,14 @@ export async function mockSidecar(
         { provider: "openai", label: "OpenAI", saved: false, hint: null },
       ];
 
+      const extras = {
+        updates: false,
+        updateLast: null as null | Record<string, unknown>,
+        calendar: false,
+        notion: false,
+        meaning: 0,
+        plugins: [] as Record<string, unknown>[],
+      };
       async function sidecarCall(args: {
         method: string;
         params?: Record<string, unknown>;
@@ -1090,6 +1098,122 @@ export async function mockSidecar(
               ],
             };
           }
+          case "update_state":
+            return {
+              on: extras.updates,
+              current: "0.1.0",
+              last: extras.updateLast,
+              page: "https://github.com",
+            };
+          case "update_set":
+            extras.updates = Boolean(args.params?.on);
+            return {
+              on: extras.updates,
+              current: "0.1.0",
+              last: extras.updateLast,
+              page: "",
+            };
+          case "update_check":
+            extras.updateLast = {
+              latest: "v0.2.0",
+              newer: true,
+              notes: "Faster graph.",
+              text: "Version v0.2.0 is out.",
+              url: "https://github.com",
+            };
+            return {
+              on: true,
+              current: "0.1.0",
+              last: extras.updateLast,
+              page: "",
+            };
+          case "calendar_link_state":
+          case "calendar_read":
+            return {
+              connected: extras.calendar,
+              name: "Work",
+              events: extras.calendar
+                ? [{ date: "2026-11-24", time: "09:00", title: "Stand-up" }]
+                : [],
+              read_at: "",
+            };
+          case "calendar_link_set":
+            extras.calendar = true;
+            return {
+              connected: true,
+              name: "Work",
+              events: [
+                { date: "2026-11-24", time: "09:00", title: "Stand-up" },
+              ],
+              read_at: "",
+            };
+          case "calendar_link_clear":
+            extras.calendar = false;
+            return { connected: false, name: "", events: [], read_at: "" };
+          case "notion_state":
+            return { connected: extras.notion, folder: "Notion" };
+          case "notion_connect":
+            extras.notion = true;
+            return { connected: true, folder: "Notion" };
+          case "notion_disconnect":
+            extras.notion = false;
+            return { connected: false, folder: "Notion" };
+          case "notion_search":
+            return {
+              results: [
+                {
+                  id: "a".repeat(32),
+                  kind: "page",
+                  title: "Roadmap",
+                  edited: "2026-11-20",
+                  url: "",
+                },
+              ],
+            };
+          case "notion_import":
+            return { path: "Notion/Roadmap.md", title: "Roadmap" };
+          case "semantic_state":
+            return {
+              model: "nomic-embed-text",
+              notes: extras.meaning,
+              built: extras.meaning > 0,
+            };
+          case "semantic_build":
+            extras.meaning = 12;
+            return {
+              model: "nomic-embed-text",
+              notes: 12,
+              built: true,
+              read: 12,
+            };
+          case "semantic_search":
+            return {
+              results: [{ path: "Projects/Hippocampus.md", score: 0.81 }],
+            };
+          case "plugin_list":
+          case "plugin_enable":
+          case "plugin_remove":
+            if (args.method === "plugin_remove") extras.plugins = [];
+            if (args.method === "plugin_enable")
+              extras.plugins = extras.plugins.map((p) => ({
+                ...p,
+                enabled: Boolean(args.params?.on),
+              }));
+            return { plugins: extras.plugins };
+          case "plugin_install":
+            extras.plugins = [
+              {
+                name: "writer",
+                version: "1.0",
+                description: "Drafting skills",
+                skills: 2,
+                commands: 1,
+                helpers: 0,
+                servers: [],
+                enabled: true,
+              },
+            ];
+            return { plugins: extras.plugins };
           case "mail_status":
           case "mail_connect":
           case "mail_scan":

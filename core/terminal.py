@@ -120,6 +120,7 @@ class Terminals:
         shell: bool = False,
         command: str = "",
         autonomy_level: object = None,
+        plugin_dirs: list[str] | None = None,
     ) -> dict[str, Any]:
         custom = provider == "custom"
         if custom and not sandbox.available():
@@ -187,6 +188,7 @@ class Terminals:
                 command=command,
                 level=level,
                 folder=folder,
+                plugin_dirs=plugin_dirs,
             )
             if level is None:
                 self.autonomy_text.pop(agent, None)
@@ -791,6 +793,7 @@ def _command(
     command: str = "",
     level: str | None = None,
     folder: str | None = None,
+    plugin_dirs: list[str] | None = None,
 ) -> list[str]:
     if provider == "custom":
         return _custom_argv(command)
@@ -879,6 +882,8 @@ def _command(
         *perms,
         *vault_dir,
         *(["--mcp-config", json.dumps({"mcpServers": servers})] if servers else []),
+        # Each switched-on plugin (D.07): its skills, commands, helpers and tool servers.
+        *[part for d in ([] if block_tools else plugin_dirs or []) for part in ("--plugin-dir", d)],
         *(["--allowedTools", *allowed] if allowed else []),
         # The hive is where the agent writes its outbox, so it is a folder the agent may write to.
         "--add-dir",

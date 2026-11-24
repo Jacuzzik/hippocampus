@@ -248,7 +248,8 @@ class JobsPart:
         yesterday = (day - timedelta(days=1)).isoformat()
         text = daily_brief.compose(
             day,
-            calendar_board.upcoming(self.events_path, now.replace(hour=0, minute=0), 12),
+            calendar_board.upcoming(self.events_path, now.replace(hour=0, minute=0), 12)
+            + self.feed_events(),
             self.tasks()["tasks"],
             self.fleet_state()["agents"],
             len(inbox.pending(self.hive_path, inbox.USER)),

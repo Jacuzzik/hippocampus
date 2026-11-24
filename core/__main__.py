@@ -71,6 +71,7 @@ from core.session_boards import BoardsPart
 from core.session_budget import BudgetPart
 from core.session_connectors import ConnectorsPart
 from core.session_dispatch import DispatchPart
+from core.session_extras import ExtrasPart
 from core.session_hive import HivePart
 from core.session_jobs import JobsPart
 from core.session_mail import MailPart
@@ -135,6 +136,7 @@ class Session(
     ConnectorsPart,
     AppsPart,
     MailPart,
+    ExtrasPart,
 ):
     """The vault the serve loop has open, the assistant, and the requests they answer.
 

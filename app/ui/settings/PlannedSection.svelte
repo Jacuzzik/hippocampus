@@ -5,13 +5,6 @@
   // and what is missing, so nothing here is a dead button. The id is the plan item it answers.
   const PLANNED = [
     {
-      id: "7.09",
-      name: "Search memory by meaning",
-      what: "Finds notes by what they mean, not only by their words.",
-      reason:
-        "Needs a local embedding model (Ollama or a small model); none is installed.",
-    },
-    {
       id: "7.18",
       name: "Built-in code editor",
       what: "A file tree, tabs, save, and git views (changes, history, branch compare).",
@@ -50,13 +43,6 @@
       what: "A global hotkey drops a thought into an Inbox note, stamped with the time and the active agent.",
       reason:
         "Needs a global shortcut, which the operating system must allow first.",
-    },
-    {
-      id: "G.04",
-      name: "Update check and what's new",
-      what: "Tells you when a new version is out and shows its changelog.",
-      reason:
-        "Checking means a call to a release server, and the app calls out only to your model provider. Until you allow it, get new versions from the Download page.",
     },
     {
       id: "N.04",
@@ -105,24 +91,6 @@
       name: "Teams",
       what: "A team sees the same agents, tasks and notes, each person with their own sign-in.",
       reason: "Needs a team service, which this build does not include.",
-    },
-    {
-      id: "D.07",
-      name: "Plugins",
-      what: "Packs that add several tools and skills in one install.",
-      reason: "No plugin format is defined yet.",
-    },
-    {
-      id: "D.07",
-      name: "Notion",
-      what: "Read pages and databases into notes.",
-      reason: "No Notion calls are built; needs a sign-in and a token store.",
-    },
-    {
-      id: "D.07",
-      name: "Calendars",
-      what: "Show today's events from Google Calendar in the daily brief.",
-      reason: "No calendar calls are built; needs a sign-in and a token store.",
     },
   ] as const;
 </script>
