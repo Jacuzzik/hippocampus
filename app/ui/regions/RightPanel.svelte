@@ -127,8 +127,14 @@
   // Counts shown on the tabs: questions waiting for an answer, and inbox messages not handled yet.
   let waiting = $state({ asks: 0, inbox: 0 });
   function readCounts(): void {
-    invoke<{ asks: unknown[] }>("sidecar_call", { method: "asks" })
-      .then((value) => (waiting.asks = value.asks.length))
+    invoke<{ asks: unknown[]; agent_waiting?: unknown[] }>("sidecar_call", {
+      method: "asks",
+    })
+      .then(
+        (value) =>
+          (waiting.asks =
+            value.asks.length + (value.agent_waiting?.length ?? 0)),
+      )
       .catch(() => {});
     invoke<{ messages: { state: string }[] }>("sidecar_call", {
       method: "inbox",

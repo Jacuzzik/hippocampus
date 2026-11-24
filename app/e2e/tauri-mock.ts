@@ -427,11 +427,19 @@ export async function mockSidecar(
         trailOn: true,
         captured: [] as string[],
         demo: false,
+        answers: [] as string[],
+        agentRules: [] as { label: string }[],
+        agentWaiting: [] as Record<string, string>[],
         edited: {} as Record<string, string>,
         plugins: [] as Record<string, unknown>[],
       };
       (window as unknown as { __captured: string[] }).__captured =
         extras.captured;
+      // Tests put an agent's waiting request here, and read how each was answered.
+      (window as unknown as Record<string, unknown>).__agentWaiting =
+        extras.agentWaiting;
+      (window as unknown as Record<string, unknown>).__agentAnswers =
+        extras.answers;
       async function sidecarCall(args: {
         method: string;
         params?: Record<string, unknown>;
@@ -930,7 +938,22 @@ export async function mockSidecar(
                     }[];
                   }
                 ).__approvals ?? [],
+              agent_waiting: extras.agentWaiting,
+              agent_rules: extras.agentRules,
             };
+          case "approvals_answer": {
+            const at = extras.agentWaiting.findIndex(
+              (r) => r.id === args.params?.id,
+            );
+            const [row] = extras.agentWaiting.splice(at, 1);
+            extras.answers.push(`${row?.id}:${String(args.params?.decision)}`);
+            if (args.params?.decision === "folder" && row)
+              extras.agentRules.push({ label: row.rule });
+            return {};
+          }
+          case "approvals_rule_remove":
+            extras.agentRules.splice(Number(args.params?.index), 1);
+            return {};
           case "answer":
             return { call: args.params?.call };
           case "memory_status":

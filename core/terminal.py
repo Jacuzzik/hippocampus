@@ -13,6 +13,7 @@ import shutil
 import signal
 import struct
 import subprocess
+import sys
 import threading
 import time
 from collections.abc import Callable
@@ -20,7 +21,7 @@ from pathlib import Path
 from typing import Any
 
 from ai import cli_sessions
-from core import autonomy, commit_queue, sandbox
+from core import approvals, autonomy, commit_queue, sandbox
 from core.mcp_config import default_servers
 from core.settings import HIVE_DIR, ROOT
 from tools.vault_mcp import VAULT_TOOLS, mcp_config
@@ -59,6 +60,8 @@ class Terminals:
         self.on_crash = on_crash
         # Where each terminal's recent output is kept between app restarts.
         self.screen_dir = screen_dir
+        # Where an agent that asks first leaves its approval requests (N.12).
+        self.approvals_dir = screen_dir.parent / "approvals" if screen_dir else None
         self.saved_at: dict[str, float] = {}
         self.procs: dict[str, tuple[subprocess.Popen, int]] = {}
         # How each agent's briefing reached its CLI in this run, in plain words for the card.
@@ -189,6 +192,7 @@ class Terminals:
                 level=level,
                 folder=folder,
                 plugin_dirs=plugin_dirs,
+                approvals_dir=self.approvals_dir,
             )
             if level is None:
                 self.autonomy_text.pop(agent, None)
@@ -794,6 +798,7 @@ def _command(
     level: str | None = None,
     folder: str | None = None,
     plugin_dirs: list[str] | None = None,
+    approvals_dir: Path | None = None,
 ) -> list[str]:
     if provider == "custom":
         return _custom_argv(command)
@@ -874,12 +879,23 @@ def _command(
     servers = json.loads(mcp_config(vault))["mcpServers"] if use_vault and vault else {}
     if not block_tools:
         servers.update(default_servers(folder))
+    # "Ask first": each shell command and file change waits for an answer in the app, which shows the exact
+    # command or diff (N.12). No answer means Claude Code's own prompt, never an approval.
+    hook = (
+        approvals.settings_flag(approvals_dir, agent, ROOT, sys.executable)
+        if level == "ask"
+        and approvals_dir is not None
+        and agent != "hippoherman"
+        and not block_tools
+        else []
+    )
     return [
         binary,
         flag,
         entry["id"],
         *(["--model", model] if model else []),
         *perms,
+        *hook,
         *vault_dir,
         *(["--mcp-config", json.dumps({"mcpServers": servers})] if servers else []),
         # Each switched-on plugin (D.07): its skills, commands, helpers and tool servers.

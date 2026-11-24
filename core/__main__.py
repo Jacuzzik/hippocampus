@@ -508,6 +508,8 @@ class Session(
                 {"call": call, "name": name, "preview": preview}
                 for call, name, preview in self.gate.waiting()
             ],
+            # Shell commands and file changes from agents that ask first, with the exact command or diff (N.12).
+            **{"agent_" + key: value for key, value in self.approvals_state().items()},
         }
 
     def skills_state(self) -> dict[str, Any]:

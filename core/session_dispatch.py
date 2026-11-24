@@ -4,7 +4,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from core import methods, phone
+from core import approvals, methods, phone
 from core.github_board import board as github_board
 from core.session_shared import ci_in, issues_in
 
@@ -200,6 +200,7 @@ class DispatchPart:
                     "plugin_list": self.plugin_list,
                     "trail_notes": self.trail_notes,
                     "demo_state": self.demo_state,
+                    "approvals_state": self.approvals_state,
                     "usage_stats": self.usage_stats,
                     "demo_open": self.demo_open,
                     "demo_leave": self.demo_leave,
@@ -217,6 +218,8 @@ class DispatchPart:
             "briefing_build": self.briefing_build,
             "briefing_blocks_set": self.briefing_blocks_set,
             "capture": self.capture,
+            "approvals_answer": self.approvals_answer,
+            "approvals_rule_remove": self.approvals_rule_remove,
             "editor_tree": self.editor_tree,
             "editor_read": self.editor_read,
             "editor_save": self.editor_save,
@@ -228,6 +231,7 @@ class DispatchPart:
 
     def stop(self) -> dict[str, Any]:
         self.kill.trigger()
+        approvals.deny_all(self.approvals_path)
         return {"stopped": True}
 
     def dispatch(self, request: dict[str, Any]) -> dict[str, Any]:

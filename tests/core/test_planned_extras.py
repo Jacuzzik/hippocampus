@@ -249,3 +249,92 @@ def test_the_code_editor_reads_saves_and_shows_git_inside_the_folder(tmp_path: P
     assert versus["ahead"] == 1 and versus["files"] == [{"state": "A", "path": "b.txt"}]
     with pytest.raises(ValueError, match="exist"):
         ce.compare(str(folder), "main", "--output=x")
+
+
+def test_an_agent_that_asks_first_waits_for_the_app_and_shows_the_exact_change(
+    tmp_path: Path,
+) -> None:
+    import threading
+    import time
+
+    from core import approval_hook, approvals
+
+    base = tmp_path / "approvals"
+    work = tmp_path / "work"
+    work.mkdir()
+    (work / "a.txt").write_text("one\ntwo\n", encoding="utf-8")
+    edit = {
+        "tool_name": "Edit",
+        "cwd": str(work),
+        "tool_input": {"file_path": str(work / "a.txt"), "old_string": "two", "new_string": "2"},
+    }
+
+    def answer_when_waiting(decision: str) -> None:
+        for _ in range(100):
+            rows = approvals.waiting(base)
+            if rows:
+                assert rows[0]["agent"] == "ada" and "-two" in rows[0]["diff"]
+                assert "+2" in rows[0]["diff"]
+                approvals.answer(base, rows[0]["id"], decision)
+                return
+            time.sleep(0.05)
+
+    thread = threading.Thread(target=answer_when_waiting, args=("deny",))
+    thread.start()
+    assert approval_hook.decide(base, "ada", edit)[0] == "deny"
+    thread.join()
+    assert not approvals.waiting(base)
+
+    # "Approve for this folder" is remembered: the next edit there is allowed with no request.
+    thread = threading.Thread(target=answer_when_waiting, args=("folder",))
+    thread.start()
+    assert approval_hook.decide(base, "ada", edit)[0] == "allow"
+    thread.join()
+    assert approval_hook.decide(base, "ada", edit) == ("allow", "approved earlier for this folder")
+    assert approvals.rules(base)[0] == {"tool": "Edit", "folder": str(work)}
+    approvals.remove_rule(base, 0)
+    assert not approvals.rules(base)
+
+
+def test_a_shell_rule_covers_one_command_word_and_never_a_chain(tmp_path: Path) -> None:
+    from core import approvals
+
+    rule = approvals.rule_for({"tool": "Bash", "cwd": str(tmp_path), "command": "npm test"})
+    assert rule["prefix"] == "npm"
+    assert approvals.matches(rule, "Bash", str(tmp_path), "npm run build")
+    assert not approvals.matches(rule, "Bash", str(tmp_path), "rm -rf x")
+    assert not approvals.matches(rule, "Bash", str(tmp_path), "npm test && rm -rf x")
+    assert not approvals.matches(rule, "Bash", str(tmp_path.parent), "npm test")
+    assert not approvals.matches(rule, "Edit", str(tmp_path), "npm test")
+
+
+def test_no_answer_never_approves_and_the_kill_switch_denies_everything(tmp_path: Path) -> None:
+    from core import approvals
+
+    base = tmp_path / "approvals"
+    rid = approvals.request(base, "ada", "Bash", str(tmp_path), {"command": "ls"})
+    assert approvals.wait_for(base, rid, seconds=0.2, step=0.05) is None
+    assert approvals.deny_all(base) == 1
+    assert approvals.wait_for(base, rid, seconds=1, step=0.05) == "deny"
+    with pytest.raises(ValueError, match="no longer waiting"):
+        approvals.answer(base, "missing", "once")
+    with pytest.raises(ValueError, match="decision"):
+        approvals.answer(base, rid, "maybe")
+
+
+def test_only_agents_that_ask_first_get_the_approval_hook(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    from core import terminal
+
+    monkeypatch.setattr(terminal.shutil, "which", lambda name: f"/bin/{name}")
+    ask = terminal._command("ada", "claude", level="ask", approvals_dir=tmp_path)
+    assert "--settings" in ask and "core.approval_hook" in ask[ask.index("--settings") + 1]
+    assert "PreToolUse" in ask[ask.index("--settings") + 1]
+    for argv in (
+        terminal._command("ada", "claude", level="edits", approvals_dir=tmp_path),
+        terminal._command("hippoherman", "claude", level="ask", approvals_dir=tmp_path),
+        terminal._command("ada", "claude", level="ask", block_tools=True, approvals_dir=tmp_path),
+        terminal._command("ada", "claude", level="ask"),
+    ):
+        assert "core.approval_hook" not in " ".join(argv)

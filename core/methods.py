@@ -218,6 +218,15 @@ METHODS: dict[str, Method] = {
         ("base", "a branch"),
         ("head", "a branch"),
     ),
+    "approvals_state": _m(
+        "Shell commands and file changes waiting for approval, and the folder rules."
+    ),
+    "approvals_answer": _m(
+        "Approve once, approve for the folder, or deny one waiting request.",
+        ("id", "a request id"),
+        ("decision", "once, folder or deny"),
+    ),
+    "approvals_rule_remove": _m("Forget one folder rule.", ("index", "the rule's position")),
     "doctor": _m("Health checks with what to do about each gap."),
     "link_doctor": _m("Broken links and notes with no links."),
     "logs": _m("The newest lines of the backend log."),

@@ -24,13 +24,6 @@
         "Needs every screen's text moved into one catalogue first (H.02), then a right-to-left layout (H.03).",
     },
     {
-      id: "N.12",
-      name: "Approvals with the exact command and diff",
-      what: "A risky request shows the command or file change, with approve once, approve for this folder, or deny.",
-      reason:
-        "Needs the shell sandbox to report each request; the sandbox is finished work and is not changed here.",
-    },
-    {
       id: "N.15",
       name: "Split terminals",
       what: "Two agent terminals, or a terminal and a note, side by side.",

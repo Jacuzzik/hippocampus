@@ -218,3 +218,64 @@ test("the code editor opens a file, saves it, and shows git changes, history and
   await editor.getByRole("button", { name: "Compare branches" }).click();
   await expect(editor.getByText("2 ahead and 1 behind")).toBeVisible();
 });
+
+test("an agent that asks first shows the exact command or diff, and is approved once, for the folder, or denied (N.12)", async ({
+  page,
+}) => {
+  await mockSidecar(page);
+  await page.goto("/");
+  await page.evaluate(() => {
+    const waiting = (
+      window as unknown as { __agentWaiting: Record<string, string>[] }
+    ).__agentWaiting;
+    waiting.push(
+      {
+        id: "r1",
+        agent: "Ada",
+        tool: "Bash",
+        cwd: "/work/IT",
+        command: "npm test --silent",
+        file: "",
+        diff: "",
+        rule: "Run npm commands in /work/IT",
+      },
+      {
+        id: "r2",
+        agent: "Ada",
+        tool: "Edit",
+        cwd: "/work/IT",
+        command: "",
+        file: "/work/IT/a.txt",
+        diff: "--- a/a.txt\n+++ b/a.txt\n-two\n+2\n",
+        rule: "Edit files in /work/IT",
+      },
+    );
+  });
+  await page.getByRole("tab", { name: "ask me" }).click();
+  const list = page.getByRole("list", { name: "Agent approvals" });
+  await expect(list.getByRole("listitem")).toHaveCount(2);
+  await expect(list.getByLabel("Exact command")).toHaveText(
+    "npm test --silent",
+  );
+  await expect(list.getByLabel("File change")).toContainText("+2");
+  await list
+    .getByRole("listitem")
+    .filter({ hasText: "npm test" })
+    .getByRole("button", { name: "Approve for this folder" })
+    .click();
+  await list
+    .getByRole("listitem")
+    .filter({ hasText: "a.txt" })
+    .getByRole("button", { name: "Deny" })
+    .click();
+  await expect(list).toHaveCount(0);
+  expect(
+    await page.evaluate(
+      () => (window as unknown as { __agentAnswers: string[] }).__agentAnswers,
+    ),
+  ).toEqual(["r1:folder", "r2:deny"]);
+  const rules = page.getByRole("list", { name: "Folder approvals" });
+  await expect(rules).toContainText("Run npm commands in /work/IT");
+  await rules.getByRole("button", { name: "Forget" }).click();
+  await expect(rules).toHaveCount(0);
+});

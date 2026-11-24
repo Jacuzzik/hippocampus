@@ -48,7 +48,7 @@ A name the file builds at run time is not listed.
 | `ui/settings/ActivitySection.svelte` | `activity` | yes |
 | `ui/settings/AddAgentDialog.svelte` | `briefing_preview`, `create_workspace`, `keys`, `local_status`, `provider_status`, `workspaces` | yes |
 | `ui/settings/AppsSection.svelte` | `apps` | yes |
-| `ui/settings/AsksSection.svelte` | `answer`, `asks`, `confirm` | yes |
+| `ui/settings/AsksSection.svelte` | `answer`, `approvals_answer`, `approvals_rule_remove`, `asks`, `confirm` | yes |
 | `ui/settings/BriefingSection.svelte` | `agents`, `trail_notes` | no |
 | `ui/settings/BudgetSection.svelte` | `budget`, `budget_allow`, `set_budget` | yes |
 | `ui/settings/CalendarLinkSection.svelte` | (built at run time) | yes |

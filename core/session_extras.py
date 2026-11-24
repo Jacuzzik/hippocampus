@@ -13,6 +13,7 @@ from keyring.errors import KeyringError
 from ai import keys, network
 from core import (
     added_agents,
+    approvals,
     briefing,
     code_editor,
     demo_vault,
@@ -363,3 +364,36 @@ class ExtrasPart:
 
     def editor_compare(self, request: dict[str, Any]) -> dict[str, Any]:
         return code_editor.compare(request.get("folder"), request.get("base"), request.get("head"))
+
+    # Approvals for agents that ask first (N.12)
+    @property
+    def approvals_path(self) -> Path:
+        return self.storage / "approvals"
+
+    def approvals_state(self) -> dict[str, Any]:
+        base = self.approvals_path
+        return {
+            "waiting": approvals.waiting(base),
+            "rules": [
+                {**rule, "label": approvals.rule_label(rule)} for rule in approvals.rules(base)
+            ],
+        }
+
+    def approvals_answer(self, request: dict[str, Any]) -> dict[str, Any]:
+        done = approvals.answer(self.approvals_path, request.get("id"), request.get("decision"))
+        self.note(
+            "approval",
+            tool=done["tool"],
+            tier="act",
+            approved=done["decision"] != "deny",
+            by="card",
+            agent=done["agent"],
+        )
+        return self.approvals_state()
+
+    def approvals_rule_remove(self, request: dict[str, Any]) -> dict[str, Any]:
+        index = request.get("index")
+        if not isinstance(index, int) or isinstance(index, bool):
+            raise ValueError('"approvals_rule_remove" needs the rule\'s "index"')
+        approvals.remove_rule(self.approvals_path, index)
+        return self.approvals_state()
