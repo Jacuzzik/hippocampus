@@ -52,13 +52,6 @@
         "Needs a second live terminal in the right panel; the one terminal component is finished work and is not changed here.",
     },
     {
-      id: "N.26",
-      name: "Demo vault and first-run tour",
-      what: "A labelled sample vault with a rich graph and a short guided tour.",
-      reason:
-        "Needs sample notes and a tour overlay designed first; not built.",
-    },
-    {
       id: "7.07",
       name: "Several vaults in separate windows",
       what: "Open another vault with its own folder, agents and memory in a second window.",

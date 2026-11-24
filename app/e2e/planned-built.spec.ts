@@ -98,7 +98,9 @@ test("Ctrl+Shift+Space keeps a quick thought in the Inbox note (N.17)", async ({
 }) => {
   await mockSidecar(page);
   await page.goto("/");
-  await expect(page.getByRole("button", { name: "Settings", exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Settings", exact: true }),
+  ).toBeVisible();
   await page.keyboard.press("Control+Shift+Space");
   const box = page.getByRole("dialog", { name: "Quick capture" });
   await expect(box).toContainText("works while this window is in front");
@@ -112,4 +114,37 @@ test("Ctrl+Shift+Space keeps a quick thought in the Inbox note (N.17)", async ({
       () => (window as unknown as { __captured: string[] }).__captured,
     ),
   ).toEqual(["Call the printer shop"]);
+});
+
+test("the first-run tour shows once, and the demo vault opens and closes (N.26)", async ({
+  page,
+}) => {
+  await mockSidecar(page, { firstRun: true });
+  await page.goto("/");
+  // The setup checklist comes first; the tour waits for it to close.
+  await page.keyboard.press("Escape");
+  const tour = page.getByRole("dialog", { name: "Tour" });
+  await expect(tour).toBeVisible();
+  await expect(tour.getByText("Step 1 of 5")).toBeVisible();
+  for (let i = 0; i < 4; i++)
+    await tour.getByRole("button", { name: "Next" }).click();
+  await tour.getByRole("button", { name: "Open the demo vault" }).click();
+  await expect(tour).toHaveCount(0);
+  await page.reload();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog", { name: "Tour" })).toHaveCount(0);
+});
+
+test("Settings opens the demo vault and goes back to the user's vault (N.26)", async ({
+  page,
+}) => {
+  const dialog = await settingsPage(page, "General");
+  await dialog.getByRole("button", { name: "Open the demo vault" }).click();
+  await expect(dialog.getByText("The demo vault is open.")).toBeVisible();
+  await dialog.getByRole("button", { name: "Back to my vault" }).click();
+  await expect(
+    dialog.getByRole("button", { name: "Open the demo vault" }),
+  ).toBeVisible();
+  await dialog.getByRole("button", { name: "Take the tour" }).click();
+  await expect(page.getByRole("dialog", { name: "Tour" })).toBeVisible();
 });

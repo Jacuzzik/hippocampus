@@ -11,7 +11,16 @@ from typing import Any
 from keyring.errors import KeyringError
 
 from ai import keys, network
-from core import added_agents, briefing, ical_feed, notion, safe_write, semantic, updates
+from core import (
+    added_agents,
+    briefing,
+    demo_vault,
+    ical_feed,
+    notion,
+    safe_write,
+    semantic,
+    updates,
+)
 from core.plugins import Plugins
 from core.session_shared import KEYCHAIN_MISSING
 from tools.vault_tools import vault_tools
@@ -292,3 +301,33 @@ class ExtrasPart:
             safe_write.write_text(path, old + ("" if old.endswith("\n") else "\n") + line)
         self.changed("notes")
         return {"path": CAPTURE_NOTE, "line": line.strip()}
+
+    # Demo vault and first-run tour (N.26)
+    def demo_state(self) -> dict[str, Any]:
+        vault = self.settings.vault
+        return {
+            "in_demo": demo_vault.is_demo(self.storage, vault),
+            "notes": len(demo_vault.NOTES),
+            "label": demo_vault.LABEL,
+            "return_to": self._extras().get("demo_return") or None,
+        }
+
+    def demo_open(self) -> dict[str, Any]:
+        vault = self.settings.vault
+        if not demo_vault.is_demo(self.storage, vault):
+            self._extras_save(demo_return=str(vault) if vault else None)
+        folder = demo_vault.build(self.storage)
+        self.set_vault({"vault": str(folder)})
+        self.changed("notes")
+        return self.demo_state()
+
+    def demo_leave(self) -> dict[str, Any]:
+        back = self._extras().get("demo_return")
+        if not back or not Path(back).is_dir():
+            raise ValueError(
+                "There is no earlier vault to go back to. Choose a folder in Settings."
+            )
+        self.set_vault({"vault": back})
+        self._extras_save(demo_return=None)
+        self.changed("notes")
+        return self.demo_state()

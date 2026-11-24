@@ -163,3 +163,24 @@ def test_trail_notes_are_asked_for_and_a_missing_one_shows(tmp_path: Path) -> No
     assert not bo["recent"] and bo["newest"] == ""
     joined = briefing.add_section(briefing.AGENT.split("\n\n2.")[0], "Trail note", text)
     assert joined.count("2. Trail note") == 1
+
+
+def test_the_demo_vault_is_labelled_linked_and_never_overwrites_edits(tmp_path: Path) -> None:
+    from core import demo_vault
+    from core.vault.parser import parse_note
+
+    folder = demo_vault.build(tmp_path)
+    assert demo_vault.is_demo(tmp_path, folder) and not demo_vault.is_demo(tmp_path, tmp_path)
+    assert len(list(folder.glob("*.md"))) == len(demo_vault.NOTES) >= 12
+    start = (folder / "Start here.md").read_text(encoding="utf-8")
+    assert "Demo vault" in start
+    stems = {name[:-3] for name in demo_vault.NOTES}
+    links = 0
+    for name, text in demo_vault.NOTES.items():
+        for link in parse_note(text, name).links:
+            assert link.target_raw in stems, f"{name} links to a missing note"
+            links += 1
+    assert links >= 30
+    (folder / "Start here.md").write_text("mine", encoding="utf-8")
+    demo_vault.build(tmp_path)
+    assert (folder / "Start here.md").read_text(encoding="utf-8") == "mine"

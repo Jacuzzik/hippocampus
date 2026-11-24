@@ -25,6 +25,8 @@
   import CommandBox, { type Item } from "./overlays/CommandBox.svelte";
   import SearchEverything from "./overlays/SearchEverything.svelte";
   import QuickCapture from "./overlays/QuickCapture.svelte";
+  import Tour from "./overlays/Tour.svelte";
+  import { report } from "./notices.svelte.ts";
   import { invoke as tauriInvoke } from "@tauri-apps/api/core";
   import { listen } from "@tauri-apps/api/event";
   import type { GraphData } from "./graph/model.ts";
@@ -92,6 +94,26 @@
   // Setup and account: opens on first run (no brain yet) and from the ribbon or the palette.
   let setupOpen = $state(false);
   const SETUP_SEEN = "hippocampus.setupSeen";
+  // N.26: the first-run tour. It waits until the setup checklist is closed, and shows once.
+  const TOUR_SEEN = "hippocampus.tourSeen";
+  let tourOpen = $state(false);
+  function closeTour(): void {
+    tourOpen = false;
+    try {
+      localStorage.setItem(TOUR_SEEN, "1");
+    } catch {
+      /* storage blocked: the tour shows again next start */
+    }
+  }
+  async function tourDemo(): Promise<void> {
+    try {
+      await invoke("sidecar_call", { method: "demo_open", params: {} });
+      window.dispatchEvent(new CustomEvent("graph-changed"));
+    } catch (cause) {
+      report("Opening the demo vault", cause);
+    }
+    closeTour();
+  }
   // The assistant tool allowlist: from the command palette.
   let toolsOpen = $state(false);
   let addOpen = $state(false);
@@ -330,6 +352,7 @@
         localStorage.setItem(SETUP_SEEN, "1");
         setupOpen = true;
       }
+      if (!localStorage.getItem(TOUR_SEEN)) tourOpen = true;
     } catch {
       /* storage blocked: no first-run checklist, Setup still opens from its button */
     }
@@ -351,6 +374,8 @@
       settingsOpen = true;
     };
     window.addEventListener("open-settings", onOpenSettings);
+    const onTour = () => (tourOpen = true);
+    window.addEventListener("start-tour", onTour);
     // The browser's own right-click menu is off everywhere; the app's own menus still open from their handlers.
     const noNativeMenu = (e: MouseEvent) => e.preventDefault();
     window.addEventListener("contextmenu", noNativeMenu);
@@ -358,6 +383,7 @@
       window.removeEventListener("contextmenu", noNativeMenu);
       window.removeEventListener("theme-changed", onTheme);
       window.removeEventListener("open-settings", onOpenSettings);
+      window.removeEventListener("start-tour", onTour);
       stopPoll();
       window.removeEventListener("graph-changed", onGraphChanged);
       window.removeEventListener("agent-talk", onTalk);
@@ -415,6 +441,10 @@
         onclose={() => (settingsOpen = false)}
       />{/await}</PanelBoundary
   >
+{/if}
+
+{#if tourOpen && !setupOpen}
+  <Tour onclose={closeTour} ondemo={() => void tourDemo()} />
 {/if}
 
 {#if setupOpen}

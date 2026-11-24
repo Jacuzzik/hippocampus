@@ -34,7 +34,10 @@ export async function mockSidecar(
     }) => {
       // Tests start past the first-run setup checklist unless they ask for it.
       try {
-        if (!opts.firstRun) localStorage.setItem("hippocampus.setupSeen", "1");
+        if (!opts.firstRun) {
+          localStorage.setItem("hippocampus.setupSeen", "1");
+          localStorage.setItem("hippocampus.tourSeen", "1");
+        }
       } catch {
         /* storage blocked */
       }
@@ -423,6 +426,7 @@ export async function mockSidecar(
         meaning: 0,
         trailOn: true,
         captured: [] as string[],
+        demo: false,
         plugins: [] as Record<string, unknown>[],
       };
       (window as unknown as { __captured: string[] }).__captured =
@@ -1144,6 +1148,14 @@ export async function mockSidecar(
           }
           case "trail_notes":
             return { rows: [], on: extras.trailOn };
+          case "demo_state":
+            return { in_demo: extras.demo, notes: 14, label: "Demo vault" };
+          case "demo_open":
+            extras.demo = true;
+            return { in_demo: true, notes: 14, label: "Demo vault" };
+          case "demo_leave":
+            extras.demo = false;
+            return { in_demo: false, notes: 14, label: "Demo vault" };
           case "capture":
             extras.captured.push(String(args.params?.text ?? ""));
             return { path: "Inbox.md", line: String(args.params?.text ?? "") };

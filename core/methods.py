@@ -182,6 +182,11 @@ METHODS: dict[str, Method] = {
         "Keep a quick thought in the vault's Inbox note, stamped with the time and agent.",
         ("text", "the thought"),
     ),
+    "demo_state": _m("Whether the sample vault is open, and where to go back to."),
+    "demo_open": _m(
+        "Write the labelled sample vault and open it; the user's own vault is untouched."
+    ),
+    "demo_leave": _m("Go back to the vault that was open before the sample vault."),
     "doctor": _m("Health checks with what to do about each gap."),
     "link_doctor": _m("Broken links and notes with no links."),
     "logs": _m("The newest lines of the backend log."),

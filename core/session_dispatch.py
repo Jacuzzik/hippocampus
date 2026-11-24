@@ -199,6 +199,9 @@ class DispatchPart:
                     "semantic_build": self.semantic_build,
                     "plugin_list": self.plugin_list,
                     "trail_notes": self.trail_notes,
+                    "demo_state": self.demo_state,
+                    "demo_open": self.demo_open,
+                    "demo_leave": self.demo_leave,
                 }.items()
             },
             "update_set": self.update_set,

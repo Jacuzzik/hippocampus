@@ -1,6 +1,7 @@
 <script lang="ts">
   import PlannedSection from "./PlannedSection.svelte";
   import UpdatesSection from "./UpdatesSection.svelte";
+  import DemoSection from "./DemoSection.svelte";
   import CalendarLinkSection from "./CalendarLinkSection.svelte";
   import NotionSection from "./NotionSection.svelte";
   import MeaningSection from "./MeaningSection.svelte";
@@ -447,6 +448,7 @@
         </section>
         <AccountSection />
         <UpdatesSection />
+        <DemoSection />
       {:else if page === "Appearance"}
         <section class="control-section">
           <h3>Appearance</h3>
