@@ -18,13 +18,6 @@
       reason:
         "Needs a second live terminal in the right panel; the one terminal component is finished work and is not changed here.",
     },
-    {
-      id: "7.07",
-      name: "Several vaults in separate windows",
-      what: "Open another vault with its own folder, agents and memory in a second window.",
-      reason:
-        "Needs multi-window support in the shell; the vault switch inside one window works.",
-    },
   ] as const;
 </script>
 

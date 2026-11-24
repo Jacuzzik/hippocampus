@@ -64,6 +64,12 @@ pub fn run() {
                     app.manage(GlobalCapture(false));
                 }
             }
+            // A second window (7.07) says which vault it shows.
+            if let Ok(name) = std::env::var("HIPPOCAMPUS_WINDOW_TITLE") {
+                if let Some(window) = app.get_webview_window("main") {
+                    let _ = window.set_title(&format!("Hippocampus: {name}"));
+                }
+            }
             let sidecar = sidecar::Sidecar::new(app.handle().clone());
             app.manage(sidecar.clone());
             // Opening the vault can take a while, so it starts off the UI thread.
@@ -74,7 +80,12 @@ pub fn run() {
             });
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![sidecar::sidecar_call, desktop_alert, capture_global])
+        .invoke_handler(tauri::generate_handler![
+            sidecar::sidecar_call,
+            desktop_alert,
+            capture_global,
+            sidecar::open_vault_window
+        ])
         .run(tauri::generate_context!());
     // No panic on a failed start: say what happened and leave with an error code.
     if let Err(error) = ran {

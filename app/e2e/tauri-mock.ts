@@ -2404,6 +2404,16 @@ export async function mockSidecar(
             }
             if (cmd === "plugin:event|unlisten") return undefined;
             if (cmd === "capture_global") return false;
+            if (cmd === "open_vault_window") {
+              const vault = String(args.vault);
+              if (vault.includes("missing"))
+                throw new Error(`${vault} is not a folder.`);
+              (window as unknown as { __windows: string[] }).__windows ??= [];
+              (window as unknown as { __windows: string[] }).__windows.push(
+                vault,
+              );
+              return vault.split("/").pop();
+            }
             if (cmd === "sidecar_call")
               return sidecarCall(
                 args as { method: string; params?: Record<string, unknown> },

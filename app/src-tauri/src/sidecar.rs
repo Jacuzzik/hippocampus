@@ -252,6 +252,10 @@ fn read_answers(stdout: BufReader<ChildStdout>, app: AppHandle, waiting: Waiting
 /// Dev runs the repo's Python. A packaged app runs the bundled sidecar, and its settings and
 /// vault live in the user data folder, so the app works with no repo or .venv present.
 fn sidecar_command(app: &AppHandle) -> Result<Command, String> {
+    // A second window (7.07): its own folder holds its settings and storage, so it has its own agents and memory.
+    if let Ok(dir) = std::env::var("HIPPOCAMPUS_WINDOW_DIR") {
+        return window_command(&PathBuf::from(dir));
+    }
     if tauri::is_dev() {
         let root = project_root();
         prepare_vault(&root)?;
@@ -275,6 +279,95 @@ fn sidecar_command(app: &AppHandle) -> Result<Command, String> {
         .arg(data.join("storage"))
         .current_dir(&data);
     Ok(command)
+}
+
+/// The sidecar for a second window: the same program, started with that window's own settings and storage.
+fn window_command(dir: &Path) -> Result<Command, String> {
+    fs::create_dir_all(dir.join("config")).map_err(|e| e.to_string())?;
+    fs::create_dir_all(dir.join("storage")).map_err(|e| e.to_string())?;
+    let settings = dir.join("config/settings.toml");
+    if !settings.exists() {
+        fs::write(&settings, DEFAULT_SETTINGS).map_err(|e| e.to_string())?;
+    }
+    let mut command = if tauri::is_dev() {
+        let root = project_root();
+        let mut command = Command::new(python_for(&root));
+        command.args(["-m", "core"]).current_dir(&root);
+        command
+    } else {
+        let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+        let sidecar = exe
+            .parent()
+            .ok_or("the app has no folder")?
+            .join(SIDECAR_NAME);
+        let mut command = Command::new(sidecar);
+        command.current_dir(dir);
+        command
+    };
+    command
+        .arg("serve")
+        .arg("--settings")
+        .arg(&settings)
+        .arg("--storage")
+        .arg(dir.join("storage"));
+    Ok(command)
+}
+
+/// A folder name for a vault's own window: its name, and a short fingerprint of the full path.
+pub fn window_key(vault: &Path) -> String {
+    let mut hash: u64 = 0xcbf29ce484222325;
+    for byte in vault.to_string_lossy().bytes() {
+        hash ^= u64::from(byte);
+        hash = hash.wrapping_mul(0x100000001b3);
+    }
+    let name: String = vault
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_else(|| "vault".into())
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
+        .take(40)
+        .collect();
+    format!("{name}-{hash:08x}")
+}
+
+/// Opens a vault in a second window: another copy of the app with its own folder, agents and memory.
+#[tauri::command]
+pub fn open_vault_window(app: AppHandle, vault: String) -> Result<String, String> {
+    let folder = PathBuf::from(vault.trim());
+    if !folder.is_dir() {
+        return Err(format!("{} is not a folder.", folder.display()));
+    }
+    let folder = folder.canonicalize().map_err(|e| e.to_string())?;
+    let base = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let dir = base.join("windows").join(window_key(&folder));
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    // One window per vault: the file names the app that has it, and a running app means it is already open.
+    let lock = dir.join("window.pid");
+    if let Ok(text) = fs::read_to_string(&lock) {
+        if let Ok(pid) = text.trim().parse::<u32>() {
+            if cfg!(unix) && Path::new("/proc").join(pid.to_string()).exists() {
+                return Err("That vault is already open in another window.".into());
+            }
+        }
+    }
+    let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+    let name = folder
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let child = Command::new(exe)
+        .env("HIPPOCAMPUS_WINDOW_DIR", &dir)
+        .env("HIPPOCAMPUS_VAULT", &folder)
+        .env("HIPPOCAMPUS_HIVE", dir.join("hive"))
+        .env("HIPPOCAMPUS_WINDOW_TITLE", &name)
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .map_err(|e| format!("The window could not start: {e}"))?;
+    fs::write(&lock, child.id().to_string()).map_err(|e| e.to_string())?;
+    Ok(name)
 }
 
 /// First run: write the default settings and make the default vault folder. Keeps existing files.

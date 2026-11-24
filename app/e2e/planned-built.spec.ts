@@ -349,3 +349,30 @@ test("Ctrl+Shift+D starts and stops dictation from the window (7.27)", async ({
     page.getByText("typed with wtype: hello from the microphone"),
   ).toBeVisible();
 });
+
+test("another vault opens in its own window, and a bad folder is refused (7.07)", async ({
+  page,
+}) => {
+  const dialog = await settingsPage(page, "General");
+  const windows = dialog.getByRole("region", {
+    name: "Another vault in a new window",
+    exact: true,
+  });
+  await windows
+    .getByLabel("Vault folder for the new window")
+    .fill("/home/me/missing");
+  await windows.getByRole("button", { name: "Open in a new window" }).click();
+  await expect(windows.getByRole("alert")).toContainText("is not a folder");
+  await windows
+    .getByLabel("Vault folder for the new window")
+    .fill("/home/me/work-brain");
+  await windows.getByRole("button", { name: "Open in a new window" }).click();
+  await expect(
+    windows.getByText("work-brain is opening in a new window."),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => (window as unknown as { __windows: string[] }).__windows,
+    ),
+  ).toEqual(["/home/me/work-brain"]);
+});
