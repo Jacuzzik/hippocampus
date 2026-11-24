@@ -295,3 +295,25 @@ test("the Slack bot is connected with a pasted token and answers in chosen conve
   await slack.getByRole("button", { name: "Disconnect" }).click();
   await expect(slack.getByLabel("Slack bot token")).toBeVisible();
 });
+
+test("a team is made, saved to and read from, with the code shown to its owner (D.07)", async ({
+  page,
+}) => {
+  const dialog = await settingsPage(page, "Team and sharing");
+  const teams = dialog.getByRole("region", { name: "Teams", exact: true });
+  await teams.getByLabel("Team name").fill("Core team");
+  await teams.getByRole("button", { name: "Make a team" }).click();
+  await expect(teams.getByRole("list", { name: "Your teams" })).toContainText(
+    "Core team",
+  );
+  await expect(teams.getByText("abcdef012345")).toBeVisible();
+  await teams.getByRole("button", { name: "Save to team" }).click();
+  await expect(
+    teams.getByText("Saved 1 agents, 1 task titles and 1 notes"),
+  ).toBeVisible();
+  await teams.getByRole("button", { name: "Get from team" }).click();
+  await expect(teams.getByText("Got 1 new agents and 1 notes")).toBeVisible();
+  await expect(teams.getByRole("list", { name: "Team tasks" })).toContainText(
+    "Ship it",
+  );
+});

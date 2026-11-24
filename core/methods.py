@@ -237,6 +237,14 @@ METHODS: dict[str, Method] = {
         "Choose the conversations, the agent that answers, and switch the bridge on or off.",
         ("agent", "an agent id"),
     ),
+    "teams_state": _m("The teams this account is in, and one team's members and shared items."),
+    "team_create": _m("Make a team.", ("name", "the team's name")),
+    "team_join": _m("Join a team with its code.", ("code", "the team code")),
+    "team_leave": _m("Leave a team.", ("team", "a team id")),
+    "team_save": _m(
+        "Upload the agents, task titles and Team-folder notes to a team.", ("team", "a team id")
+    ),
+    "team_get": _m("Download a team's agents and notes.", ("team", "a team id")),
     "doctor": _m("Health checks with what to do about each gap."),
     "link_doctor": _m("Broken links and notes with no links."),
     "logs": _m("The newest lines of the backend log."),

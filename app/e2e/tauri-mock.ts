@@ -427,6 +427,7 @@ export async function mockSidecar(
         trailOn: true,
         captured: [] as string[],
         demo: false,
+        teams: [] as string[],
         slack: {
           connected: false,
           on: false,
@@ -1258,6 +1259,42 @@ export async function mockSidecar(
                 { id: "C1234567", name: "#ops", kind: "channel" },
                 { id: "D1234567", name: "Direct message (UANN)", kind: "dm" },
               ],
+            };
+          case "teams_state":
+          case "team_create":
+          case "team_join":
+          case "team_leave": {
+            if (args.method === "team_create") extras.teams.push("Core team");
+            if (args.method === "team_leave") extras.teams.length = 0;
+            const teams = extras.teams.map((name) => ({
+              id: "11111111-1111-1111-1111-111111111111",
+              name,
+              role: "owner",
+              code: "abcdef012345",
+            }));
+            return {
+              signed_in: true,
+              configured: true,
+              teams,
+              members: teams.length
+                ? [{ email: "a@x.org", role: "owner" }]
+                : undefined,
+              shared: teams.length
+                ? {
+                    agents: ["Ada"],
+                    tasks: ["Ship it (doing)"],
+                    notes: ["Team/Plan.md"],
+                  }
+                : undefined,
+            };
+          }
+          case "team_save":
+            return { agents: 1, tasks: 1, notes: 1 };
+          case "team_get":
+            return {
+              agents_added: ["Ada"],
+              notes_written: 1,
+              notes_unchanged: 0,
             };
           case "usage_stats":
             return {

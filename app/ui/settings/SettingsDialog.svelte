@@ -28,6 +28,7 @@
   import HelpersSection from "./HelpersSection.svelte";
   import JobsSection from "./JobsSection.svelte";
   import ShareSection from "./ShareSection.svelte";
+  import TeamsSection from "./TeamsSection.svelte";
   import SkillsSection from "./SkillsSection.svelte";
   import TriggersSection from "./TriggersSection.svelte";
   import ConnectorsSection from "./ConnectorsSection.svelte";
@@ -689,6 +690,7 @@
       {:else if page === "Team and sharing"}
         <ArchivedAgentsSection />
         <ShareSection />
+        <TeamsSection />
       {:else if page === "Activity"}
         <UsageSection />
         <ActivitySection />

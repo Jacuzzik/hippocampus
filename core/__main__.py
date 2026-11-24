@@ -89,6 +89,7 @@ from core.session_shared import (
     _whole,
     logger,
 )
+from core.session_teams import TeamsPart
 from core.session_terminal import TerminalPart
 from core.settings import (
     CAP_WINDOWS,
@@ -137,6 +138,7 @@ class Session(
     AppsPart,
     MailPart,
     ExtrasPart,
+    TeamsPart,
 ):
     """The vault the serve loop has open, the assistant, and the requests they answer.
 

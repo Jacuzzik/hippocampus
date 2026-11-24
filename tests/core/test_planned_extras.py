@@ -435,3 +435,137 @@ def test_the_slack_bridge_forwards_chosen_messages_and_posts_the_agent_answer_in
     state = session.dispatch({"method": "slack_state"})
     assert (state["forwarded"], state["answered"]) == (1, 1)
     assert not session.dispatch({"method": "slack_disconnect"})["connected"]
+
+
+class FakeTeamService:
+    """The team tables and functions, in memory, as one signed-in person sees them."""
+
+    def __init__(self, shared: dict[str, Any]) -> None:
+        self.db = shared
+        self.me = "u1"
+
+    def status(self) -> dict[str, Any]:
+        return {"signed_in": True, "configured": True}
+
+    def _data(self, path: str, body: Any = None, method: str = "POST", prefer: str = "") -> Any:
+        db = self.db
+        if path.endswith("/rpc/create_team"):
+            team = {
+                "id": "11111111-1111-1111-1111-111111111111",
+                "name": body["p_name"],
+                "code": "abcdef012345",
+            }
+            db["teams"] = [team]
+            db["members"] = [{"email": "a@x.org", "role": "owner", "user": self.me}]
+            return [team]
+        if path.endswith("/rpc/join_team"):
+            if body["p_code"] != "abcdef012345":
+                raise ValueError("The account service said no: no team has that code")
+            db["members"].append({"email": "b@x.org", "role": "member", "user": "u2"})
+            return [db["teams"][0]]
+        if "team_members?select=role,teams" in path:
+            owner = self.me == "u1"
+            return [
+                {"role": "owner" if owner else "member",
+                 "teams": {"id": db["teams"][0]["id"], "name": db["teams"][0]["name"], "join_code": db["teams"][0]["code"]}}
+            ]  # fmt: skip
+        if "team_members?team_id" in path:
+            return [{"email": m["email"], "role": m["role"]} for m in db["members"]]
+        if path.startswith("/rest/v1/team_items?on_conflict"):
+            for row in body:
+                db.setdefault("items", {})[(row["kind"], row["name"])] = row["body"]
+            return None
+        if path.startswith("/rest/v1/team_items?team_id"):
+            return [
+                {"kind": k, "name": n, "body": b, "updated_at": "2026-11-24"}
+                for (k, n), b in db.get("items", {}).items()
+            ]
+        raise AssertionError(path)
+
+
+def test_a_team_shares_agents_task_titles_and_notes_between_two_people(
+    tmp_path: Path,
+) -> None:
+    import core.__main__ as sidecar
+    from core import added_agents
+    from core.settings import Settings
+
+    shared: dict[str, Any] = {}
+    vault_a, vault_b = tmp_path / "va", tmp_path / "vb"
+    for vault in (vault_a, vault_b):
+        (vault).mkdir()
+    (vault_a / "Team").mkdir()
+    (vault_a / "Team" / "Plan.md").write_text("# Plan\nship it\n", encoding="utf-8")
+    (vault_a / "Private.md").write_text("mine", encoding="utf-8")
+
+    ann = sidecar.Session(tmp_path / "a", Settings(vault=vault_a))
+    ann.user_account = FakeTeamService(shared)  # type: ignore[assignment]
+    added_agents.save(
+        ann.agents_path,
+        [
+            {
+                "id": "ada",
+                "name": "Ada",
+                "provider": "claude",
+                "model": "m",
+                "folder": "/home/ann/secret",
+                "command": "x",
+            }
+        ],
+    )
+    state = ann.dispatch({"method": "team_create", "name": "Core team"})
+    team = state["teams"][0]
+    assert team["code"] == "abcdef012345" and team["role"] == "owner"
+    done = ann.dispatch({"method": "team_save", "team": team["id"]})
+    assert done["agents"] == 1 and done["notes"] == 1
+    assert "Private.md" not in str(shared["items"].keys())
+    assert (
+        "secret" not in shared["items"][("agents", "")]
+        and "command" not in shared["items"][("agents", "")]
+    )
+
+    bob = sidecar.Session(tmp_path / "b", Settings(vault=vault_b))
+    bob.user_account = FakeTeamService(shared)  # type: ignore[assignment]
+    bob.user_account.me = "u2"  # type: ignore[attr-defined]
+    with pytest.raises(ValueError, match="12 letters"):
+        bob.dispatch({"method": "team_join", "code": "nope"})
+    bob.dispatch({"method": "team_join", "code": "abcdef012345"})
+    seen = bob.dispatch({"method": "teams_state", "team": team["id"]})
+    assert seen["teams"][0]["code"] == "" and [m["email"] for m in seen["members"]] == [
+        "a@x.org",
+        "b@x.org",
+    ]
+    assert seen["shared"]["agents"] == ["Ada"] and seen["shared"]["notes"] == ["Team/Plan.md"]
+    got = bob.dispatch({"method": "team_get", "team": team["id"]})
+    assert got == {"agents_added": ["Ada"], "notes_written": 1, "notes_unchanged": 0}
+    assert (vault_b / "Team" / "Plan.md").read_text(encoding="utf-8") == "# Plan\nship it\n"
+    assert added_agents.load(bob.agents_path)[0]["folder"] == ""
+    again = bob.dispatch({"method": "team_get", "team": team["id"]})
+    assert again == {"agents_added": [], "notes_written": 0, "notes_unchanged": 1}
+
+
+def test_teams_need_a_sign_in_and_explain_a_service_that_is_not_set_up(tmp_path: Path) -> None:
+    import core.__main__ as sidecar
+    from core import teams
+    from core.settings import Settings
+
+    session = sidecar.Session(tmp_path, Settings())
+
+    class SignedOut:
+        def status(self) -> dict[str, Any]:
+            return {"signed_in": False, "configured": True}
+
+    session.user_account = SignedOut()  # type: ignore[assignment]
+    assert session.dispatch({"method": "teams_state"})["signed_in"] is False
+    with pytest.raises(ValueError, match="Sign in first"):
+        session.dispatch({"method": "team_create", "name": "x"})
+
+    def missing(*_args: Any, **_kwargs: Any) -> Any:
+        raise ValueError("The account service said no: 404 Could not find the table")
+
+    with pytest.raises(ValueError, match="20261124_teams.sql"):
+        teams.Teams(missing).mine()
+    with pytest.raises(ValueError, match="not a note in the Team folder"):
+        teams.write_note(tmp_path, "../x.md", "x")
+    with pytest.raises(ValueError, match="not a team id"):
+        teams.Teams(missing).leave("../../x")

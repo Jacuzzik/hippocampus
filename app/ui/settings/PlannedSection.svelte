@@ -31,12 +31,6 @@
       reason:
         "Needs multi-window support in the shell; the vault switch inside one window works.",
     },
-    {
-      id: "D.07",
-      name: "Teams",
-      what: "A team sees the same agents, tasks and notes, each person with their own sign-in.",
-      reason: "Needs a team service, which this build does not include.",
-    },
   ] as const;
 </script>
 
