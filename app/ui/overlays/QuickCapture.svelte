@@ -2,6 +2,7 @@
   // N.17: Ctrl+Shift+Space drops a thought into the vault's Inbox note, stamped with the time and the selected agent.
   import Dialog from "../controls/Dialog.svelte";
   import Button from "../controls/Button.svelte";
+  import { t } from "../i18n/index.svelte.ts";
   import { invoke } from "@tauri-apps/api/core";
   import { addedAgents, selection } from "../owner/addedAgents.svelte.ts";
 
@@ -34,7 +35,7 @@
   }
 </script>
 
-<Dialog title="Quick capture" {onclose}>
+<Dialog title={t("Quick capture")} {onclose}>
   <form
     onsubmit={(e) => {
       e.preventDefault();
@@ -45,8 +46,8 @@
       bind:this={input}
       bind:value={text}
       rows="3"
-      aria-label="Thought"
-      placeholder="A thought to keep"
+      aria-label={t("Thought")}
+      placeholder={t("A thought to keep")}
       onkeydown={(e) => {
         if (e.key === "Enter" && !e.shiftKey) {
           e.preventDefault();
@@ -60,7 +61,7 @@
     </p>
     {#if error}<p class="error" role="alert">{error}</p>{/if}
     <Button type="submit" variant="primary" disabled={busy || !text.trim()}
-      >Keep</Button
+      >{t("Keep")}</Button
     >
   </form>
 </Dialog>

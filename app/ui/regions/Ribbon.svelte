@@ -1,5 +1,6 @@
 <script lang="ts">
   // Icon strip on the far left, as in the notes app's ribbon. Each button shows or hides one pane.
+  import { t } from "../i18n/index.svelte.ts";
   let {
     sidebarOpen = $bindable(true),
     panelOpen = $bindable(true),
@@ -13,12 +14,12 @@
   } = $props();
 </script>
 
-<nav class="ribbon" aria-label="Panes">
+<nav class="ribbon" aria-label={t("Panes")}>
   <button
     type="button"
-    aria-label="Note list"
+    aria-label={t("Note list")}
     aria-pressed={sidebarOpen}
-    data-tip="Note list"
+    data-tip={t("Note list")}
     onclick={() => (sidebarOpen = !sidebarOpen)}
   >
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -28,9 +29,9 @@
   </button>
   <button
     type="button"
-    aria-label="Assistant"
+    aria-label={t("Assistant")}
     aria-pressed={panelOpen}
-    data-tip="Assistant"
+    data-tip={t("Assistant")}
     onclick={() => (panelOpen = !panelOpen)}
   >
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -40,8 +41,8 @@
   </button>
   <button
     type="button"
-    aria-label="Settings"
-    data-tip="Settings · Ctrl+,"
+    aria-label={t("Settings")}
+    data-tip={t("Settings · Ctrl+,")}
     onclick={onsettings}
   >
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -53,8 +54,8 @@
   </button>
   <button
     type="button"
-    aria-label="Setup and account"
-    data-tip="Setup and account"
+    aria-label={t("Setup and account")}
+    data-tip={t("Setup and account")}
     onclick={onaccount}
   >
     <svg viewBox="0 0 24 24" aria-hidden="true">

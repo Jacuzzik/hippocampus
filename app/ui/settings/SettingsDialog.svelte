@@ -55,6 +55,8 @@
     type Theme,
   } from "../prefs.svelte.ts";
   import { SETTINGS_PAGES, type SettingsPage } from "./model";
+  import { t } from "../i18n/index.svelte.ts";
+  import LanguageSection from "./LanguageSection.svelte";
   import { SHORTCUTS } from "../shortcuts.ts";
   import { FLAGS, flagOn, setFlag } from "../flags.svelte.ts";
 
@@ -177,7 +179,7 @@
       )
       .map((p) => ({
         id: p.id,
-        label: p.id,
+        label: t(p.id),
       })),
   );
   // Typing in the search box jumps to the first page that matches.
@@ -348,7 +350,7 @@
 </script>
 
 <Dialog
-  title="Settings"
+  title={t("Settings")}
   {onclose}
   center
   dim
@@ -358,17 +360,17 @@
 >
   {#snippet header()}
     <header>
-      <h2>Settings</h2>
+      <h2>{t("Settings")}</h2>
       <input
         type="search"
-        aria-label="Search settings"
-        placeholder="Search settings"
+        aria-label={t("Search settings")}
+        placeholder={t("Search settings")}
         bind:value={query}
       />
       <button
         type="button"
         class="close"
-        aria-label="Close settings"
+        aria-label={t("Close settings")}
         onclick={onclose}>×</button
       >
     </header>
@@ -379,7 +381,7 @@
         <Tabs
           {items}
           bind:value={page}
-          label="Settings pages"
+          label={t("Settings pages")}
           idBase="settings"
           vertical
         />
@@ -454,6 +456,7 @@
         <AccountSection />
         <UpdatesSection />
         <DemoSection />
+        <LanguageSection />
         <VaultWindowSection />
         <DictationSection />
       {:else if page === "Appearance"}

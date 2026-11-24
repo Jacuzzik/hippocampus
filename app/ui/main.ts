@@ -8,6 +8,7 @@ import { mount } from "svelte";
 import App from "./App.svelte";
 import { installGlobalHandlers } from "./crashLog.svelte.ts";
 import { applyMotion, applyLook, applyTheme } from "./prefs.svelte.ts";
+import { applyLanguage } from "./i18n/index.svelte.ts";
 import { mockSidecar } from "../e2e/tauri-mock";
 
 // Browser preview only (npm run dev in a normal browser): fake the desktop bridge with the test mock.
@@ -22,6 +23,7 @@ installGlobalHandlers();
 applyMotion();
 applyTheme();
 applyLook();
+applyLanguage();
 
 const target = document.getElementById("app");
 if (!target) {

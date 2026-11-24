@@ -318,3 +318,20 @@ button:active:not(:disabled) {
   border-radius: var(--radius-sm);
   pointer-events: none;
 }
+
+/* 7.30: right-to-left languages (Arabic). The page direction comes from <html dir>. Grids and flex rows flip by
+   themselves; what is drawn from the left needs a mirror, and code, terminals and the graph stay left to right. */
+[dir="rtl"] [data-tip]:hover::after,
+[dir="rtl"] [data-tip]:focus-visible::after {
+  left: auto;
+  right: calc(100% + var(--space-2));
+}
+
+[dir="rtl"] .xterm,
+[dir="rtl"] canvas,
+[dir="rtl"] pre,
+[dir="rtl"] code,
+[dir="rtl"] .cm-editor {
+  direction: ltr;
+  text-align: left;
+}

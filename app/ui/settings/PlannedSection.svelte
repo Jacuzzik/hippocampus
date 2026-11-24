@@ -5,13 +5,6 @@
   // and what is missing, so nothing here is a dead button. The id is the plan item it answers.
   const PLANNED = [
     {
-      id: "7.30",
-      name: "Languages",
-      what: "English, Simplified Chinese and Arabic (right to left) interfaces.",
-      reason:
-        "Needs every screen's text moved into one catalogue first (H.02), then a right-to-left layout (H.03).",
-    },
-    {
       id: "N.15",
       name: "Split terminals",
       what: "Two agent terminals, or a terminal and a note, side by side.",

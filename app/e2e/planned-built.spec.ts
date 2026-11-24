@@ -376,3 +376,31 @@ test("another vault opens in its own window, and a bad folder is refused (7.07)"
     ),
   ).toEqual(["/home/me/work-brain"]);
 });
+
+test("the interface switches to Chinese and to Arabic (right to left), and keeps the choice (7.30)", async ({
+  page,
+}) => {
+  const dialog = await settingsPage(page, "General");
+  const html = page.locator("html");
+  await expect(html).toHaveAttribute("dir", "ltr");
+  await dialog.getByRole("button", { name: "Language", exact: true }).click();
+  await dialog.getByRole("option", { name: "简体中文" }).click();
+  await expect(html).toHaveAttribute("lang", "zh-Hans");
+  await expect(page.getByRole("tab", { name: "外观" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "笔记列表" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Language", exact: true }).click();
+  await page.getByRole("option", { name: "العربية" }).click();
+  await expect(html).toHaveAttribute("dir", "rtl");
+  await expect(page.getByRole("tab", { name: "المظهر" })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "الإعدادات", exact: true }),
+  ).toBeVisible();
+
+  // The choice is kept for the next start.
+  await page.reload();
+  await expect(html).toHaveAttribute("dir", "rtl");
+  await expect(
+    page.getByRole("button", { name: "قائمة الملاحظات" }),
+  ).toBeVisible();
+});

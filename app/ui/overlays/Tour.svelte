@@ -2,6 +2,7 @@
   // N.26: a short guided tour on the first start, and from Settings at any time. Skipping is always one click.
   import Dialog from "../controls/Dialog.svelte";
   import Button from "../controls/Button.svelte";
+  import { t, tf } from "../i18n/index.svelte.ts";
 
   let { onclose, ondemo }: { onclose: () => void; ondemo: () => void } =
     $props();
@@ -34,18 +35,18 @@
   const now = $derived(STEPS[step] ?? STEPS[0]);
 </script>
 
-<Dialog title="Tour" heading={now.title} {onclose} center dim>
-  <p class="count">Step {step + 1} of {STEPS.length}</p>
-  <p>{now.text}</p>
+<Dialog title={t("Tour")} heading={t(now.title)} {onclose} center dim>
+  <p class="count">{tf("Step {n} of {m}", { n: step + 1, m: STEPS.length })}</p>
+  <p>{t(now.text)}</p>
   <div class="row">
-    <Button onclick={onclose}>Skip the tour</Button>
+    <Button onclick={onclose}>{t("Skip the tour")}</Button>
     <span class="grow"></span>
-    {#if step > 0}<Button onclick={() => step--}>Back</Button>{/if}
+    {#if step > 0}<Button onclick={() => step--}>{t("Back")}</Button>{/if}
     {#if last}
-      <Button onclick={ondemo}>Open the demo vault</Button>
-      <Button onclick={onclose}>Done</Button>
+      <Button onclick={ondemo}>{t("Open the demo vault")}</Button>
+      <Button onclick={onclose}>{t("Done")}</Button>
     {:else}
-      <Button onclick={() => step++}>Next</Button>
+      <Button onclick={() => step++}>{t("Next")}</Button>
     {/if}
   </div>
 </Dialog>
