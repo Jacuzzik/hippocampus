@@ -167,3 +167,54 @@ test("usage statistics come from the local log and say nothing is sent (7.31)", 
     dialog.getByRole("list", { name: "Events per day" }).getByRole("listitem"),
   ).toHaveCount(14);
 });
+
+test("the code editor opens a file, saves it, and shows git changes, history and a branch compare (7.18)", async ({
+  page,
+}) => {
+  await mockSidecar(page);
+  await page.goto("/");
+  await page
+    .getByLabel("Agents")
+    .getByRole("button", { name: "+ Add agent" })
+    .click();
+  const add = page.getByRole("dialog", { name: "Add agent" });
+  await add.getByRole("textbox", { name: "Name", exact: true }).fill("Ada");
+  await add.getByRole("button", { name: "Next" }).click();
+  await add.getByLabel("Folder in workspaces").selectOption("IT");
+  await add.getByRole("button", { name: "Next" }).click();
+  await add.getByRole("button", { name: "claude-sonnet-5-5" }).click();
+  await add.getByRole("button", { name: "Next" }).click();
+  await add
+    .getByRole("textbox", { name: "Goal", exact: true })
+    .fill("Tidy the inbox notes");
+  await add.getByRole("button", { name: "Spawn" }).click();
+  await page.getByLabel("Agents").getByText("Ada").click();
+  await page.getByRole("button", { name: "Editor", exact: true }).click();
+  const editor = page.getByRole("dialog", { name: "Code editor" });
+  await editor.getByRole("button", { name: "src", exact: true }).click();
+  await expect(editor.getByRole("button", { name: "util.ts" })).toBeVisible();
+  await editor.getByRole("button", { name: "notes.md" }).click();
+  const text = editor.locator(".cm-content");
+  await expect(text).toContainText("hello");
+  await text.click();
+  await page.keyboard.press("End");
+  await page.keyboard.type(" world");
+  await expect(editor.getByRole("tab", { name: /notes\.md ●/ })).toBeVisible();
+  await page.keyboard.press("Control+s");
+  await expect(editor.getByText("Saved notes.md.")).toBeVisible();
+  await expect(editor.getByRole("tab", { name: "notes.md" })).toBeVisible();
+
+  await editor.getByRole("button", { name: "changes", exact: true }).click();
+  await editor
+    .getByRole("list", { name: "Changed files" })
+    .getByRole("button", { name: /notes\.md/ })
+    .click();
+  await expect(editor.getByLabel("Diff")).toContainText("+hello world");
+  await editor.getByRole("button", { name: "history", exact: true }).click();
+  await expect(editor.getByRole("list", { name: "Commits" })).toContainText(
+    "first commit",
+  );
+  await editor.getByRole("button", { name: "compare", exact: true }).click();
+  await editor.getByRole("button", { name: "Compare branches" }).click();
+  await expect(editor.getByText("2 ahead and 1 behind")).toBeVisible();
+});

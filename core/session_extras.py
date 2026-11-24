@@ -14,6 +14,7 @@ from ai import keys, network
 from core import (
     added_agents,
     briefing,
+    code_editor,
     demo_vault,
     ical_feed,
     notion,
@@ -336,3 +337,29 @@ class ExtrasPart:
     # Usage statistics, local only (7.31)
     def usage_stats(self) -> dict[str, Any]:
         return usage_stats.summarize(self.storage)
+
+    # Built-in code editor (7.18): files and git inside one agent's folder
+    def editor_tree(self, request: dict[str, Any]) -> dict[str, Any]:
+        return {"rows": code_editor.tree(request.get("folder"), str(request.get("path") or ""))}
+
+    def editor_read(self, request: dict[str, Any]) -> dict[str, Any]:
+        return code_editor.read(request.get("folder"), request.get("path"))
+
+    def editor_save(self, request: dict[str, Any]) -> dict[str, Any]:
+        saved = code_editor.save(request.get("folder"), request.get("path"), request.get("text"))
+        self.note("setting", text=f"editor saved {saved['path']}")
+        return saved
+
+    def editor_git(self, request: dict[str, Any]) -> dict[str, Any]:
+        found = code_editor.changes(request.get("folder"))
+        found["branches"] = code_editor.branches(request.get("folder")) if found["repo"] else []
+        return found
+
+    def editor_diff(self, request: dict[str, Any]) -> dict[str, Any]:
+        return {"text": code_editor.diff(request.get("folder"), request.get("path"))}
+
+    def editor_history(self, request: dict[str, Any]) -> dict[str, Any]:
+        return {"rows": code_editor.history(request.get("folder"), str(request.get("path") or ""))}
+
+    def editor_compare(self, request: dict[str, Any]) -> dict[str, Any]:
+        return code_editor.compare(request.get("folder"), request.get("base"), request.get("head"))

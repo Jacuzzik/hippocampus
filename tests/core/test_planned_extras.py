@@ -200,3 +200,52 @@ def test_usage_statistics_count_the_local_log_only(tmp_path: Path) -> None:
     assert found["agents"] == [{"name": "kelly", "count": 1}]
     assert len(found["days"]) == 14 and found["days"][-1]["count"] == 4
     assert "Nothing is collected" in found["statement"]
+
+
+def _git(folder: Path, *args: str) -> None:
+    import subprocess
+
+    subprocess.run(
+        ["git", "-C", str(folder), "-c", "user.name=t", "-c", "user.email=t@t", *args],
+        check=True,
+        capture_output=True,
+    )
+
+
+def test_the_code_editor_reads_saves_and_shows_git_inside_the_folder(tmp_path: Path) -> None:
+    from core import code_editor as ce
+
+    folder = tmp_path / "agent"
+    folder.mkdir()
+    (tmp_path / "secret.txt").write_text("no", encoding="utf-8")
+    (folder / "a.py").write_text("print(1)\n", encoding="utf-8")
+    (folder / "bin.dat").write_bytes(b"\0\1\2")
+    (folder / "sub").mkdir()
+    (folder / "node_modules").mkdir()
+    assert [r["name"] for r in ce.tree(folder, "")] == ["sub", "a.py", "bin.dat"]
+    assert ce.read(folder, "a.py")["text"] == "print(1)\n"
+    for bad in ("../secret.txt", "/etc/passwd", "bin.dat"):
+        with pytest.raises(ValueError):
+            ce.read(str(folder), bad)
+    with pytest.raises(ValueError, match="outside"):
+        ce.save(str(folder), "../x.txt", "x")
+    ce.save(str(folder), "sub/new.txt", "hello")
+    assert (folder / "sub" / "new.txt").read_text(encoding="utf-8") == "hello"
+
+    assert ce.changes(str(folder))["repo"] is False
+    _git(folder, "init", "-b", "main")
+    _git(folder, "add", ".")
+    _git(folder, "commit", "-m", "first")
+    ce.save(str(folder), "a.py", "print(2)\n")
+    found = ce.changes(str(folder))
+    assert found["branch"] == "main" and found["files"] == [{"state": "M", "path": "a.py"}]
+    assert "+print(2)" in ce.diff(str(folder), "a.py")
+    assert ce.history(str(folder))[0]["subject"] == "first"
+    _git(folder, "checkout", "-b", "feature")
+    ce.save(str(folder), "b.txt", "b")
+    _git(folder, "add", "b.txt")
+    _git(folder, "commit", "-m", "second")
+    versus = ce.compare(str(folder), "main", "feature")
+    assert versus["ahead"] == 1 and versus["files"] == [{"state": "A", "path": "b.txt"}]
+    with pytest.raises(ValueError, match="exist"):
+        ce.compare(str(folder), "main", "--output=x")

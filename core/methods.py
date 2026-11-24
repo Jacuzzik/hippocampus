@@ -188,6 +188,36 @@ METHODS: dict[str, Method] = {
     ),
     "demo_leave": _m("Go back to the vault that was open before the sample vault."),
     "usage_stats": _m("Counts read from the local activity log. Nothing is sent anywhere."),
+    "editor_tree": _m(
+        "One level of the files in an agent's folder.", ("folder", "the agent's folder")
+    ),
+    "editor_read": _m(
+        "The text of one file in an agent's folder.",
+        ("folder", "the agent's folder"),
+        ("path", "a file path inside it"),
+    ),
+    "editor_save": _m(
+        "Save one file inside an agent's folder.",
+        ("folder", "the agent's folder"),
+        ("path", "a file path inside it"),
+    ),
+    "editor_git": _m(
+        "Changed files and branches of an agent's folder.", ("folder", "the agent's folder")
+    ),
+    "editor_diff": _m(
+        "The git diff of one file against the last commit.",
+        ("folder", "the agent's folder"),
+        ("path", "a file path inside it"),
+    ),
+    "editor_history": _m(
+        "The last 30 commits, for the folder or one file.", ("folder", "the agent's folder")
+    ),
+    "editor_compare": _m(
+        "Which files differ between two branches.",
+        ("folder", "the agent's folder"),
+        ("base", "a branch"),
+        ("head", "a branch"),
+    ),
     "doctor": _m("Health checks with what to do about each gap."),
     "link_doctor": _m("Broken links and notes with no links."),
     "logs": _m("The newest lines of the backend log."),

@@ -21,6 +21,7 @@
   import { createTerminalQueue } from "../regions/terminalQueue.svelte";
   import TraceReplay from "./TraceReplay.svelte";
   import McpServers from "./McpServers.svelte";
+  import CodeEditor from "./CodeEditor.svelte";
 
   let { agent }: { agent: SavedAgent } = $props();
 
@@ -319,6 +320,8 @@
       .catch((cause) => (gitText = String(cause)));
   }
 
+  let editorOpen = $state(false);
+
   // Opens the agent's folder in the file manager, or in VS Code when app is "ide".
   function openFolder(app: "file" | "ide"): void {
     invoke("sidecar_call", {
@@ -339,6 +342,14 @@
   }
 </script>
 
+{#if editorOpen && agent.folder}
+  <CodeEditor
+    folder={agent.folder}
+    name={agent.name}
+    onclose={() => (editorOpen = false)}
+  />
+{/if}
+
 <div class="agent-panel">
   <header>
     <b>{agent.name}</b>
@@ -353,6 +364,13 @@
       title={agent.folder
         ? "Open this agent's folder in VS Code"
         : "This agent has no working folder"}>IDE</Button
+    >
+    <Button
+      onclick={() => (editorOpen = true)}
+      disabled={!agent.folder}
+      title={agent.folder
+        ? "Edit this agent's files here, with git changes, history and branch compare"
+        : "This agent has no working folder"}>Editor</Button
     >
     <!-- 4.06: one action row, three equal buttons, in place of an IDE row and a separate run row. -->
     <button

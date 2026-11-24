@@ -5,13 +5,6 @@
   // and what is missing, so nothing here is a dead button. The id is the plan item it answers.
   const PLANNED = [
     {
-      id: "7.18",
-      name: "Built-in code editor",
-      what: "A file tree, tabs, save, and git views (changes, history, branch compare).",
-      reason:
-        "Needs an embedded editor such as Monaco or CodeMirror. The IDE button opens the folder in VS Code.",
-    },
-    {
       id: "7.25",
       name: "Slack bot",
       what: "One bot that answers in chosen channels and direct messages and replies in threads.",

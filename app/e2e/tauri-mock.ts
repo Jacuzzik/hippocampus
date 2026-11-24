@@ -427,6 +427,7 @@ export async function mockSidecar(
         trailOn: true,
         captured: [] as string[],
         demo: false,
+        edited: {} as Record<string, string>,
         plugins: [] as Record<string, unknown>[],
       };
       (window as unknown as { __captured: string[] }).__captured =
@@ -1148,6 +1149,57 @@ export async function mockSidecar(
           }
           case "trail_notes":
             return { rows: [], on: extras.trailOn };
+          case "editor_tree": {
+            const path = String(args.params?.path ?? "");
+            return {
+              rows: path
+                ? [{ name: "util.ts", path: "src/util.ts", dir: false }]
+                : [
+                    { name: "src", path: "src", dir: true },
+                    { name: "notes.md", path: "notes.md", dir: false },
+                  ],
+            };
+          }
+          case "editor_read":
+            return {
+              path: args.params?.path,
+              text:
+                extras.edited[String(args.params?.path)] ?? "# Notes\nhello\n",
+              size: 14,
+            };
+          case "editor_save":
+            extras.edited[String(args.params?.path)] = String(
+              args.params?.text,
+            );
+            return { path: args.params?.path, size: 1 };
+          case "editor_git":
+            return {
+              repo: true,
+              branch: "main",
+              files: [{ state: "M", path: "notes.md" }],
+              branches: ["main", "feature"],
+            };
+          case "editor_diff":
+            return { text: "@@ -1 +1 @@\n-hello\n+hello world" };
+          case "editor_history":
+            return {
+              rows: [
+                {
+                  sha: "abc1234",
+                  author: "Ada",
+                  date: "2026-11-20",
+                  subject: "first commit",
+                },
+              ],
+            };
+          case "editor_compare":
+            return {
+              base: args.params?.base,
+              head: args.params?.head,
+              ahead: 2,
+              behind: 1,
+              files: [{ state: "A", path: "src/new.ts" }],
+            };
           case "usage_stats":
             return {
               statement:

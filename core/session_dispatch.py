@@ -217,6 +217,13 @@ class DispatchPart:
             "briefing_build": self.briefing_build,
             "briefing_blocks_set": self.briefing_blocks_set,
             "capture": self.capture,
+            "editor_tree": self.editor_tree,
+            "editor_read": self.editor_read,
+            "editor_save": self.editor_save,
+            "editor_git": self.editor_git,
+            "editor_diff": self.editor_diff,
+            "editor_history": self.editor_history,
+            "editor_compare": self.editor_compare,
         }
 
     def stop(self) -> dict[str, Any]:
