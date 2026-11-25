@@ -1,6 +1,6 @@
 # Hippocampus: whole system plan
 
-Status as of 2026-11-08 18:08 UTC. Written for Thalha and for any agent that starts work on Hippocampus.
+Status as of 2026-11-25. Written for Thalha and for any agent that starts work on Hippocampus.
 
 ## 1. What the system is
 
@@ -49,24 +49,15 @@ What exists now (`core/inbox.py`, `core/__main__.py`):
 - An agent replies by writing one JSON file into its own `outbox/`. The app moves it into the receiver's inbox.
 - Messages wait 8 seconds after a terminal starts before being typed (`INBOX_SETTLE_S`), so they are not lost on a half-drawn screen.
 
-What is planned (agreed with Thalha, not yet built):
-
-1. **Start-up inbox file.** On every app start, each agent gets one file, `data/storage/briefings/<agent>-inbox.md`, containing:
-   - its waiting messages (sender, subject, body, time);
-   - its open tasks from the board;
-   - the agents it can message and how (write one JSON file into its outbox, with `to`, `subject`, `body`);
-   - the rules: reply only when needed; never message the user directly.
-   The agent is pointed at this file in the same way as its briefing.
-2. **Report back to the main agent.** Each normal agent reports to Hippoherman through its outbox when a task is done, blocked, or needs a decision. The report has a fixed shape: task id, status (done / blocked / question), what changed, what is next. Hippoherman's inbox receives it like any message.
-3. **Inbox on new agent.** When a new agent is added and its terminal opens, it gets the start-up inbox file at once.
-
-Open decision: whether Hippoherman should reply to each report or only act on blocked and question reports. Proposed default: act on blocked and question reports, and log the rest.
+**Built:** `core/startup_inbox.py` writes a per-agent start-up inbox with waiting messages, the current roster, message schema, open tasks and reply rules. `core/session_hive.py` refreshes it on app start and before a new agent session. The briefing points the agent to that inbox, and the delivery loop types it after the terminal settles. Agents report through the validated outbox schema; acknowledgement-only messages are dropped.
 
 ## 6. Monitor and status
 
 - Monitor tab: the Watchers section is removed. Directories are shown unwrapped. The dropdown caret is solid.
 - The agent bar and the Monitor card show model, provider, command and context %. They refresh every 3 seconds.
-- Stats (last command, tokens) for non-Claude providers are **not started**. Each CLI needs its own session reader.
+- The agent bar shows the running command and context. Token totals are available from Claude folder logs and provider-specific local logs where supported; they are not a uniform per-session measure across every CLI.
+- 7.30 offers English, Simplified Chinese and Arabic. Arabic layout uses logical CSS properties, but most screen copy still needs translation wrapping and catalogue entries.
+- Ask-first behavior is provider-specific: Claude Code's hook sends command and file-change requests to the app's Ask me page. Codex uses its `on-request` approval policy, and Gemini CLI uses its `default` approval mode; those prompts stay in the agent's terminal and do not enter Ask me. The agent card and Ask me page state this limitation.
 
 ## 7. Settings, keys and engine apply
 
@@ -77,24 +68,17 @@ Open decision: whether Hippoherman should reply to each report or only act on bl
 ## 8. Known gaps and risks
 
 - **Briefing for non-OpenCode CLIs is unconfirmed.** The pointer is typed after a fixed delay. A new log line (`briefing pointer sent / skipped / failed`) in the agent events file will show what happened.
-- **Working tree has 76 uncommitted changes.** Many are UI and asset changes not made in this session. They must be reviewed before any commit.
-- **Repo is not ready to publish.** One hardcoded personal path: `app/e2e/tauri-mock.ts:199`. A full scan for machine-specific paths has not been done.
-- **DeepSeek CLI** install is pending Thalha's choice of package.
-- **Provider model names** for 2026 are not checked against live APIs.
-- **Stale ESLint/Svelte warnings**: 14 unused-CSS warnings already in the UI (not introduced here).
+- **Provider session resume and briefing delivery** still need a live restart check for Codex, Gemini CLI and Antigravity; unit tests verify the command flags, not a live session.
+- **Provider model names** should be checked against the installed CLIs when adding or changing model choices.
 
 ## 9. Next steps, in order
 
-1. Confirm the briefing reaches each CLI type after a restart (test: one new agent per provider family).
-2. Build the start-up inbox file (section 5, item 1) and the new-agent inbox delivery (item 3).
-3. Build the report-back format and Hippoherman's handling (item 2).
-4. Resume checks for Codex, Gemini and Antigravity with a real restart.
-5. Stats readers for non-Claude providers.
-6. Clean and review the working tree; commit in logical pieces.
-7. Scan for machine-specific paths and fix `app/e2e/tauri-mock.ts:199` before publishing to GitHub.
+1. Confirm the briefing and start-up inbox reach each CLI type after a restart (test one new agent per provider family).
+2. Verify Codex, Gemini CLI and Antigravity resume behavior with a real restart.
+3. Continue checking provider model names when the CLIs update.
 
 ## 10. How to verify
 
-- `.venv/bin/python -m pytest tests/core` (211 passed at last run).
-- `npm run check` in `app/` for the UI.
+- `.venv/bin/python -m pytest -q tests` and the Python linter.
+- `npx svelte-check`, ESLint, TypeScript and `npm test` in `app/`.
 - Live: start an agent per provider family, read its terminal and its `data/storage/agent-events.jsonl` for the briefing and inbox lines.

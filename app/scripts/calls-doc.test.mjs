@@ -10,6 +10,20 @@ test("docs/BACKEND-CALLS.md lists every backend call the window makes", () => {
   );
 });
 
+test("the call helper imports are included in the backend calls inventory", () => {
+  const rows = listCalls();
+  assert.ok(
+    rows
+      .find((row) => row.file === "ui/dashboards/DashboardsView.svelte")
+      ?.methods.includes("github_board"),
+  );
+  assert.ok(
+    rows
+      .find((row) => row.file === "ui/owner/CodeEditor.svelte")
+      ?.methods.includes("editor_search"),
+  );
+});
+
 test("the files that call the backend without a waiting state do not grow in number", () => {
   const without = listCalls().filter((row) => !row.waits);
   // Lower this number when a file gains a waiting state; never raise it.

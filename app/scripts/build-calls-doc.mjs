@@ -11,7 +11,7 @@ const DOC = join(APP, "..", "docs", "BACKEND-CALLS.md");
 
 // What counts as a waiting state: the shared loader, a busy or loaded flag, or a disabled control while a call runs.
 const WAITS =
-  /<Loading\b|\b[a-zA-Z]*[Bb]usy\b|\bloaded\b|\bloading\b|Checking…|Opening…|Sending…/;
+  /<Loading\b|\b[a-zA-Z]*[Bb]usy\b|\bbusy[A-Z]\w*|\bloaded\b|\bloading\b|Checking…|Opening…|Sending…/;
 
 function files(dir) {
   return readdirSync(dir, { withFileTypes: true })
@@ -28,13 +28,18 @@ function files(dir) {
 export function listCalls() {
   return files(UI).flatMap((path) => {
     const text = readFileSync(path, "utf8");
-    if (!text.includes("sidecar_call") && !/from "\.\/call"/.test(text))
+    if (
+      !text.includes("sidecar_call") &&
+      !/from "(?:\.\/|\.\.\/settings\/)call(?:\.ts)?"/.test(text)
+    )
       return [];
     const methods = [
       ...new Set(
         [
           ...text.matchAll(/method:\s*"([a-z_]+)"/g),
-          ...text.matchAll(/\bcall(?:<[^>]*>)?\(\s*"([a-z_]+)"/g),
+          ...text.matchAll(
+            /\b(?:call|backendCall)(?:<[^>]*>)?\(\s*"([a-z_]+)"/g,
+          ),
         ].map((m) => m[1]),
       ),
     ].sort();
