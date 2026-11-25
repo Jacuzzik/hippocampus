@@ -8,6 +8,7 @@
   import Loading from "../controls/Loading.svelte";
   import Button from "../controls/Button.svelte";
   import { call } from "./call.ts";
+  import { t } from "../i18n/index.svelte.ts";
 
   // Questions the assistant cannot answer alone, from every chat, in one place.
   let asks = $state<AskCard[]>([]);
@@ -41,7 +42,9 @@
     try {
       const [result, agentApprovals] = await Promise.all([
         call<{ asks: AskCard[]; approvals?: Approval[] }>("asks"),
-        call<{ waiting: AgentRequest[]; rules: AgentRule[] }>("approvals_state"),
+        call<{ waiting: AgentRequest[]; rules: AgentRule[] }>(
+          "approvals_state",
+        ),
       ]);
       asks = result.asks;
       approvals = result.approvals ?? [];
@@ -158,6 +161,11 @@
   <p class="hint">
     Questions and tool calls the assistant is waiting on. Answer here or in its
     chat.
+  </p>
+  <p class="muted">
+    {t(
+      "Codex and Gemini CLI approval prompts appear in their own terminals, not here.",
+    )}
   </p>
   {#if agentWaiting.length}
     <ul aria-label="Agent approvals">

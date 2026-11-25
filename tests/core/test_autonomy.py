@@ -63,6 +63,8 @@ def test_the_app_folder_always_asks_and_full_needs_a_fence() -> None:
     assert autonomy.effective("claude", "nonsense", sandboxed=False, folder_in_app=False) == "edits"
     assert autonomy.effective("claude", None, sandboxed=True, folder_in_app=False) == "full"
     assert "limited" in autonomy.describe("gemini-cli", "full", "edits")
+    assert "not Ask me" in autonomy.describe("codex", "ask", "ask")
+    assert "not Ask me" in autonomy.describe("gemini-cli", "ask", "ask")
     assert autonomy.describe("ollama", "full", "full") == "Autonomy: set by the program itself"
 
 

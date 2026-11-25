@@ -3,6 +3,8 @@ export const AR: Record<string, string> = {
   Panes: "الأجزاء",
   "Note list": "قائمة الملاحظات",
   Assistant: "المساعد",
+  "Codex and Gemini CLI approval prompts appear in their own terminals, not here.":
+    "تظهر مطالبات الموافقة في Codex وGemini CLI داخل الطرفية الخاصة بكل منهما، وليس هنا.",
   Settings: "الإعدادات",
   "Settings · Ctrl+,": "الإعدادات · Ctrl+,",
   "Setup and account": "الإعداد والحساب",

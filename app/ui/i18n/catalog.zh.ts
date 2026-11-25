@@ -3,6 +3,8 @@ export const ZH: Record<string, string> = {
   Panes: "窗格",
   "Note list": "笔记列表",
   Assistant: "助手",
+  "Codex and Gemini CLI approval prompts appear in their own terminals, not here.":
+    "Codex 和 Gemini CLI 的批准提示会出现在各自的终端中，不会显示在这里。",
   Settings: "设置",
   "Settings · Ctrl+,": "设置 · Ctrl+,",
   "Setup and account": "设置与账户",

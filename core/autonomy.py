@@ -20,7 +20,7 @@ LABELS = {
     "full": "Act without asking",
 }
 
-# Checked against each CLI's --help on 2026-11-17. Claude Code's "full" is bypassPermissions, as Munder
+# Checked against each CLI's --help on 2026-11-25. Claude Code's "full" is bypassPermissions, as Munder
 # Difflin runs its agents; "full" is only used inside the sandbox, which keeps the app read-only. The
 # settings value skips the mode's first-run warning, which would stop an agent's terminal.
 _SKIP_WARNING = '{"skipDangerousModePermissionPrompt": true}'
@@ -84,4 +84,6 @@ def describe(provider: str, asked: object, used: str) -> str:
     text = f"Autonomy: {LABELS[used]}"
     if used != level_for(asked):
         text += f" (picked {LABELS[level_for(asked)]}; limited to keep the app folder safe)"
+    if used == "ask" and provider in {"codex", "gemini-cli"}:
+        text += " (prompts appear in this agent's terminal, not Ask me)"
     return text
