@@ -200,7 +200,7 @@
 
   .stats {
     display: flex;
-    margin-right: auto;
+    margin-inline-end: auto;
     align-items: center;
     gap: var(--space-3);
     padding: 0 var(--space-2);

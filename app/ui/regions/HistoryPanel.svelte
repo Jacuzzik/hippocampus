@@ -112,7 +112,7 @@
   }
 
   li small {
-    margin-left: auto;
+    margin-inline-start: auto;
     color: var(--color-md-text-subtle);
   }
 

@@ -22,7 +22,7 @@
 <style>
   .notices {
     position: fixed;
-    right: var(--space-4);
+    inset-inline-end: var(--space-4);
     bottom: var(--space-4);
     z-index: 90; /* above every dialog: a failure inside a dialog must stay readable */
     display: flex;

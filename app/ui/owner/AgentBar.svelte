@@ -724,7 +724,7 @@
   /* Fixed, so the bar's scrolling does not clip it; it rises above the cards on its way across. */
   .envelope {
     position: fixed;
-    left: 0;
+    inset-inline-start: 0;
     top: 0;
     z-index: 50;
     pointer-events: none;
@@ -933,7 +933,7 @@
   /* The CMD text is highlighted like the MAIN badge. */
   /* The command stops short of the TALK and INFO column and ends in "…". */
   .chip .row.wide.cmd-row {
-    margin-right: 0;
+    margin-inline-end: 0;
   }
 
   .chip .cmd {
@@ -953,8 +953,8 @@
 
   /* CMD and CTX rows start under the face and run out to the card's right edge. */
   .chip .row.wide {
-    margin-left: calc(-52px - var(--space-2));
-    margin-right: -12px;
+    margin-inline-start: calc(-52px - var(--space-2));
+    margin-inline-end: -12px;
   }
 
   /* One continuous loading-style bar: the fill's width is the context percentage. */
@@ -1096,7 +1096,7 @@
     border: none;
     background: none;
     color: inherit;
-    text-align: left;
+    text-align: start;
     cursor: pointer;
   }
 
@@ -1120,7 +1120,7 @@
   }
 
   .pct {
-    margin-left: 4px;
+    margin-inline-start: 4px;
   }
 
   .status {
@@ -1160,7 +1160,7 @@
     border: none;
     background: none;
     color: inherit;
-    text-align: left;
+    text-align: start;
     font-size: var(--font-size-xs);
     cursor: pointer;
   }

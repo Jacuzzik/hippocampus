@@ -397,7 +397,7 @@
     align-items: baseline;
     width: 100%;
     padding: var(--space-1) var(--space-2);
-    text-align: left;
+    text-align: start;
     background: none;
     border: none;
     border-bottom: 1px solid var(--color-md-border);
@@ -459,7 +459,7 @@
   }
 
   small {
-    margin-left: auto;
+    margin-inline-start: auto;
     color: var(--color-md-text-subtle);
   }
 

@@ -274,7 +274,7 @@
     border: none;
     background: none;
     color: inherit;
-    text-align: left;
+    text-align: start;
     font-size: var(--font-size-xs);
     cursor: pointer;
   }

@@ -600,7 +600,7 @@
   }
 
   h3 em {
-    margin-left: auto;
+    margin-inline-start: auto;
     font-style: normal;
     font-family: var(--font-ui);
     font-size: var(--font-size-xs);
@@ -636,7 +636,7 @@
   }
 
   h3 em {
-    margin-left: auto;
+    margin-inline-start: auto;
   }
 
   .cards {
@@ -662,7 +662,7 @@
 
   /* Token count sits on the name line, at the right edge. */
   .title-line .tok {
-    margin-left: auto;
+    margin-inline-start: auto;
     flex: none;
     font-size: var(--font-size-tag);
   }

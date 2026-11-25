@@ -28,7 +28,7 @@
   }
 
   em {
-    margin-left: auto;
+    margin-inline-start: auto;
     font-style: normal;
     font-size: var(--font-size-xs);
     color: var(--color-md-text-muted);

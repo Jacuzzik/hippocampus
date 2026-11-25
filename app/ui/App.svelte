@@ -567,10 +567,12 @@
     z-index: 2;
   }
   .resize-handle.left {
-    left: calc(var(--layout-ribbon-width) + var(--sidebar-col) - 3px);
+    inset-inline-start: calc(
+      var(--layout-ribbon-width) + var(--sidebar-col) - 3px
+    );
   }
   .resize-handle.right {
-    right: calc(var(--panel-col) - 3px);
+    inset-inline-end: calc(var(--panel-col) - 3px);
   }
   .shell {
     position: relative;
@@ -619,7 +621,7 @@
       position: fixed;
       top: 0;
       bottom: var(--layout-status-bar-height);
-      left: var(--layout-ribbon-width);
+      inset-inline-start: var(--layout-ribbon-width);
       z-index: 5;
       grid-area: auto;
       max-width: calc(100vw - var(--layout-ribbon-width));
@@ -634,7 +636,7 @@
     }
 
     .shell > :global(.right-panel) {
-      right: 0;
+      inset-inline-end: 0;
       width: auto;
     }
   }

@@ -76,7 +76,7 @@
     content: "";
     position: absolute;
     top: 3px;
-    left: 3px;
+    inset-inline-start: 3px;
     width: var(--size-12);
     height: var(--size-12);
     border-radius: var(--radius-sm);

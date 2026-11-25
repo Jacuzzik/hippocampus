@@ -133,7 +133,7 @@
 
   ul {
     margin: 0;
-    padding-left: 0;
+    padding-inline-start: 0;
     list-style: none;
   }
 

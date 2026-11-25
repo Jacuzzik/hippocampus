@@ -137,7 +137,7 @@
   .close {
     width: var(--size-28);
     height: var(--size-28);
-    margin-left: auto;
+    margin-inline-start: auto;
     line-height: 1;
     color: var(--color-text-muted);
     font-size: var(--font-size-xl);

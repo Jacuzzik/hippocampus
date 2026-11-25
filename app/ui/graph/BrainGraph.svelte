@@ -1302,7 +1302,7 @@
 
   .label {
     position: absolute;
-    left: 0;
+    inset-inline-start: 0;
     top: 0;
     white-space: nowrap;
     line-height: 14px;
@@ -1316,7 +1316,7 @@
   .tools {
     position: absolute;
     top: 0;
-    left: var(--space-2);
+    inset-inline-start: var(--space-2);
     z-index: 1;
     display: flex;
     align-items: center;
@@ -1334,7 +1334,7 @@
   .export-note {
     position: absolute;
     top: var(--tools-band);
-    left: var(--space-2);
+    inset-inline-start: var(--space-2);
     z-index: 1;
     margin: 0;
     padding: var(--space-1) var(--space-2);
@@ -1452,7 +1452,7 @@
     background: none;
     border: 0;
     padding: 0;
-    text-align: left;
+    text-align: start;
     cursor: pointer;
   }
 
@@ -1483,7 +1483,7 @@
   }
 
   .body .items {
-    margin-left: var(--space-4);
+    margin-inline-start: var(--space-4);
     list-style: revert;
   }
 

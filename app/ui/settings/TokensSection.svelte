@@ -80,7 +80,7 @@
   }
 
   .value {
-    margin-left: auto;
+    margin-inline-start: auto;
     color: var(--color-text-muted);
   }
 </style>

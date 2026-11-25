@@ -176,7 +176,7 @@
   }
 
   select {
-    margin-left: var(--space-2);
+    margin-inline-start: var(--space-2);
     padding: var(--space-1);
     color: var(--color-text);
     background: var(--color-surface);

@@ -137,7 +137,7 @@
   ul {
     flex-basis: 100%;
     margin: 0;
-    padding-left: var(--space-4);
+    padding-inline-start: var(--space-4);
     max-height: 8em;
     overflow: auto;
     color: var(--color-text-muted);

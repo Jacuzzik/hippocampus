@@ -68,7 +68,7 @@
   .health {
     position: fixed;
     top: var(--space-2);
-    left: 50%;
+    inset-inline-start: 50%;
     z-index: 30;
     display: flex;
     flex-wrap: wrap;

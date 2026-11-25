@@ -130,7 +130,7 @@
     justify-content: space-between;
     gap: var(--space-2);
     font: inherit;
-    text-align: left;
+    text-align: start;
     color: var(--color-text);
     background: none;
     border: 0;

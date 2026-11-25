@@ -105,7 +105,7 @@
     border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
     cursor: pointer;
-    text-align: left;
+    text-align: start;
   }
 
   .trigger:hover:not(:disabled),
@@ -131,8 +131,8 @@
 
   .menu {
     position: absolute;
-    left: 0;
-    right: 0;
+    inset-inline-start: 0;
+    inset-inline-end: 0;
     top: 100%;
     z-index: 20;
     margin: 0;
@@ -151,7 +151,7 @@
     padding: 6px var(--space-3);
     font: inherit;
     font-size: var(--font-size-sm);
-    text-align: left;
+    text-align: start;
     color: var(--color-text);
     background: transparent;
     border: 0;

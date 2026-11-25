@@ -304,7 +304,7 @@ button:active:not(:disabled) {
 [data-tip]:focus-visible::after {
   content: attr(data-tip);
   position: absolute;
-  left: calc(100% + var(--space-2));
+  inset-inline-start: calc(100% + var(--space-2));
   top: 50%;
   transform: translateY(-50%);
   z-index: 60;
@@ -323,8 +323,8 @@ button:active:not(:disabled) {
    themselves; what is drawn from the left needs a mirror, and code, terminals and the graph stay left to right. */
 [dir="rtl"] [data-tip]:hover::after,
 [dir="rtl"] [data-tip]:focus-visible::after {
-  left: auto;
-  right: calc(100% + var(--space-2));
+  inset-inline-start: auto;
+  inset-inline-end: calc(100% + var(--space-2));
 }
 
 [dir="rtl"] .xterm,
@@ -333,5 +333,5 @@ button:active:not(:disabled) {
 [dir="rtl"] code,
 [dir="rtl"] .cm-editor {
   direction: ltr;
-  text-align: left;
+  text-align: start;
 }

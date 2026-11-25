@@ -162,7 +162,7 @@
     color: var(--color-text-muted);
     font: inherit;
     font-size: var(--font-size-sm);
-    text-align: left;
+    text-align: start;
     background: none;
     border: 1px solid transparent;
     border-radius: var(--radius-sm);
@@ -239,7 +239,7 @@
   .underline {
     position: absolute;
     top: -2px;
-    left: 0;
+    inset-inline-start: 0;
     height: 2px;
     background: var(--color-focus-ring);
     pointer-events: none;

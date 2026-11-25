@@ -206,7 +206,7 @@
 
   ul {
     margin: 0;
-    padding-left: var(--space-4);
+    padding-inline-start: var(--space-4);
   }
 
   li {

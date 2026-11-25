@@ -1038,7 +1038,7 @@
     flex: 1;
     min-width: 0;
     max-width: var(--size-320);
-    margin-left: auto;
+    margin-inline-start: auto;
     padding: var(--space-1) var(--space-2);
     color: var(--color-text);
     font: inherit;
@@ -1069,14 +1069,14 @@
 
   .rail {
     overflow-y: auto;
-    padding-right: var(--space-2);
+    padding-inline-end: var(--space-2);
     border-right: 1px solid var(--color-border);
   }
 
   .page {
     min-width: 0;
     overflow-y: auto;
-    padding-right: var(--space-2);
+    padding-inline-end: var(--space-2);
   }
 
   .stepper {
@@ -1165,7 +1165,7 @@
 
   .rules {
     margin: 0;
-    padding-left: var(--space-4);
+    padding-inline-start: var(--space-4);
     color: var(--color-text-muted);
     font-size: var(--font-size-sm);
   }
@@ -1192,7 +1192,7 @@
   .keys th,
   .keys td {
     padding: var(--space-2);
-    text-align: left;
+    text-align: start;
     border-bottom: 1px solid var(--color-border);
   }
 

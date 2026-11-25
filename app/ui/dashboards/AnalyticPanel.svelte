@@ -210,7 +210,7 @@
     border-radius: var(--radius-sm);
   }
   .meta {
-    margin-left: auto;
+    margin-inline-start: auto;
     color: var(--color-text-muted);
     font-size: var(--font-size-xs);
     font-variant-numeric: tabular-nums;

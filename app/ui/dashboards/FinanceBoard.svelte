@@ -1398,7 +1398,7 @@
     display: grid;
     gap: var(--space-2);
     margin: 0;
-    padding-left: var(--space-5);
+    padding-inline-start: var(--space-5);
   }
 
   /* Four lists in two rows: subscriptions and purchases, then sales and refunds. */

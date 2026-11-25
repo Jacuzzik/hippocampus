@@ -64,7 +64,7 @@
 <style>
   .bubble {
     position: fixed;
-    right: var(--space-3);
+    inset-inline-end: var(--space-3);
     bottom: var(--space-3);
     max-width: 360px;
     padding: var(--space-2) var(--space-3);

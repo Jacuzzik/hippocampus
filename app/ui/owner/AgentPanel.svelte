@@ -734,7 +734,7 @@
   }
   /* The text-size pill, as on the main agent: − | 12px | +. */
   .size {
-    margin-left: auto;
+    margin-inline-start: auto;
     display: flex;
     align-items: center;
     gap: var(--space-1);

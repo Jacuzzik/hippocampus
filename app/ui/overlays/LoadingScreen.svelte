@@ -239,7 +239,7 @@
 
   .step {
     position: absolute;
-    right: var(--space-3);
+    inset-inline-end: var(--space-3);
     bottom: var(--space-3);
     margin: 0;
     color: var(--color-text-muted);

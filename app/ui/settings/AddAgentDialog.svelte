@@ -454,7 +454,7 @@
   }
 
   .count {
-    text-align: right;
+    text-align: end;
     margin: 0;
   }
 

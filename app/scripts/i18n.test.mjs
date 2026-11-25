@@ -44,6 +44,20 @@ test("every phrase a component passes to t() or tf() has a translation", () => {
   assert.deepEqual(missing, []);
 });
 
+test("directional UI spacing and alignment use logical CSS properties", () => {
+  const root = new URL("../ui", import.meta.url).pathname;
+  const physical =
+    /\b(?:margin|padding)-(?:left|right)\s*:|(?:^|\s)(?:left|right)\s*:|\btext-align:\s*(?:left|right)\b/m;
+  const found = files(root).filter((path) =>
+    physical.test(readFileSync(path, "utf8")),
+  );
+  assert.deepEqual(
+    found,
+    [],
+    "use inline-start/end and text-align start/end so RTL layouts mirror",
+  );
+});
+
 test("the Settings page names and the tour's own text are translated", () => {
   const tour = readFileSync(
     new URL("../ui/overlays/Tour.svelte", import.meta.url),

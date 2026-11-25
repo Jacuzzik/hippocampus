@@ -504,7 +504,10 @@
   };
 
   async function loadGithubRepo(repo: string): Promise<Tile[]> {
-    const found = await backendCall<GithubShape | { error: string }>("github_board", { repo });
+    const found = await backendCall<GithubShape | { error: string }>(
+      "github_board",
+      { repo },
+    );
     if ("error" in found) throw new Error(found.error);
     prefs.dashboardRepo = repo;
     repoDraft = repo;
@@ -701,9 +704,23 @@
         </div>
       {/if}
       {#if current === "github"}
-        <form class="repo-picker" onsubmit={(event) => { event.preventDefault(); void chooseGithubRepo(); }}>
-          <label>Repository <input aria-label="GitHub repository" placeholder="owner/name" bind:value={repoDraft} /></label>
-          <Button disabled={!repoDraft.trim()} onclick={chooseGithubRepo}>Load repository</Button>
+        <form
+          class="repo-picker"
+          onsubmit={(event) => {
+            event.preventDefault();
+            void chooseGithubRepo();
+          }}
+        >
+          <label
+            >Repository <input
+              aria-label="GitHub repository"
+              placeholder="owner/name"
+              bind:value={repoDraft}
+            /></label
+          >
+          <Button disabled={!repoDraft.trim()} onclick={chooseGithubRepo}
+            >Load repository</Button
+          >
         </form>
       {/if}
       {#if current === "calendar"}
@@ -825,7 +842,7 @@
   }
 
   .read {
-    margin-left: auto;
+    margin-inline-start: auto;
     color: var(--color-text-muted);
   }
 
@@ -865,7 +882,7 @@
   /* The icon's name shows under it on hover or keyboard focus, not beside it over the next icon. */
   .icon-btn:hover::after,
   .icon-btn:focus-visible::after {
-    left: 50%;
+    inset-inline-start: 50%;
     top: calc(100% + var(--space-1));
     transform: translateX(-50%);
   }

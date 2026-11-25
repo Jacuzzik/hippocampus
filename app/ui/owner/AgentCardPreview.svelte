@@ -119,8 +119,8 @@
   }
 
   .row.wide {
-    margin-left: calc(-52px - var(--space-2));
-    margin-right: -12px;
+    margin-inline-start: calc(-52px - var(--space-2));
+    margin-inline-end: -12px;
   }
 
   .val {
@@ -134,7 +134,7 @@
   }
 
   .cmd-row {
-    margin-right: 0;
+    margin-inline-end: 0;
   }
 
   .cmd {
@@ -168,7 +168,7 @@
   }
 
   .pct {
-    margin-left: 4px;
+    margin-inline-start: 4px;
     font-size: var(--font-size-tag);
     color: var(--color-md-card-muted);
   }

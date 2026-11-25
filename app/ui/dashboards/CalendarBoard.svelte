@@ -606,7 +606,7 @@
     padding: 0 0 0 var(--space-2);
     color: var(--color-text);
     font: inherit;
-    text-align: left;
+    text-align: start;
     background: none;
     border: 0;
     border-left: 3px solid var(--tone);
@@ -833,7 +833,7 @@
     color: var(--color-text);
     font: inherit;
     font-size: var(--font-size-xs);
-    text-align: left;
+    text-align: start;
     background: var(--tint);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
@@ -888,7 +888,7 @@
     color: var(--color-text);
     font: inherit;
     font-size: var(--font-size-xs);
-    text-align: left;
+    text-align: start;
     background: var(--tint);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
@@ -923,8 +923,8 @@
 
   .now {
     position: absolute;
-    right: 0;
-    left: var(--gutter);
+    inset-inline-end: 0;
+    inset-inline-start: var(--gutter);
     border-top: 1px dashed var(--color-accent);
     pointer-events: none;
   }
@@ -932,7 +932,7 @@
   .now span {
     position: absolute;
     top: 0;
-    left: calc(-1 * var(--gutter));
+    inset-inline-start: calc(-1 * var(--gutter));
     padding: 0 var(--space-1);
     color: var(--color-accent-on);
     font-size: var(--font-size-xs);

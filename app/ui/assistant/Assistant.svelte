@@ -351,7 +351,7 @@
   }
 
   .state {
-    margin-left: auto;
+    margin-inline-start: auto;
   }
 
   .messages {
@@ -477,7 +477,7 @@
   }
 
   .status {
-    margin-left: auto;
+    margin-inline-start: auto;
     color: var(--color-text-muted);
   }
 

@@ -383,7 +383,7 @@
   }
 
   .size {
-    margin-left: auto;
+    margin-inline-start: auto;
     display: flex;
     align-items: center;
     gap: var(--space-1);

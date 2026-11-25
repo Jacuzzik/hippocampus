@@ -54,6 +54,6 @@
     max-width: 50%;
     color: var(--color-text-muted);
     overflow-wrap: anywhere;
-    text-align: right;
+    text-align: end;
   }
 </style>
