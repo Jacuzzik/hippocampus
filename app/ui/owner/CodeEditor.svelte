@@ -36,7 +36,9 @@
   let expanded = $state<Record<string, boolean>>({});
   let tabs = $state<Tab[]>([]);
   let current = $state("");
-  let side = $state<"files" | "changes" | "history" | "compare">("files");
+  let side = $state<"files" | "search" | "changes" | "history" | "compare">(
+    "files",
+  );
   let git = $state<Git | null>(null);
   let commits = $state<Commit[]>([]);
   let shown = $state("");
@@ -46,6 +48,11 @@
   let error = $state("");
   let note = $state("");
   let busy = $state(false);
+  let query = $state("");
+  let replacement = $state("");
+  let searchRows = $state<{ path: string; line: number; text: string }[]>([]);
+  let selected = $state<string[]>([]);
+  let commitMessage = $state("");
   let host: HTMLDivElement | undefined = $state();
   let view: EditorView | undefined;
   const states = new SvelteMap<string, EditorState>();
@@ -174,6 +181,45 @@
     if (found) versus = found;
   }
 
+  async function searchFiles(): Promise<void> {
+    const found = await guarded(() =>
+      call<{ rows: typeof searchRows }>("editor_search", { folder, query }),
+    );
+    if (found) searchRows = found.rows;
+  }
+
+  async function replaceFiles(): Promise<void> {
+    const found = await guarded(() =>
+      call<{ files: string[]; count: number }>("editor_replace", {
+        folder,
+        query,
+        replacement,
+      }),
+    );
+    if (found) {
+      note = `Updated ${found.count} file${found.count === 1 ? "" : "s"}.`;
+      selected = [...new Set([...selected, ...found.files])];
+      await searchFiles();
+      await loadGit();
+    }
+  }
+
+  async function commitFiles(): Promise<void> {
+    const found = await guarded(() =>
+      call<Git>("editor_commit", {
+        folder,
+        paths: selected,
+        message: commitMessage,
+      }),
+    );
+    if (found) {
+      git = found;
+      selected = [];
+      commitMessage = "";
+      note = "Commit created.";
+    }
+  }
+
   function pick(next: typeof side): void {
     side = next;
     if (next !== "files") void loadGit();
@@ -219,7 +265,7 @@
         <button
           type="button"
           class:on={row.path === current}
-          style:padding-left="calc(var(--space-2) * {depth + 1})"
+          style:padding-inline-start="calc(var(--space-2) * {depth + 1})"
           onclick={() => toggle(row)}
           >{#if row.dir}<span aria-hidden="true"
               >{expanded[row.path] ? "▾ " : "▸ "}</span
@@ -244,7 +290,7 @@
   <div class="editor">
     <aside>
       <div class="seg" role="group" aria-label="Editor views">
-        {#each ["files", "changes", "history", "compare"] as const as id (id)}
+        {#each ["files", "search", "changes", "history", "compare"] as const as id (id)}
           <button
             type="button"
             aria-pressed={side === id}
@@ -254,6 +300,31 @@
       </div>
       {#if side === "files"}
         {@render branch(children[""] ?? [], 0)}
+      {:else if side === "search"}
+        <label
+          >Find <input
+            bind:value={query}
+            onkeydown={(event) => event.key === "Enter" && void searchFiles()}
+          /></label
+        >
+        <label>Replace with <input bind:value={replacement} /></label>
+        <div class="row-actions">
+          <Button disabled={busy || !query} onclick={() => void searchFiles()}
+            >Search files</Button
+          >
+          <Button disabled={busy || !query} onclick={() => void replaceFiles()}
+            >Replace in files</Button
+          >
+        </div>
+        <ul class="list" aria-label="Search results">
+          {#each searchRows as result, i (`${result.path}:${result.line}:${i}`)}
+            <li>
+              <button type="button" onclick={() => void openFile(result.path)}
+                >{result.path}:{result.line} — {result.text}</button
+              >
+            </li>
+          {:else}<li class="muted">No matches.</li>{/each}
+        </ul>
       {:else if !git}
         <p class="muted">Loading…</p>
       {:else if !git.repo}
@@ -263,6 +334,17 @@
         <ul class="list" aria-label="Changed files">
           {#each git.files as f (f.path)}
             <li>
+              <label
+                ><input
+                  type="checkbox"
+                  checked={selected.includes(f.path)}
+                  onchange={(event) => {
+                    selected = event.currentTarget.checked
+                      ? [...selected, f.path]
+                      : selected.filter((path) => path !== f.path);
+                  }}
+                /> Stage</label
+              >
               <button
                 type="button"
                 onclick={() => {
@@ -275,6 +357,16 @@
             <li class="muted">Nothing to commit.</li>
           {/each}
         </ul>
+        <label
+          >Commit message <input
+            bind:value={commitMessage}
+            maxlength="200"
+          /></label
+        >
+        <Button
+          disabled={busy || !selected.length || !commitMessage.trim()}
+          onclick={() => void commitFiles()}>Commit selected files</Button
+        >
       {:else if side === "history"}
         <p class="muted">
           {active ? `History of ${active.path}` : "History of the folder"}
@@ -370,7 +462,7 @@
   aside {
     overflow: auto;
     border-right: 1px solid var(--color-border);
-    padding-right: var(--space-2);
+    padding-inline-end: var(--space-2);
     display: flex;
     flex-direction: column;
     gap: var(--space-1);
@@ -394,7 +486,7 @@
   .list button {
     display: block;
     width: 100%;
-    text-align: left;
+    text-align: start;
     background: none;
     border: none;
     color: inherit;

@@ -217,6 +217,23 @@ test("the code editor opens a file, saves it, and shows git changes, history and
   await editor.getByRole("button", { name: "compare", exact: true }).click();
   await editor.getByRole("button", { name: "Compare branches" }).click();
   await expect(editor.getByText("2 ahead and 1 behind")).toBeVisible();
+
+  await editor.getByRole("button", { name: "search", exact: true }).click();
+  await editor.getByRole("textbox", { name: "Find" }).fill("hello");
+  await editor.getByRole("button", { name: "Search files" }).click();
+  await expect(
+    editor.getByRole("list", { name: "Search results" }),
+  ).toContainText("notes.md:2");
+  await editor.getByRole("textbox", { name: "Replace with" }).fill("hello there");
+  await editor.getByRole("button", { name: "Replace in files" }).click();
+  await expect(editor.getByText("Updated 1 file.")).toBeVisible();
+  await editor.getByRole("button", { name: "changes", exact: true }).click();
+  await editor.getByRole("checkbox", { name: "Stage" }).check();
+  await editor
+    .getByRole("textbox", { name: "Commit message" })
+    .fill("Update notes");
+  await editor.getByRole("button", { name: "Commit selected files" }).click();
+  await expect(editor.getByText("Commit created.")).toBeVisible();
 });
 
 test("an agent that asks first shows the exact command or diff, and is approved once, for the folder, or denied (N.12)", async ({

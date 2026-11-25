@@ -217,6 +217,22 @@ METHODS: dict[str, Method] = {
         ("base", "a branch"),
         ("head", "a branch"),
     ),
+    "editor_search": _m(
+        "Search text files in an agent's folder.",
+        ("folder", "the agent's folder"),
+        ("query", "text to search for"),
+    ),
+    "editor_replace": _m(
+        "Replace text in an agent's folder.",
+        ("folder", "the agent's folder"),
+        ("query", "text to replace"),
+    ),
+    "editor_commit": _m(
+        "Commit selected files inside an agent's folder.",
+        ("folder", "the agent's folder"),
+        ("paths", "selected file paths"),
+        ("message", "a commit message"),
+    ),
     "approvals_state": _m(
         "Shell commands and file changes waiting for approval, and the folder rules."
     ),

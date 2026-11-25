@@ -371,6 +371,26 @@ class ExtrasPart:
     def editor_compare(self, request: dict[str, Any]) -> dict[str, Any]:
         return code_editor.compare(request.get("folder"), request.get("base"), request.get("head"))
 
+    def editor_search(self, request: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "rows": code_editor.search(
+                request.get("folder"), request.get("query"), request.get("glob", "*")
+            )
+        }
+
+    def editor_replace(self, request: dict[str, Any]) -> dict[str, Any]:
+        return code_editor.replace(
+            request.get("folder"),
+            request.get("query"),
+            request.get("replacement"),
+            request.get("glob", "*"),
+        )
+
+    def editor_commit(self, request: dict[str, Any]) -> dict[str, Any]:
+        return code_editor.commit(
+            request.get("folder"), request.get("paths"), request.get("message")
+        )
+
     # Approvals for agents that ask first (N.12)
     @property
     def approvals_path(self) -> Path:

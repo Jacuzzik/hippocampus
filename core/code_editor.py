@@ -3,6 +3,7 @@
 Every path is resolved against the folder and refused if it leaves it (including through a symlink). Reads stop at
 a size limit and refuse binary files. Git is run with fixed argument lists, never through a shell."""
 
+import fnmatch
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -46,6 +47,92 @@ def tree(folder: object, rel: str = "") -> list[dict[str, Any]]:
             {"name": item.name, "path": item.relative_to(root).as_posix(), "dir": item.is_dir()}
         )
     return rows
+
+
+def search(folder: object, query: object, glob: object = "*") -> list[dict[str, Any]]:
+    """Search text files below one agent folder without entering generated or git data."""
+    if not isinstance(query, str) or not query:
+        raise ValueError("Enter text to search for.")
+    if not isinstance(glob, str) or not glob or "/" in glob or "\\" in glob:
+        raise ValueError("Use a file name pattern such as *.py.")
+    root = _root(folder)
+    matches: list[dict[str, Any]] = []
+    for path in root.rglob("*"):
+        rel = path.relative_to(root)
+        if any(part in SKIP for part in rel.parts):
+            continue
+        try:
+            path = inside(root, rel.as_posix())
+        except ValueError:
+            continue
+        if not path.is_file():
+            continue
+        if not fnmatch.fnmatch(path.name, glob) or path.stat().st_size > MAX_READ:
+            continue
+        data = path.read_bytes()
+        if b"\0" in data[:8192]:
+            continue
+        text = data.decode("utf-8", errors="replace")
+        for number, line in enumerate(text.splitlines(), start=1):
+            if query.casefold() in line.casefold():
+                matches.append(
+                    {"path": path.relative_to(root).as_posix(), "line": number, "text": line[:500]}
+                )
+                if len(matches) >= 500:
+                    return matches
+    return matches
+
+
+def replace(
+    folder: object, query: object, replacement: object, glob: object = "*"
+) -> dict[str, Any]:
+    """Replace text in matching files in the agent folder, returning changed paths."""
+    if not isinstance(query, str) or not query:
+        raise ValueError("Enter text to replace.")
+    if not isinstance(replacement, str):
+        raise ValueError("Enter replacement text.")
+    root = _root(folder)
+    changed: list[str] = []
+    for path in root.rglob("*"):
+        rel = path.relative_to(root)
+        if any(part in SKIP for part in rel.parts):
+            continue
+        try:
+            path = inside(root, rel.as_posix())
+        except ValueError:
+            continue
+        if not path.is_file():
+            continue
+        if not fnmatch.fnmatch(path.name, str(glob)) or path.stat().st_size > MAX_READ:
+            continue
+        data = path.read_bytes()
+        if b"\0" in data[:8192]:
+            continue
+        text = data.decode("utf-8", errors="replace")
+        updated = text.replace(query, replacement)
+        if updated != text:
+            safe_write.write_text(path, updated)
+            changed.append(rel.as_posix())
+    return {"files": changed, "count": len(changed)}
+
+
+def commit(folder: object, paths: object, message: object) -> dict[str, Any]:
+    """Commit only the selected paths, after staging exactly those paths in this repository."""
+    root = _root(folder)
+    if not isinstance(paths, list) or not paths or not all(isinstance(p, str) for p in paths):
+        raise ValueError("Choose at least one changed file.")
+    if not isinstance(message, str) or not message.strip() or len(message) > 200:
+        raise ValueError("Enter a commit message of 1 to 200 characters.")
+    names = []
+    for path in dict.fromkeys(paths):
+        target = inside(root, path)
+        relative = target.relative_to(root)
+        if any(part in SKIP for part in relative.parts) or not target.is_file():
+            raise ValueError("Choose files inside the agent's folder.")
+        names.append(relative.as_posix())
+    _git(root, "add", "--", *names)
+    _git(root, "commit", "-m", message.strip(), "--", *names)
+    return changes(root)
 
 
 def read(folder: object, rel: object) -> dict[str, Any]:

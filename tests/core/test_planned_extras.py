@@ -248,6 +248,18 @@ def test_the_code_editor_reads_saves_and_shows_git_inside_the_folder(tmp_path: P
     _git(folder, "commit", "-m", "second")
     versus = ce.compare(str(folder), "main", "feature")
     assert versus["ahead"] == 1 and versus["files"] == [{"state": "A", "path": "b.txt"}]
+    assert ce.search(str(folder), "B", "*.txt") == [{"path": "b.txt", "line": 1, "text": "b"}]
+    assert ce.replace(str(folder), "b", "updated", "*.txt") == {
+        "files": ["b.txt"],
+        "count": 1,
+    }
+    with pytest.raises(ValueError, match="outside"):
+        ce.commit(str(folder), ["../secret.txt"], "Do not escape")
+    _git(folder, "config", "user.name", "test")
+    _git(folder, "config", "user.email", "test@example.invalid")
+    committed = ce.commit(str(folder), ["b.txt"], "Update text file")
+    assert committed["files"] == [{"state": "M", "path": "a.py"}]
+    assert ce.history(str(folder))[0]["subject"] == "Update text file"
     with pytest.raises(ValueError, match="exist"):
         ce.compare(str(folder), "main", "--output=x")
 

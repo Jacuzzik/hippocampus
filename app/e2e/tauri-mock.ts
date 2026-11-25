@@ -758,7 +758,7 @@ export async function mockSidecar(
           case "cards":
             return { cards: ownerCards };
           case "card_create": {
-            const card = { id: `c${ownerCards.length + 1}`, title: String(args.params?.title), body: String(args.params?.body) };
+            const card = { id: `c${ownerCards.length + 1}`, title: String(args.params?.title), body: String(args.params?.body), source: "" };
             ownerCards.push(card);
             return { card };
           }
@@ -1902,20 +1902,6 @@ export async function mockSidecar(
                   agents: [],
                 },
               ],
-            };
-          case "github_board":
-            return {
-              repo: String(args.params?.repo ?? "me/hippocampus"),
-              pulls: 2,
-              drafts: 1,
-              issues: 3,
-              runs: 4,
-              failed_runs: 1,
-              running_runs: 0,
-              newest_run: { name: "Checks", branch: "main", state: "passed" },
-              newest_pulls: [{ number: 7, title: "Add dashboards" }],
-              newest_issues: [{ number: 8, title: "Fix tabs" }],
-              capped: [],
             };
           case "calendar":
           case "calendar_add":

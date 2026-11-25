@@ -240,6 +240,9 @@ class DispatchPart:
             "editor_diff": self.editor_diff,
             "editor_history": self.editor_history,
             "editor_compare": self.editor_compare,
+            "editor_search": self.editor_search,
+            "editor_replace": self.editor_replace,
+            "editor_commit": self.editor_commit,
         }
 
     def stop(self) -> dict[str, Any]:
