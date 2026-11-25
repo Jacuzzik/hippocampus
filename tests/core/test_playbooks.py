@@ -41,8 +41,6 @@ def test_running_a_playbook_sends_its_steps_to_the_agent(tmp_path: Path) -> None
     (vault / "other.md").write_text("1. not a playbook\n", encoding="utf-8")
     session = sidecar.Session(tmp_path / "s", Settings(vault=vault))
     session.dispatch({"method": "open", "vault": str(vault)})
-    listed = session.dispatch({"method": "playbooks"})["playbooks"]
-    assert [p["path"] for p in listed] == ["Playbooks/empty.md", "Playbooks/release.md"]
     answer = session.dispatch(
         {"method": "playbook_run", "path": "Playbooks/release.md", "agent": "hippoherman"}
     )

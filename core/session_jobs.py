@@ -15,7 +15,6 @@ from core import (
     daily_brief,
     inbox,
     link_doctor,
-    webhooks,
 )
 from core import jobs as job_store
 from core import memory as memory_notes
@@ -23,12 +22,6 @@ from core import missions as mission_store
 from core.helpers import HelperLimit
 from core.vault.scanner import iter_notes
 from tools.vault_tools import vault_tools
-
-
-def _watcher(
-    name: str, kind: str, status: str, last_event: str | None = None
-) -> dict[str, str | None]:
-    return {"name": name, "kind": kind, "status": status, "last_event": last_event}
 
 
 class JobsPart:
@@ -272,33 +265,6 @@ class JobsPart:
 
     def helpers_state(self) -> dict[str, Any]:
         return {"helpers": self.helpers.list(), "limit": 4}
-
-    def watchers_state(self) -> dict[str, Any]:
-        """Background watchers, read only. `watch` runs VaultWatcher, not `serve`, so the
-        vault row is always stopped here; the minute timer runs triggers only with a vault."""
-        rows: list[dict[str, str | None]] = []
-        if self.indexer is not None:
-            rows.append(_watcher(self.indexer.vault.name, "vault watcher", "stopped"))
-        for job in job_store.load(self.jobs_path):
-            on = "running" if job.enabled and self.indexer is not None else "stopped"
-            rows.append(_watcher(job.name, "trigger", on, job.last_run))
-        for hook in webhooks.load(self.webhooks_path):  # saved only: nothing listens for them
-            rows.append(_watcher(hook["name"], "webhook", "stopped"))
-        status = {"running": "running", "done": "stopped", "failed": "error"}
-        for job in self.helpers.list():
-            name = f"helper {job['id']}: {job['prompt'][:40]}"
-            rows.append(_watcher(name, "helper", status[job["status"]]))
-        # Every agent with a terminal: running or stopped, and when it last started or stopped.
-        for agent in sorted(set(self.terminals.events) | set(self.terminals.procs)):
-            running = (
-                agent in self.terminals.procs and self.terminals.procs[agent][0].poll() is None
-            )
-            last = self.terminals.events.get(agent)
-            last_event = f"{datetime.fromtimestamp(last[0]):%H:%M} {last[1]}" if last else None
-            # "hippoherman" is the main agent's terminal id; show it by its name.
-            shown = "Hippoherman (main agent)" if agent == "hippoherman" else agent
-            rows.append(_watcher(shown, "agent", "running" if running else "stopped", last_event))
-        return {"watchers": rows}
 
     def system_state(self) -> dict[str, Any]:
         """CPU, RAM and disk use in percent. Disk is the drive that holds the app data."""

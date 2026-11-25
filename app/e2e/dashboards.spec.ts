@@ -84,6 +84,25 @@ test("dashboards open from the top bar, list the dashboards and show numbers fro
   await expect(view).toBeHidden();
 });
 
+test("the GitHub dashboard loads one repository board", async ({ page }) => {
+  await mockSidecar(page);
+  await page.addInitScript(() =>
+    localStorage.setItem(
+      "hippocampus.prefs",
+      JSON.stringify({ intro: "off", dashboardsLocked: false }),
+    ),
+  );
+  await page.goto("/");
+  await page.locator("header.topbar").getByRole("button", { name: "Dashboards", exact: true }).click();
+  const view = page.getByRole("region", { name: "Dashboards" });
+  await view.getByRole("button", { name: "GitHub", exact: true }).click();
+  const board = view.getByRole("tabpanel");
+  await board.getByRole("textbox", { name: "GitHub repository" }).fill("me/hippocampus");
+  await board.getByRole("button", { name: "Load repository" }).click();
+  await expect(board.getByText("Open pull requests")).toBeVisible();
+  await expect(board.getByText("Add dashboards")).toBeVisible();
+});
+
 test("Ctrl+D and the palette open the dashboards", async ({ page }) => {
   await mockSidecar(page);
   await page.goto("/");

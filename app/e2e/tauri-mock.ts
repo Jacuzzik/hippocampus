@@ -757,6 +757,17 @@ export async function mockSidecar(
             return { servers: mcpRows, restart: true };
           case "cards":
             return { cards: ownerCards };
+          case "card_create": {
+            const card = { id: `c${ownerCards.length + 1}`, title: String(args.params?.title), body: String(args.params?.body) };
+            ownerCards.push(card);
+            return { card };
+          }
+          case "card_update": {
+            const card = ownerCards.find((row) => row.id === args.params?.id);
+            if (!card) throw new Error("no card with that id");
+            Object.assign(card, { title: args.params?.title, body: args.params?.body });
+            return { card };
+          }
           case "card_from_note": {
             const card = {
               id: `c${ownerCards.length + 1}`,
@@ -776,8 +787,6 @@ export async function mockSidecar(
             return { note: `Cards/${String(args.params?.id)}.md` };
           case "playbook_run":
             return { message: "m2", steps: 3 };
-          case "playbooks":
-            return { playbooks: [], folder: "Playbooks" };
           case "handoff":
             return {
               note: `Handoffs/2026-11-23 1400 ${String(args.params?.from)} to Hippoherman.md`,
@@ -954,6 +963,8 @@ export async function mockSidecar(
               agent_waiting: extras.agentWaiting,
               agent_rules: extras.agentRules,
             };
+          case "approvals_state":
+            return { waiting: extras.agentWaiting, rules: extras.agentRules };
           case "approvals_answer": {
             const at = extras.agentWaiting.findIndex(
               (r) => r.id === args.params?.id,
@@ -982,23 +993,6 @@ export async function mockSidecar(
             return { mode: "text", hits: ["ideas/memory.md"] };
           case "system":
             return { cpu: 42, ram: 61, swap: 12, disk: 33, disk_free: 120.5 };
-          case "watchers":
-            return {
-              watchers: [
-                {
-                  name: "brain",
-                  kind: "vault watcher",
-                  status: "stopped",
-                  last_event: null,
-                },
-                {
-                  name: "Weekly link check",
-                  kind: "trigger",
-                  status: "stopped",
-                  last_event: null,
-                },
-              ],
-            };
           case "chat_history":
             return { sessions: [] };
           case "current_session":
@@ -1236,6 +1230,12 @@ export async function mockSidecar(
               behind: 1,
               files: [{ state: "A", path: "src/new.ts" }],
             };
+          case "editor_search":
+            return { rows: [{ path: "notes.md", line: 2, text: "hello world" }] };
+          case "editor_replace":
+            return { files: ["notes.md"], count: 1 };
+          case "editor_commit":
+            return { repo: true, branch: "main", files: [], branches: ["main", "feature"] };
           case "slack_state":
           case "slack_connect":
           case "slack_disconnect":
@@ -1902,6 +1902,20 @@ export async function mockSidecar(
                   agents: [],
                 },
               ],
+            };
+          case "github_board":
+            return {
+              repo: String(args.params?.repo ?? "me/hippocampus"),
+              pulls: 2,
+              drafts: 1,
+              issues: 3,
+              runs: 4,
+              failed_runs: 1,
+              running_runs: 0,
+              newest_run: { name: "Checks", branch: "main", state: "passed" },
+              newest_pulls: [{ number: 7, title: "Add dashboards" }],
+              newest_issues: [{ number: 8, title: "Fix tabs" }],
+              capped: [],
             };
           case "calendar":
           case "calendar_add":

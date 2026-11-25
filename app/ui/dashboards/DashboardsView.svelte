@@ -13,6 +13,7 @@
   import FinanceBoard from "./FinanceBoard.svelte";
   import AnalyticPanel from "./AnalyticPanel.svelte";
   import { prefs } from "../prefs.svelte.ts";
+  import { call as backendCall } from "../settings/call.ts";
   import {
     activityByDay,
     short,
@@ -31,6 +32,8 @@
     type DashboardId,
     type SystemShape,
     type Tile,
+    githubTiles,
+    type GithubShape,
   } from "./model.ts";
 
   let { onclose, onsettings }: { onclose: () => void; onsettings: () => void } =
@@ -38,6 +41,7 @@
 
   // A built-in dashboard's id, or "app:<id>" for a connected app.
   let current = $state<string>("apps");
+  let repoDraft = $state(prefs.dashboardRepo);
   // The connected apps: each one gets a dashboard after the built-in ones.
   let apps = $state<{ id: string; name: string }[]>([]);
   async function readApps(): Promise<void> {
@@ -374,6 +378,9 @@
       return systemTiles(system);
     },
     github: async () => {
+      if (prefs.dashboardRepo) {
+        return await loadGithubRepo(prefs.dashboardRepo);
+      }
       const found = await invoke<
         | { repos: RepoRow[]; others: RepoRow[]; days: number }
         | { error: string }
@@ -495,6 +502,25 @@
       return activityTiles(rows);
     },
   };
+
+  async function loadGithubRepo(repo: string): Promise<Tile[]> {
+    const found = await backendCall<GithubShape | { error: string }>("github_board", { repo });
+    if ("error" in found) throw new Error(found.error);
+    prefs.dashboardRepo = repo;
+    repoDraft = repo;
+    return githubTiles(found);
+  }
+
+  async function chooseGithubRepo(): Promise<void> {
+    error = null;
+    tiles = null;
+    try {
+      tiles = await loadGithubRepo(repoDraft.trim());
+      panels = [];
+    } catch (cause) {
+      error = cause instanceof Error ? cause.message : String(cause);
+    }
+  }
 
   async function load(): Promise<void> {
     const wanted = current;
@@ -673,6 +699,12 @@
           {#if actionNote}<span class="note" role="status">{actionNote}</span
             >{/if}
         </div>
+      {/if}
+      {#if current === "github"}
+        <form class="repo-picker" onsubmit={(event) => { event.preventDefault(); void chooseGithubRepo(); }}>
+          <label>Repository <input aria-label="GitHub repository" placeholder="owner/name" bind:value={repoDraft} /></label>
+          <Button disabled={!repoDraft.trim()} onclick={chooseGithubRepo}>Load repository</Button>
+        </form>
       {/if}
       {#if current === "calendar"}
         <div class="fill">

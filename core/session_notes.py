@@ -140,21 +140,6 @@ class NotesPart:
         self.changed("cards")
         return {"note": path}
 
-    def playbook_list(self) -> dict[str, Any]:
-        """Every playbook in the vault's Playbooks folder, with its steps."""
-        if self.indexer is None:
-            return {"playbooks": [], "folder": playbooks.FOLDER}
-        with self.lock:
-            paths = sorted(p for p in self.indexer.store.note_states() if playbooks.is_playbook(p))
-        found = []
-        for path in paths:
-            try:
-                text = note_actions.read_full(self.indexer, self.lock, path)
-            except (OSError, ValueError):
-                continue
-            found.append(playbooks.parse(path, text))
-        return {"playbooks": found, "folder": playbooks.FOLDER}
-
     def playbook_run(self, request: dict[str, Any]) -> dict[str, Any]:
         """Send a playbook's steps to an agent as one inbox message. The user's click runs it."""
         self._open_vault()

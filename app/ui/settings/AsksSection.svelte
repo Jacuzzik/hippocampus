@@ -7,6 +7,7 @@
   import type { AskCard } from "../assistant/model";
   import Loading from "../controls/Loading.svelte";
   import Button from "../controls/Button.svelte";
+  import { call } from "./call.ts";
 
   // Questions the assistant cannot answer alone, from every chat, in one place.
   let asks = $state<AskCard[]>([]);
@@ -38,18 +39,14 @@
 
   async function load(): Promise<void> {
     try {
-      const result = await invoke<{
-        asks: AskCard[];
-        approvals?: Approval[];
-        agent_waiting?: AgentRequest[];
-        agent_rules?: AgentRule[];
-      }>("sidecar_call", {
-        method: "asks",
-      });
-      agentWaiting = result.agent_waiting ?? [];
-      agentRules = result.agent_rules ?? [];
+      const [result, agentApprovals] = await Promise.all([
+        call<{ asks: AskCard[]; approvals?: Approval[] }>("asks"),
+        call<{ waiting: AgentRequest[]; rules: AgentRule[] }>("approvals_state"),
+      ]);
       asks = result.asks;
       approvals = result.approvals ?? [];
+      agentWaiting = agentApprovals.waiting;
+      agentRules = agentApprovals.rules;
     } catch (cause) {
       error = String(cause);
     } finally {

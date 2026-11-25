@@ -49,6 +49,19 @@ test("the tasks tab opens the task board", async ({ page }) => {
   await expect(page.getByRole("region", { name: "Tasks" })).toBeVisible();
 });
 
+test("the Tasks tab can create and edit an owner card", async ({ page }) => {
+  await page.getByRole("tab", { name: "tasks" }).click();
+  const board = page.getByRole("region", { name: "Tasks" });
+  await board.getByRole("textbox", { name: "Card title" }).fill("Reading list");
+  await board.getByRole("textbox", { name: "Card details" }).fill("Read one paper");
+  await board.getByRole("button", { name: "Add card" }).click();
+  await expect(board.getByText("Reading list")).toBeVisible();
+  await board.getByRole("button", { name: "Edit" }).click();
+  await board.getByRole("textbox", { name: "Edit card title" }).fill("Research list");
+  await board.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(board.getByText("Research list")).toBeVisible();
+});
+
 test("a task card starts a temp on its text, and the Temps tab lists it", async ({
   page,
 }) => {

@@ -42,7 +42,6 @@ METHODS: dict[str, Method] = {
     "mcp_add": _m("Add or replace an MCP server in an added agent's .mcp.json.", _AGENT),
     "mcp_remove": _m("Remove an MCP server from an added agent's .mcp.json.", _AGENT),
     "search_all": _m("Search notes, messages, tasks, calendar events and agents at once."),
-    "playbooks": _m("Every playbook note in the vault's Playbooks folder, with its steps."),
     "playbook_run": _m(
         "Send a playbook's steps to an agent as one inbox message.",
         ("path", 'a playbook "path"'),
@@ -322,7 +321,6 @@ METHODS: dict[str, Method] = {
         "The circuit breaker's last check of each agent: healthy, warn or tripped, and why."
     ),
     "fleet": _m("Every agent's status, model, context use and inbox backlog, as in fleet.json."),
-    "watchers": _m("Folder watchers."),
     "webhooks": _m("Saved webhooks."),
     "save_webhook": _m("Add a webhook."),
     "delete_webhook": _m("Remove a webhook."),
